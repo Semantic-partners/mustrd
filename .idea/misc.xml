@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectRootManager">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="SbtLocalSettings">
+    <option name="modificationStamps">
+      <map>
+        <entry key="$USER_HOME$/Downloads/Checkout-chris" value="1487163252000" />
+        <entry key="$USER_HOME$/Downloads/checkout-kata-master" value="1484468448000" />
+        <entry key="$USER_HOME$/Downloads/checkout-kata-master 2" value="1487411098000" />
+        <entry key="$USER_HOME$/Downloads/checkout-kata-master cristian" value="1487411098000" />
+        <entry key="$USER_HOME$/Downloads/shopping-checkout" value="1485014931000" />
+        <entry key="$USER_HOME$/Downloads/shopping-checkout 2" value="1485014931000" />
+        <entry key="$USER_HOME$/Downloads/tomaszcheckout" value="4455501742000" />
+        <entry key="$PROJECT_DIR$/../../homeoffice/rmp/rmp-caseworker" value="1484085195000" />
+        <entry key="$PROJECT_DIR$/../../homeoffice/rmp/rmp-smoke-test" value="1485527777000" />
+        <entry key="$PROJECT_DIR$/../../homeoffice/rmp/rmp-web" value="1484088133000" />
+      </map>
+    </option>
+    <option name="projectSyncType">
+      <map>
+        <entry key="$PROJECT_DIR$/../../hozah-test" value="PREVIEW" />
+        <entry key="$PROJECT_DIR$/../../hozah_interviews/toddandrew" value="PREVIEW" />
+      </map>
+    </option>
+  </component>
+  <component name="ScalaSbtSettings">
+    <option name="customVMPath" />
+  </component>
+  <component name="SshConsoleOptionsProvider">
+    <option name="myEncoding" value="UTF-8" />
+    <option name="myConnectionType" value="NONE" />
+  </component>
+</project>
