@@ -1,5 +1,13 @@
 from dataclasses import dataclass
-from rdflib import Graph, BNode, URIRef, Literal
+from rdflib import Graph, BNode, Literal, URIRef
+from rdflib.namespace import SH, DefinedNamespace, Namespace
+
+class MUSTRD(DefinedNamespace):
+    _NS = Namespace("https://semanticpartners.com/mustrd/")
+
+    results: URIRef
+    variable: URIRef
+    binding: URIRef
 
 
 @dataclass
@@ -22,12 +30,12 @@ def run_test(g: Given, w: When) -> Then:
     g = Graph()
     for pos, row in enumerate(result, 1):
         row_node = BNode()
-        g.add((row_node, URIRef("http://www.w3.org/ns/shacl#order"), Literal(pos)))
+        g.add((row_node, SH.order, Literal(pos)))
         results = row.asdict().items()
         for key, value in results:
             column_node = BNode()
-            g.add((row_node, URIRef("https://semanticpartners.com/mustrd/results"), column_node))
-            g.add((column_node, URIRef("https://semanticpartners.com/mustrd/variable"), Literal(key)))
-            g.add((column_node, URIRef("https://semanticpartners.com/mustrd/binding"), value))
+            g.add((row_node, MUSTRD.results, column_node))
+            g.add((column_node, MUSTRD.variable, Literal(key)))
+            g.add((column_node, MUSTRD.binding, value))
 
     return Then(g)
