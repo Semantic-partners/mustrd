@@ -14,7 +14,7 @@ class TestMustrd:
         query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
-        expected_state = Graph()
+        expected_graph = Graph()
         expected_select_triples = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix mustrd: <https://semanticpartners.com/mustrd/> .
@@ -34,16 +34,20 @@ class TestMustrd:
             ];
         ] .
         """
-        expected_state.parse(data=expected_select_triples, format='ttl')
+        expected_graph.parse(data=expected_select_triples, format='ttl')
 
         g = Given(state)
         w = When(query)
 
         t = run_test(g, w)
-        diff = graph_diff(expected_state, t.graph)
-        in_expected = diff[1]
-        in_actual = diff[2]
-        in_expected_not_in_actual = (in_expected - in_actual).serialize(format='ttl')
-        in_actual_not_in_expected = (in_actual - in_expected).serialize(format='ttl')
-        message = f"in_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}"
-        assert isomorphic(t.graph, expected_state), message
+        message = error_message(expected_graph, t.graph)
+        assert isomorphic(t.graph, expected_graph), message
+
+
+def error_message(expected_graph, actual_graph) -> str:
+    diff = graph_diff(expected_graph, actual_graph)
+    in_expected = diff[1]
+    in_actual = diff[2]
+    in_expected_not_in_actual = (in_expected - in_actual).serialize(format='ttl')
+    in_actual_not_in_expected = (in_actual - in_expected).serialize(format='ttl')
+    return f"in_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}"
