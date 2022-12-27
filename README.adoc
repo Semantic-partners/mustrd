@@ -1,0 +1,7 @@
+= mustrd library
+
+// tag::body[]
+
+SPARQL test framework.
+
+// end::body[]
