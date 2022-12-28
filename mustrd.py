@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass
 from pyparsing import ParseException
+from itertools import groupby
 
 from rdflib import Graph, BNode, Literal, URIRef
 from rdflib.namespace import SH, RDF
 from rdflib.compare import isomorphic, graph_diff
+import pandas
 
 from namespace import MUST
 
@@ -108,3 +110,34 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SelectSparqlQuery:
     for when in whens:
         if when.type == MUST.SelectSparql:
             return SelectSparqlQuery(when.query.value)
+
+
+def get_then(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
+    then_query = f"""
+    prefix sh: <http://www.w3.org/ns/shacl#> 
+    prefix must: <https://semanticpartners.com/mustrd/> 
+    
+    SELECT ?then ?order ?variable ?binding
+    WHERE {{ 
+        {spec_uri} <{MUST.then}> ?then .
+        ?then 
+            sh:order ?order ;
+            must:results [
+                must:variable ?variable ;
+                must:binding ?binding ;
+            ] .
+        }}"""
+
+    expected_results = spec_graph.query(then_query)
+
+    frames = []
+    for then, items in groupby(expected_results, lambda er: er.then):
+        columns = []
+        values = []
+        for i in list(items):
+            columns.append(i.variable.value)
+            values.append(i.binding)
+        frames.append(pandas.DataFrame([values], columns=columns))
+
+    df = pandas.concat(frames, ignore_index=True)
+    return df

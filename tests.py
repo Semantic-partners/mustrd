@@ -1,4 +1,6 @@
-from mustrd import Given, When, run_spec, ScenarioResult, ScenarioFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery
+import pandas
+
+from mustrd import Given, When, run_spec, ScenarioResult, ScenarioFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery, get_then
 from rdflib import Graph, URIRef
 from rdflib.compare import isomorphic, graph_diff
 
@@ -198,6 +200,14 @@ class TestSpecParserTest:
         expected_query = SelectSparqlQuery("select ?s ?p ?o { ?s ?p ?o }")
 
         assert when == expected_query
+
+    def test_then(self):
+        spec_graph = Graph()
+        spec_graph.parse(data=self.spec, format='ttl')
+        thens = get_then(self.spec_uri, spec_graph)
+        expected_df = pandas.DataFrame([[URIRef("https://semanticpartners.com/data/test/sub"), URIRef("https://semanticpartners.com/data/test/pred"), URIRef("https://semanticpartners.com/data/test/obj")]], columns=["s", "p", "o"])
+        compare = expected_df.compare(thens, result_names=("expected", "actual"))
+        assert compare.empty, compare.compare
 
 
 def graph_comparison_message(expected_graph, actual_graph) -> str:
