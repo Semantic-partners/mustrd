@@ -1,14 +1,8 @@
 from dataclasses import dataclass
-from rdflib import Graph, BNode, Literal, URIRef
-from rdflib.namespace import SH, DefinedNamespace, Namespace
+from rdflib import Graph, BNode, Literal
+from rdflib.namespace import SH
 
-
-class MUST(DefinedNamespace):
-    _NS = Namespace("https://semanticpartners.com/mustrd/")
-
-    results: URIRef
-    variable: URIRef
-    binding: URIRef
+from namespace import MUST
 
 
 @dataclass
