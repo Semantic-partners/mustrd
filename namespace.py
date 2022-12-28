@@ -8,6 +8,9 @@ class MUST(DefinedNamespace):
     results: URIRef
     variable: URIRef
     binding: URIRef
+    query: URIRef
     given: URIRef
+    when: URIRef
     then: URIRef
     TestSpec: URIRef
+    SelectSparql: URIRef

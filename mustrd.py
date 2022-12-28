@@ -46,6 +46,10 @@ class SparqlParseFailure(ScenarioResult):
     exception: ParseException
 
 
+@dataclass
+class SelectSparqlQuery:
+    query: str
+
 def run_spec(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
     scenario_uri = list(scenario_graph.subjects(RDF.type, MUST.TestSpec))[0]
     scenario_query = f"""
@@ -96,3 +100,11 @@ def get_initial_state(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ {spec_uri} <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
     initial_state = spec_graph.query(given_query).graph
     return initial_state
+
+
+def get_when(spec_uri: URIRef, spec_graph: Graph) -> SelectSparqlQuery:
+    when_query = f"""SELECT ?type ?query {{ {spec_uri} <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
+    whens = spec_graph.query(when_query)
+    for when in whens:
+        if when.type == MUST.SelectSparql:
+            return SelectSparqlQuery(when.query.value)

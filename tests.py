@@ -1,4 +1,4 @@
-from mustrd import Given, When, run_spec, ScenarioResult, ScenarioFailure, SparqlParseFailure, get_initial_state
+from mustrd import Given, When, run_spec, ScenarioResult, ScenarioFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery
 from rdflib import Graph, URIRef
 from rdflib.compare import isomorphic, graph_diff
 
@@ -190,7 +190,14 @@ class TestSpecParserTest:
 
         assert isomorphic(givens, expected_initial_state), graph_comparison_message(expected_initial_state, givens)
 
-    # def test_when(self):
+    def test_when(self):
+        spec_graph = Graph()
+        spec_graph.parse(data=self.spec, format='ttl')
+        when = get_when(self.spec_uri, spec_graph)
+
+        expected_query = SelectSparqlQuery("select ?s ?p ?o { ?s ?p ?o }")
+
+        assert when == expected_query
 
 
 def graph_comparison_message(expected_graph, actual_graph) -> str:
