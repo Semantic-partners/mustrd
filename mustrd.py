@@ -89,8 +89,10 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     in_actual = diff[2]
     in_expected_not_in_actual = (in_expected - in_actual)
     in_actual_not_in_expected = (in_actual - in_expected)
-    # in_expected_not_in_actual = (in_expected - in_actual).serialize(format='ttl')
-    # in_actual_not_in_expected = (in_actual - in_expected).serialize(format='ttl')
-    # in_both = diff[0].serialize(format='ttl')
-    # message = f"in_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}\nin_both\n{in_both}"
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+
+
+def get_initial_state(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ {spec_uri} <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
+    initial_state = spec_graph.query(given_query).graph
+    return initial_state
