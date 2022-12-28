@@ -1,4 +1,4 @@
-from mustrd import Given, When, run_test
+from mustrd import Given, When, run_scenario
 from rdflib import Graph
 from rdflib.compare import isomorphic, graph_diff
 
@@ -6,8 +6,8 @@ from rdflib.compare import isomorphic, graph_diff
 class TestMustrd:
     def test_scenario_given_state_when_query_all_then_return_state(self):
         triples = """
-        @prefix mustrd: <https://semanticpartners.com/mustrd/> .
-        mustrd:sub mustrd:pred mustrd:obj .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        must:sub must:pred must:obj .
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
@@ -17,20 +17,20 @@ class TestMustrd:
         expected_graph = Graph()
         expected_select_triples = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix mustrd: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
         [
         sh:order 1 ;
-        mustrd:results [
-           mustrd:variable "s" ;
-           mustrd:binding mustrd:sub ; 
+        must:results [
+           must:variable "s" ;
+           must:binding must:sub ; 
             ] ,
              [
-           mustrd:variable "p" ;
-           mustrd:binding mustrd:pred ; 
+           must:variable "p" ;
+           must:binding must:pred ; 
             ] ,
             [
-           mustrd:variable "o" ;
-           mustrd:binding mustrd:obj  ; 
+           must:variable "o" ;
+           must:binding must:obj  ; 
             ];
         ] .
         """
@@ -39,7 +39,7 @@ class TestMustrd:
         g = Given(state)
         w = When(query)
 
-        t = run_test(g, w)
+        t = run_scenario(g, w)
         message = error_message(expected_graph, t.graph)
         assert isomorphic(t.graph, expected_graph), message
 

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from rdflib import Graph, BNode, Literal, URIRef
 from rdflib.namespace import SH, DefinedNamespace, Namespace
 
-class MUSTRD(DefinedNamespace):
+
+class MUST(DefinedNamespace):
     _NS = Namespace("https://semanticpartners.com/mustrd/")
 
     results: URIRef
@@ -25,7 +26,7 @@ class Then:
     graph: Graph
 
 
-def run_test(g: Given, w: When) -> Then:
+def run_scenario(g: Given, w: When) -> Then:
     result = g.graph.query(w.query)
     g = Graph()
     for pos, row in enumerate(result, 1):
@@ -34,8 +35,8 @@ def run_test(g: Given, w: When) -> Then:
         results = row.asdict().items()
         for key, value in results:
             column_node = BNode()
-            g.add((row_node, MUSTRD.results, column_node))
-            g.add((column_node, MUSTRD.variable, Literal(key)))
-            g.add((column_node, MUSTRD.binding, value))
+            g.add((row_node, MUST.results, column_node))
+            g.add((column_node, MUST.variable, Literal(key)))
+            g.add((column_node, MUST.binding, value))
 
     return Then(g)
