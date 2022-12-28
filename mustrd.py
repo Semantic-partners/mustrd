@@ -10,22 +10,6 @@ import pandas
 
 from namespace import MUST
 
-
-@dataclass
-class Given:
-    graph: Graph
-
-
-@dataclass
-class When:
-    query: str
-
-
-@dataclass
-class Then:
-    graph: Graph
-
-
 @dataclass
 class GraphComparison:
     in_expected_not_in_actual: Graph
@@ -37,9 +21,13 @@ class GraphComparison:
 class ScenarioResult:
     scenario_uri: URIRef
 
+@dataclass
+class SelectSpecFailure(ScenarioResult):
+    table_comparison: pandas.DataFrame
+
 
 @dataclass
-class ScenarioFailure(ScenarioResult):
+class ConstructSpecFailure(ScenarioResult):
     graph_comparison: GraphComparison
 
 
@@ -52,42 +40,45 @@ class SparqlParseFailure(ScenarioResult):
 class SelectSparqlQuery:
     query: str
 
-def run_spec(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
-    scenario_uri = list(scenario_graph.subjects(RDF.type, MUST.TestSpec))[0]
-    scenario_query = f"""
-    CONSTRUCT {{?then ?p1 ?o1 . ?o1 ?p2 ?o2 . }} 
-    WHERE {{ 
-        <{scenario_uri}> <{MUST.then}> ?then . 
-        ?then ?p1 ?o1 . 
-        OPTIONAL {{
-            ?o1 ?p2 ?o2 . 
-            }}
-        }}"""
-    scenario = scenario_graph.query(scenario_query).graph
-    logging.info(f"Running scenario {scenario_uri}")
+
+def run_select_spec(spec_uri: URIRef, given: Graph, when: SelectSparqlQuery, then: pandas.DataFrame) -> ScenarioResult:
+    logging.info(f"Running spec {spec_uri}")
+
     try:
-        result = g.graph.query(w.query)
-        g = Graph()
-        for pos, row in enumerate(result, 1):
-            row_node = BNode()
-            g.add((row_node, SH.order, Literal(pos)))
-            results = row.asdict().items()
-            for key, value in results:
-                column_node = BNode()
-                g.add((row_node, MUST.results, column_node))
-                g.add((column_node, MUST.variable, Literal(key)))
-                g.add((column_node, MUST.binding, value))
+        result = given.query(when.query)
 
-        graph_compare = graph_comparison(scenario, g)
-        equal = isomorphic(g, scenario)
-        if equal:
-            return ScenarioResult(scenario_uri)
-        else:
-            return ScenarioFailure(scenario_uri, graph_compare)
+        frames = []
+        for item in result:
+            columns = []
+            values = []
+            for key, value in item.asdict().items():
+                columns.append(key)
+                values.append(value)
+            frames.append(pandas.DataFrame([values], columns=columns))
+
+            df = pandas.concat(frames, ignore_index=True)
+            df_diff = then.compare(df, result_names=("expected", "actual"))
+
+            if df_diff.empty:
+                return ScenarioResult(spec_uri)
+            else:
+                return SelectSpecFailure(spec_uri, df_diff)
+
     except ParseException as e:
-        return SparqlParseFailure(scenario_uri, e)
+        return SparqlParseFailure(spec_uri, e)
 
 
+def run_construct_spec(spec_uri: URIRef, given: Graph, then: Graph):
+#         graph_compare = graph_comparison(scenario, g)
+#         equal = isomorphic(g, scenario)
+#         if equal:
+#             return ScenarioResult(spec_uri)
+#         else:
+#             return ConstructSpecFailure(spec_uri, graph_compare)
+    pass
+
+
+# Use for comparing CONSTRUCT query results
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     diff = graph_diff(expected_graph, actual_graph)
     in_both = diff[0]
@@ -99,13 +90,13 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
 
 
 def get_initial_state(spec_uri: URIRef, spec_graph: Graph) -> Graph:
-    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ {spec_uri} <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
+    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
     initial_state = spec_graph.query(given_query).graph
     return initial_state
 
 
 def get_when(spec_uri: URIRef, spec_graph: Graph) -> SelectSparqlQuery:
-    when_query = f"""SELECT ?type ?query {{ {spec_uri} <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
+    when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
     whens = spec_graph.query(when_query)
     for when in whens:
         if when.type == MUST.SelectSparql:
@@ -119,7 +110,7 @@ def get_then(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     
     SELECT ?then ?order ?variable ?binding
     WHERE {{ 
-        {spec_uri} <{MUST.then}> ?then .
+        <{spec_uri}> <{MUST.then}> ?then .
         ?then 
             sh:order ?order ;
             must:results [
