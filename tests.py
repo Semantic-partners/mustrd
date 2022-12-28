@@ -6,8 +6,8 @@ from rdflib.compare import isomorphic, graph_diff
 class TestMustrd:
     def test_scenario_given_state_when_query_all_then_return_state(self):
         triples = """
-        @prefix must: <https://semanticpartners.com/mustrd/> .
-        must:sub must:pred must:obj .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
@@ -15,26 +15,27 @@ class TestMustrd:
         select ?s ?p ?o { ?s ?p ?o }
         """
         expected_graph = Graph()
-        expected_select_triples = """
+        expected_result = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
         [
         sh:order 1 ;
         must:results [
            must:variable "s" ;
-           must:binding must:sub ; 
+           must:binding test-data:sub ; 
             ] ,
              [
            must:variable "p" ;
-           must:binding must:pred ; 
+           must:binding test-data:pred ; 
             ] ,
             [
            must:variable "o" ;
-           must:binding must:obj  ; 
+           must:binding test-data:obj  ; 
             ];
         ] .
         """
-        expected_graph.parse(data=expected_select_triples, format='ttl')
+        expected_graph.parse(data=expected_result, format='ttl')
 
         g = Given(state)
         w = When(query)
