@@ -46,8 +46,8 @@ class SparqlParseFailure(ScenarioResult):
     exception: ParseException
 
 
-def run_scenario(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
-    scenario_uri = list(scenario_graph.subjects(RDF.type, MUST.TestScenario))[0]
+def run_spec(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
+    scenario_uri = list(scenario_graph.subjects(RDF.type, MUST.TestSpec))[0]
     scenario_query = f"""
     CONSTRUCT {{?then ?p1 ?o1 . ?o1 ?p2 ?o2 . }} 
     WHERE {{ 

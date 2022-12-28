@@ -9,4 +9,4 @@ class MUST(DefinedNamespace):
     variable: URIRef
     binding: URIRef
     then: URIRef
-    TestScenario: URIRef
+    TestSpec: URIRef

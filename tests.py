@@ -1,4 +1,4 @@
-from mustrd import Given, When, run_scenario, ScenarioResult, ScenarioFailure, SparqlParseFailure
+from mustrd import Given, When, run_spec, ScenarioResult, ScenarioFailure, SparqlParseFailure
 from rdflib import Graph, URIRef
 
 
@@ -8,6 +8,16 @@ class TestMustrd:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
         """
+        # triples = """
+        # @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        # @prefix test-data: <https://semanticpartners.com/data/test/> .
+        # [
+        #      a rdf:Statement ;
+        #      rdf:subject test-data-sub ;
+        #      rdf:predicate test-data:pred ;
+        #      rdf:object test-data:obj ;
+        # ]
+        # """
         state = Graph()
         state.parse(data=triples, format="ttl")
         select_query = """
@@ -20,7 +30,7 @@ class TestMustrd:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my-first-scenario 
-            a must:TestScenario ;
+            a must:TestSpec ;
             must:then [
                 sh:order 1 ;
                 must:results [
@@ -42,7 +52,7 @@ class TestMustrd:
         g = Given(state)
         w = When(select_query)
 
-        t = run_scenario(scenario_graph, g, w)
+        t = run_spec(scenario_graph, g, w)
 
         expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
         assert t == expected_result
@@ -64,7 +74,7 @@ class TestMustrd:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my-failing-scenario 
-            a must:TestScenario ;
+            a must:TestSpec ;
             must:then [
                 sh:order 1 ;
                 must:results [
@@ -86,7 +96,7 @@ class TestMustrd:
         g = Given(state)
         w = When(select_query)
 
-        scenario_result = run_scenario(scenario_graph, g, w)
+        scenario_result = run_spec(scenario_graph, g, w)
 
         if type(scenario_result) == ScenarioFailure:
             graph_comparison = scenario_result.graph_comparison
@@ -119,14 +129,14 @@ class TestMustrd:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my-failing-scenario 
-            a must:TestScenario .
+            a must:TestSpec .
         """
         scenario_graph.parse(data=scenario, format='ttl')
 
         g = Given(state)
         w = When(select_query)
 
-        scenario_result = run_scenario(scenario_graph, g, w)
+        scenario_result = run_spec(scenario_graph, g, w)
 
         if type(scenario_result) == SparqlParseFailure:
             assert scenario_result.scenario_uri == URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
