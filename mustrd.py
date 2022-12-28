@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from pyparsing import ParseException
 
 from rdflib import Graph, BNode, Literal, URIRef
 from rdflib.namespace import SH, RDF
@@ -40,6 +41,11 @@ class ScenarioFailure(ScenarioResult):
     graph_comparison: GraphComparison
 
 
+@dataclass
+class SparqlParseFailure(ScenarioResult):
+    exception: ParseException
+
+
 def run_scenario(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
     scenario_uri = list(scenario_graph.subjects(RDF.type, MUST.TestScenario))[0]
     scenario_query = f"""
@@ -53,24 +59,27 @@ def run_scenario(scenario_graph: Graph, g: Given, w: When) -> ScenarioResult:
         }}"""
     scenario = scenario_graph.query(scenario_query).graph
     logging.info(f"Running scenario {scenario_uri}")
-    result = g.graph.query(w.query)
-    g = Graph()
-    for pos, row in enumerate(result, 1):
-        row_node = BNode()
-        g.add((row_node, SH.order, Literal(pos)))
-        results = row.asdict().items()
-        for key, value in results:
-            column_node = BNode()
-            g.add((row_node, MUST.results, column_node))
-            g.add((column_node, MUST.variable, Literal(key)))
-            g.add((column_node, MUST.binding, value))
+    try:
+        result = g.graph.query(w.query)
+        g = Graph()
+        for pos, row in enumerate(result, 1):
+            row_node = BNode()
+            g.add((row_node, SH.order, Literal(pos)))
+            results = row.asdict().items()
+            for key, value in results:
+                column_node = BNode()
+                g.add((row_node, MUST.results, column_node))
+                g.add((column_node, MUST.variable, Literal(key)))
+                g.add((column_node, MUST.binding, value))
 
-    graph_compare = graph_comparison(scenario, g)
-    equal = isomorphic(g, scenario)
-    if equal:
-        return ScenarioResult(scenario_uri)
-    else:
-        return ScenarioFailure(scenario_uri, graph_compare)
+        graph_compare = graph_comparison(scenario, g)
+        equal = isomorphic(g, scenario)
+        if equal:
+            return ScenarioResult(scenario_uri)
+        else:
+            return ScenarioFailure(scenario_uri, graph_compare)
+    except ParseException as e:
+        return SparqlParseFailure(scenario_uri, e)
 
 
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:

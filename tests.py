@@ -1,4 +1,4 @@
-from mustrd import Given, When, run_scenario, ScenarioResult, ScenarioFailure
+from mustrd import Given, When, run_scenario, ScenarioResult, ScenarioFailure, SparqlParseFailure
 from rdflib import Graph, URIRef
 
 
@@ -47,7 +47,7 @@ class TestMustrd:
         expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
         assert t == expected_result
 
-    def test_select_scenario_fails_with_message(self):
+    def test_select_scenario_fails_with_expected_vs_actual_graph_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -101,4 +101,35 @@ class TestMustrd:
 [] ns1:binding <https://semanticpartners.com/data/test/sub> .
 
 """
+        else:
+            raise Exception(f"wrong scenario result type {scenario_result}")
 
+    def test_invalid_select_statement_scenario_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """select ?s ?p ?o { typo }"""
+        scenario_graph = Graph()
+        scenario = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        
+        test-data:my-failing-scenario 
+            a must:TestScenario .
+        """
+        scenario_graph.parse(data=scenario, format='ttl')
+
+        g = Given(state)
+        w = When(select_query)
+
+        scenario_result = run_scenario(scenario_graph, g, w)
+
+        if type(scenario_result) == SparqlParseFailure:
+            assert scenario_result.scenario_uri == URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
+            assert str(scenario_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+        else:
+            raise Exception(f"wrong scenario result type {scenario_result}")
