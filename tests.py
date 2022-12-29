@@ -1,7 +1,7 @@
 import pandas
 
 from mustrd import run_select_spec, ScenarioResult, SelectSpecFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery, get_select_then, run_construct_spec, get_construct_then, ConstructSparqlQuery
-from rdflib import Graph, URIRef
+from rdflib import Graph
 from rdflib.compare import isomorphic, graph_diff
 from rdflib.namespace import Namespace
 
@@ -26,7 +26,7 @@ class TestRunSelectSpec:
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my-first-scenario 
+        test-data:my_first_scenario 
             a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -46,12 +46,12 @@ class TestRunSelectSpec:
         """
         scenario_graph.parse(data=scenario, format='ttl')
 
-        spec_uri = URIRef("https://semanticpartners.com/data/test/my-first-scenario")
+        spec_uri = TEST_DATA.my_first_scenario
 
         then_df = get_select_then(spec_uri, scenario_graph)
         t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
-        expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
+        expected_result = ScenarioResult(spec_uri)
         assert t == expected_result
 
     def test_select_scenario_fails_with_expected_vs_actual_graph_comparison(self):
@@ -70,7 +70,7 @@ class TestRunSelectSpec:
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my-failing-scenario 
+        test-data:my_failing_scenario 
             a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -90,14 +90,14 @@ class TestRunSelectSpec:
         """
         scenario_graph.parse(data=scenario, format='ttl')
 
-        spec_uri = URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
+        spec_uri = TEST_DATA.my_failing_scenario
 
         then_df = get_select_then(spec_uri, scenario_graph)
         scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         if type(scenario_result) == SelectSpecFailure:
             table_diff = scenario_result.table_comparison.to_markdown()
-            assert scenario_result.scenario_uri == URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
+            assert scenario_result.scenario_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
@@ -118,7 +118,7 @@ class TestRunSelectSpec:
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my-failing-scenario 
+        test-data:my_failing_scenario 
            a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -130,13 +130,13 @@ class TestRunSelectSpec:
         """
         scenario_graph.parse(data=scenario, format='ttl')
 
-        spec_uri = URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
+        spec_uri = TEST_DATA.my_failing_scenario
 
         then_df = get_select_then(spec_uri, scenario_graph)
         scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         if type(scenario_result) == SparqlParseFailure:
-            assert scenario_result.scenario_uri == URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
+            assert scenario_result.scenario_uri == spec_uri
             assert str(scenario_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong scenario result type {scenario_result}")
@@ -160,7 +160,7 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         
-        test-data:my-first-scenario 
+        test-data:my_first_scenario 
             a must:TestSpec ;
             must:then [
                     a rdf:Statement ;
@@ -171,18 +171,18 @@ class TestRunConstructSpec:
         """
         scenario_graph.parse(data=scenario, format='ttl')
 
-        spec_uri = URIRef("https://semanticpartners.com/data/test/my-first-scenario")
+        spec_uri = TEST_DATA.my_first_scenario
 
         then_df = get_construct_then(spec_uri, scenario_graph)
         t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
-        expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
+        expected_result = ScenarioResult(spec_uri)
         assert t == expected_result
 
 
 class TestSpecParserTest:
 
-    select_spec_uri = URIRef("https://semanticpartners.com/data/test/a-complete-select-scenario")
+    select_spec_uri = TEST_DATA.a_complete_select_scenario
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -247,11 +247,11 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
         thens = get_select_then(self.select_spec_uri, spec_graph)
-        expected_df = pandas.DataFrame([[URIRef("https://semanticpartners.com/data/test/sub"), URIRef("https://semanticpartners.com/data/test/pred"), URIRef("https://semanticpartners.com/data/test/obj")]], columns=["s", "p", "o"])
+        expected_df = pandas.DataFrame([[TEST_DATA.sub, TEST_DATA.pred, TEST_DATA.obj]], columns=["s", "p", "o"])
         df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
 
-    construct_spec_uri = URIRef("https://semanticpartners.com/data/test/a-construct-scenario")
+    construct_spec_uri = TEST_DATA.a_construct_scenario
     construct_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix sh: <http://www.w3.org/ns/shacl#> .
