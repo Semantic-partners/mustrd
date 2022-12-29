@@ -1,10 +1,14 @@
 import pandas
 
-from mustrd import run_select_spec, ScenarioResult, SelectSpecFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery, get_then
+from mustrd import run_select_spec, ScenarioResult, SelectSpecFailure, SparqlParseFailure, get_initial_state, get_when, SelectSparqlQuery, get_select_then, run_construct_spec, get_construct_then, ConstructSparqlQuery
 from rdflib import Graph, URIRef
 from rdflib.compare import isomorphic, graph_diff
+from rdflib.namespace import Namespace
 
-class TestRunMustrdSpec:
+TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+
+
+class TestRunSelectSpec:
     def test_select_scenario_passes(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -44,7 +48,7 @@ class TestRunMustrdSpec:
 
         spec_uri = URIRef("https://semanticpartners.com/data/test/my-first-scenario")
 
-        then_df = get_then(spec_uri, scenario_graph)
+        then_df = get_select_then(spec_uri, scenario_graph)
         t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
@@ -88,7 +92,7 @@ class TestRunMustrdSpec:
 
         spec_uri = URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
 
-        then_df = get_then(spec_uri, scenario_graph)
+        then_df = get_select_then(spec_uri, scenario_graph)
         scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         if type(scenario_result) == SelectSpecFailure:
@@ -128,7 +132,7 @@ class TestRunMustrdSpec:
 
         spec_uri = URIRef("https://semanticpartners.com/data/test/my-failing-scenario")
 
-        then_df = get_then(spec_uri, scenario_graph)
+        then_df = get_select_then(spec_uri, scenario_graph)
         scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         if type(scenario_result) == SparqlParseFailure:
@@ -138,17 +142,55 @@ class TestRunMustrdSpec:
             raise Exception(f"wrong scenario result type {scenario_result}")
 
 
+class TestRunConstructSpec:
+    def test_construct_scenario_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        construct_query = """
+        construct { ?o ?s ?p } { ?s ?p ?o }
+        """
+        scenario_graph = Graph()
+        scenario = """
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        
+        test-data:my-first-scenario 
+            a must:TestSpec ;
+            must:then [
+                    a rdf:Statement ;
+                    rdf:subject test-data:obj ;
+                    rdf:predicate test-data:sub ;
+                    rdf:object test-data:pred ;
+                ] .
+        """
+        scenario_graph.parse(data=scenario, format='ttl')
+
+        spec_uri = URIRef("https://semanticpartners.com/data/test/my-first-scenario")
+
+        then_df = get_construct_then(spec_uri, scenario_graph)
+        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+
+        expected_result = ScenarioResult(URIRef("https://semanticpartners.com/data/test/my-first-scenario"))
+        assert t == expected_result
+
+
 class TestSpecParserTest:
 
-    spec_uri = URIRef("https://semanticpartners.com/data/test/a-complete-select-scenario")
-    spec = f"""
+    select_spec_uri = URIRef("https://semanticpartners.com/data/test/a-complete-select-scenario")
+    select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix sh: <http://www.w3.org/ns/shacl#> .
             @prefix must: <https://semanticpartners.com/mustrd/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             
             
-            <{spec_uri}>
+            <{select_spec_uri}>
                 a must:TestSpec ;
                 must:given [
                     a rdf:Statement ;
@@ -180,8 +222,8 @@ class TestSpecParserTest:
     def test_given(self):
 
         spec_graph = Graph()
-        spec_graph.parse(data=self.spec, format='ttl')
-        givens = get_initial_state(self.spec_uri, spec_graph)
+        spec_graph.parse(data=self.select_spec, format='ttl')
+        givens = get_initial_state(self.select_spec_uri, spec_graph)
 
         expected_triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -194,20 +236,58 @@ class TestSpecParserTest:
 
     def test_when(self):
         spec_graph = Graph()
-        spec_graph.parse(data=self.spec, format='ttl')
-        when = get_when(self.spec_uri, spec_graph)
+        spec_graph.parse(data=self.select_spec, format='ttl')
+        when = get_when(self.select_spec_uri, spec_graph)
 
         expected_query = SelectSparqlQuery("select ?s ?p ?o { ?s ?p ?o }")
 
         assert when == expected_query
 
-    def test_then(self):
+    def test_then_select(self):
         spec_graph = Graph()
-        spec_graph.parse(data=self.spec, format='ttl')
-        thens = get_then(self.spec_uri, spec_graph)
+        spec_graph.parse(data=self.select_spec, format='ttl')
+        thens = get_select_then(self.select_spec_uri, spec_graph)
         expected_df = pandas.DataFrame([[URIRef("https://semanticpartners.com/data/test/sub"), URIRef("https://semanticpartners.com/data/test/pred"), URIRef("https://semanticpartners.com/data/test/obj")]], columns=["s", "p", "o"])
         df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
+
+    construct_spec_uri = URIRef("https://semanticpartners.com/data/test/a-construct-scenario")
+    construct_spec = f"""
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            @prefix must: <https://semanticpartners.com/mustrd/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+            
+            
+            <{construct_spec_uri}>
+                a must:TestSpec ;
+                must:given [
+                    a rdf:Statement ;
+                    rdf:subject test-data:sub ;
+                    rdf:predicate test-data:pred ;
+                    rdf:object test-data:obj ;
+                ] ;
+                must:when [
+                    a must:SelectSparql ;
+                    must:query "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ;
+                ] ;
+                must:then [
+                    a rdf:Statement ;
+                    rdf:subject test-data:obj ;
+                    rdf:predicate test-data:sub ;
+                    rdf:object test-data:pred ;
+                ] .
+            """
+
+    def test_then_construct(self):
+        spec_graph = Graph()
+        spec_graph.parse(data=self.construct_spec, format='ttl')
+        then = get_construct_then(self.construct_spec_uri, spec_graph)
+
+        expected_graph = Graph()
+        expected_graph.add((TEST_DATA.obj, TEST_DATA.sub, TEST_DATA.pred))
+
+        assert isomorphic(then, expected_graph), graph_comparison_message(expected_graph, then)
 
 
 def graph_comparison_message(expected_graph, actual_graph) -> str:
@@ -217,6 +297,6 @@ def graph_comparison_message(expected_graph, actual_graph) -> str:
     in_expected_not_in_actual = (in_expected - in_actual).serialize(format='ttl')
     in_actual_not_in_expected = (in_actual - in_expected).serialize(format='ttl')
     in_both = diff[0].serialize(format='ttl')
-    message = f"in_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}\nin_both\n{in_both}"
+    message = f"\nin_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}\nin_both\n{in_both}"
     return message
 

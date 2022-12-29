@@ -41,8 +41,16 @@ class SelectSparqlQuery:
     query: str
 
 
-def run_select_spec(spec_uri: URIRef, given: Graph, when: SelectSparqlQuery, then: pandas.DataFrame) -> ScenarioResult:
-    logging.info(f"Running spec {spec_uri}")
+@dataclass
+class ConstructSparqlQuery:
+    query: str
+
+
+def run_select_spec(spec_uri: URIRef,
+                    given: Graph,
+                    when: SelectSparqlQuery,
+                    then: pandas.DataFrame) -> ScenarioResult:
+    logging.info(f"Running select spec {spec_uri}")
 
     try:
         result = given.query(when.query)
@@ -68,17 +76,21 @@ def run_select_spec(spec_uri: URIRef, given: Graph, when: SelectSparqlQuery, the
         return SparqlParseFailure(spec_uri, e)
 
 
-def run_construct_spec(spec_uri: URIRef, given: Graph, then: Graph):
-#         graph_compare = graph_comparison(scenario, g)
-#         equal = isomorphic(g, scenario)
-#         if equal:
-#             return ScenarioResult(spec_uri)
-#         else:
-#             return ConstructSpecFailure(spec_uri, graph_compare)
-    pass
+def run_construct_spec(spec_uri: URIRef,
+                       given: Graph,
+                       when: ConstructSparqlQuery,
+                       then: Graph):
+    logging.info(f"Running construct spec {spec_uri}")
+    result = given.query(when.query).graph
+
+    graph_compare = graph_comparison(then, result)
+    equal = isomorphic(result, then)
+    if equal:
+        return ScenarioResult(spec_uri)
+    else:
+        return ConstructSpecFailure(spec_uri, graph_compare)
 
 
-# Use for comparing CONSTRUCT query results
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     diff = graph_diff(expected_graph, actual_graph)
     in_both = diff[0]
@@ -103,7 +115,26 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SelectSparqlQuery:
             return SelectSparqlQuery(when.query.value)
 
 
-def get_then(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
+def get_construct_then(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+    then_query = f"""
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    
+    CONSTRUCT {{ ?s ?p ?o }}
+    {{
+        <{spec_uri}> <{MUST.then}> [
+            a rdf:Statement ;
+            rdf:subject ?s ;
+            rdf:predicate ?p ;
+            rdf:object ?o ;
+        ]
+    }}
+    """
+    expected_results = spec_graph.query(then_query).graph
+
+    return expected_results
+
+
+def get_select_then(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     then_query = f"""
     prefix sh: <http://www.w3.org/ns/shacl#> 
     prefix must: <https://semanticpartners.com/mustrd/> 
