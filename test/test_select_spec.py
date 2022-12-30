@@ -1,7 +1,7 @@
 from rdflib import Graph
 from rdflib.namespace import Namespace
 
-from mustrd import run_select_spec, ScenarioResult, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
+from mustrd import run_select_spec, SpecResult, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -49,7 +49,7 @@ class TestRunSelectSpec:
         then_df = get_then_select(spec_uri, scenario_graph)
         t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
-        expected_result = ScenarioResult(spec_uri)
+        expected_result = SpecResult(spec_uri)
         assert t == expected_result
 
     def test_select_scenario_fails_with_expected_vs_actual_graph_comparison(self):
@@ -95,7 +95,7 @@ class TestRunSelectSpec:
 
         if type(scenario_result) == SelectSpecFailure:
             table_diff = scenario_result.table_comparison.to_markdown()
-            assert scenario_result.scenario_uri == spec_uri
+            assert scenario_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
@@ -134,7 +134,7 @@ class TestRunSelectSpec:
         scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         if type(scenario_result) == SparqlParseFailure:
-            assert scenario_result.scenario_uri == spec_uri
+            assert scenario_result.spec_uri == spec_uri
             assert str(scenario_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong scenario result type {scenario_result}")

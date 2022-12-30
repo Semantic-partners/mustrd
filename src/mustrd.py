@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from pyparsing import ParseException
 from itertools import groupby
+from pathlib import Path
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF
@@ -9,6 +10,7 @@ from rdflib.compare import isomorphic, graph_diff
 import pandas
 
 from namespace import MUST
+
 
 @dataclass
 class GraphComparison:
@@ -18,21 +20,24 @@ class GraphComparison:
 
 
 @dataclass
-class ScenarioResult:
-    scenario_uri: URIRef
+class SpecResult:
+    spec_uri: URIRef
+
+    def __hash__(self):
+        return hash(self.spec_uri)
 
 @dataclass
-class SelectSpecFailure(ScenarioResult):
+class SelectSpecFailure(SpecResult):
     table_comparison: pandas.DataFrame
 
 
 @dataclass
-class ConstructSpecFailure(ScenarioResult):
+class ConstructSpecFailure(SpecResult):
     graph_comparison: GraphComparison
 
 
 @dataclass
-class SparqlParseFailure(ScenarioResult):
+class SparqlParseFailure(SpecResult):
     exception: ParseException
 
 
@@ -53,10 +58,35 @@ class ConstructSparqlQuery(SparqlAction):
         super(ConstructSparqlQuery, self).__init__(query)
 
 
+def run_specs(spec_path: Path):
+    ttl_files = Path(spec_path).glob('**/*.ttl')
+    specs_graph = Graph()
+    for file in ttl_files:
+        specs_graph.parse(file)
+    spec_uris = specs_graph.subjects(RDF.type, MUST.TestSpec)
+    results = []
+    for spec_uri in spec_uris:
+        spec_uri = URIRef(str(spec_uri))
+        given = get_given(spec_uri, specs_graph)
+        when = get_when(spec_uri, specs_graph)
+        result = None
+        if type(when) == SelectSparqlQuery:
+            then = get_then_select(spec_uri, specs_graph)
+            result = run_select_spec(spec_uri, given, when, then)
+        elif type(when) == ConstructSparqlQuery:
+            then = get_then_construct(spec_uri, specs_graph)
+            result = run_construct_spec(spec_uri, given, when, then)
+        else:
+            raise Exception(f"invalid spec when type {type(when)}")
+
+        results.append(result)
+    return results
+
+
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
-                    then: pandas.DataFrame) -> ScenarioResult:
+                    then: pandas.DataFrame) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
 
     try:
@@ -75,7 +105,7 @@ def run_select_spec(spec_uri: URIRef,
             df_diff = then.compare(df, result_names=("expected", "actual"))
 
             if df_diff.empty:
-                return ScenarioResult(spec_uri)
+                return SpecResult(spec_uri)
             else:
                 return SelectSpecFailure(spec_uri, df_diff)
 
@@ -93,7 +123,7 @@ def run_construct_spec(spec_uri: URIRef,
     graph_compare = graph_comparison(then, result)
     equal = isomorphic(result, then)
     if equal:
-        return ScenarioResult(spec_uri)
+        return SpecResult(spec_uri)
     else:
         return ConstructSpecFailure(spec_uri, graph_compare)
 

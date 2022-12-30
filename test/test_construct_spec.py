@@ -1,7 +1,7 @@
 from rdflib import Graph
 from rdflib.namespace import Namespace
 
-from mustrd import ScenarioResult, run_construct_spec, get_then_construct, ConstructSparqlQuery
+from mustrd import SpecResult, run_construct_spec, get_then_construct, ConstructSparqlQuery
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -40,5 +40,5 @@ class TestRunConstructSpec:
         then_df = get_then_construct(spec_uri, scenario_graph)
         t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
-        expected_result = ScenarioResult(spec_uri)
+        expected_result = SpecResult(spec_uri)
         assert t == expected_result
