@@ -1,0 +1,16 @@
+= Dev helper
+// tag::body[]
+
+== Try it out
+
+Run these commands from the project root. Ensure you have python3 installed.
+
+`pip3 install requirements.txt`
+
+`python3 src/run.py -v -p "test/test-specs"`
+
+== Run the tests
+
+Run `pytest` from the project root.
+
+// end::body[]
