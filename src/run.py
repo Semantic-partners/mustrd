@@ -1,7 +1,9 @@
 import sys
 import getopt
-from mustrd import run_specs
+from mustrd import run_specs, SpecPassed
 from pathlib import Path
+from colorama import Fore, Style
+
 
 def main(argv):
 
@@ -19,7 +21,11 @@ def main(argv):
 
     results = run_specs(Path(path_under_test))
     for res in results:
-        print(f"{res.spec_uri} : {type(res).__name__}")
+        if type(res) == SpecPassed:
+            colour = Fore.GREEN
+        else:
+            colour = Fore.RED
+        print(f"{res.spec_uri} {colour}{type(res).__name__}{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
