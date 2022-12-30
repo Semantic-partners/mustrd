@@ -15,7 +15,7 @@ class TestSpecParserTest:
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://semanticpartners.com/mustrd/> .
+            @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             
             
@@ -83,7 +83,7 @@ class TestSpecParserTest:
     construct_spec_uri = TEST_DATA.a_construct_spec
     construct_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            @prefix must: <https://semanticpartners.com/mustrd/> .
+            @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             
             

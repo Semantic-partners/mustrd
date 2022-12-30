@@ -3,7 +3,7 @@ from rdflib.namespace import DefinedNamespace, Namespace
 
 
 class MUST(DefinedNamespace):
-    _NS = Namespace("https://semanticpartners.com/mustrd/")
+    _NS = Namespace("https://mustrd.com/model/")
 
     results: URIRef
     variable: URIRef

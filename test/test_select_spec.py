@@ -21,7 +21,7 @@ class TestRunSelectSpec:
         spec_graph = Graph()
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my_first_spec 
@@ -65,7 +65,7 @@ class TestRunSelectSpec:
         spec_graph = Graph()
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my_failing_spec 
@@ -113,7 +113,7 @@ class TestRunSelectSpec:
         spec_graph = Graph()
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my_failing_spec 

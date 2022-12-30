@@ -1,0 +1,303 @@
+@prefix :     <https://mustrd.com/model/> .
+@prefix dc:   <http://purl.org/dc/elements/1.1/> .
+@prefix gf:   <https://mustrd.com/model/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml:  <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/spec/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@base <https://mustrd.com/model/> .
+
+<https://mustrd.com/model>
+    rdf:type owl:Ontology .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+gf:dataset
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      [ rdf:type    owl:Class ;
+                       owl:unionOf ( gf:Compositedataset
+                                     gf:Datasetexpectation
+                                     gf:Given
+                                     gf:Then ) ] ;
+    rdfs:range       gf:Dataset ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "dataset" .
+
+
+gf:expect
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:Then ;
+    rdfs:range       gf:Expectation ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "expect" .
+
+
+gf:given
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:TestSpec ;
+    rdfs:range       gf:Given ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "given" .
+
+
+gf:graph
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:Graphdataset ;
+    rdfs:range       gf:Graph ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "graph" .
+
+
+gf:hasspecs
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:TestSuite ;
+    rdfs:range       gf:TestSpec ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "hasSpecs" .
+
+
+gf:label_link-6c3eeabf-5c6d-4ea6-b61e-144df1e6a223
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:When ;
+    rdfs:range       gf:Sparqlaction ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "label" .
+
+
+gf:sparqlsource
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:Sparqlaction ;
+    rdfs:range       gf:Sparqlsource ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "sparqlSource" .
+
+
+gf:then
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:TestSpec ;
+    rdfs:range       gf:Then ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "then" .
+
+
+gf:when
+    rdf:type         owl:ObjectProperty ;
+    rdfs:domain      gf:TestSpec ;
+    rdfs:range       gf:When ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "when" .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+gf:fileurl
+    rdf:type         owl:DatatypeProperty ;
+    rdfs:domain      gf:Filesparqlsource ;
+    rdfs:comment     "a full or relatively qualified file:// url. Relative to what? We haven't thought that through, yet." ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "fileUrl" .
+
+
+gf:flattendatasettotargetgraph
+    rdf:type         owl:DatatypeProperty ;
+    rdfs:domain      gf:Given ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "flattenDataSetToTargetGraph" .
+
+
+gf:shouldflattengraph
+    rdf:type         owl:DatatypeProperty ;
+    rdfs:domain      gf:Graphdataset ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "shouldFlattenGraph" .
+
+
+gf:sparql
+    rdf:type         owl:DatatypeProperty ;
+    rdfs:domain      gf:Sparqlaction ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "sparql" .
+
+
+gf:targetgraph
+    rdf:type         owl:DatatypeProperty ;
+    rdfs:domain      [ rdf:type    owl:Class ;
+                       owl:unionOf ( gf:Graphdataset
+                                     gf:TestSpec ) ] ;
+    rdfs:comment     "optional iri of a target graph to flatten into" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "targetGraph" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+gf:Compositedataset
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Dataset ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "CompositeDataSet" .
+
+
+gf:ConstructSparql
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Sparqlaction ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "ConstructSparql" .
+
+
+gf:Dataset
+    rdf:type         owl:Class ;
+    rdfs:comment     "Some source of triples for comparison in either a Given or When clause" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "DataSet" .
+
+
+gf:Datasetexpectation
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Expectation ;
+    rdfs:comment     "A static dataset expectation. All DataSet(s) described by dataset will be composed into a single DataSet" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "DatasetExpectation" .
+
+
+gf:Expectation
+    rdf:type         owl:Class ;
+    rdfs:comment     """The expected result of the action performed in When, on the DataSet constructed, or composed in the Given. Expectations may be complete static datasets, results of ASKs, or a CONSTRUCT or SELECT and expected DataSet""" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "Expectation" .
+
+
+gf:Filesparqlsource
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Sparqlsource ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "FileSparqlSource" .
+
+
+gf:Given
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Testspecsection ;
+    rdfs:comment     "references one or more DataSet(s) to construct a precondition for this TestSpec" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "Given" .
+
+
+gf:Graph
+    rdf:type         owl:Class ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "Graph" .
+
+
+gf:Graphdataset
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Dataset ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "GraphDataset" .
+
+
+gf:Insertdeletesparql
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Sparqlaction ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "InsertDeleteSparql" .
+
+
+gf:S3sparqlsource
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Sparqlsource ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "S3SparqlSource" .
+
+
+gf:SelectSparql
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Sparqlaction ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "SelectSparql" .
+
+
+gf:Sparqlaction
+    rdf:type         owl:Class ;
+    rdfs:comment     "The sparql that is under-test. Either provided directly in the sparql property, or loaded courtesy a Sparql Loader from a disk source, db source, s3 source, etc." ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "SparqlAction" .
+
+
+gf:Sparqlsource
+    rdf:type         owl:Class ;
+    rdfs:comment     """A source for the SPARQL action we want to execute in the When of a TestSpec.""" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "SparqlSource" .
+
+
+gf:Statementsdataset
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Dataset ;
+    rdfs:comment     "has a set of rdf:Statement(s) which will be unrotated/unreified back into the testing graph" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "StatementsDataSet" .
+
+
+gf:TestSuite
+    rdf:type         owl:Class ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "Test Suite" .
+
+
+gf:TestSpec
+    rdf:type         owl:Class ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "TestSpec" .
+
+
+gf:Testspecsection
+    rdf:type         owl:Class ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "TestSpecSection" .
+
+
+gf:Then
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Testspecsection ;
+    rdfs:comment     """Describes the Expectation(s) of this part of a test.""" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "Then" .
+
+
+gf:When
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  gf:Testspecsection ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "When" .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+gf:Emptydataset
+    rdf:type         owl:NamedIndividual, gf:Dataset ;
+    rdfs:comment     "So we can explicitly refer to a blank slate, empty dataset" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "EmptyDataSet" .
+
+
+#################################################################
+#    Annotations
+#################################################################
+
+<https://mustrd.com/model>
+    rdfs:comment "" ;
+    rdfs:label   "Mustrd" .
+
+
+###  Generated by the OWL API (version 5.1.17) https://github.com/owlcs/owlapi/
