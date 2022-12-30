@@ -1,16 +1,16 @@
-from pathlib import Path
-
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
 from mustrd import run_specs, SpecResult
+from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunSpecs:
     def test_find_specs_in_path_and_run_them(self):
-        test_spec_path = Path("test-specs/")
+        project_root = get_project_root()
+        test_spec_path = project_root / "test" / "test-specs"
 
         results = run_specs(test_spec_path)
         results.sort(key=lambda sr: sr.spec_uri)
