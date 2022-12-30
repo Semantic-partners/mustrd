@@ -14,3 +14,4 @@ class MUST(DefinedNamespace):
     then: URIRef
     TestSpec: URIRef
     SelectSparql: URIRef
+    ConstructSparql: URIRef

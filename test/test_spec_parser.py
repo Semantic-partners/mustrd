@@ -10,7 +10,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 class TestSpecParserTest:
 
-    select_spec_uri = TEST_DATA.a_complete_select_scenario
+    select_spec_uri = TEST_DATA.a_complete_select_spec
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -79,7 +79,7 @@ class TestSpecParserTest:
         df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
 
-    construct_spec_uri = TEST_DATA.a_construct_scenario
+    construct_spec_uri = TEST_DATA.a_construct_spec
     construct_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix must: <https://semanticpartners.com/mustrd/> .

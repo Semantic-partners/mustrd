@@ -7,7 +7,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunSelectSpec:
-    def test_select_scenario_passes(self):
+    def test_select_spec_passes(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -18,13 +18,13 @@ class TestRunSelectSpec:
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
-        scenario_graph = Graph()
-        scenario = """
+        spec_graph = Graph()
+        spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my_first_scenario 
+        test-data:my_first_spec 
             a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -42,17 +42,17 @@ class TestRunSelectSpec:
                     ];
                 ] .
         """
-        scenario_graph.parse(data=scenario, format='ttl')
+        spec_graph.parse(data=spec, format='ttl')
 
-        spec_uri = TEST_DATA.my_first_scenario
+        spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, scenario_graph)
+        then_df = get_then_select(spec_uri, spec_graph)
         t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
         expected_result = SpecResult(spec_uri)
         assert t == expected_result
 
-    def test_select_scenario_fails_with_expected_vs_actual_graph_comparison(self):
+    def test_select_spec_fails_with_expected_vs_actual_graph_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -62,13 +62,13 @@ class TestRunSelectSpec:
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
-        scenario_graph = Graph()
-        scenario = """
+        spec_graph = Graph()
+        spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my_failing_scenario 
+        test-data:my_failing_spec 
             a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -86,23 +86,23 @@ class TestRunSelectSpec:
                     ];
                 ] .
         """
-        scenario_graph.parse(data=scenario, format='ttl')
+        spec_graph.parse(data=spec, format='ttl')
 
-        spec_uri = TEST_DATA.my_failing_scenario
+        spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, scenario_graph)
-        scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
-        if type(scenario_result) == SelectSpecFailure:
-            table_diff = scenario_result.table_comparison.to_markdown()
-            assert scenario_result.spec_uri == spec_uri
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
         else:
-            raise Exception(f"wrong scenario result type {scenario_result}")
+            raise Exception(f"wrong spec result type {spec_result}")
 
-    def test_invalid_select_statement_scenario_fails(self):
+    def test_invalid_select_statement_spec_fails(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -110,13 +110,13 @@ class TestRunSelectSpec:
         state = Graph()
         state.parse(data=triples, format="ttl")
         select_query = """select ?s ?p ?o { typo }"""
-        scenario_graph = Graph()
-        scenario = """
+        spec_graph = Graph()
+        spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://semanticpartners.com/mustrd/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
-        test-data:my_failing_scenario 
+        test-data:my_failing_spec 
            a must:TestSpec ;
             must:then [
                 sh:order 1 ;
@@ -126,15 +126,15 @@ class TestRunSelectSpec:
                     ] ;
                 ] .
         """
-        scenario_graph.parse(data=scenario, format='ttl')
+        spec_graph.parse(data=spec, format='ttl')
 
-        spec_uri = TEST_DATA.my_failing_scenario
+        spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, scenario_graph)
-        scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
-        if type(scenario_result) == SparqlParseFailure:
-            assert scenario_result.spec_uri == spec_uri
-            assert str(scenario_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+        if type(spec_result) == SparqlParseFailure:
+            assert spec_result.spec_uri == spec_uri
+            assert str(spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
         else:
-            raise Exception(f"wrong scenario result type {scenario_result}")
+            raise Exception(f"wrong spec result type {spec_result}")
