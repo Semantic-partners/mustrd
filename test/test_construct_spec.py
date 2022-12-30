@@ -22,7 +22,7 @@ class TestRunConstructSpec:
         """
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         
@@ -58,7 +58,7 @@ class TestRunConstructSpec:
         """
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         
