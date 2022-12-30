@@ -1,6 +1,8 @@
 = mustrd
 
-=== Why? 
+// tag::body[]
+
+=== Why?
 
 How do you know your SPARQL, whether it's in a pipeline, or a query, is doing what you intend? 
 
@@ -15,7 +17,7 @@ We wanted to be able to
 
 Enter MustRD. 
 
-=== What
+=== What?
 
 MustRD is a Spec-By-Example ontology, with a reference python implementation, inspired by the likes of Cucumber. 
 
@@ -28,17 +30,17 @@ SHACL provides validation around data.
 
 MustRD provides validation around data transformations. 
 
-=== How 
+=== How?
 You define your specs in ttl, or trig files. 
 We use the SBE approach of *Given*, *When*, *Then* to define starting dataset, an action, and a set of expectations. We build up a set of data. 
 Then, depending on whether your SPARQL is a CONSTRUCT, SELECT or a INSERT/DELETE, we run it, and compare results against a set of expectations (*Then*) that are defined in the same way as a *Given* .
 Alternatively, you could define your *Then*
 * as an explicit ASK, or
 * select; or 
-* in a higherorder expectionation language like you will be used to in various platforms, a set of expectations. 
+* in a higher-order expectation language like you will be used to in various platforms, a set of expectations.
 
 
-=== When
+=== When?
 
 Soon. It's a work in progress, and we're building the things *we* need for the projects we work on at multiple clients, with multiple vendor stacks. 
 We already think it's useful, but it might not meet *your* needs, out of the box. 
@@ -49,13 +51,3 @@ We invite you to try it, see where it doesn't fit, and raise an issue, or even b
 We're a specialist consultancy in Semantic Tech, we're putting this out in case it's useful, but if you need more support, kindly contact our business team on info@semanticpartners.com
 
 // tag::body[]
-
-SPARQL test framework.
-
-== Try it out
-
-`pip3 install requirements.txt`
-
-`python3 src/run.py -v -p "test/test-specs"`
-
-// end::body[]
