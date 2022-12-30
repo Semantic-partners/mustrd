@@ -26,6 +26,13 @@ class SpecResult:
     def __hash__(self):
         return hash(self.spec_uri)
 
+
+@dataclass
+class SpecPassed(SpecResult):
+    def __init__(self, spec_uri):
+        super(SpecPassed, self).__init__(spec_uri)
+
+
 @dataclass
 class SelectSpecFailure(SpecResult):
     table_comparison: pandas.DataFrame
@@ -114,7 +121,7 @@ def run_select_spec(spec_uri: URIRef,
             df_diff = then.compare(df, result_names=("expected", "actual"))
 
             if df_diff.empty:
-                return SpecResult(spec_uri)
+                return SpecPassed(spec_uri)
             else:
                 return SelectSpecFailure(spec_uri, df_diff)
 
@@ -132,7 +139,7 @@ def run_construct_spec(spec_uri: URIRef,
     graph_compare = graph_comparison(then, result)
     equal = isomorphic(result, then)
     if equal:
-        return SpecResult(spec_uri)
+        return SpecPassed(spec_uri)
     else:
         return ConstructSpecFailure(spec_uri, graph_compare)
 

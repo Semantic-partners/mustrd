@@ -1,7 +1,7 @@
 from rdflib import Graph
 from rdflib.namespace import Namespace
 
-from mustrd import run_select_spec, SpecResult, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
+from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -49,7 +49,7 @@ class TestRunSelectSpec:
         then_df = get_then_select(spec_uri, spec_graph)
         t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
 
-        expected_result = SpecResult(spec_uri)
+        expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):

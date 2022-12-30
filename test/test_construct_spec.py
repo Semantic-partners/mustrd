@@ -2,7 +2,7 @@ from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecResult, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure
+from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure
 from graph_util import graph_comparison_message
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -42,7 +42,7 @@ class TestRunConstructSpec:
         then_df = get_then_construct(spec_uri, spec_graph)
         t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
-        expected_result = SpecResult(spec_uri)
+        expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_construct_spec_fails_with_graph_comparison(self):

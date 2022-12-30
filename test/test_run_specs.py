@@ -1,7 +1,7 @@
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
-from mustrd import run_specs, SpecResult
+from mustrd import run_specs, SpecPassed
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -15,6 +15,6 @@ class TestRunSpecs:
         results = run_specs(test_spec_path)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
-            SpecResult(URIRef(TEST_DATA.a_complete_construct_scenario)),
-            SpecResult(URIRef(TEST_DATA.a_complete_select_scenario))
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario))
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
