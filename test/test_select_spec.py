@@ -1,0 +1,140 @@
+from rdflib import Graph
+from rdflib.namespace import Namespace
+
+from mustrd import run_select_spec, ScenarioResult, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
+
+TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+
+
+class TestRunSelectSpec:
+    def test_select_scenario_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        scenario_graph = Graph()
+        scenario = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        
+        test-data:my_first_scenario 
+            a must:TestSpec ;
+            must:then [
+                sh:order 1 ;
+                must:results [
+                   must:variable "s" ;
+                   must:binding test-data:sub ; 
+                    ] ,
+                    [
+                   must:variable "p" ;
+                   must:binding test-data:pred ; 
+                    ] ,
+                    [
+                   must:variable "o" ;
+                   must:binding test-data:obj  ; 
+                    ];
+                ] .
+        """
+        scenario_graph.parse(data=scenario, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_scenario
+
+        then_df = get_then_select(spec_uri, scenario_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+
+        expected_result = ScenarioResult(spec_uri)
+        assert t == expected_result
+
+    def test_select_scenario_fails_with_expected_vs_actual_graph_comparison(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        scenario_graph = Graph()
+        scenario = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        
+        test-data:my_failing_scenario 
+            a must:TestSpec ;
+            must:then [
+                sh:order 1 ;
+                must:results [
+                   must:variable "s" ;
+                   must:binding test-data:wrong-subject ; 
+                    ] ,
+                    [
+                   must:variable "p" ;
+                   must:binding test-data:pred ; 
+                    ] ,
+                    [
+                   must:variable "o" ;
+                   must:binding test-data:obj  ; 
+                    ];
+                ] .
+        """
+        scenario_graph.parse(data=scenario, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_scenario
+
+        then_df = get_then_select(spec_uri, scenario_graph)
+        scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+
+        if type(scenario_result) == SelectSpecFailure:
+            table_diff = scenario_result.table_comparison.to_markdown()
+            assert scenario_result.scenario_uri == spec_uri
+            assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
+|---:|:-----------------------------------------------------|:-------------------------------------------|
+|  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
+        else:
+            raise Exception(f"wrong scenario result type {scenario_result}")
+
+    def test_invalid_select_statement_scenario_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """select ?s ?p ?o { typo }"""
+        scenario_graph = Graph()
+        scenario = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://semanticpartners.com/mustrd/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        
+        test-data:my_failing_scenario 
+           a must:TestSpec ;
+            must:then [
+                sh:order 1 ;
+                must:results [
+                   must:variable "s" ;
+                   must:binding test-data:wrong-subject ; 
+                    ] ;
+                ] .
+        """
+        scenario_graph.parse(data=scenario, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_scenario
+
+        then_df = get_then_select(spec_uri, scenario_graph)
+        scenario_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+
+        if type(scenario_result) == SparqlParseFailure:
+            assert scenario_result.scenario_uri == spec_uri
+            assert str(scenario_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+        else:
+            raise Exception(f"wrong scenario result type {scenario_result}")
