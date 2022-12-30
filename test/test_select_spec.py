@@ -52,7 +52,7 @@ class TestRunSelectSpec:
         expected_result = SpecResult(spec_uri)
         assert t == expected_result
 
-    def test_select_spec_fails_with_expected_vs_actual_graph_comparison(self):
+    def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .

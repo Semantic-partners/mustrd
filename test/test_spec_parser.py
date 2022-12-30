@@ -2,8 +2,9 @@ import pandas
 
 from mustrd import get_given, get_when, SelectSparqlQuery, get_then_select, get_then_construct, ConstructSparqlQuery
 from rdflib import Graph
-from rdflib.compare import isomorphic, graph_diff
+from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
+from graph_util import graph_comparison_message
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -124,15 +125,4 @@ class TestSpecParserTest:
         expected_graph.add((TEST_DATA.obj, TEST_DATA.sub, TEST_DATA.pred))
 
         assert isomorphic(then, expected_graph), graph_comparison_message(expected_graph, then)
-
-
-def graph_comparison_message(expected_graph, actual_graph) -> str:
-    diff = graph_diff(expected_graph, actual_graph)
-    in_expected = diff[1]
-    in_actual = diff[2]
-    in_expected_not_in_actual = (in_expected - in_actual).serialize(format='ttl')
-    in_actual_not_in_expected = (in_actual - in_expected).serialize(format='ttl')
-    in_both = diff[0].serialize(format='ttl')
-    message = f"\nin_expected_not_in_actual\n{in_expected_not_in_actual}\nin_actual_not_in_expected\n{in_actual_not_in_expected}\nin_both\n{in_both}"
-    return message
 
