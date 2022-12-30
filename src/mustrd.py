@@ -58,29 +58,38 @@ class ConstructSparqlQuery(SparqlAction):
         super(ConstructSparqlQuery, self).__init__(query)
 
 
-def run_specs(spec_path: Path):
-    ttl_files = Path(spec_path).glob('**/*.ttl')
+def run_specs(spec_path: Path) -> list[SpecResult]:
+    ttl_files = list(spec_path.glob('**/*.ttl'))
+    logging.info(f"Found {len(ttl_files)} ttl files")
+
     specs_graph = Graph()
     for file in ttl_files:
         specs_graph.parse(file)
-    spec_uris = specs_graph.subjects(RDF.type, MUST.TestSpec)
-    results = []
-    for spec_uri in spec_uris:
-        spec_uri = URIRef(str(spec_uri))
-        given = get_given(spec_uri, specs_graph)
-        when = get_when(spec_uri, specs_graph)
-        result = None
-        if type(when) == SelectSparqlQuery:
-            then = get_then_select(spec_uri, specs_graph)
-            result = run_select_spec(spec_uri, given, when, then)
-        elif type(when) == ConstructSparqlQuery:
-            then = get_then_construct(spec_uri, specs_graph)
-            result = run_construct_spec(spec_uri, given, when, then)
-        else:
-            raise Exception(f"invalid spec when type {type(when)}")
+    spec_uris = list(specs_graph.subjects(RDF.type, MUST.TestSpec))
+    logging.info(f"Collected {len(spec_uris)} items")
 
-        results.append(result)
+    results = [run_spec(spec_uri, specs_graph) for spec_uri in spec_uris]
+
     return results
+
+
+def run_spec(spec_uri, spec_graph) -> SpecResult:
+    spec_uri = URIRef(str(spec_uri))
+    given = get_given(spec_uri, spec_graph)
+    when = get_when(spec_uri, spec_graph)
+    when_type = type(when)
+    result = None
+
+    if when_type == SelectSparqlQuery:
+        then = get_then_select(spec_uri, spec_graph)
+        result = run_select_spec(spec_uri, given, when, then)
+    elif when_type == ConstructSparqlQuery:
+        then = get_then_construct(spec_uri, spec_graph)
+        result = run_construct_spec(spec_uri, given, when, then)
+    else:
+        raise Exception(f"invalid spec when type {when_type}")
+
+    return result
 
 
 def run_select_spec(spec_uri: URIRef,
@@ -116,7 +125,7 @@ def run_select_spec(spec_uri: URIRef,
 def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: SparqlAction,
-                       then: Graph):
+                       then: Graph) -> SpecResult:
     logging.info(f"Running construct spec {spec_uri}")
     result = given.query(when.query).graph
 

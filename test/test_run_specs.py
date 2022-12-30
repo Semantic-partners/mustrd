@@ -8,7 +8,7 @@ from mustrd import run_specs, SpecResult
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
-class TestIntegration:
+class TestRunSpecs:
     def test_find_specs_in_path_and_run_them(self):
         test_spec_path = Path("test-specs/")
 
@@ -17,4 +17,4 @@ class TestIntegration:
         assert results == [
             SpecResult(URIRef(TEST_DATA.a_complete_construct_scenario)),
             SpecResult(URIRef(TEST_DATA.a_complete_select_scenario))
-        ]
+        ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
