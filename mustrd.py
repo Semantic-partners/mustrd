@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from pyparsing import ParseException
 from itertools import groupby
 
-from rdflib import Graph, BNode, Literal, URIRef
-from rdflib.namespace import SH, RDF
+from rdflib import Graph, URIRef
+from rdflib.namespace import RDF
 from rdflib.compare import isomorphic, graph_diff
 import pandas
 
@@ -37,18 +37,25 @@ class SparqlParseFailure(ScenarioResult):
 
 
 @dataclass
-class SelectSparqlQuery:
+class SparqlAction:
     query: str
 
 
 @dataclass
-class ConstructSparqlQuery:
-    query: str
+class SelectSparqlQuery(SparqlAction):
+    def __init__(self, query):
+        super(SelectSparqlQuery, self).__init__(query)
+
+
+@dataclass
+class ConstructSparqlQuery(SparqlAction):
+    def __init__(self, query):
+        super(ConstructSparqlQuery, self).__init__(query)
 
 
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
-                    when: SelectSparqlQuery,
+                    when: SparqlAction,
                     then: pandas.DataFrame) -> ScenarioResult:
     logging.info(f"Running select spec {spec_uri}")
 
@@ -78,7 +85,7 @@ def run_select_spec(spec_uri: URIRef,
 
 def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
-                       when: ConstructSparqlQuery,
+                       when: SparqlAction,
                        then: Graph):
     logging.info(f"Running construct spec {spec_uri}")
     result = given.query(when.query).graph
@@ -101,21 +108,24 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
 
 
-def get_initial_state(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+def get_given(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
     initial_state = spec_graph.query(given_query).graph
     return initial_state
 
 
-def get_when(spec_uri: URIRef, spec_graph: Graph) -> SelectSparqlQuery:
+# Consider a SPARQL parser to determine query type https://github.com/cdhx/SPARQL_parse
+def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
     when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
     whens = spec_graph.query(when_query)
     for when in whens:
         if when.type == MUST.SelectSparql:
             return SelectSparqlQuery(when.query.value)
+        elif when.type == MUST.ConstructSparql:
+            return ConstructSparqlQuery(when.query.value)
 
 
-def get_construct_then(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
     
@@ -134,7 +144,7 @@ def get_construct_then(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def get_select_then(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
+def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     then_query = f"""
     prefix sh: <http://www.w3.org/ns/shacl#> 
     prefix must: <https://semanticpartners.com/mustrd/> 
