@@ -8,6 +8,6 @@ SPARQL test framework.
 
 `pip3 install requirements.txt`
 
-`python3 src/run.py -p "test/test-specs"`
+`python3 src/run.py -v -p "test/test-specs"`
 
 // end::body[]
