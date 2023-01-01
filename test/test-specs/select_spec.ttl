@@ -6,10 +6,11 @@
 
 test-data:a_complete_select_scenario
     a          must:TestSpec ;
-    must:given [ a             rdf:Statement ;
-                 rdf:subject   test-data:sub ;
-                 rdf:predicate test-data:pred ;
-                 rdf:object    test-data:obj ; ] ;
+    must:given [ a               must:StatementsDataset ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a          must:SelectSparql ;
                  must:query "select ?s ?p ?o { ?s ?p ?o }" ; ] ;
     must:then  [ sh:order 1 ;

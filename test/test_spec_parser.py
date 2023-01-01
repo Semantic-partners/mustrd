@@ -21,12 +21,14 @@ class TestSpecParserTest:
             
             <{select_spec_uri}>
                 a must:TestSpec ;
-                must:given [
-                    a rdf:Statement ;
-                    rdf:subject test-data:sub ;
-                    rdf:predicate test-data:pred ;
-                    rdf:object test-data:obj ;
-                ] ;
+                must:given [ a must:StatementsDataset ;
+                             must:statements [
+                                a rdf:Statement ;
+                                rdf:subject test-data:sub ;
+                                rdf:predicate test-data:pred ;
+                                rdf:object test-data:obj ;
+                             ] ; 
+                         ] ;
                 must:when [
                     a must:SelectSparql ;
                     must:query "select ?s ?p ?o {{ ?s ?p ?o }}" ;
@@ -89,22 +91,24 @@ class TestSpecParserTest:
             
             <{construct_spec_uri}>
                 a must:TestSpec ;
-                must:given [
-                    a rdf:Statement ;
-                    rdf:subject test-data:sub ;
-                    rdf:predicate test-data:pred ;
-                    rdf:object test-data:obj ;
-                ] ;
+                must:given [a must:StatementsDataset ;
+                            must:statements [
+                                a rdf:Statement ;
+                                rdf:subject test-data:sub ;
+                                rdf:predicate test-data:pred ;
+                                rdf:object test-data:obj ;
+                            ] ; ] ;
                 must:when [
                     a must:ConstructSparql ;
                     must:query "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ;
                 ] ;
-                must:then [
-                    a rdf:Statement ;
-                    rdf:subject test-data:obj ;
-                    rdf:predicate test-data:sub ;
-                    rdf:object test-data:pred ;
-                ] .
+                must:then [a must:StatementsDataset ;
+                           must:statements [
+                                a rdf:Statement ;
+                                rdf:subject test-data:obj ;
+                                rdf:predicate test-data:sub ;
+                                rdf:object test-data:pred ;
+                            ] ; ] .
             """
 
     def test_when_construct(self):

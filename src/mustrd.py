@@ -165,7 +165,7 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
 
 
 def get_given(spec_uri: URIRef, spec_graph: Graph) -> Graph:
-    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] }}"""
+    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{MUST.StatementsDataset}>; <{MUST.statements}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] ] }}"""
     initial_state = spec_graph.query(given_query).graph
     return initial_state
 
@@ -188,11 +188,14 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> [
-            a rdf:Statement ;
-            rdf:subject ?s ;
-            rdf:predicate ?p ;
-            rdf:object ?o ;
-        ]
+            a <{MUST.StatementsDataset}> ;
+            <{MUST.statements}> [
+                a rdf:Statement ;
+                rdf:subject ?s ;
+                rdf:predicate ?p ;
+                rdf:object ?o ;
+            ] ;
+            ]
     }}
     """
     expected_results = spec_graph.query(then_query).graph

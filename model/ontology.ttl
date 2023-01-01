@@ -238,12 +238,12 @@
     rdfs:label       "SparqlSource" .
 
 
-:Statementsdataset
+:StatementsDataset
     rdf:type         owl:Class ;
     rdfs:subClassOf  :Dataset ;
     rdfs:comment     "has a set of rdf:Statement(s) which will be unrotated/unreified back into the testing graph" ;
     rdfs:isDefinedBy <https://mustrd.com/model/> ;
-    rdfs:label       "StatementsDataSet" .
+    rdfs:label       "StatementsDataset" .
 
 
 :TestSuite
