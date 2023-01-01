@@ -28,12 +28,13 @@ class TestRunConstructSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [
-                    a rdf:Statement ;
-                    rdf:subject test-data:obj ;
-                    rdf:predicate test-data:sub ;
-                    rdf:object test-data:pred ;
-                ] .
+            must:then [ a must:StatementsDataset ;
+                        must:statements [
+                            a rdf:Statement ;
+                            rdf:subject test-data:obj ;
+                            rdf:predicate test-data:sub ;
+                            rdf:object test-data:pred ;
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -64,12 +65,13 @@ class TestRunConstructSpec:
         
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
-            must:then [
-                    a rdf:Statement ;
-                    rdf:subject test-data:obj ;
-                    rdf:predicate test-data:sub ;
-                    rdf:object test-data:pred ;
-                ] .
+            must:then [ a must:StatementsDataset ;
+                        must:statements [
+                            a rdf:Statement ;
+                            rdf:subject test-data:obj ;
+                            rdf:predicate test-data:sub ;
+                            rdf:object test-data:pred ;
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 

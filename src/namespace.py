@@ -15,3 +15,5 @@ class MUST(DefinedNamespace):
     TestSpec: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
+    StatementsDataset: URIRef
+    statements: URIRef
