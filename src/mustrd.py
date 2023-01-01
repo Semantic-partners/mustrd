@@ -119,7 +119,7 @@ def run_select_spec(spec_uri: URIRef,
                 columns.append(key + "_datatype")
                 if type(value) == Literal:
                     literal_type = XSD.string
-                    if hasattr(value, "datatype"):
+                    if hasattr(value, "datatype")  and value.datatype:
                         literal_type = value.datatype
                     values.append(literal_type)
                 else:
@@ -228,7 +228,7 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
             columns.append(i.variable.value + "_datatype")
             if type(i.binding) == Literal:
                 literal_type = XSD.string
-                if hasattr(i.binding, "datatype"):
+                if hasattr(i.binding, "datatype") and i.binding.datatype:
                     literal_type = i.binding.datatype
                 values.append(literal_type)
             else:
