@@ -33,21 +33,21 @@ class TestSpecParserTest:
                     a must:SelectSparql ;
                     must:query "select ?s ?p ?o {{ ?s ?p ?o }}" ;
                 ] ;
-                must:then [
-                    sh:order 1 ;
-                    must:results [
-                       must:variable "s" ;
-                       must:binding test-data:sub ; 
-                        ] ,
-                        [
-                       must:variable "p" ;
-                       must:binding test-data:pred ; 
-                        ] ,
-                        [
-                       must:variable "o" ;
-                       must:binding test-data:obj  ; 
-                        ];
-                    ] .
+                must:then [ a must:TableDataset ;
+                            must:rows [ sh:order 1 ;
+                                        must:row [
+                                           must:variable "s" ;
+                                           must:binding test-data:sub ; 
+                                            ] ,
+                                            [
+                                           must:variable "p" ;
+                                           must:binding test-data:pred ; 
+                                            ] ,
+                                            [
+                                           must:variable "o" ;
+                                           must:binding test-data:obj  ; 
+                                            ];
+                    ] ; ].
             """
 
     def test_given(self):

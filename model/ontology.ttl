@@ -246,6 +246,14 @@
     rdfs:label       "StatementsDataset" .
 
 
+:TableDataset
+    rdf:type         owl:Class ;
+    rdfs:subClassOf  :Dataset ;
+    rdfs:comment     "has a set of rows, equivalent to a table or a worksheet" ;
+    rdfs:isDefinedBy <https://mustrd.com/model/> ;
+    rdfs:label       "TableDataset" .
+
+
 :TestSuite
     rdf:type         owl:Class ;
     rdfs:isDefinedBy <https://mustrd.com/model/> ;

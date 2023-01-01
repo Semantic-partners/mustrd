@@ -5,15 +5,19 @@ from rdflib.namespace import DefinedNamespace, Namespace
 class MUST(DefinedNamespace):
     _NS = Namespace("https://mustrd.com/model/")
 
-    results: URIRef
-    variable: URIRef
-    binding: URIRef
-    query: URIRef
+    TestSpec: URIRef
     given: URIRef
     when: URIRef
     then: URIRef
-    TestSpec: URIRef
+    query: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
+
     StatementsDataset: URIRef
     statements: URIRef
+
+    TableDataset: URIRef
+    rows: URIRef
+    row: URIRef
+    variable: URIRef
+    binding: URIRef
