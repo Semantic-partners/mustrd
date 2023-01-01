@@ -152,6 +152,56 @@ class TestRunSelectSpec:
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
+    def test_select_spec_fails_for_different_types_where_one_is_string(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred 1 .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+            must:then [
+                sh:order 1 ;
+                must:results [
+                   must:variable "s" ;
+                   must:binding test-data:sub ; 
+                    ] ,
+                    [
+                   must:variable "p" ;
+                   must:binding test-data:pred ; 
+                    ] ,
+                    [
+                   must:variable "o" ;
+                   must:binding "1"  ; 
+                    ];
+                ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            assert spec_result.spec_uri == spec_uri
+            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
+|---:|--------------------:|------------------:|:----------------------------------------|:-----------------------------------------|
+|  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#integer |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
     def test_invalid_select_statement_spec_fails(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
