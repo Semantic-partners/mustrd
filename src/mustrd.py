@@ -193,7 +193,7 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     then_query = f"""
     prefix sh: <http://www.w3.org/ns/shacl#> 
-    prefix must: <https://semanticpartners.com/mustrd/> 
+    prefix must: <https://mustrd.com/model/> 
     
     SELECT ?then ?order ?variable ?binding
     WHERE {{ 
