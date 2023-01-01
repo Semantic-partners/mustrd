@@ -3,7 +3,7 @@ import pandas
 from mustrd import get_given, get_when, SelectSparqlQuery, get_then_select, get_then_construct, ConstructSparqlQuery
 from rdflib import Graph
 from rdflib.compare import isomorphic
-from rdflib.namespace import Namespace
+from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -76,7 +76,7 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
         thens = get_then_select(self.select_spec_uri, spec_graph)
-        expected_df = pandas.DataFrame([[TEST_DATA.sub, TEST_DATA.pred, TEST_DATA.obj]], columns=["s", "p", "o"])
+        expected_df = pandas.DataFrame([[TEST_DATA.sub, XSD.anyURI, TEST_DATA.pred, XSD.anyURI, TEST_DATA.obj, XSD.anyURI]], columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
         df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
 

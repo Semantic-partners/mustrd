@@ -5,8 +5,9 @@ from itertools import groupby
 from pathlib import Path
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import RDF
+from rdflib.namespace import RDF, XSD
 from rdflib.compare import isomorphic, graph_diff
+from rdflib.term import Literal
 import pandas
 
 from namespace import MUST
@@ -115,6 +116,15 @@ def run_select_spec(spec_uri: URIRef,
             for key, value in item.asdict().items():
                 columns.append(key)
                 values.append(value)
+                columns.append(key + "_datatype")
+                if type(value) == Literal:
+                    literal_type = XSD.string
+                    if hasattr(value, "datatype"):
+                        literal_type = value.datatype
+                    values.append(literal_type)
+                else:
+                    values.append(XSD.anyURI)
+
             frames.append(pandas.DataFrame([values], columns=columns))
 
             df = pandas.concat(frames, ignore_index=True)
@@ -215,6 +225,14 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
         for i in list(items):
             columns.append(i.variable.value)
             values.append(i.binding)
+            columns.append(i.variable.value + "_datatype")
+            if type(i.binding) == Literal:
+                literal_type = XSD.string
+                if hasattr(i.binding, "datatype"):
+                    literal_type = i.binding.datatype
+                values.append(literal_type)
+            else:
+                values.append(XSD.anyURI)
         frames.append(pandas.DataFrame([values], columns=columns))
 
     df = pandas.concat(frames, ignore_index=True)
