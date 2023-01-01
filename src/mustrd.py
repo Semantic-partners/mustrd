@@ -5,7 +5,7 @@ from itertools import groupby
 from pathlib import Path
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import RDF, XSD
+from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
 from rdflib.term import Literal
 import pandas
@@ -205,18 +205,16 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
 def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     then_query = f"""
-    prefix sh: <http://www.w3.org/ns/shacl#> 
-    prefix must: <https://mustrd.com/model/> 
-    
     SELECT ?then ?order ?variable ?binding
     WHERE {{ 
         <{spec_uri}> <{MUST.then}> ?then .
-        ?then 
-            sh:order ?order ;
-            must:results [
-                must:variable ?variable ;
-                must:binding ?binding ;
-            ] .
+        ?then a <{MUST.TableDataset}> ;
+              <{MUST.rows}> [ <{SH.order}> 1 ;
+                              <{MUST.row}> [
+                                <{MUST.variable}> ?variable ;
+                                <{MUST.binding}> ?binding ;
+                                ] ; 
+                            ] .
         }}"""
 
     expected_results = spec_graph.query(then_query)

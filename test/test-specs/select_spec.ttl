@@ -13,11 +13,12 @@ test-data:a_complete_select_scenario
                                    rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a          must:SelectSparql ;
                  must:query "select ?s ?p ?o { ?s ?p ?o }" ; ] ;
-    must:then  [ sh:order 1 ;
-                 must:results [ must:variable "s" ;
-                                must:binding  test-data:sub ; ],
-                              [ must:variable "p" ;
-                                must:binding  test-data:pred ; ],
-                              [ must:variable "o" ;
-                                must:binding  test-data:obj ; ] ;
+    must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ; ] ;
                ] .
