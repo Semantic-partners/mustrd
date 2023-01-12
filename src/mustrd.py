@@ -11,7 +11,15 @@ from rdflib.term import Literal
 import pandas
 
 from namespace import MUST
+from mustrdRdfLib import MustrdRdfLib
+from mustrdAnzo import MustrdAnzo
+import requests
+import os
 
+
+logging.basicConfig(level=logging.INFO)
+requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 
 @dataclass
 class GraphComparison:
@@ -67,11 +75,12 @@ class ConstructSparqlQuery(SparqlAction):
 
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
-    ttl_files = list(spec_path.glob('**/*.ttl'))
+    ttl_files = list(spec_path.glob('*.ttl'))
     logging.info(f"Found {len(ttl_files)} ttl files")
 
     specs_graph = Graph()
     for file in ttl_files:
+        logging.info(f"Parse: {file}")
         specs_graph.parse(file)
     spec_uris = list(specs_graph.subjects(RDF.type, MUST.TestSpec))
     logging.info(f"Collected {len(spec_uris)} items")
@@ -80,25 +89,98 @@ def run_specs(spec_path: Path) -> list[SpecResult]:
 
     return results
 
-
 def run_spec(spec_uri, spec_graph) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
-    given = get_given(spec_uri, spec_graph)
-    when = get_when(spec_uri, spec_graph)
-    when_type = type(when)
-    result = None
-
-    if when_type == SelectSparqlQuery:
-        then = get_then_select(spec_uri, spec_graph)
-        result = run_select_spec(spec_uri, given, when, then)
-    elif when_type == ConstructSparqlQuery:
-        then = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, given, when, then)
+    # Init triple store config
+    tripleStoreConfig = spec_graph.value(subject=spec_uri, predicate=MUST.tripleStoreConfig)
+    mustrdTripleStore = None
+    tripleStoreType = spec_graph.value(subject=tripleStoreConfig, predicate=RDF.type)
+    # Local rdf lib triple store
+    if  tripleStoreType == MUST.rdfLibConfig:
+        mustrdTripleStore = MustrdRdfLib()
+    # Anzo graph via anzo
+    elif tripleStoreType == MUST.anzoConfig:
+        anzoUrl = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
+        anzoPort = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
+        username = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
+        password = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
+        gqeURI = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
+        inputGraph = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+        mustrdTripleStore = MustrdAnzo(anzoUrl =anzoUrl, anzoPort=anzoPort,gqeURI=gqeURI,inputGraph=inputGraph,  username=username, password = password)
     else:
-        raise Exception(f"invalid spec when type {when_type}")
+        raise Exception(f"Not Implemented {tripleStoreType}")    
 
-    return result
+    # Get GIVEN
+    given = parse_item(subject = spec_uri,predicate=MUST.given, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    logging.info(f"Given: {given}")
+        
+    # Get WHEN
+    when = parse_item(subject = spec_uri,predicate=MUST.when, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    logging.info(f"when: {when}")
 
+    # Upload GIVEN to triple store
+    mustrdTripleStore.uploadGiven(given=given)
+
+    # Execute WHEN against GIVEN on the triple store
+    mustrdTripleStore.executeWhenAgainstGiven(when=when)
+
+    # Get THEN
+    then = parse_item(subject = spec_uri,predicate=MUST.then, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+
+    # Compare result with THEN
+
+def parse_item(subject, predicate, spec_graph, mustrdTripleStore):
+    itemNode=spec_graph.value(subject=subject, predicate=predicate)
+    if itemNode==None: raise Exception(f"Item Node empty for {subject} {predicate}") 
+
+    itemNodeType = spec_graph.value(subject=itemNode, predicate=RDF.type)
+    if itemNodeType==None: raise Exception(f"Node has no rdf type {subject} {predicate}") 
+
+    # Get item from a file
+    if itemNodeType == MUST.FileDataSource:
+        filePath = Path(spec_graph.value(subject=itemNode, predicate=MUST.file))
+        return getSpecItemFromFile(filePath)
+    # Get item directly from config file (in text string)
+    elif itemNodeType==MUST.textDataSource:
+        return spec_graph.value(subject=itemNode, predicate=MUST.text)
+    # Get item with http GET protocol
+    elif itemNodeType==MUST.HttpDataSource:
+        return requests.get(spec_graph.value(subject=itemNode, predicate=MUST.dataSourceUrl)).content
+    # From anzo specific source source
+    elif type(mustrdTripleStore).__name__ == "MustrdAnzo":
+        # Get GIVEN or THEN from anzo graphmart
+        if itemNodeType==MUST.anzoGraphmartDataSource:
+            graphMart = spec_graph.value(subject=itemNode, predicate=MUST.graphmart)
+            layer = spec_graph.value(subject=itemNode, predicate=MUST.layer)
+            return mustrdTripleStore.getSpecItemGraphmart(graphMart=graphMart,layer=layer)
+        # Get WHEN item from query builder
+        elif itemNodeType==MUST.anzoQueryBuilderDataSource:
+            queryFolder = spec_graph.value(subject=itemNode, predicate=MUST.queryFolder)
+            queryName = spec_graph.value(subject=itemNode, predicate=MUST.queryName)
+            return mustrdTripleStore.getQueryFromQueryBuilder(folderName = queryFolder, queryName = queryName)
+    # If anzo specific function is called but no anzo defined
+    elif itemNodeType==MUST.anzoGraphmartDataSource or itemNodeType==MUST.anzoQueryBuilderDataSource:
+        raise Exception(f"You must define {MUST.anzoConfig} to use {itemNodeType}")    
+    else:
+        raise Exception(f"Spec type not Implemented.itemNode: {itemNode}. Type: {itemNodeType}") 
+
+def getSpecItemFromFile(path: Path):
+    content = ""
+    if(os.path.isdir(path)):
+        for entry in path.iterdir():
+            content+=entry.read_text()
+    else:
+        content=path.read_text()
+    return str(content)
+
+def get_triple_store_configuration(spec_uri, spec_graph):
+    when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
+    whens = spec_graph.query(when_query)
+    for when in whens:
+        if when.type == MUST.SelectSparql:
+            return SelectSparqlQuery(when.query.value)
+        elif when.type == MUST.ConstructSparql:
+            return ConstructSparqlQuery(when.query.value)
 
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,

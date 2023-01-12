@@ -4,15 +4,18 @@ from pyanzo.graphmart_manager import GraphmartManager
 from pyanzo import AnzoClient
 
 class MustrdAnzo:
-    def __init__(self,anzoUrl, anzoPort, username=None, password=None):
+    def __init__(self,anzoUrl, anzoPort, gqeURI, inputGraph,  username=None, password=None):
         self.anzoUrl = anzoUrl
         self.anzoPort = anzoPort
         self.username = username
         self.password = password
+        self.gqeURI = gqeURI
+        self.inputGraph = inputGraph
         self.anzo_client = AnzoClient(self.anzoUrl, self.anzoPort, self.username,self.password)
 
-    def getSpecItemGraphmart(self, graphMart,layers=None):
-            return self.anzo_client.query_graphmart(graphmart=graphMart,data_layers=layers,query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}", skip_cache=True).as_quad_store()
+    # Get Given or then from the content of a graphmart
+    def getSpecItemGraphmart(self, graphMart,layer=None):
+            return self.anzo_client.query_graphmart(graphmart=graphMart,data_layers=layer,query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}", skip_cache=True).as_quad_store()
 
     def getQueryFromQueryBuilder(self,folderName, queryName):
         query = f"""SELECT ?query WHERE {{
@@ -36,12 +39,12 @@ class MustrdAnzo:
         """
         return self.anzo_client.query_journal(query_string = query).as_table_results().as_record_dictionaries()[0].get("query")
 
-    def uploadGiven(self, givenContent, gqeUri, layerUri):
-        insertQuery = f"INSERT DATA {{graph <{layerUri}>{{{givenContent}}}}}"
-        data = {'datasourceURI' : gqeUri, 'update': insertQuery}
+    def uploadGiven(self, given):
+        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
+        data = {'datasourceURI' : self.gqeURI, 'update': insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data)
 
-    def executeWhenAgainstGiven(self, gqeUri, layerUri, whenQuery):
-        data = {'datasourceURI' : gqeUri, 'query': whenQuery, 'default-graph-uri': layerUri}
+    def executeWhenAgainstGiven(self, when):
+        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
         return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=test/csv", auth = (self.username, self.password), data = data).content
 

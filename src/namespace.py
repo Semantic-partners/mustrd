@@ -6,6 +6,28 @@ class MUST(DefinedNamespace):
     _NS = Namespace("https://mustrd.com/model/")
 
     TestSpec: URIRef
+    tripleStoreConfig: URIRef
+    anzoConfig: URIRef
+    anzoURL: URIRef
+    anzoPort: URIRef
+    anzoUser: URIRef
+    anzoPassword: URIRef
+    gqeURI: URIRef
+    inputGraph: URIRef
+    rdfLibConfig: URIRef
+    FileDataSource: URIRef
+    file: URIRef
+    anzoGraphmartDataSource: URIRef
+    graphmart: URIRef
+    layer: URIRef
+    anzoQueryBuilderDataSource: URIRef
+    queryFolder: URIRef
+    queryName: URIRef
+    HttpDataSource: URIRef
+    dataSourceUrl: URIRef
+    textDataSource: URIRef
+    text: URIRef
+    queryType: URIRef
     given: URIRef
     when: URIRef
     then: URIRef
