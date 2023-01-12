@@ -15,6 +15,7 @@ class MUST(DefinedNamespace):
     gqeURI: URIRef
     inputGraph: URIRef
     rdfLibConfig: URIRef
+    dataSource:  URIRef
     FileDataSource: URIRef
     file: URIRef
     anzoGraphmartDataSource: URIRef
@@ -31,6 +32,9 @@ class MUST(DefinedNamespace):
     given: URIRef
     when: URIRef
     then: URIRef
+    hasGiven: URIRef
+    hasWhen: URIRef
+    hasThen: URIRef
     query: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
