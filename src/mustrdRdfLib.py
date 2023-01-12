@@ -5,5 +5,5 @@ class MustrdRdfLib:
     def __init__(self):
         pass
 
-    def executeWhenAgainstGiven(self,given, when):
-        return Graph().parse(data=given.value).query(when.value)
+    def executeWhenAgainstGiven(self,given, when, queryType):
+        return Graph().parse(data=given).query(when)

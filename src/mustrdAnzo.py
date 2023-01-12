@@ -2,6 +2,7 @@ import logging
 import requests
 from pyanzo.graphmart_manager import GraphmartManager
 from pyanzo import AnzoClient
+from namespace import MUST
 
 class MustrdAnzo:
     def __init__(self,anzoUrl, anzoPort, gqeURI, inputGraph,  username=None, password=None):
@@ -40,15 +41,16 @@ class MustrdAnzo:
         return self.anzo_client.query_journal(query_string = query).as_table_results().as_record_dictionaries()[0].get("query")
 
     def uploadGiven(self, given):
-        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given.value}}}}}"
+        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
         data = {'datasourceURI' : self.gqeURI, 'update': insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data)
 
-    def executeWhenAgainstGiven(self,given, when):
+    def executeWhenAgainstGiven(self,given, when, queryType):
         logging.info(f"Upload GIVEN to Anzo")
         self.uploadGiven(given)
         logging.info(f"Execute WHEN against GIVEN")
-        data = {'datasourceURI' : self.gqeURI, 'query': when.value, 'default-graph-uri': self.inputGraph}
-
-        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data).content
+        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
+        format = ("test/csv","ttl") [queryType==MUST.ConstructSparql]
+        logging.info(f"Format: {format}")
+        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format={format}", auth = (self.username, self.password), data = data).content
 

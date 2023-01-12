@@ -123,7 +123,7 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     logging.info(f"when: {when.value}")
 
     # Execute WHEN against GIVEN on the triple store
-    result = mustrdTripleStore.executeWhenAgainstGiven(given=given,when=when)
+    result = mustrdTripleStore.executeWhenAgainstGiven(given=given.value,when=when.value, queryType=when.queryType)
     logging.info(f"result: {result}")
 
     # Get THEN
@@ -169,7 +169,10 @@ def get_item(subject, predicate, spec_graph, mustrdTripleStore):
     elif dataSourceType==MUST.anzoGraphmartDataSource or dataSourceType==MUST.anzoQueryBuilderDataSource:
         raise Exception(f"You must define {MUST.anzoConfig} to use {dataSourceType}")    
     else:
-        raise Exception(f"Spec type not Implemented. itemNode: {sourceNode}. Type: {dataSourceType}") 
+        raise Exception(f"Spec type not Implemented. itemNode: {sourceNode}. Type: {dataSourceType}")
+
+    if spec_graph.value(subject =itemNode, predicate=RDF.type)==MUST.when:
+        item.queryType = spec_graph.value(subject =itemNode, predicate=MUST.queryType)
     return item
 
 def getSpecItemFromFile(path: Path):

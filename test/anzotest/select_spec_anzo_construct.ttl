@@ -3,16 +3,24 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-test-data:rdflib__scenario
+
+test-data:anzo_givenfile_whenText_thenGraphMart_from__scenario
     a          must:TestSpec ;
-    must:tripleStoreConfig [a must:rdfLibConfig];
+    must:tripleStoreConfig [a must:anzoConfig;
+        must:anzoURL "cmac.anzo-solutions.com";
+        must:anzoPort 8946;
+        must:anzoUser "sysadmin"; 
+        must:anzoPassword "";
+        must:gqeURI "http://openanzo.org/GqeDatasource/bc5a9bc3-5ec1-4134-b6f8-293a270b767f";
+        must:inputGraph "http://cambridgesemantics.com/Layer/61bb695630494a1192076e3491476657"
+    ];
 
     must:hasGiven [a must:given;
                 must:dataSource [ a must:FileDataSource ;
                 must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
     ]];
 
-    must:hasWhen  [a must:when;
+    must:hasWhen   [a must:when;
                 must:dataSource [ a must:textDataSource ;
                     must:text "select ?s ?p ?o { ?s ?p ?o }" 
                 ];
@@ -20,6 +28,6 @@ test-data:rdflib__scenario
     ] ;
 
     must:hasThen [a must:then;
-                must:dataSource [ a must:FileDataSource ;
-                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
+                must:dataSource [ a must:AnzoGraphmartDataSource ;
+                    must:graphmart "http://cambridgesemantics.com/Graphmart/f6079d49d8964d6d91020a78f1831f15"
     ]] .

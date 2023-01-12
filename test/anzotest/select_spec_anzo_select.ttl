@@ -25,7 +25,7 @@ test-data:anzo_givenfile_whenQueryBuilder_thenGraphMart_from__scenario
                     must:queryFolder "My Queries";
                     must:queryName "test"
                 ];
-        must:queryType must:construct
+        must:queryType must:ConstructSparql
     ];
 
     must:hasThen [a must:then;
