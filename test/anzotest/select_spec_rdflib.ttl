@@ -1,0 +1,20 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:rdflib__scenario
+    a          must:TestSpec ;
+    must:tripleStoreConfig [a must:rdfLibConfig];
+
+    must:given [ a must:FileDataSource ;
+                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
+    ];
+
+    must:when  [ a must:textDataSource ;
+                 must:queryType "SELECT";
+                 must:text "select ?s ?p ?o { ?s ?p ?o }" ] ;
+
+    must:then [ a must:FileDataSource ;
+                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
+    ] .
