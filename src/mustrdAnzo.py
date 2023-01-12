@@ -44,7 +44,10 @@ class MustrdAnzo:
         data = {'datasourceURI' : self.gqeURI, 'update': insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data)
 
-    def executeWhenAgainstGiven(self, when):
+    def executeWhenAgainstGiven(self,given, when):
+        logging.info(f"Upload GIVEN to Anzo")
+        self.uploadGiven(given)
+        logging.info(f"Execute WHEN against GIVEN")
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
-        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=test/csv", auth = (self.username, self.password), data = data).content
+        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data).content
 

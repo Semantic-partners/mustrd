@@ -118,11 +118,9 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     when = parse_item(subject = spec_uri,predicate=MUST.when, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
     logging.info(f"when: {when}")
 
-    # Upload GIVEN to triple store
-    mustrdTripleStore.uploadGiven(given=given)
-
     # Execute WHEN against GIVEN on the triple store
-    mustrdTripleStore.executeWhenAgainstGiven(when=when)
+    result = mustrdTripleStore.executeWhenAgainstGiven(given=given,when=when)
+    logging.info(f"result: {result}")
 
     # Get THEN
     then = parse_item(subject = spec_uri,predicate=MUST.then, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
@@ -172,15 +170,6 @@ def getSpecItemFromFile(path: Path):
     else:
         content=path.read_text()
     return str(content)
-
-def get_triple_store_configuration(spec_uri, spec_graph):
-    when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
-    whens = spec_graph.query(when_query)
-    for when in whens:
-        if when.type == MUST.SelectSparql:
-            return SelectSparqlQuery(when.query.value)
-        elif when.type == MUST.ConstructSparql:
-            return ConstructSparqlQuery(when.query.value)
 
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
@@ -244,23 +233,6 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     in_expected_not_in_actual = (in_expected - in_actual)
     in_actual_not_in_expected = (in_actual - in_expected)
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
-
-
-def get_given(spec_uri: URIRef, spec_graph: Graph) -> Graph:
-    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{MUST.StatementsDataset}>; <{MUST.statements}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] ] }}"""
-    initial_state = spec_graph.query(given_query).graph
-    return initial_state
-
-
-# Consider a SPARQL parser to determine query type https://github.com/cdhx/SPARQL_parse
-def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
-    when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
-    whens = spec_graph.query(when_query)
-    for when in whens:
-        if when.type == MUST.SelectSparql:
-            return SelectSparqlQuery(when.query.value)
-        elif when.type == MUST.ConstructSparql:
-            return ConstructSparqlQuery(when.query.value)
 
 
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:

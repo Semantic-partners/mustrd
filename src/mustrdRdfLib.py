@@ -1,11 +1,9 @@
 import logging
-
+from rdflib import Graph
 
 class MustrdRdfLib:
     def __init__(self):
         pass
 
-    def uploadGiven(self, given):
-        pass
-    def executeWhenAgainstGiven(self,when):
-        pass
+    def executeWhenAgainstGiven(self,given, when):
+        return Graph().parse(data=given).query(when)
