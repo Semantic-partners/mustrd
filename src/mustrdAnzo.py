@@ -40,7 +40,7 @@ class MustrdAnzo:
         return self.anzo_client.query_journal(query_string = query).as_table_results().as_record_dictionaries()[0].get("query")
 
     def uploadGiven(self, given):
-        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
+        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given.value}}}}}"
         data = {'datasourceURI' : self.gqeURI, 'update': insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data)
 
@@ -48,6 +48,7 @@ class MustrdAnzo:
         logging.info(f"Upload GIVEN to Anzo")
         self.uploadGiven(given)
         logging.info(f"Execute WHEN against GIVEN")
-        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
+        data = {'datasourceURI' : self.gqeURI, 'query': when.value, 'default-graph-uri': self.inputGraph}
+
         return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth = (self.username, self.password), data = data).content
 

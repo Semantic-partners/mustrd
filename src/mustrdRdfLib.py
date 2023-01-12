@@ -6,4 +6,4 @@ class MustrdRdfLib:
         pass
 
     def executeWhenAgainstGiven(self,given, when):
-        return Graph().parse(data=given).query(when)
+        return Graph().parse(data=given.value).query(when.value)

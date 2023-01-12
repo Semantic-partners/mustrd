@@ -15,16 +15,20 @@ test-data:anzo_givenfile_whenQueryBuilder_thenGraphMart_from__scenario
         must:inputGraph "http://cambridgesemantics.com/Layer/61bb695630494a1192076e3491476657"
     ];
 
-    must:given [ a must:FileDataSource ;
+    must:hasGiven [a must:given;
+                must:dataSource [ a must:FileDataSource ;
                 must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
+    ]];
+
+    must:hasWhen [a must:when;
+                must:dataSource [ a must:anzoQueryBuilderDataSource ;
+                    must:queryFolder "My Queries";
+                    must:queryName "test"
+                ];
+        must:queryType must:construct
     ];
 
-    must:when [ a must:anzoQueryBuilderDataSource ;
-        must:queryType "CONSTRUCT";
-        must:queryFolder "My Queries";
-        must:queryName "test"
-        ];
-
-    must:then [ a must:AnzoGraphmartDataSource ;
-            must:graphmart "http://cambridgesemantics.com/Graphmart/f6079d49d8964d6d91020a78f1831f15"
-        ] .
+    must:hasThen [a must:then;
+                must:dataSource [ a must:AnzoGraphmartDataSource ;
+                    must:graphmart "http://cambridgesemantics.com/Graphmart/f6079d49d8964d6d91020a78f1831f15"
+    ]] .
