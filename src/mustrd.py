@@ -69,6 +69,11 @@ class SparqlAction:
 
 
 @dataclass
+class Item:
+    value: str = None
+
+
+@dataclass
 class SelectSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(SelectSparqlQuery, self).__init__(query)
@@ -148,59 +153,63 @@ def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
     else:
         raise Exception(f"Not Implemented {tripleStoreType}")
 
-        # Get GIVEN
-    given = parse_item(subject=spec_uri, predicate=MUST.given, spec_graph=spec_graph,
-                       mustrdTripleStore=mustrdTripleStore)
-    logging.info(f"Given: {given}")
-
+    # Get GIVEN
+    given = get_item(subject = spec_uri,predicate=MUST.hasGiven, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    logging.info(f"Given: {given.value}")
+        
     # Get WHEN
-    when = parse_item(subject=spec_uri, predicate=MUST.when, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
-    logging.info(f"when: {when}")
+    when = get_item(subject = spec_uri,predicate=MUST.hasWhen, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    logging.info(f"when: {when.value}")
 
     # Execute WHEN against GIVEN on the triple store
     result = mustrdTripleStore.executeWhenAgainstGiven(given=given,when=when)
     logging.info(f"result: {result}")
 
     # Get THEN
-    then = parse_item(subject=spec_uri, predicate=MUST.then, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
+    then = get_item(subject = spec_uri,predicate=MUST.hasThen, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    logging.info(f"then: {then.value}")
 
     # Compare result with THEN
 
+def get_item(subject, predicate, spec_graph, mustrdTripleStore):
+    item = Item()
 
-def parse_item(subject, predicate, spec_graph, mustrdTripleStore):
-    itemNode = spec_graph.value(subject=subject, predicate=predicate)
-    if itemNode == None: raise Exception(f"Item Node empty for {subject} {predicate}")
+    itemNode=spec_graph.value(subject=subject, predicate=predicate)
+    if itemNode==None: raise Exception(f"Item Node empty for {subject} {predicate}")
+    sourceNode = spec_graph.value(subject =itemNode, predicate=MUST.dataSource)
+    if sourceNode==None: raise Exception(f"No data source for item {subject} {predicate}")
 
-    itemNodeType = spec_graph.value(subject=itemNode, predicate=RDF.type)
-    if itemNodeType == None: raise Exception(f"Node has no rdf type {subject} {predicate}")
+    dataSourceType = spec_graph.value(subject=sourceNode, predicate=RDF.type)
+    if dataSourceType==None: raise Exception(f"Node has no rdf type {subject} {predicate}")
 
     # Get item from a file
-    if itemNodeType == MUST.FileDataSource:
-        filePath = Path(spec_graph.value(subject=itemNode, predicate=MUST.file))
-        return getSpecItemFromFile(filePath)
+    if dataSourceType == MUST.FileDataSource:
+        filePath = Path(spec_graph.value(subject=sourceNode, predicate=MUST.file))
+        item.value = getSpecItemFromFile(filePath)
     # Get item directly from config file (in text string)
-    elif itemNodeType == MUST.textDataSource:
-        return spec_graph.value(subject=itemNode, predicate=MUST.text)
+    elif dataSourceType==MUST.textDataSource:
+        item.value =  spec_graph.value(subject=sourceNode, predicate=MUST.text)
     # Get item with http GET protocol
-    elif itemNodeType == MUST.HttpDataSource:
-        return requests.get(spec_graph.value(subject=itemNode, predicate=MUST.dataSourceUrl)).content
+    elif dataSourceType==MUST.HttpDataSource:
+        item.value =  requests.get(spec_graph.value(subject=sourceNode, predicate=MUST.dataSourceUrl)).content
     # From anzo specific source source
-    elif type(mustrdTripleStore).__name__ == "MustrdAnzo":
+    elif type(mustrdTripleStore) == MustrdAnzo:
         # Get GIVEN or THEN from anzo graphmart
-        if itemNodeType == MUST.anzoGraphmartDataSource:
-            graphMart = spec_graph.value(subject=itemNode, predicate=MUST.graphmart)
-            layer = spec_graph.value(subject=itemNode, predicate=MUST.layer)
-            return mustrdTripleStore.getSpecItemGraphmart(graphMart=graphMart, layer=layer)
+        if dataSourceType == MUST.anzoGraphmartDataSource:
+            graphMart = spec_graph.value(subject=sourceNode, predicate=MUST.graphmart)
+            layer = spec_graph.value(subject=sourceNode, predicate=MUST.layer)
+            item.value = mustrdTripleStore.getSpecItemGraphmart(graphMart=graphMart,layer=layer)
         # Get WHEN item from query builder
-        elif itemNodeType == MUST.anzoQueryBuilderDataSource:
-            queryFolder = spec_graph.value(subject=itemNode, predicate=MUST.queryFolder)
-            queryName = spec_graph.value(subject=itemNode, predicate=MUST.queryName)
-            return mustrdTripleStore.getQueryFromQueryBuilder(folderName=queryFolder, queryName=queryName)
+        elif dataSourceType == MUST.anzoQueryBuilderDataSource:
+            queryFolder = spec_graph.value(subject=sourceNode, predicate=MUST.queryFolder)
+            queryName = spec_graph.value(subject=sourceNode, predicate=MUST.queryName)
+            item.value = mustrdTripleStore.getQueryFromQueryBuilder(folderName = queryFolder, queryName = queryName)
     # If anzo specific function is called but no anzo defined
-    elif itemNodeType == MUST.anzoGraphmartDataSource or itemNodeType == MUST.anzoQueryBuilderDataSource:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {itemNodeType}")
+    elif dataSourceType == MUST.anzoGraphmartDataSource or dataSourceType==MUST.anzoQueryBuilderDataSource:
+        raise Exception(f"You must define {MUST.anzoConfig} to use {dataSourceType}")
     else:
-        raise Exception(f"Spec type not Implemented.itemNode: {itemNode}. Type: {itemNodeType}")
+        raise Exception(f"Spec type not Implemented. itemNode: {sourceNode}. Type: {dataSourceType}")
+    return item
 
 
 def getSpecItemFromFile(path: Path):
