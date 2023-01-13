@@ -1,7 +1,9 @@
 import logging
 import requests
 from pyanzo import AnzoClient
-from namespace import MUST
+from rdflib import Graph
+import csv
+import io
 
 
 class MustrdAnzo:
@@ -15,7 +17,7 @@ class MustrdAnzo:
         self.anzo_client = AnzoClient(self.anzoUrl, self.anzoPort, self.username, self.password)
 
     # Get Given or then from the content of a graphmart
-    def getSpecItemGraphmart(self, graphMart, layer=None):
+    def getSpecspecComponentGraphmart(self, graphMart, layer=None):
             return self.anzo_client.query_graphmart(graphmart=graphMart, data_layers=layer,
             query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}", skip_cache=True).as_quad_store()
 
@@ -42,18 +44,23 @@ class MustrdAnzo:
         """
         return self.anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()[0].get("query")
 
-    def uploadGiven(self, given):
+    def upload_given(self, given):
         insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
         data = {'datasourceURI' : self.gqeURI, 'update' : insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
 
-    def executeWhenAgainstGiven(self, given, when, queryType):
-        logging.info("Upload GIVEN to Anzo")
-        self.uploadGiven(given)
-        logging.info("Execute WHEN against GIVEN")
+    def execute_select(self, given, when):
+        self.upload_given(given)
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        format = ("test/csv", "ttl")[queryType == MUST.ConstructSparql]
-        logging.info(f"Format: {format}")
-        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format={format}",
-        auth=(self.username, self.password), data=data).content
+        results = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=test/csv",
+        auth=(self.username, self.password), data=data).content.decode("utf-8")
+        logging.info(f"Results: {results}" )
+        return csv.DictReader(io.StringIO(results))
+    
+    def execute_construct(self, given, when):
+        self.upload_given(given)
+        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
+        return Graph().parse(data=requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl",
+        auth=(self.username, self.password), data=data).content.decode("utf-8"))
+
 

@@ -4,7 +4,7 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:anzo_givenfile_whenQueryBuilder_thenGraphMart_from__scenario
+test-data:anzo_select
     a          must:TestSpec ;
     must:tripleStoreConfig [a must:anzoConfig;
         must:anzoURL "cmac.anzo-solutions.com";
@@ -25,10 +25,10 @@ test-data:anzo_givenfile_whenQueryBuilder_thenGraphMart_from__scenario
                     must:queryFolder "My Queries";
                     must:queryName "test"
                 ];
-        must:queryType must:ConstructSparql
+        must:queryType must:SelectSparql
     ];
 
-    must:hasThen [a must:then;
-                must:dataSource [ a must:AnzoGraphmartDataSource ;
-                    must:graphmart "http://cambridgesemantics.com/Graphmart/f6079d49d8964d6d91020a78f1831f15"
+    must:hasThen [a must:given;
+                must:dataSource [ a must:FileDataSource ;
+                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/thenSuccess.csv"
     ]] .

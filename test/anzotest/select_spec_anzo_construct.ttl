@@ -4,7 +4,7 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:anzo_givenfile_whenText_thenGraphMart_from__scenario
+test-data:anzo_construct
     a          must:TestSpec ;
     must:tripleStoreConfig [a must:anzoConfig;
         must:anzoURL "cmac.anzo-solutions.com";
@@ -22,12 +22,12 @@ test-data:anzo_givenfile_whenText_thenGraphMart_from__scenario
 
     must:hasWhen   [a must:when;
                 must:dataSource [ a must:textDataSource ;
-                    must:text "select ?s ?p ?o { ?s ?p ?o }" 
+                    must:text "CONSTRUCT {?s ?p ?o} WHERE { ?s ?p ?o }" 
                 ];
-                must:queryType must:SelectSparql
+                must:queryType must:ConstructSparql
     ] ;
 
-    must:hasThen [a must:then;
-                must:dataSource [ a must:AnzoGraphmartDataSource ;
-                    must:graphmart "http://cambridgesemantics.com/Graphmart/f6079d49d8964d6d91020a78f1831f15"
+    must:hasThen [a must:given;
+                must:dataSource [ a must:FileDataSource ;
+                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
     ]] .
