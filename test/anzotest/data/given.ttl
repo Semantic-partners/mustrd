@@ -1,2 +1,3 @@
-
 <test:s> <test:p> <test:o1> .
+<test:s> <test:p2> "1"^^<http://www.w3.org/2001/XMLSchema#int> .
+<test:s> <test:p2> "test" .

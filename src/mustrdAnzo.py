@@ -1,9 +1,6 @@
-import logging
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
-import csv
-import io
 
 
 class MustrdAnzo:
@@ -52,10 +49,8 @@ class MustrdAnzo:
     def execute_select(self, given, when):
         self.upload_given(given)
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        results = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=test/csv",
-        auth=(self.username, self.password), data=data).content.decode("utf-8")
-        logging.info(f"Results: {results}" )
-        return csv.DictReader(io.StringIO(results))
+        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=application/sparql-results+json",
+                                auth=(self.username, self.password), data=data).content.decode("utf-8")
     
     def execute_construct(self, given, when):
         self.upload_given(given)

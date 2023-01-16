@@ -16,8 +16,11 @@ from mustrdRdfLib import MustrdRdfLib
 from mustrdAnzo import MustrdAnzo
 import requests
 import os
-import csv
 import io
+import json
+import pandas
+from pandas import DataFrame
+import numpy
 
 
 logging.basicConfig(level=logging.INFO)
@@ -107,18 +110,18 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     mustrdTripleStore = get_triple_store(spec_graph, spec_uri)
     # Get GIVEN
     given = get_spec_component(subject=spec_uri, predicate=MUST.hasGiven, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
-    logging.info(f"Given: {given.value}")
+    logging.debug(f"Given: {given.value}")
 
     # Get WHEN
     when = get_spec_component(subject=spec_uri, predicate=MUST.hasWhen, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
-    logging.info(f"when: {when.value}")
+    logging.debug(f"when: {when.value}")
 
     # Get THEN
     then = get_spec_component(subject=spec_uri, predicate=MUST.hasThen, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
-    logging.info(f"then: {then.value}")
+    logging.debug(f"then: {then.value}")
 
     # Execute WHEN against GIVEN on the triple store
-    execute_when(when, given, then, spec_uri, mustrdTripleStore)
+    return execute_when(when, given, then, spec_uri, mustrdTripleStore)
 
 
 def execute_when(when, given, then, spec_uri, mustrdTripleStore):
@@ -133,12 +136,13 @@ def execute_when(when, given, then, spec_uri, mustrdTripleStore):
             else:
                 return ConstructSpecFailure(spec_uri, graph_compare)
         else:
-            results = mustrdTripleStore.execute_select(given=given.value, when=when.value)
-            then_frame = format_csv_to_pandaFrame(csv.DictReader(io.StringIO(then.value)))
-            df_diff = then_frame.compare(format_csv_to_pandaFrame(results), result_names=("expected", "actual"))
+            results = json_results_to_panda_dataframe(mustrdTripleStore.execute_select(given=given.value, when=when.value))
+            then_frame = pandas.read_csv(io.StringIO(then.value))
+            df_diff = then_frame.compare(results, result_names=("expected", "actual"))
             if df_diff.empty:
                 return SpecPassed(spec_uri)
             else:
+                logging.info(f"Test failed: spec_uri: {spec_uri}")
                 return SelectSpecFailure(spec_uri, df_diff)
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
@@ -159,7 +163,7 @@ def get_triple_store(spec_graph, spec_uri):
         gqeURI = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
         inputGraph = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
         return MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
-        gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
+                                            gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
     else:
         raise Exception(f"Not Implemented {tripleStoreType}")
 
@@ -221,29 +225,28 @@ def get_spec_specComponent_from_file(path: Path):
         content = path.read_text()
     return str(content)
 
+# Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
+def json_results_to_panda_dataframe(result):
+        json_result = json.loads(result)
+        frames = DataFrame()
+        for binding in json_result["results"]["bindings"]:
+            columns = []
+            values = []
+            for key in binding:
+                valueObject = binding[key]
+                columns.append(key)
+                values.append(valueObject["value"])
+                columns.append(key + "_datatype")
+                if "type" in valueObject and valueObject["type"] == "literal":
+                    literal_type = str(XSD.string)
+                    if "datatype" in valueObject:
+                        literal_type = valueObject["datatype"]
+                    values.append(literal_type)
+                else:
+                    values.append(str(XSD.anyURI))
 
-def format_csv_to_pandaFrame(csv: List) -> pandas.DataFrame:
-
-    frames = []
-    for line in csv:
-        columns = []
-        values = []
-        for key, value in line.items():
-            columns.append(key)
-            values.append(value)
-            columns.append(key + "_datatype")
-            if type(value) == Literal:
-                literal_type = XSD.string
-                if hasattr(value, "datatype") and value.datatype:
-                    literal_type = value.datatype
-                values.append(literal_type)
-            else:
-                values.append(XSD.anyURI)
-
-        frames.append(pandas.DataFrame([values], columns=columns))
-
-        return pandas.concat(frames, ignore_index=True)
-
+            frames = pandas.concat(objs=[frames,pandas.DataFrame([values], columns=columns)],ignore_index=True)
+        return frames
 
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     diff = graph_diff(expected_graph, actual_graph)
