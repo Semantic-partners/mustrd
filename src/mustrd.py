@@ -1,14 +1,11 @@
 import logging
 from dataclasses import dataclass
-from typing import List
 from pyparsing import ParseException
-from itertools import groupby
 from pathlib import Path
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import RDF, XSD, SH
+from rdflib.namespace import RDF, XSD
 from rdflib.compare import isomorphic, graph_diff
-from rdflib.term import Literal
 import pandas
 
 from namespace import MUST
@@ -18,9 +15,7 @@ import requests
 import os
 import io
 import json
-import pandas
 from pandas import DataFrame
-import numpy
 
 
 logging.basicConfig(level=logging.INFO)
@@ -109,15 +104,27 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     # Init triple store config
     mustrdTripleStore = get_triple_store(spec_graph, spec_uri)
     # Get GIVEN
-    given = get_spec_component(subject=spec_uri, predicate=MUST.hasGiven, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
+    given = get_spec_component(subject=spec_uri,
+                               predicate=MUST.hasGiven,
+                               spec_graph=spec_graph,
+                               mustrdTripleStore=mustrdTripleStore)
+
     logging.debug(f"Given: {given.value}")
 
     # Get WHEN
-    when = get_spec_component(subject=spec_uri, predicate=MUST.hasWhen, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
+    when = get_spec_component(subject=spec_uri,
+                              predicate=MUST.hasWhen,
+                              spec_graph=spec_graph,
+                              mustrdTripleStore=mustrdTripleStore)
+
     logging.debug(f"when: {when.value}")
 
     # Get THEN
-    then = get_spec_component(subject=spec_uri, predicate=MUST.hasThen, spec_graph=spec_graph, mustrdTripleStore=mustrdTripleStore)
+    then = get_spec_component(subject=spec_uri,
+                              predicate=MUST.hasThen,
+                              spec_graph=spec_graph,
+                              mustrdTripleStore=mustrdTripleStore)
+
     logging.debug(f"then: {then.value}")
 
     # Execute WHEN against GIVEN on the triple store
@@ -127,7 +134,8 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
 def execute_when(when, given, then, spec_uri, mustrdTripleStore):
     try:
         if when.queryType == MUST.ConstructSparql:
-            results = mustrdTripleStore.execute_construct(given=given.value, when=when.value)
+            results = mustrdTripleStore.execute_construct(given=given.value,
+                                                          when=when.value)
             thenGraph = Graph().parse(data=then.value)
             graph_compare = graph_comparison(thenGraph, results)
             equal = isomorphic(results, thenGraph)
@@ -138,7 +146,8 @@ def execute_when(when, given, then, spec_uri, mustrdTripleStore):
         else:
             results = json_results_to_panda_dataframe(mustrdTripleStore.execute_select(given=given.value, when=when.value))
             then_frame = pandas.read_csv(io.StringIO(then.value))
-            df_diff = then_frame.compare(results, result_names=("expected", "actual"))
+            df_diff = then_frame.compare(results,
+                                         result_names=("expected", "actual"))
             if df_diff.empty:
                 return SpecPassed(spec_uri)
             else:
@@ -163,7 +172,7 @@ def get_triple_store(spec_graph, spec_uri):
         gqeURI = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
         inputGraph = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
         return MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
-                                            gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
+                          gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
     else:
         raise Exception(f"Not Implemented {tripleStoreType}")
 
@@ -199,12 +208,12 @@ def get_spec_component(subject, predicate, spec_graph, mustrdTripleStore):
         if dataSourceType == MUST.anzoGraphmartDataSource:
             graphMart = spec_graph.value(subject=sourceNode, predicate=MUST.graphmart)
             layer = spec_graph.value(subject=sourceNode, predicate=MUST.layer)
-            specComponent.value = mustrdTripleStore.getSpecspecComponentGraphmart(graphMart=graphMart, layer=layer)
+            specComponent.value = mustrdTripleStore.get_spec_component_from_graphmart(graphMart=graphMart, layer=layer)
         # Get WHEN specComponent from query builder
         elif dataSourceType == MUST.anzoQueryBuilderDataSource:
             queryFolder = spec_graph.value(subject=sourceNode, predicate=MUST.queryFolder)
             queryName = spec_graph.value(subject=sourceNode, predicate=MUST.queryName)
-            specComponent.value = mustrdTripleStore.getQueryFromQueryBuilder(folderName=queryFolder, queryName=queryName)
+            specComponent.value = mustrdTripleStore.get_query_from_querybuilder(folderName=queryFolder, queryName=queryName)
     # If anzo specific function is called but no anzo defined
     elif dataSourceType == MUST.anzoGraphmartDataSource or dataSourceType == MUST.anzoQueryBuilderDataSource:
         raise Exception(f"You must define {MUST.anzoConfig} to use {dataSourceType}")
@@ -225,28 +234,30 @@ def get_spec_specComponent_from_file(path: Path):
         content = path.read_text()
     return str(content)
 
+
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
 def json_results_to_panda_dataframe(result):
-        json_result = json.loads(result)
-        frames = DataFrame()
-        for binding in json_result["results"]["bindings"]:
-            columns = []
-            values = []
-            for key in binding:
-                valueObject = binding[key]
-                columns.append(key)
-                values.append(valueObject["value"])
-                columns.append(key + "_datatype")
-                if "type" in valueObject and valueObject["type"] == "literal":
-                    literal_type = str(XSD.string)
-                    if "datatype" in valueObject:
-                        literal_type = valueObject["datatype"]
-                    values.append(literal_type)
-                else:
-                    values.append(str(XSD.anyURI))
+    json_result = json.loads(result)
+    frames = DataFrame()
+    for binding in json_result["results"]["bindings"]:
+        columns = []
+        values = []
+        for key in binding:
+            valueObject = binding[key]
+            columns.append(key)
+            values.append(valueObject["value"])
+            columns.append(key + "_datatype")
+            if "type" in valueObject and valueObject["type"] == "literal":
+                literal_type = str(XSD.string)
+                if "datatype" in valueObject:
+                    literal_type = valueObject["datatype"]
+                values.append(literal_type)
+            else:
+                values.append(str(XSD.anyURI))
 
-            frames = pandas.concat(objs=[frames,pandas.DataFrame([values], columns=columns)],ignore_index=True)
-        return frames
+        frames = pandas.concat(objs=[frames, pandas.DataFrame([values], columns=columns)], ignore_index=True)
+    return frames
+
 
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     diff = graph_diff(expected_graph, actual_graph)
