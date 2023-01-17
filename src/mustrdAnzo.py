@@ -49,7 +49,13 @@ class MustrdAnzo:
         data = {'datasourceURI' : self.gqeURI, 'update' : insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
 
+    def clear_graph(self):
+        clearQuery = f"CLEAR GRAPH <{self.inputGraph}>"
+        data = {'datasourceURI' : self.gqeURI, 'update' : clearQuery}
+        requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
+
     def execute_select(self, given, when):
+        self.clear_graph()
         self.upload_given(given)
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
         results = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=test/csv",
@@ -62,5 +68,3 @@ class MustrdAnzo:
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
         return Graph().parse(data=requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl",
         auth=(self.username, self.password), data=data).content.decode("utf-8"))
-
-
