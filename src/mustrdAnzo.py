@@ -1,3 +1,4 @@
+from ast import Raise
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
@@ -51,15 +52,22 @@ class MustrdAnzo:
         data = {'datasourceURI' : self.gqeURI, 'update' : clearQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
 
+    def manage_anzo_response(self, response):
+        contentString = response.content.decode("utf-8")
+        if response.status_code == 200:
+            return contentString
+        else:
+            raise Exception(f"Anzo error, status code: {response.status_code}, content: {contentString}")
+    
     def execute_select(self, given, when):
         self.clear_graph()
         self.upload_given(given)
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        return requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=application/sparql-results+json",
-                                auth=(self.username, self.password), data=data).content.decode("utf-8")
+        return self.manage_anzo_response(requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=application/sparql-results+json",
+                                        auth=(self.username, self.password), data=data))
     
     def execute_construct(self, given, when):
         self.upload_given(given)
         data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        return Graph().parse(data=requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl",
-        auth=(self.username, self.password), data=data).content.decode("utf-8"))
+        return Graph().parse(data=self.manage_anzo_response(requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl",
+                            auth=(self.username, self.password), data=data)))
