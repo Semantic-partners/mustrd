@@ -1,4 +1,3 @@
-from ast import Raise
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
@@ -14,12 +13,27 @@ class MustrdAnzo:
         self.inputGraph = inputGraph
         self.anzo_client = AnzoClient(self.anzoUrl, self.anzoPort, self.username, self.password)
 
-    # Get Given or then from the content of a graphmart
-    def getSpecspecComponentGraphmart(self, graphMart, layer=None):
-            return self.anzo_client.query_graphmart(graphmart=graphMart, data_layers=layer,
-            query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}", skip_cache=True).as_quad_store()
+    def execute_select(self, given, when):
+        self.clear_graph()
+        self.upload_given(given)
+        data = {'datasourceURI': self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
+        url = f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=application/sparql-results+json"
+        return self.manage_anzo_response(requests.post(url=url,
+                                         auth=(self.username, self.password), data=data))
 
-    def getQueryFromQueryBuilder(self, folderName, queryName):
+    def execute_construct(self, given, when):
+        self.upload_given(given)
+        data = {'datasourceURI': self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
+        url = f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl"
+        return Graph().parse(data=self.manage_anzo_response(requests.post(url=url,
+                             auth=(self.username, self.password), data=data)))
+
+    # Get Given or then from the content of a graphmart
+    def get_spec_component_from_graphmart(self, graphMart, layer=None):
+            return self.anzo_client.query_graphmart(graphmart=graphMart, data_layers=layer,
+                                                    query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}", skip_cache=True).as_quad_store()
+
+    def get_query_from_querybuilder(self, folderName, queryName):
         query = f"""SELECT ?query WHERE {{
             graph ?queryFolder {{
                 ?bookmark a <http://www.cambridgesemantics.com/ontologies/QueryPlayground#QueryBookmark>;
@@ -31,7 +45,7 @@ class MustrdAnzo:
         }}"""
         return self.anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()[0].get("query")
 
-    def getQueryFromStep(self, queryStepUri):
+    def get_query_from_step(self, queryStepUri):
         query = f"""SELECT ?query WHERE {{
             BIND(<{queryStepUri}> as ?stepUri)
             graph ?stepUri {{
@@ -44,12 +58,12 @@ class MustrdAnzo:
 
     def upload_given(self, given):
         insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
-        data = {'datasourceURI' : self.gqeURI, 'update' : insertQuery}
+        data = {'datasourceURI': self.gqeURI, 'update': insertQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
 
     def clear_graph(self):
         clearQuery = f"CLEAR GRAPH <{self.inputGraph}>"
-        data = {'datasourceURI' : self.gqeURI, 'update' : clearQuery}
+        data = {'datasourceURI': self.gqeURI, 'update': clearQuery}
         requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
 
     def manage_anzo_response(self, response):
@@ -58,16 +72,3 @@ class MustrdAnzo:
             return contentString
         else:
             raise Exception(f"Anzo error, status code: {response.status_code}, content: {contentString}")
-    
-    def execute_select(self, given, when):
-        self.clear_graph()
-        self.upload_given(given)
-        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        return self.manage_anzo_response(requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=application/sparql-results+json",
-                                        auth=(self.username, self.password), data=data))
-    
-    def execute_construct(self, given, when):
-        self.upload_given(given)
-        data = {'datasourceURI' : self.gqeURI, 'query': when, 'default-graph-uri' : self.inputGraph}
-        return Graph().parse(data=self.manage_anzo_response(requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl",
-                            auth=(self.username, self.password), data=data)))
