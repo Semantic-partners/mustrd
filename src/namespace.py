@@ -39,10 +39,10 @@ class MUST(DefinedNamespace):
     SelectSparql: URIRef
     ConstructSparql: URIRef
 
-    StatementsDataset: URIRef
+    StatementsDataSource: URIRef
     statements: URIRef
 
-    TableDataset: URIRef
+    TableDataSource: URIRef
     rows: URIRef
     row: URIRef
     variable: URIRef

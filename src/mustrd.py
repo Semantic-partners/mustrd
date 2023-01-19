@@ -4,9 +4,10 @@ from pyparsing import ParseException
 from pathlib import Path
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import RDF, XSD
+from rdflib.namespace import RDF, XSD, SH, NamespaceManager
 from rdflib.compare import isomorphic, graph_diff
 import pandas
+from rdflib.plugins.serializers.turtle import TurtleSerializer
 
 from namespace import MUST
 from mustrdRdfLib import MustrdRdfLib
@@ -60,25 +61,8 @@ class SparqlParseFailure(SpecResult):
 
 
 @dataclass
-class SparqlAction:
-    query: str
-
-
-@dataclass
 class Spec_component:
     value: str = None
-
-
-@dataclass
-class SelectSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(SelectSparqlQuery, self).__init__(query)
-
-
-@dataclass
-class ConstructSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(ConstructSparqlQuery, self).__init__(query)
 
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
@@ -177,7 +161,7 @@ def get_triple_store(spec_graph, spec_uri):
         raise Exception(f"Not Implemented {tripleStoreType}")
 
 
-def get_spec_component(subject, predicate, spec_graph, mustrdTripleStore):
+def get_spec_component(subject, predicate, spec_graph, mustrdTripleStore=MustrdRdfLib()):
     specComponent = Spec_component()
 
     specComponentNode = spec_graph.value(subject=subject, predicate=predicate)
@@ -198,10 +182,16 @@ def get_spec_component(subject, predicate, spec_graph, mustrdTripleStore):
         specComponent.value = get_spec_specComponent_from_file(filePath)
     # Get specComponent directly from config file (in text string)
     elif dataSourceType == MUST.textDataSource:
-        specComponent.value = spec_graph.value(subject=sourceNode, predicate=MUST.text)
+        specComponent.value = str(spec_graph.value(subject=sourceNode, predicate=MUST.text))
     # Get specComponent with http GET protocol
     elif dataSourceType == MUST.HttpDataSource:
         specComponent.value = requests.get(spec_graph.value(subject=sourceNode, predicate=MUST.dataSourceUrl)).content
+    # get specComponent from ttl table
+    elif dataSourceType ==MUST.TableDataSource:
+        specComponent.value = get_spec_from_table(subject, predicate, spec_graph)
+    # get specComponent from reified statements
+    elif dataSourceType ==MUST.StatementsDataSource:
+        specComponent.value = get_spec_from_statements(subject, predicate, spec_graph)
     # From anzo specific source source
     elif type(mustrdTripleStore) == MustrdAnzo:
         # Get GIVEN or THEN from anzo graphmart
@@ -245,7 +235,7 @@ def json_results_to_panda_dataframe(result):
         for key in binding:
             valueObject = binding[key]
             columns.append(key)
-            values.append(valueObject["value"])
+            values.append(str(valueObject["value"]))
             columns.append(key + "_datatype")
             if "type" in valueObject and valueObject["type"] == "literal":
                 literal_type = str(XSD.string)
@@ -267,3 +257,44 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     in_expected_not_in_actual = (in_expected - in_actual)
     in_actual_not_in_expected = (in_actual - in_expected)
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+
+def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
+    statements_query = f"""
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    
+    CONSTRUCT {{ ?s ?p ?o }}
+    {{
+            <{subject}> <{predicate}> [
+              <{MUST.dataSource}>  [
+                a <{MUST.StatementsDataSource}> ;
+                <{MUST.statements}> [
+                    a rdf:Statement ;
+                    rdf:subject ?s ;
+                    rdf:predicate ?p ;
+                    rdf:object ?o ;
+                ] ;
+              ]
+            ]
+
+    }}
+    """
+    results = spec_graph.query(statements_query).graph
+    return results.serialize(format="ttl")
+
+def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
+    then_query = f"""
+    SELECT ?then ?order ?variable ?binding
+    WHERE {{ 
+              <{subject}> <{predicate}> [
+              <{MUST.dataSource}>  [
+                a <{MUST.TableDataSource}> ;
+                <{MUST.rows}> [ <{SH.order}> 1 ;
+                            <{MUST.row}> [
+                            <{MUST.variable}> ?variable ;
+                            <{MUST.binding}> ?binding ;
+                            ] ; 
+                        ] 
+              ]
+            ]
+        }}"""
+    return spec_graph.query(then_query).serialize(format="json").decode("utf-8")

@@ -1,20 +1,21 @@
+from pathlib import Path
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
-from mustrd import run_specs, SpecPassed
-from src.utils import get_project_root
+from mustrd import run_specs, SpecPassed, SelectSpecFailure
+
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
-
-
-class TestRunSpecs:
-    def test_find_specs_in_path_and_run_them(self):
-        project_root = get_project_root()
-        test_spec_path = project_root / "test" / "test-specs"
-
-        results = run_specs(test_spec_path)
-        results.sort(key=lambda sr: sr.spec_uri)
-        assert results == [
-            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario))
-        ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
+test_spec_path = Path("C:/Users/aymer/git/mustrd/test/anzotest/")
+results = run_specs(test_spec_path)
+results.sort(key=lambda sr: sr.spec_uri)
+for spec in results:
+    if type(spec) == SelectSpecFailure:
+        table_diff = spec.table_comparison.to_markdown()
+        print(f"spec URI: {spec.spec_uri}, table diff:\n {table_diff}")
+assert results == [
+    SpecPassed(URIRef(TEST_DATA.anzo_construct)),
+    SpecPassed(URIRef(TEST_DATA.anzo_select)),
+    SpecPassed(URIRef(TEST_DATA.rdflib__scenario_construct)),
+    SpecPassed(URIRef(TEST_DATA.rdflib__scenario_select)),
+], f"TTL files in path: {list(test_spec_path.glob('*.ttl'))}"

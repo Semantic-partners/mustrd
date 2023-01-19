@@ -1,240 +1,111 @@
-from rdflib import Graph
 from rdflib.namespace import Namespace
+from namespace import MUST
+from mustrdRdfLib import MustrdRdfLib
 
-from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
+from mustrd import  SpecPassed, SparqlParseFailure, execute_when, Spec_component, SelectSpecFailure
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
-
 class TestRunSelectSpec:
     def test_select_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
+        given =Spec_component()
+        when = Spec_component()
+        then = Spec_component()
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
-        spec = """
-        @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        
-        test-data:my_first_spec 
-            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:sub ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding test-data:obj  ; 
-                                        ];
-                         ] ; ].
-        """
-        spec_graph.parse(data=spec, format='ttl')
+        given.value = "<https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj>  ."
 
+        when.value = "select ?s ?p ?o { ?s ?p ?o }"
+        when.queryType = MUST.SelectSparql
+
+        then.value = """s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/sub,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/obj,http://www.w3.org/2001/XMLSchema#anyURI"""
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
-
-        expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        actual_status = execute_when(when, given, then, spec_uri, MustrdRdfLib())
+        assert type(actual_status) == SpecPassed
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
-        spec = """
-        @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        
-        test-data:my_failing_spec 
-            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:wrong-subject ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding test-data:obj  ; 
-                                        ];
-                ] ; ].
-        """
-        spec_graph.parse(data=spec, format='ttl')
+        given =Spec_component()
+        when = Spec_component()
+        then = Spec_component()
 
-        spec_uri = TEST_DATA.my_failing_spec
+        given.value = "<https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> ."
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        when.value = "select ?s ?p ?o { ?s ?p ?o }"
+        when.queryType = MUST.SelectSparql
 
-        if type(spec_result) == SelectSpecFailure:
-            table_diff = spec_result.table_comparison.to_markdown()
-            assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
+        then.value = """s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/wrong-subject,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/obj,http://www.w3.org/2001/XMLSchema#anyURI"""
+        spec_uri = TEST_DATA.my_first_spec
+
+        actual_status = execute_when(when, given, then, spec_uri, MustrdRdfLib())
+
+        assert type(actual_status) == SelectSpecFailure
+        table_diff = actual_status.table_comparison.to_markdown()
+        assert actual_status.spec_uri == spec_uri
+        assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
-        else:
-            raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_fails_for_different_types(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred 1 .
-        """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
-        spec = """
-        @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        
-        test-data:my_failing_spec 
-            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:sub ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding 1.0  ; 
-                                        ];
-                ] ; ].
-        """
-        spec_graph.parse(data=spec, format='ttl')
+        given =Spec_component()
+        when = Spec_component()
+        then = Spec_component()
+        given.value = "<https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> 1 ."
+        when.value = "select ?s ?p ?o { ?s ?p ?o }"
+        when.queryType = MUST.SelectSparql
 
-        spec_uri = TEST_DATA.my_failing_spec
+        then.value = """s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/sub,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred,http://www.w3.org/2001/XMLSchema#anyURI,1.0,http://www.w3.org/2001/XMLSchema#decimal"""
+        spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        actual_status = execute_when(when, given, then, spec_uri, MustrdRdfLib())
 
-        if type(spec_result) == SelectSpecFailure:
-            table_diff = spec_result.table_comparison.to_markdown()
-            assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
+        assert type(actual_status) == SelectSpecFailure
+        table_diff = actual_status.table_comparison.to_markdown()
+        assert actual_status.spec_uri == spec_uri
+        assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
 |  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |"""
-        else:
-            raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_fails_for_different_types_where_one_is_string(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred 1 .
-        """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
-        spec = """
-        @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        
-        test-data:my_failing_spec 
-            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:sub ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding "1"  ; 
-                                        ];
-                ] ; ].
-        """
-        spec_graph.parse(data=spec, format='ttl')
+        given =Spec_component()
+        when = Spec_component()
+        then = Spec_component()
 
-        spec_uri = TEST_DATA.my_failing_spec
+        given.value = "<https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> 1 ."
+        when.value = "select ?s ?p ?o { ?s ?p ?o }"
+        when.queryType = MUST.SelectSparql
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then.value = """s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/sub,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred,http://www.w3.org/2001/XMLSchema#anyURI,1,http://www.w3.org/2001/XMLSchema#string"""
+        spec_uri = TEST_DATA.my_first_spec
 
-        if type(spec_result) == SelectSpecFailure:
-            table_diff = spec_result.table_comparison.to_markdown()
-            assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
+        actual_status = execute_when(when, given, then, spec_uri, MustrdRdfLib())
+
+        assert type(actual_status) == SelectSpecFailure
+        table_diff = actual_status.table_comparison.to_markdown()
+        assert actual_status.spec_uri == spec_uri
+        assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:----------------------------------------|:-----------------------------------------|
 |  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#integer |"""
-        else:
-            raise Exception(f"wrong spec result type {spec_result}")
 
     def test_invalid_select_statement_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
-        select_query = """select ?s ?p ?o { typo }"""
-        spec_graph = Graph()
-        spec = """
-        @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        given =Spec_component()
+        when = Spec_component()
+        then = Spec_component()
         
-        test-data:my_failing_spec 
-           a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:wrong-subject ; 
-                                        ] ;
-                ] ; ].
-        """
-        spec_graph.parse(data=spec, format='ttl')
+        given.value = "<https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> ."
 
-        spec_uri = TEST_DATA.my_failing_spec
+        when.value = "select ?s ?p ?o { typo }"
+        when.queryType = MUST.SelectSparql
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then.value = """s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/sub,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/obj,http://www.w3.org/2001/XMLSchema#anyURI"""
+        spec_uri = TEST_DATA.my_first_spec
 
-        if type(spec_result) == SparqlParseFailure:
-            assert spec_result.spec_uri == spec_uri
-            assert str(spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
-        else:
-            raise Exception(f"wrong spec result type {spec_result}")
+        actual_status = execute_when(when, given, then, spec_uri, MustrdRdfLib())
+
+        assert type(actual_status) == SparqlParseFailure
+        assert actual_status.spec_uri == spec_uri
+        assert str(actual_status.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
