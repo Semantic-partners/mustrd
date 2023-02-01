@@ -99,16 +99,22 @@ class UpdateSparqlQuery(SparqlAction):
 def run_specs(spec_path: Path) -> list[SpecResult]:
     ttl_files = list(spec_path.glob('**/*.ttl'))
     # ttl_files = list(spec_path.glob('*.ttl'))
+def run_specs(spec_path: Path, triplestore_spec_path: Path) -> list[SpecResult]:
+    os.chdir(spec_path)
+    ttl_files = list(spec_path.glob('*.ttl'))
     logging.info(f"Found {len(ttl_files)} ttl files")
 
-    specs_graph = Graph()
+    spec_graph = Graph()
     for file in ttl_files:
         logging.info(f"Parse: {file}")
-        specs_graph.parse(file)
-    spec_uris = list(specs_graph.subjects(RDF.type, MUST.TestSpec))
+        spec_graph.parse(file)
+    spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     logging.info(f"Collected {len(spec_uris)} items")
 
-    results = [run_spec(spec_uri, specs_graph) for spec_uri in spec_uris]
+    tripleStore_config = Graph().parse(triplestore_spec_path)
+    results = []
+    for tripleStore in get_triple_stores(tripleStore_config):
+        results = results + [run_spec(spec_uri, spec_graph, tripleStore) for spec_uri in spec_uris]
 
     return results
 
@@ -136,17 +142,16 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     return result
 
 
-def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
+def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
     logging.info(f"\nRunning test: {spec_uri}")
+    print(f"\nRunning test: {spec_uri}")
 
-    # Init triple store config
-    mustrd_triple_store = get_triple_store(spec_graph, spec_uri)
     # Get GIVEN
     given = get_spec_component(subject=spec_uri,
                                predicate=MUST.hasGiven,
                                spec_graph=spec_graph,
-                               mustrdTripleStore=mustrdTripleStore)
+                               mustrdTripleStore=mustrd_triple_store)
 
     logging.debug(f"Given: {given.value}")
 
@@ -154,7 +159,7 @@ def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
     when = get_spec_component(subject=spec_uri,
                               predicate=MUST.hasWhen,
                               spec_graph=spec_graph,
-                              mustrdTripleStore=mustrdTripleStore)
+                              mustrdTripleStore=mustrd_triple_store)
 
     logging.debug(f"when: {when.value}")
 
@@ -162,7 +167,7 @@ def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
     then = get_spec_component(subject=spec_uri,
                               predicate=MUST.hasThen,
                               spec_graph=spec_graph,
-                              mustrdTripleStore=mustrdTripleStore)
+                              mustrdTripleStore=mustrd_triple_store)
 
     logging.debug(f"then: {then.value}")
 
@@ -173,7 +178,7 @@ def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
 def execute_when(when, given, then, spec_uri, mustrd_triple_store):
     try:
         if when.queryType == MUST.ConstructSparql:
-            results = mustrdTripleStore.execute_construct(given=given.value,
+            results = mustrd_triple_store.execute_construct(given=given.value,
                                                           when=when.value)
             thenGraph = Graph().parse(data=then.value)
             graph_compare = graph_comparison(thenGraph, results)
@@ -183,39 +188,43 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
             else:
                 return ConstructSpecFailure(spec_uri, graph_compare)
         else:
-            results = json_results_to_panda_dataframe(mustrdTripleStore.execute_select(given=given.value, when=when.value))
+            results = json_results_to_panda_dataframe(mustrd_triple_store.execute_select(given=given.value, when=when.value))
             then_frame = pandas.read_csv(io.StringIO(then.value))
+            print(then_frame)
+            print(results)
             df_diff = then_frame.compare(results,
                                          result_names=("expected", "actual"))
             if df_diff.empty:
                 return SpecPassed(spec_uri)
             else:
+                logging.info(f"Test failed: spec_uri: {spec_uri}")
                 return SelectSpecFailure(spec_uri, df_diff)
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
 
 
-def get_triple_store(spec_graph, spec_uri):
-    triple_store_config = spec_graph.value(subject=spec_uri, predicate=MUST.tripleStoreConfig)
-    triple_store_type = spec_graph.value(subject=triple_store_config, predicate=RDF.type)
-    # Local rdf lib triple store
-    if triple_store_type == MUST.rdfLibConfig:
-        return MustrdRdfLib()
-    # Anzo graph via anzo
-    elif tripleStoreType == MUST.anzoConfig:
-        anzoUrl = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
-        anzoPort = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
-        username = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
-        password = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
-        gqeURI = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
-        inputGraph = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-        return MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
-                          gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
-    else:
-        raise Exception(f"Not Implemented {triple_store_type}")
+def get_triple_stores(triple_store_graph):
+    triple_stores = []
+    for tripleStoreConfig, type, tripleStoreType in triple_store_graph.triples((None, RDF.type, None)):
+        # Local rdf lib triple store
+        if tripleStoreType == MUST.rdfLibConfig:
+            triple_stores.append(MustrdRdfLib())
+        # Anzo graph via anzo
+        elif tripleStoreType == MUST.anzoConfig:
+            anzoUrl = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
+            anzoPort = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
+            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
+            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
+            gqeURI = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
+            inputGraph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+            triple_stores.append(MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
+                            gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password))
+        else:
+            raise Exception(f"Not Implemented {tripleStoreType}")
+    return triple_stores
 
 
-def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store):
+def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=MustrdRdfLib()):
     spec_component = SpecComponent()
 
     spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
@@ -236,11 +245,17 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store):
         spec_component.value = get_spec_spec_component_from_file(file_path)
     # Get specComponent directly from config file (in text string)
     elif data_source_type == MUST.textDataSource:
-        spec_component.value = spec_graph.value(subject=source_node, predicate=MUST.text)
+        spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
     # Get specComponent with http GET protocol
     elif data_source_type == MUST.HttpDataSource:
         spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
-    # From anzo specific source source
+    # get specComponent from ttl table
+    elif data_source_type ==MUST.TableDataSource:
+        spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
+    # get specComponent from reified statements
+    elif data_source_type ==MUST.StatementsDataSource:
+        spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
+    # From anzo specific source
     elif type(mustrd_triple_store) == MustrdAnzo:
         # Get GIVEN or THEN from anzo graphmart
         if data_source_type == MUST.anzoGraphmartDataSource:
@@ -283,7 +298,7 @@ def json_results_to_panda_dataframe(result):
         for key in binding:
             valueObject = binding[key]
             columns.append(key)
-            values.append(valueObject["value"])
+            values.append(str(valueObject["value"]))
             columns.append(key + "_datatype")
             if "type" in valueObject and valueObject["type"] == "literal":
                 literal_type = str(XSD.string)
@@ -617,3 +632,46 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     for col in empty_copy.columns:
         empty_copy[col].values[:] = None
     return empty_copy
+
+
+def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
+    statements_query = f"""
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+
+    CONSTRUCT {{ ?s ?p ?o }}
+    {{
+            <{subject}> <{predicate}> [
+              <{MUST.dataSource}>  [
+                a <{MUST.StatementsDataSource}> ;
+                <{MUST.statements}> [
+                    a rdf:Statement ;
+                    rdf:subject ?s ;
+                    rdf:predicate ?p ;
+                    rdf:object ?o ;
+                ] ;
+              ]
+            ]
+
+    }}
+    """
+    results = spec_graph.query(statements_query).graph
+    return results.serialize(format="ttl")
+
+
+def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
+    then_query = f"""
+    SELECT ?then ?order ?variable ?binding
+    WHERE {{ 
+              <{subject}> <{predicate}> [
+              <{MUST.dataSource}>  [
+                a <{MUST.TableDataSource}> ;
+                <{MUST.rows}> [ <{SH.order}> 1 ;
+                            <{MUST.row}> [
+                            <{MUST.variable}> ?variable ;
+                            <{MUST.binding}> ?binding ;
+                            ] ; 
+                        ] 
+              ]
+            ]
+        }}"""
+    return spec_graph.query(then_query).serialize(format="json").decode("utf-8")
