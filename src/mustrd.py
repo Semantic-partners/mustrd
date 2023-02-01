@@ -65,28 +65,31 @@ class Spec_component:
     value: str = None
 
 
-def run_specs(spec_path: Path) -> list[SpecResult]:
+def run_specs(spec_path: Path, triplestore_spec_path: Path) -> list[SpecResult]:
+    os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     logging.info(f"Found {len(ttl_files)} ttl files")
 
-    specs_graph = Graph()
+    spec_graph = Graph()
     for file in ttl_files:
         logging.info(f"Parse: {file}")
-        specs_graph.parse(file)
-    spec_uris = list(specs_graph.subjects(RDF.type, MUST.TestSpec))
+        spec_graph.parse(file)
+    spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     logging.info(f"Collected {len(spec_uris)} items")
 
-    results = [run_spec(spec_uri, specs_graph) for spec_uri in spec_uris]
+    tripleStore_config = Graph().parse(triplestore_spec_path)
+    results = []
+    for tripleStore in get_triple_stores(tripleStore_config):
+        results = results + [run_spec(spec_uri, spec_graph, tripleStore) for spec_uri in spec_uris]
 
     return results
 
 
-def run_spec(spec_uri, spec_graph) -> SpecResult:
+def run_spec(spec_uri, spec_graph, mustrdTripleStore) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
     logging.info(f"\nRunning test: {spec_uri}")
+    print(f"\nRunning test: {spec_uri}")
 
-    # Init triple store config
-    mustrdTripleStore = get_triple_store(spec_graph, spec_uri)
     # Get GIVEN
     given = get_spec_component(subject=spec_uri,
                                predicate=MUST.hasGiven,
@@ -130,6 +133,8 @@ def execute_when(when, given, then, spec_uri, mustrdTripleStore):
         else:
             results = json_results_to_panda_dataframe(mustrdTripleStore.execute_select(given=given.value, when=when.value))
             then_frame = pandas.read_csv(io.StringIO(then.value))
+            print(then_frame)
+            print(results)
             df_diff = then_frame.compare(results,
                                          result_names=("expected", "actual"))
             if df_diff.empty:
@@ -141,24 +146,25 @@ def execute_when(when, given, then, spec_uri, mustrdTripleStore):
         return SparqlParseFailure(spec_uri, e)
 
 
-def get_triple_store(spec_graph, spec_uri):
-    tripleStoreConfig = spec_graph.value(subject=spec_uri, predicate=MUST.tripleStoreConfig)
-    tripleStoreType = spec_graph.value(subject=tripleStoreConfig, predicate=RDF.type)
-    # Local rdf lib triple store
-    if tripleStoreType == MUST.rdfLibConfig:
-        return MustrdRdfLib()
-    # Anzo graph via anzo
-    elif tripleStoreType == MUST.anzoConfig:
-        anzoUrl = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
-        anzoPort = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
-        username = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
-        password = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
-        gqeURI = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
-        inputGraph = spec_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-        return MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
-                          gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password)
-    else:
-        raise Exception(f"Not Implemented {tripleStoreType}")
+def get_triple_stores(tripleStoreGraph):
+    tripleStores = []
+    for tripleStoreConfig, type, tripleStoreType in tripleStoreGraph.triples((None, RDF.type, None)):
+        # Local rdf lib triple store
+        if tripleStoreType == MUST.rdfLibConfig:
+            tripleStores.append(MustrdRdfLib())
+        # Anzo graph via anzo
+        elif tripleStoreType == MUST.anzoConfig:
+            anzoUrl = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
+            anzoPort = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
+            username = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
+            password = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
+            gqeURI = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
+            inputGraph = tripleStoreGraph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+            tripleStores.append(MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
+                            gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password))
+        else:
+            raise Exception(f"Not Implemented {tripleStoreType}")
+    return tripleStores
 
 
 def get_spec_component(subject, predicate, spec_graph, mustrdTripleStore=MustrdRdfLib()):
