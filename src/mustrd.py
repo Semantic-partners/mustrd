@@ -88,7 +88,6 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path) -> list[SpecResult]:
 def run_spec(spec_uri, spec_graph, mustrdTripleStore) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
     logging.info(f"\nRunning test: {spec_uri}")
-    print(f"\nRunning test: {spec_uri}")
 
     # Get GIVEN
     given = get_spec_component(subject=spec_uri,
@@ -133,10 +132,14 @@ def execute_when(when, given, then, spec_uri, mustrdTripleStore):
         else:
             results = json_results_to_panda_dataframe(mustrdTripleStore.execute_select(given=given.value, when=when.value))
             then_frame = pandas.read_csv(io.StringIO(then.value))
-            print(then_frame)
-            print(results)
-            df_diff = then_frame.compare(results,
-                                         result_names=("expected", "actual"))
+            # Compare only compare with same number of rows
+            if len(then_frame.index)!= len(results.index):
+                return SelectSpecFailure(spec_uri, then_frame.merge(results,
+                      indicator = True,
+                      how = 'outer'))
+
+            df_diff = then_frame.compare(results, result_names=("expected", "actual"))
+
             if df_diff.empty:
                 return SpecPassed(spec_uri)
             else:
