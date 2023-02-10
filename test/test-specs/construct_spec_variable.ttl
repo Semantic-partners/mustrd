@@ -12,7 +12,10 @@ test-data:a_complete_construct_scenario_with_variables
     must:when  [ a          must:ConstructSparql ;
                  must:query "construct { ?s <https://semanticpartners.com/data/test/predicate> ?o } { ?s ?p ?o }" ;
                  must:bindings [ must:variable "o" ;
-                      must:binding  "hello world" ; ] ;
+                      must:binding  "hello world" ; ] ,
+                       [ must:variable "s" ;
+                      must:binding  test-data:sub ; ]
+                       ;
 ] ;
     must:then  [ a               must:StatementsDataset ;
                  must:statements [ a             rdf:Statement ;
