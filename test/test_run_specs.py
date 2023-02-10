@@ -16,5 +16,7 @@ class TestRunSpecs:
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario))
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables))
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"

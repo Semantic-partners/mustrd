@@ -1,4 +1,4 @@
-from rdflib import URIRef, BNode
+from rdflib import URIRef
 from rdflib.namespace import DefinedNamespace, Namespace
 
 
@@ -10,7 +10,7 @@ class MUST(DefinedNamespace):
     when: URIRef
     then: URIRef
     query: URIRef
-    bindings: BNode
+    bindings: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
 
