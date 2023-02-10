@@ -10,6 +10,7 @@ class MUST(DefinedNamespace):
     when: URIRef
     then: URIRef
     query: URIRef
+    bindings: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
 

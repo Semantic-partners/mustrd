@@ -1,7 +1,9 @@
 from rdflib import Graph
 from rdflib.namespace import Namespace
+from rdflib.term import Literal, Variable
 
-from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, get_then_select
+from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, \
+    get_then_select
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -47,7 +49,7 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -91,7 +93,7 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -141,7 +143,7 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -191,7 +193,7 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -231,10 +233,111 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
-            assert str(spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+            assert str(
+                spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_with_variables_spec_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred "hello world" .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        binding = {Variable('o'): Literal('hello world')}
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding "hello world"  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
+
+    def test_select_with_variables_spec_fails_with_expected_vs_actual_table_comparison(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred "hello world" .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        binding = {Variable('o'): Literal('hello world')}
+
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding "hello worlds"  ; 
+                                        ];
+                ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            assert spec_result.spec_uri == spec_uri
+            assert table_diff == """|    | ('o', 'expected')   | ('o', 'actual')   |
+|---:|:--------------------|:------------------|
+|  0 | hello worlds        | hello world       |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
