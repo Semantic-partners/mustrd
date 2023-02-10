@@ -7,7 +7,6 @@ from pathlib import Path
 from rdflib import Graph, URIRef, Variable
 from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
-from rdflib.plugins.sparql.sparql import QueryContext
 from rdflib.term import Literal
 import pandas
 
@@ -54,7 +53,6 @@ class SparqlParseFailure(SpecResult):
 class SparqlAction:
     query: str
 
-
 @dataclass
 class SelectSparqlQuery(SparqlAction):
     def __init__(self, query):
@@ -65,7 +63,6 @@ class SelectSparqlQuery(SparqlAction):
 class ConstructSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(ConstructSparqlQuery, self).__init__(query)
-
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
     ttl_files = list(spec_path.glob('**/*.ttl'))
@@ -105,7 +102,7 @@ def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
                     then: pandas.DataFrame,
-                    bindings: QueryContext) -> SpecResult:
+                    bindings: dict) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
 
     try:
@@ -144,7 +141,7 @@ def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: SparqlAction,
                        then: Graph,
-                       bindings: QueryContext) -> SpecResult:
+                       bindings: dict) -> SpecResult:
     logging.info(f"Running construct spec {spec_uri}")
     result = given.query(when.query, initBindings=bindings).graph
 
@@ -183,15 +180,19 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
             return ConstructSparqlQuery(when.query.value)
 
 
-def get_when_bindings(spec_uri: URIRef, spec_graph: Graph):
+def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
     when_bindings_query = f"""SELECT ?variable ?binding {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ]  ] }}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
-        return None
+        return {}
     else:
+        bindings = {}
         for binding in when_bindings:
-            return {Variable(binding.variable.value): binding.binding}
+            bindings[Variable(binding.variable.value)] = binding.binding
+        return bindings
+
+           # return {Variable(binding.variable.value): binding.binding}
 
 
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
