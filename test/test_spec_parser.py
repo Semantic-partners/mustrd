@@ -74,10 +74,32 @@ class TestSpecParserTest:
 
         assert when == expected_query
 
-    def test_then_select(self):
+    def test_then_table_dataset(self):
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
         thens = get_then_select(self.select_spec_uri, spec_graph)
+        expected_df = pandas.DataFrame([[TEST_DATA.sub, XSD.anyURI, TEST_DATA.pred, XSD.anyURI, TEST_DATA.obj, XSD.anyURI]], columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
+        df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
+        assert df_diff.empty, f"\n{df_diff.to_markdown()}"
+
+    select_csv_spec_uri = TEST_DATA.a_csv_select_spec
+    select_csv_spec = f"""
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            @prefix must: <https://mustrd.com/model/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+            
+            
+            <{select_csv_spec_uri}>
+                a must:TestSpec ;
+                must:then [ a must:CsvFileDataset ;
+                            must:path "test-specs/select-scenario.csv" ; ].
+            """
+
+    def test_then_csv_dataset(self):
+        spec_graph = Graph()
+        spec_graph.parse(data=self.select_csv_spec, format='ttl')
+        thens = get_then_select(self.select_csv_spec_uri, spec_graph)
         expected_df = pandas.DataFrame([[TEST_DATA.sub, XSD.anyURI, TEST_DATA.pred, XSD.anyURI, TEST_DATA.obj, XSD.anyURI]], columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
         df_diff = expected_df.compare(thens, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"

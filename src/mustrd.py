@@ -4,7 +4,7 @@ from pyparsing import ParseException
 from itertools import groupby
 from pathlib import Path
 
-from rdflib import Graph, URIRef, Variable
+from rdflib import Graph, URIRef, Variable, BNode
 from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
 from rdflib.term import Literal
@@ -117,7 +117,7 @@ def run_select_spec(spec_uri: URIRef,
                 columns.append(key + "_datatype")
                 if type(value) == Literal:
                     literal_type = XSD.string
-                    if hasattr(value, "datatype")  and value.datatype:
+                    if hasattr(value, "datatype") and value.datatype:
                         literal_type = value.datatype
                     values.append(literal_type)
                 else:
@@ -216,39 +216,108 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     return expected_results
 
+import re
 
 def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
-    then_query = f"""
-    SELECT ?then ?order ?variable ?binding
-    WHERE {{ 
-        <{spec_uri}> <{MUST.then}> ?then .
-        ?then a <{MUST.TableDataset}> ;
-              <{MUST.rows}> [ <{SH.order}> 1 ;
-                              <{MUST.row}> [
-                                <{MUST.variable}> ?variable ;
-                                <{MUST.binding}> ?binding ;
-                                ] ; 
-                            ] .
-        }}"""
-
-    expected_results = spec_graph.query(then_query)
-
+    then_type_query = f"""
+    SELECT ?type WHERE {{
+        <{spec_uri}> <{MUST.then}> [ 
+            a ?type ; 
+            ] .
+    }}
+    """
+    then_type = list(spec_graph.query(then_type_query))[0][0]
     frames = []
-    for then, items in groupby(expected_results, lambda er: er.then):
-        columns = []
-        values = []
-        for i in list(items):
-            columns.append(i.variable.value)
-            values.append(i.binding)
-            columns.append(i.variable.value + "_datatype")
-            if type(i.binding) == Literal:
-                literal_type = XSD.string
-                if hasattr(i.binding, "datatype") and i.binding.datatype:
-                    literal_type = i.binding.datatype
-                values.append(literal_type)
-            else:
-                values.append(XSD.anyURI)
-        frames.append(pandas.DataFrame([values], columns=columns))
 
-    df = pandas.concat(frames, ignore_index=True)
+    df = None
+    a_then_query = f"""
+        SELECT ?then ?order ?variable ?binding
+        WHERE {{ 
+            <{spec_uri}> <{MUST.then}> ?then .
+            ?then a <{MUST.TableDataset}> ;
+                  <{MUST.rows}> [ <{SH.order}> 1 ;
+                                  <{MUST.row}> [
+                                    <{MUST.variable}> ?variable ;
+                                    <{MUST.binding}> ?binding ;
+                                    ] ; 
+                                ] .
+            }}"""
+    if then_type == MUST.TableDataset:
+
+        expected_results = spec_graph.query(a_then_query)
+
+        # TODO: replace er.then with er.row
+        for then, items in groupby(expected_results, lambda er: er.then):
+            columns = []
+            values = []
+            for i in list(items):
+                columns.append(i.variable.value)
+                values.append(i.binding)
+                columns.append(i.variable.value + "_datatype")
+                if type(i.binding) == Literal:
+                    literal_type = XSD.string
+                    if hasattr(i.binding, "datatype") and i.binding.datatype:
+                        literal_type = i.binding.datatype
+                    values.append(literal_type)
+                else:
+                    values.append(XSD.anyURI)
+            frames.append(pandas.DataFrame([values], columns=columns))
+
+        df = pandas.concat(frames, ignore_index=True)
+    elif then_type == MUST.CsvFileDataset:
+        then_query = f"""
+        SELECT ?path 
+        WHERE {{
+            <{spec_uri}> <{MUST.then}> [
+                a <{MUST.CsvFileDataset}> ;
+                <{MUST.path}> ?path ;
+                ]
+            .
+        }}
+        """
+        expected_csv_path = list(spec_graph.query(then_query))[0][0]
+        # df = pandas.read_csv("test/" + expected_csv_path)
+        g = Graph()
+        import csv
+        with open("test/" + expected_csv_path, newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            then = spec_uri
+            nt = ""
+            nt += f"<{spec_uri}> <{MUST.then}> _:then .\n"
+            nt += f"_:then <{RDF.type}> <{MUST.TableDataset}> .\n"
+            for pos, row in enumerate(reader, 1):
+                nt += f"_:then <{MUST.rows}> _:rows-{pos} . \n"
+                nt += f"""_:rows-{pos} <{SH.order}> "{pos}"^^<http://www.w3.org/2001/XMLSchema#integer> . \n"""
+                for k, v in row.items():
+                    escaped_v = re.sub('[^a-zA-Z0-9 \n\.]', '', v)
+                    bnode_id = f"{k}"
+                    nt += f"_:rows-{pos} <{MUST.row}> _:{bnode_id} . \n"
+                    nt += f"""
+                    _:{bnode_id} <{MUST.variable}> "{k}" .
+                    _:{bnode_id} <{MUST.binding}> {v} .
+                    """
+                    g.parse(data=nt, format="nt")
+        expected_results = g.query(a_then_query)
+
+        for then, items in groupby(expected_results, lambda er: er.then):
+            columns = []
+            values = []
+            for i in list(items):
+                columns.append(i.variable.value)
+                values.append(i.binding)
+                columns.append(i.variable.value + "_datatype")
+                if type(i.binding) == Literal:
+                    literal_type = XSD.string
+                    if hasattr(i.binding, "datatype") and i.binding.datatype:
+                        literal_type = i.binding.datatype
+                    values.append(literal_type)
+                else:
+                    values.append(XSD.anyURI)
+            frames.append(pandas.DataFrame([values], columns=columns))
+
+        df = pandas.concat(frames, ignore_index=True)
+
+    else:
+        raise Exception(f"Invalid then type {then_type}")
+
     return df
