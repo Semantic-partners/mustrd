@@ -4,7 +4,7 @@ from pyparsing import ParseException
 from itertools import groupby
 from pathlib import Path
 
-from rdflib import Graph, URIRef
+from rdflib import Graph, URIRef, Variable
 from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
 from rdflib.term import Literal
@@ -53,7 +53,6 @@ class SparqlParseFailure(SpecResult):
 class SparqlAction:
     query: str
 
-
 @dataclass
 class SelectSparqlQuery(SparqlAction):
     def __init__(self, query):
@@ -64,7 +63,6 @@ class SelectSparqlQuery(SparqlAction):
 class ConstructSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(ConstructSparqlQuery, self).__init__(query)
-
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
     ttl_files = list(spec_path.glob('**/*.ttl'))
@@ -86,29 +84,29 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     given = get_given(spec_uri, spec_graph)
     when = get_when(spec_uri, spec_graph)
     when_type = type(when)
+    when_bindings = get_when_bindings(spec_uri, spec_graph)
     result = None
 
     if when_type == SelectSparqlQuery:
         then = get_then_select(spec_uri, spec_graph)
-        result = run_select_spec(spec_uri, given, when, then)
+        result = run_select_spec(spec_uri, given, when, then, when_bindings)
     elif when_type == ConstructSparqlQuery:
         then = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, given, when, then)
+        result = run_construct_spec(spec_uri, given, when, then, when_bindings)
     else:
         raise Exception(f"invalid spec when type {when_type}")
 
     return result
 
-
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
-                    then: pandas.DataFrame) -> SpecResult:
+                    then: pandas.DataFrame,
+                    bindings: dict) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
 
     try:
-        result = given.query(when.query)
-
+        result = given.query(when.query, initBindings=bindings)
         frames = []
         for item in result:
             columns = []
@@ -142,9 +140,10 @@ def run_select_spec(spec_uri: URIRef,
 def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: SparqlAction,
-                       then: Graph) -> SpecResult:
+                       then: Graph,
+                       bindings: dict) -> SpecResult:
     logging.info(f"Running construct spec {spec_uri}")
-    result = given.query(when.query).graph
+    result = given.query(when.query, initBindings=bindings).graph
 
     graph_compare = graph_comparison(then, result)
     equal = isomorphic(result, then)
@@ -179,6 +178,21 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
             return SelectSparqlQuery(when.query.value)
         elif when.type == MUST.ConstructSparql:
             return ConstructSparqlQuery(when.query.value)
+
+
+def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ]  ] }}"""
+    when_bindings = spec_graph.query(when_bindings_query)
+
+    if len(when_bindings.bindings) == 0:
+        return {}
+    else:
+        bindings = {}
+        for binding in when_bindings:
+            bindings[Variable(binding.variable.value)] = binding.binding
+        return bindings
+
+           # return {Variable(binding.variable.value): binding.binding}
 
 
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
