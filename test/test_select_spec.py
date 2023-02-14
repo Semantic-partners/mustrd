@@ -341,3 +341,157 @@ class TestRunSelectSpec:
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
+    def test_select_spec_multiline_then_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj , test-data:object .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj  ; 
+                                        ]; ] ,
+                                    [ sh:order 1 ;
+                                        must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding test-data:object ; 
+                                        ]; ] ; 
+                                         ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
+
+    def test_select_spec_with_optional_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred test-data:obj .
+        test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ,
+                                      [ must:variable "object" ;
+                                        must:binding  test-data:object ; ] ; ] ,
+                            [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ]; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
+
+    def test_select_spec_with_optional_fails_with_expected_vs_actual_table_comparison(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred test-data:obj .
+        test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+
+        select_query = """
+                select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
+                """
+
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ,
+                                      [ must:variable "object" ;
+                                        must:binding  test-data:object ; ] ; ] ,
+                            [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:object ; ]; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, {})
+
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            assert spec_result.spec_uri == spec_uri
+            assert table_diff == """|    | ('o', 'expected')                             | ('o', 'actual')                            |
+|---:|:----------------------------------------------|:-------------------------------------------|
+|  1 | https://semanticpartners.com/data/test/object | https://semanticpartners.com/data/test/obj |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
