@@ -1,0 +1,37 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:a_complete_select_scenario_optional_result
+    a          must:TestSpec ;
+    must:given [ a               must:StatementsDataset ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub1 ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ,
+                                   [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub2 ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ,
+                                  [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub1 ;
+                                   rdf:predicate test-data:predicate ;
+                                   rdf:object    test-data:object ; ] ; ] ;
+    must:when  [ a          must:SelectSparql ;
+                 must:query "select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ; ] ;
+    must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ,
+                                      [ must:variable "object" ;
+                                        must:binding  test-data:object ; ] ; ] ,
+                            [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ]; ] ;
+               ] .
