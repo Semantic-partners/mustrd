@@ -53,6 +53,7 @@ class SparqlParseFailure(SpecResult):
 class SparqlAction:
     query: str
 
+
 @dataclass
 class SelectSparqlQuery(SparqlAction):
     def __init__(self, query):
@@ -63,6 +64,7 @@ class SelectSparqlQuery(SparqlAction):
 class ConstructSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(ConstructSparqlQuery, self).__init__(query)
+
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
     ttl_files = list(spec_path.glob('**/*.ttl'))
@@ -98,6 +100,7 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
 
     return result
 
+
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
@@ -107,31 +110,45 @@ def run_select_spec(spec_uri: URIRef,
 
     try:
         result = given.query(when.query, initBindings=bindings)
-        frames = []
+        data_dict = {}
+        columns = []
+        series_list = []
+
         for item in result:
-            columns = []
-            values = []
             for key, value in item.asdict().items():
-                columns.append(key)
-                values.append(value)
-                columns.append(key + "_datatype")
+                if key not in columns:
+                    columns.append(key)
+                    data_dict[key] = []
+                    data_dict[key + "_datatype"] = []
+
+        for item in result:
+            for key, value in item.asdict().items():
+                data_dict[key].append(value)
                 if type(value) == Literal:
                     literal_type = XSD.string
-                    if hasattr(value, "datatype")  and value.datatype:
+                    if hasattr(value, "datatype") and value.datatype:
                         literal_type = value.datatype
-                    values.append(literal_type)
+                    data_dict[key + "_datatype"].append(literal_type)
                 else:
-                    values.append(XSD.anyURI)
+                    data_dict[key + "_datatype"].append(XSD.anyURI)
 
-            frames.append(pandas.DataFrame([values], columns=columns))
+        # convert dict to Series to avoid problem with array length
+        for key, value in data_dict.items():
+            series_list.append(pandas.Series(value, name=key))
 
-            df = pandas.concat(frames, ignore_index=True)
-            df_diff = then.compare(df, result_names=("expected", "actual"))
+        df = pandas.concat(series_list, axis=1)
 
-            if df_diff.empty:
-                return SpecPassed(spec_uri)
-            else:
-                return SelectSpecFailure(spec_uri, df_diff)
+        if "order by ?" or "order by desc" or "order by asc" not in when.query.lower():
+            df.sort_values(by=columns[::2], inplace=True)
+            df.reset_index(inplace=True, drop=True)
+            # df.sort_index(axis=1, inplace=True)
+
+        df_diff = then.compare(df, result_names=("expected", "actual"))
+
+        if df_diff.empty:
+            return SpecPassed(spec_uri)
+        else:
+            return SelectSpecFailure(spec_uri, df_diff)
 
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
@@ -192,8 +209,6 @@ def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
             bindings[Variable(binding.variable.value)] = binding.binding
         return bindings
 
-           # return {Variable(binding.variable.value): binding.binding}
-
 
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
@@ -232,23 +247,32 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
         }}"""
 
     expected_results = spec_graph.query(then_query)
+    data_dict = {}
+    columns = []
+    series_list = []
 
-    frames = []
     for then, items in groupby(expected_results, lambda er: er.then):
-        columns = []
-        values = []
         for i in list(items):
-            columns.append(i.variable.value)
-            values.append(i.binding)
-            columns.append(i.variable.value + "_datatype")
+            if i.variable.value not in columns:
+                data_dict[i.variable.value] = []
+                data_dict[i.variable.value + "_datatype"] = []
+
+    for then, items in groupby(expected_results, lambda er: er.then):
+        for i in list(items):
+            data_dict[i.variable.value].append(i.binding)
+
             if type(i.binding) == Literal:
                 literal_type = XSD.string
                 if hasattr(i.binding, "datatype") and i.binding.datatype:
                     literal_type = i.binding.datatype
-                values.append(literal_type)
+                data_dict[i.variable.value + "_datatype"].append(literal_type)
             else:
-                values.append(XSD.anyURI)
-        frames.append(pandas.DataFrame([values], columns=columns))
+                data_dict[i.variable.value + "_datatype"].append(XSD.anyURI)
 
-    df = pandas.concat(frames, ignore_index=True)
+    # convert dict to Series to avoid problem with array length
+    for key, value in data_dict.items():
+        series_list.append(pandas.Series(value, name=key))
+
+    df = pandas.concat(series_list, axis=1)
+
     return df
