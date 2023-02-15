@@ -17,20 +17,11 @@ class TestRunSpecs:
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result_fails)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_fewer_columns_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_fewer_rows_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_more_columns_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_more_rows_fails)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_unexpected_empty_result_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_unexpected_result_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables_datatype_fails)),
-            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes))
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables))
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
