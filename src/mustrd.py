@@ -101,6 +101,29 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     return result
 
 
+def return_mismatch_message(df: pandas.DataFrame,
+                            then: pandas.DataFrame) -> pandas.DataFrame:
+    if df.shape[0] != then.shape[0] and df.shape[1] != then.shape[1]:
+        # Scenario 2.1: neither row number nor columns match
+        data = ["Neither row number nor columns match"]
+    elif df.shape[0] > then.shape[0]:
+        # Scenario 2.2: more results than expected, expected fewer results
+        data = ["More rows returned than expected"]
+    elif df.shape[0] < then.shape[0]:
+        # Scenario 2.3: fewer results than expected, expected more results
+        data = ["Fewer rows returned than expected"]
+    elif df.shape[1] > then.shape[1]:
+        # Scenario 2.4: more columns than expected, expected fewer columns
+        data = ["More columns returned than expected"]
+    elif df.shape[1] < then.shape[1]:
+        # Scenario 2.5: fewer columns than expected, expected fewer columns
+        data = ["Fewer columns returned than expected"]
+    else:
+        data = ["Result mismatch"]
+    df_diff = pandas.DataFrame(data, columns=['Result'])
+    return df_diff
+
+
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
@@ -136,14 +159,36 @@ def run_select_spec(spec_uri: URIRef,
         for key, value in data_dict.items():
             series_list.append(pandas.Series(value, name=key))
 
-        df = pandas.concat(series_list, axis=1)
+        if series_list:
+            df = pandas.concat(series_list, axis=1)
 
-        if "order by ?" or "order by desc" or "order by asc" not in when.query.lower():
-            df.sort_values(by=columns[::2], inplace=True)
-            df.reset_index(inplace=True, drop=True)
-            # df.sort_index(axis=1, inplace=True)
+            if "order by ?" or "order by desc" or "order by asc" not in when.query.lower():
+                df.sort_values(by=columns[::2], inplace=True)
+                df.reset_index(inplace=True, drop=True)
+                # df.sort_index(axis=1, inplace=True)
 
-        df_diff = then.compare(df, result_names=("expected", "actual"))
+            # Scenario 1: expected no result but got a result
+            if then.empty:
+                modified_then = df.copy()
+                for col in modified_then.columns:
+                    modified_then[col].values[:] = None
+                df_diff = modified_then.compare(df, result_names=("expected", "actual"))
+            else:
+                # Scenario 2: expected a result and got a result
+                if df.shape == then.shape and (df.columns == then.columns).all():
+                    df_diff = then.compare(df, result_names=("expected", "actual"))
+                else:
+                    df_diff = return_mismatch_message(df, then)
+        else:
+            if then.empty:
+                # Scenario 3: expected no result, got no result
+                df = pandas.DataFrame()
+            else:
+                # Scenario 4: expected a result, but got an empty result
+                df = then.copy()
+                for col in df.columns:
+                    df[col].values[:] = None
+            df_diff = then.compare(df, result_names=("expected", "actual"))
 
         if df_diff.empty:
             return SpecPassed(spec_uri)
@@ -233,46 +278,53 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
 
 def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
-    then_query = f"""
-    SELECT ?then ?order ?variable ?binding
-    WHERE {{ 
-        <{spec_uri}> <{MUST.then}> ?then .
-        ?then a <{MUST.TableDataset}> ;
-              <{MUST.rows}> [ <{SH.order}> 1 ;
-                              <{MUST.row}> [
-                                <{MUST.variable}> ?variable ;
-                                <{MUST.binding}> ?binding ;
-                                ] ; 
-                            ] .
-        }}"""
+    ask_empty_dataset = f"""
+    ASK {{ <{spec_uri}> <{MUST.then}> ?then .
+        ?then a <{MUST.EmptyResult}> }}"""
+    empty_result = spec_graph.query(ask_empty_dataset)
+    if empty_result.askAnswer is True:
+        df = pandas.DataFrame()
+        return df
+    else:
+        then_query = f"""
+        SELECT ?then ?order ?variable ?binding
+        WHERE {{ 
+            <{spec_uri}> <{MUST.then}> ?then .
+            ?then a <{MUST.TableDataset}> ;
+                  <{MUST.rows}> [ <{SH.order}> 1 ;
+                                  <{MUST.row}> [
+                                    <{MUST.variable}> ?variable ;
+                                    <{MUST.binding}> ?binding ;
+                                    ] ; 
+                                ] .
+            }}"""
 
-    expected_results = spec_graph.query(then_query)
-    data_dict = {}
-    columns = []
-    series_list = []
+        expected_results = spec_graph.query(then_query)
+        data_dict = {}
+        columns = []
+        series_list = []
 
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            if i.variable.value not in columns:
-                data_dict[i.variable.value] = []
-                data_dict[i.variable.value + "_datatype"] = []
+        for then, items in groupby(expected_results, lambda er: er.then):
+            for i in list(items):
+                if i.variable.value not in columns:
+                    data_dict[i.variable.value] = []
+                    data_dict[i.variable.value + "_datatype"] = []
 
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            data_dict[i.variable.value].append(i.binding)
+        for then, items in groupby(expected_results, lambda er: er.then):
+            for i in list(items):
+                data_dict[i.variable.value].append(i.binding)
+                if type(i.binding) == Literal:
+                    literal_type = XSD.string
+                    if hasattr(i.binding, "datatype") and i.binding.datatype:
+                        literal_type = i.binding.datatype
+                    data_dict[i.variable.value + "_datatype"].append(literal_type)
+                else:
+                    data_dict[i.variable.value + "_datatype"].append(XSD.anyURI)
 
-            if type(i.binding) == Literal:
-                literal_type = XSD.string
-                if hasattr(i.binding, "datatype") and i.binding.datatype:
-                    literal_type = i.binding.datatype
-                data_dict[i.variable.value + "_datatype"].append(literal_type)
-            else:
-                data_dict[i.variable.value + "_datatype"].append(XSD.anyURI)
+        # convert dict to Series to avoid problem with array length
+        for key, value in data_dict.items():
+            series_list.append(pandas.Series(value, name=key))
 
-    # convert dict to Series to avoid problem with array length
-    for key, value in data_dict.items():
-        series_list.append(pandas.Series(value, name=key))
-
-    df = pandas.concat(series_list, axis=1)
+        df = pandas.concat(series_list, axis=1)
 
     return df
