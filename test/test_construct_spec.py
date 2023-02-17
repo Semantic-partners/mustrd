@@ -2,7 +2,8 @@ from rdflib import Graph, Variable, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure
+from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure, \
+    SparqlParseFailure
 from graph_util import graph_comparison_message
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -41,7 +42,7 @@ class TestRunConstructSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, {})
+        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -78,7 +79,7 @@ class TestRunConstructSpec:
         spec_uri = TEST_DATA.my_failing_construct_spec
 
         then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, {})
+        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
         assert result.spec_uri == spec_uri
 
@@ -135,7 +136,7 @@ class TestRunConstructSpec:
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
-    def test_construct_spec_fails_with_graph_comparison(self):
+    def test_construct_spec_with_variable_fails_with_graph_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
@@ -223,7 +224,7 @@ class TestRunConstructSpec:
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
-    def test_construct_expect_empty_result_spec_fails(self):
+    def test_construct_unexpected_result_spec_fails(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -249,7 +250,7 @@ class TestRunConstructSpec:
         spec_uri = TEST_DATA.my_failing_construct_spec
 
         then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, {})
+        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
         assert result.spec_uri == spec_uri
 
@@ -271,7 +272,7 @@ class TestRunConstructSpec:
         else:
             raise Exception(f"Unexpected result type {result_type}")
 
-    def test_construct_expect_empty_result_spec_fails(self):
+    def test_construct_unexpected_empty_result_spec_fails(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -363,12 +364,12 @@ class TestRunConstructSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, {})
+        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
-    def test_construct_spec_fails_with_graph_comparison(self):
+    def test_construct_spec_result_mismatch_fails_with_graph_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -400,7 +401,7 @@ class TestRunConstructSpec:
         spec_uri = TEST_DATA.my_failing_construct_spec
 
         then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, {})
+        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
 
         assert result.spec_uri == spec_uri
 
@@ -421,3 +422,41 @@ class TestRunConstructSpec:
             assert len(graph_comparison.in_both.all_nodes()) == 2
         else:
             raise Exception(f"Unexpected result type {result_type}")
+
+    def test_construct_statement_spec_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        construct_query = """construct ?s ?p ?o where { typo }"""
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec 
+           a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:wrong-subject ; 
+                                        ] ;
+                ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_construct(spec_uri, spec_graph)
+        spec_result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+
+        if type(spec_result) == SparqlParseFailure:
+            assert spec_result.spec_uri == spec_uri
+            assert str(
+                spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")

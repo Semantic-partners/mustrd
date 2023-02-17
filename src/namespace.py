@@ -13,6 +13,7 @@ class MUST(DefinedNamespace):
     bindings: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
+    UpdateSparql: URIRef
 
     StatementsDataset: URIRef
     statements: URIRef
