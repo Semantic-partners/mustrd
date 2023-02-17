@@ -45,6 +45,11 @@ class ConstructSpecFailure(SpecResult):
 
 
 @dataclass
+class UpdateSpecFailure(SpecResult):
+    graph_comparison: GraphComparison
+
+
+@dataclass
 class SparqlParseFailure(SpecResult):
     exception: ParseException
 
@@ -64,6 +69,12 @@ class SelectSparqlQuery(SparqlAction):
 class ConstructSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(ConstructSparqlQuery, self).__init__(query)
+
+
+@dataclass
+class UpdateSparqlQuery(SparqlAction):
+    def __init__(self, query):
+        super(UpdateSparqlQuery, self).__init__(query)
 
 
 def run_specs(spec_path: Path) -> list[SpecResult]:
@@ -95,40 +106,20 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     elif when_type == ConstructSparqlQuery:
         then = get_then_construct(spec_uri, spec_graph)
         result = run_construct_spec(spec_uri, given, when, then, when_bindings)
+    elif when_type == UpdateSparqlQuery:
+        then = get_then_update(spec_uri, spec_graph)
+        result = run_update_spec(spec_uri, given, when, then, when_bindings)
     else:
         raise Exception(f"invalid spec when type {when_type}")
 
     return result
 
 
-def return_mismatch_message(df: pandas.DataFrame,
-                            then: pandas.DataFrame) -> pandas.DataFrame:
-    if df.shape[0] != then.shape[0] and df.shape[1] != then.shape[1]:
-        # Scenario 2.1: neither row number nor columns match
-        data = ["Neither row number nor columns match"]
-    elif df.shape[0] > then.shape[0]:
-        # Scenario 2.2: more results than expected, expected fewer results
-        data = ["More rows returned than expected"]
-    elif df.shape[0] < then.shape[0]:
-        # Scenario 2.3: fewer results than expected, expected more results
-        data = ["Fewer rows returned than expected"]
-    elif df.shape[1] > then.shape[1]:
-        # Scenario 2.4: more columns than expected, expected fewer columns
-        data = ["More columns returned than expected"]
-    elif df.shape[1] < then.shape[1]:
-        # Scenario 2.5: fewer columns than expected, expected fewer columns
-        data = ["Fewer columns returned than expected"]
-    else:
-        data = ["Result mismatch"]
-    df_diff = pandas.DataFrame(data, columns=['Result'])
-    return df_diff
-
-
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
                     then: pandas.DataFrame,
-                    bindings: dict) -> SpecResult:
+                    bindings: dict = None) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
 
     try:
@@ -203,16 +194,42 @@ def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: SparqlAction,
                        then: Graph,
-                       bindings: dict) -> SpecResult:
+                       bindings: dict = None) -> SpecResult:
     logging.info(f"Running construct spec {spec_uri}")
-    result = given.query(when.query, initBindings=bindings).graph
 
-    graph_compare = graph_comparison(then, result)
-    equal = isomorphic(result, then)
-    if equal:
-        return SpecPassed(spec_uri)
-    else:
-        return ConstructSpecFailure(spec_uri, graph_compare)
+    try:
+        result = given.query(when.query, initBindings=bindings).graph
+
+        graph_compare = graph_comparison(then, result)
+        equal = isomorphic(result, then)
+        if equal:
+            return SpecPassed(spec_uri)
+        else:
+            return ConstructSpecFailure(spec_uri, graph_compare)
+    except ParseException as e:
+        return SparqlParseFailure(spec_uri, e)
+
+
+def run_update_spec(spec_uri: URIRef,
+                    given: Graph,
+                    when: SparqlAction,
+                    then: Graph,
+                    bindings: dict = None) -> SpecResult:
+    logging.info(f"Running update spec {spec_uri}")
+
+    try:
+        result = given
+        result.update(when.query, initBindings=bindings)
+
+        graph_compare = graph_comparison(then, result)
+        equal = isomorphic(result, then)
+        if equal:
+            return SpecPassed(spec_uri)
+        else:
+            return UpdateSpecFailure(spec_uri, graph_compare)
+
+    except ParseException as e:
+        return SparqlParseFailure(spec_uri, e)
 
 
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
@@ -240,6 +257,8 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
             return SelectSparqlQuery(when.query.value)
         elif when.type == MUST.ConstructSparql:
             return ConstructSparqlQuery(when.query.value)
+        elif when.type == MUST.UpdateSparql:
+            return UpdateSparqlQuery(when.query.value)
 
 
 def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
@@ -259,6 +278,28 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
     
+    CONSTRUCT {{ ?s ?p ?o }}
+    {{
+        <{spec_uri}> <{MUST.then}> [
+            a <{MUST.StatementsDataset}> ;
+            <{MUST.statements}> [
+                a rdf:Statement ;
+                rdf:subject ?s ;
+                rdf:predicate ?p ;
+                rdf:object ?o ;
+            ] ;
+            ]
+    }}
+    """
+    expected_results = spec_graph.query(then_query).graph
+
+    return expected_results
+
+
+def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+    then_query = f"""
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> [
@@ -328,3 +369,26 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
         df = pandas.concat(series_list, axis=1)
 
     return df
+
+
+def return_mismatch_message(df: pandas.DataFrame,
+                            then: pandas.DataFrame) -> pandas.DataFrame:
+    if df.shape[0] != then.shape[0] and df.shape[1] != then.shape[1]:
+        # Scenario 2.1: neither row number nor columns match
+        data = ["Neither row number nor columns match"]
+    elif df.shape[0] > then.shape[0]:
+        # Scenario 2.2: more results than expected, expected fewer results
+        data = ["More rows returned than expected"]
+    elif df.shape[0] < then.shape[0]:
+        # Scenario 2.3: fewer results than expected, expected more results
+        data = ["Fewer rows returned than expected"]
+    elif df.shape[1] > then.shape[1]:
+        # Scenario 2.4: more columns than expected, expected fewer columns
+        data = ["More columns returned than expected"]
+    elif df.shape[1] < then.shape[1]:
+        # Scenario 2.5: fewer columns than expected, expected fewer columns
+        data = ["Fewer columns returned than expected"]
+    else:
+        data = ["Result mismatch"]
+    df_diff = pandas.DataFrame(data, columns=['Result'])
+    return df_diff
