@@ -22,3 +22,5 @@ class MUST(DefinedNamespace):
     row: URIRef
     variable: URIRef
     binding: URIRef
+
+    EmptyResult: URIRef
