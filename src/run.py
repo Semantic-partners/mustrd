@@ -6,7 +6,6 @@ from colorama import Fore, Style
 
 
 def main(argv):
-
     path_under_test = None
     verbose = False
     opts, args = getopt.getopt(argv, "hvp:", ["put="])
@@ -44,10 +43,10 @@ def main(argv):
         for res in results:
             if type(res) == SelectSpecFailure:
                 print(f"Failed {res.spec_uri}")
+                print(res.message)
                 print(res.table_comparison.to_markdown())
             if type(res) == ConstructSpecFailure:
                 print(f"Failed {res.spec_uri}")
-
 
 
 if __name__ == "__main__":
