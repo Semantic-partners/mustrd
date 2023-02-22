@@ -7,7 +7,6 @@ from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFa
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
-
 class TestRunSelectSpec:
     def test_select_spec_passes(self):
         triples = """
@@ -649,10 +648,12 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
             assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    | Result                              |
-|---:|:------------------------------------|
-|  0 | More columns returned than expected |"""
+            assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                            | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj | https://semanticpartners.com/data/test/obj | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
@@ -700,10 +701,61 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
             assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    | Result                               |
-|---:|:-------------------------------------|
-|  0 | Fewer columns returned than expected |"""
+            assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 2 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
+|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
+|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_fewer_and_different_columns_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "obj" ;
+                                       must:binding test-data:object  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('obj', 'expected')                           | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:----------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/object |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
@@ -752,10 +804,12 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
             assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    | Result                           |
-|---:|:---------------------------------|
-|  0 | More rows returned than expected |"""
+            assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
+|---:|:--------------------|:-----------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:----------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
@@ -816,10 +870,82 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
             assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    | Result                            |
-|---:|:----------------------------------|
-|  0 | Fewer rows returned than expected |"""
+            assert message == "Expected 2 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   | ('p', 'expected')                                | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('o', 'expected')                             | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
+|---:|:-----------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:-------------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:----------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
+|  0 | https://semanticpartners.com/data/test/subject |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/predicate |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/object |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_fewer_and_different_rows_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        test-data:sub3 test-data:pred3 test-data:obj3 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub1 ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred1 ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj1  ; 
+                                        ];  ] ,
+                                         [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub4 ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred4 ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj4  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 2 row(s) and 3 column(s), got 3 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                           | ('s', 'actual')                             | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                            | ('p', 'actual')                              | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('o', 'expected')                           | ('o', 'actual')                             | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                |
+|---:|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:---------------------------------------------|:---------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|
+|  0 |                                             | https://semanticpartners.com/data/test/sub2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                              | https://semanticpartners.com/data/test/pred2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                             | https://semanticpartners.com/data/test/obj2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 |                                             | https://semanticpartners.com/data/test/sub3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                              | https://semanticpartners.com/data/test/pred3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                             | https://semanticpartners.com/data/test/obj3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |
+|  2 | https://semanticpartners.com/data/test/sub4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/pred4 |                                              | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
@@ -913,9 +1039,164 @@ class TestRunSelectSpec:
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
             assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                             | ('o', 'actual')                            |
 |---:|:----------------------------------------------|:-------------------------------------------|
 |  1 | https://semanticpartners.com/data/test/object | https://semanticpartners.com/data/test/obj |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_different_column_names_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "obj" ;
+                                       must:binding test-data:obj  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
+|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_fewer_rows_and_columns_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj , test-data:object .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,                                                                               [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  2 | https://semanticpartners.com/data/test/sub |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_fewer_and_different_rows_and_columns_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj , test-data:object .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ sh:order 1 ;
+                                    must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:subject ; 
+                                        ] , [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-----------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  2 | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")

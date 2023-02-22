@@ -37,6 +37,7 @@ class SpecPassed(SpecResult):
 @dataclass
 class SelectSpecFailure(SpecResult):
     table_comparison: pandas.DataFrame
+    message: str
 
 
 @dataclass
@@ -156,35 +157,35 @@ def run_select_spec(spec_uri: URIRef,
             if "order by ?" or "order by desc" or "order by asc" not in when.query.lower():
                 df.sort_values(by=columns[::2], inplace=True)
                 df.reset_index(inplace=True, drop=True)
-                # df.sort_index(axis=1, inplace=True)
 
             # Scenario 1: expected no result but got a result
             if then.empty:
-                modified_then = df.copy()
-                for col in modified_then.columns:
-                    modified_then[col].values[:] = None
-                df_diff = modified_then.compare(df, result_names=("expected", "actual"))
+                message = f"Expected 0 row(s) and 0 column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
+                then = create_empty_dataframe_with_columns(df)
+                df_diff = then.compare(df, result_names=("expected", "actual"))
             else:
                 # Scenario 2: expected a result and got a result
+                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 if df.shape == then.shape and (df.columns == then.columns).all():
                     df_diff = then.compare(df, result_names=("expected", "actual"))
                 else:
-                    df_diff = return_mismatch_message(df, then)
+                    df_diff = construct_df_diff(df, then)
         else:
+
             if then.empty:
                 # Scenario 3: expected no result, got no result
+                message = f"Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
                 df = pandas.DataFrame()
             else:
                 # Scenario 4: expected a result, but got an empty result
-                df = then.copy()
-                for col in df.columns:
-                    df[col].values[:] = None
+                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
+                df = create_empty_dataframe_with_columns(then)
             df_diff = then.compare(df, result_names=("expected", "actual"))
 
         if df_diff.empty:
             return SpecPassed(spec_uri)
         else:
-            return SelectSpecFailure(spec_uri, df_diff)
+            return SelectSpecFailure(spec_uri, df_diff, message)
 
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
@@ -371,24 +372,67 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
     return df
 
 
-def return_mismatch_message(df: pandas.DataFrame,
-                            then: pandas.DataFrame) -> pandas.DataFrame:
+def calculate_row_difference(df1: pandas.DataFrame,
+                             df2: pandas.DataFrame) -> pandas.DataFrame:
+    df_all = df1.merge(df2.drop_duplicates(), how='left', indicator=True)
+    actual_rows = df_all[df_all['_merge'] == 'left_only']
+    actual_rows = actual_rows.drop('_merge', axis=1)
+    return actual_rows
+
+
+def construct_df_diff(df: pandas.DataFrame,
+                      then: pandas.DataFrame) -> pandas.DataFrame:
+    actual_rows = calculate_row_difference(df, then)
+    expected_rows = calculate_row_difference(then, df)
+    actual_columns = df.columns.difference(then.columns)
+    expected_columns = then.columns.difference(df.columns)
+
+    df_diff = pandas.DataFrame()
+    modified_df = df
+    modified_then = then
+
+    if actual_columns.size > 0:
+        modified_then = modified_then.reindex(modified_then.columns.to_list() + actual_columns.to_list(), axis=1)
+        modified_then[actual_columns.to_list()] = modified_then[actual_columns.to_list()].fillna('')
+
+    if expected_columns.size > 0:
+        modified_df = modified_df.reindex(modified_df.columns.to_list() + expected_columns.to_list(), axis=1)
+        modified_df[expected_columns.to_list()] = modified_df[expected_columns.to_list()].fillna('')
+
+    modified_df = modified_df.reindex(modified_then.columns, axis=1)
+
     if df.shape[0] != then.shape[0] and df.shape[1] != then.shape[1]:
-        # Scenario 2.1: neither row number nor columns match
-        data = ["Neither row number nor columns match"]
-    elif df.shape[0] > then.shape[0]:
-        # Scenario 2.2: more results than expected, expected fewer results
-        data = ["More rows returned than expected"]
-    elif df.shape[0] < then.shape[0]:
-        # Scenario 2.3: fewer results than expected, expected more results
-        data = ["Fewer rows returned than expected"]
-    elif df.shape[1] > then.shape[1]:
-        # Scenario 2.4: more columns than expected, expected fewer columns
-        data = ["More columns returned than expected"]
-    elif df.shape[1] < then.shape[1]:
-        # Scenario 2.5: fewer columns than expected, expected fewer columns
-        data = ["Fewer columns returned than expected"]
-    else:
-        data = ["Result mismatch"]
-    df_diff = pandas.DataFrame(data, columns=['Result'])
+        # take modified columns and add rows
+        actual_rows = calculate_row_difference(modified_df, modified_then)
+        expected_rows = calculate_row_difference(modified_then, modified_df)
+        df_diff = generate_row_diff(actual_rows, expected_rows)
+    elif actual_rows.shape[0] > 0 or expected_rows.shape[0] > 0:
+        df_diff = generate_row_diff(actual_rows, expected_rows)
+    elif actual_columns.size > 0 or expected_columns.size > 0:
+        df_diff = modified_then.compare(modified_df, result_names=("expected", "actual"), keep_shape=True,
+                                        keep_equal=True)
+
     return df_diff
+
+
+def generate_row_diff(actual_rows: pandas.DataFrame, expected_rows: pandas.DataFrame) -> pandas.DataFrame:
+    df_diff_actual_rows = pandas.DataFrame()
+    df_diff_expected_rows = pandas.DataFrame()
+
+    if actual_rows.shape[0] > 0:
+        empty_actual_copy = create_empty_dataframe_with_columns(actual_rows)
+        df_diff_actual_rows = empty_actual_copy.compare(actual_rows, result_names=("expected", "actual"))
+
+    if expected_rows.shape[0] > 0:
+        empty_expected_copy = create_empty_dataframe_with_columns(expected_rows)
+        df_diff_expected_rows = expected_rows.compare(empty_expected_copy, result_names=("expected", "actual"))
+
+    df_diff_rows = pandas.concat([df_diff_actual_rows, df_diff_expected_rows], ignore_index=True)
+    return df_diff_rows
+
+
+def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.DataFrame:
+    empty_copy = original.copy()
+    for col in empty_copy.columns:
+        empty_copy[col].values[:] = None
+    return empty_copy
