@@ -16,10 +16,10 @@ from mustrdAnzo import MustrdAnzo
 import requests
 import os
 
-
 logging.basicConfig(level=logging.INFO)
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+
 
 @dataclass
 class GraphComparison:
@@ -90,6 +90,7 @@ class UpdateSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(UpdateSparqlQuery, self).__init__(query)
 
+
 # TODO figure out if **/* or *
 def run_specs(spec_path: Path) -> list[SpecResult]:
     ttl_files = list(spec_path.glob('**/*.ttl'))
@@ -154,71 +155,75 @@ def run_triplestore_spec(spec_uri, spec_graph) -> SpecResult:
         raise Exception(f"Not Implemented {tripleStoreType}")
 
     # Get GIVEN
-    given = get_item(subject = spec_uri,predicate=MUST.hasGiven, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    given = get_item(subject=spec_uri, predicate=MUST.hasGiven, spec_graph=spec_graph,
+                     mustrd_triple_store=mustrdTripleStore)
     logging.info(f"Given: {given.value}")
-        
+
     # Get WHEN
-    when = get_item(subject = spec_uri,predicate=MUST.hasWhen, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    when = get_item(subject=spec_uri, predicate=MUST.hasWhen, spec_graph=spec_graph,
+                    mustrd_triple_store=mustrdTripleStore)
     logging.info(f"when: {when.value}")
 
     # Execute WHEN against GIVEN on the triple store
-    result = mustrdTripleStore.executeWhenAgainstGiven(given=given,when=when)
+    result = mustrdTripleStore.executeWhenAgainstGiven(given=given, when=when)
     logging.info(f"result: {result}")
 
     # Get THEN
-    then = get_item(subject = spec_uri,predicate=MUST.hasThen, spec_graph=spec_graph, mustrdTripleStore= mustrdTripleStore)
+    then = get_item(subject=spec_uri, predicate=MUST.hasThen, spec_graph=spec_graph,
+                    mustrd_triple_store=mustrdTripleStore)
     logging.info(f"then: {then.value}")
 
     # Compare result with THEN
 
-def get_item(subject, predicate, spec_graph, mustrdTripleStore):
+
+def get_item(subject, predicate, spec_graph, mustrd_triple_store):
     item = Item()
 
-    itemNode=spec_graph.value(subject=subject, predicate=predicate)
-    if itemNode==None: raise Exception(f"Item Node empty for {subject} {predicate}")
-    sourceNode = spec_graph.value(subject =itemNode, predicate=MUST.dataSource)
-    if sourceNode==None: raise Exception(f"No data source for item {subject} {predicate}")
+    item_node = spec_graph.value(subject=subject, predicate=predicate)
+    if item_node is None: raise Exception(f"Item Node empty for {subject} {predicate}")
+    source_node = spec_graph.value(subject=item_node, predicate=MUST.dataSource)
+    if source_node is None: raise Exception(f"No data source for item {subject} {predicate}")
 
-    dataSourceType = spec_graph.value(subject=sourceNode, predicate=RDF.type)
-    if dataSourceType==None: raise Exception(f"Node has no rdf type {subject} {predicate}")
+    data_source_type = spec_graph.value(subject=source_node, predicate=RDF.type)
+    if data_source_type == None: raise Exception(f"Node has no rdf type {subject} {predicate}")
 
     # Get item from a file
-    if dataSourceType == MUST.FileDataSource:
-        filePath = Path(spec_graph.value(subject=sourceNode, predicate=MUST.file))
-        item.value = getSpecItemFromFile(filePath)
+    if data_source_type == MUST.FileDataSource:
+        file_path = Path(spec_graph.value(subject=source_node, predicate=MUST.file))
+        item.value = get_spec_item_from_file(file_path)
     # Get item directly from config file (in text string)
-    elif dataSourceType==MUST.textDataSource:
-        item.value =  spec_graph.value(subject=sourceNode, predicate=MUST.text)
+    elif data_source_type == MUST.textDataSource:
+        item.value = spec_graph.value(subject=source_node, predicate=MUST.text)
     # Get item with http GET protocol
-    elif dataSourceType==MUST.HttpDataSource:
-        item.value =  requests.get(spec_graph.value(subject=sourceNode, predicate=MUST.dataSourceUrl)).content
+    elif data_source_type == MUST.HttpDataSource:
+        item.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
     # From anzo specific source source
-    elif type(mustrdTripleStore) == MustrdAnzo:
+    elif type(mustrd_triple_store) == MustrdAnzo:
         # Get GIVEN or THEN from anzo graphmart
-        if dataSourceType == MUST.anzoGraphmartDataSource:
-            graphMart = spec_graph.value(subject=sourceNode, predicate=MUST.graphmart)
-            layer = spec_graph.value(subject=sourceNode, predicate=MUST.layer)
-            item.value = mustrdTripleStore.getSpecItemGraphmart(graphMart=graphMart,layer=layer)
+        if data_source_type == MUST.anzoGraphmartDataSource:
+            graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
+            layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
+            item.value = mustrd_triple_store.getSpecItemGraphmart(graphMart=graphmart, layer=layer)
         # Get WHEN item from query builder
-        elif dataSourceType == MUST.anzoQueryBuilderDataSource:
-            queryFolder = spec_graph.value(subject=sourceNode, predicate=MUST.queryFolder)
-            queryName = spec_graph.value(subject=sourceNode, predicate=MUST.queryName)
-            item.value = mustrdTripleStore.getQueryFromQueryBuilder(folderName = queryFolder, queryName = queryName)
+        elif data_source_type == MUST.anzoQueryBuilderDataSource:
+            query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
+            query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
+            item.value = mustrd_triple_store.getQueryFromQueryBuilder(folderName=query_folder, queryName=query_name)
     # If anzo specific function is called but no anzo defined
-    elif dataSourceType == MUST.anzoGraphmartDataSource or dataSourceType==MUST.anzoQueryBuilderDataSource:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {dataSourceType}")
+    elif data_source_type == MUST.anzoGraphmartDataSource or data_source_type == MUST.anzoQueryBuilderDataSource:
+        raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
     else:
-        raise Exception(f"Spec type not Implemented. itemNode: {sourceNode}. Type: {dataSourceType}")
+        raise Exception(f"Spec type not Implemented. itemNode: {source_node}. Type: {data_source_type}")
     return item
 
 
-def getSpecItemFromFile(path: Path):
+def get_spec_item_from_file(path: Path):
     content = ""
-    if(os.path.isdir(path)):
+    if os.path.isdir(path):
         for entry in path.iterdir():
-            content+=entry.read_text()
+            content += entry.read_text()
     else:
-        content=path.read_text()
+        content = path.read_text()
     return str(content)
 
 
