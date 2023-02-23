@@ -1,9 +1,11 @@
 import logging
 from dataclasses import dataclass
+from itertools import groupby
+
 from pyparsing import ParseException
 from pathlib import Path
 
-from rdflib import Graph, URIRef, Variable
+from rdflib import Graph, URIRef, Variable, Literal
 from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
 import pandas
