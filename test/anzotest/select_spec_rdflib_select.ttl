@@ -9,7 +9,7 @@ test-data:rdflib__scenario_select
 
     must:hasGiven [a must:given;
                 must:dataSource [ a must:FileDataSource ;
-                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/given.ttl"
+                must:file "test/anzotest/data/given.ttl"
     ]];
 
     must:hasWhen  [a must:when;
@@ -21,5 +21,5 @@ test-data:rdflib__scenario_select
 
     must:hasThen [a must:then;
                 must:dataSource [ a must:FileDataSource ;
-                must:file "C:/Users/aymer/git/mustrd/test/anzotest/data/thenSuccess.csv"
+                must:file "test/anzotest/data/thenSuccess.csv"
     ]] .

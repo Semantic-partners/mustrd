@@ -10,6 +10,7 @@ from rdflib.namespace import RDF, XSD, SH
 from rdflib.compare import isomorphic, graph_diff
 import pandas
 
+from mustrdGraphDb import MustrdGraphDb
 from namespace import MUST
 from mustrdRdfLib import MustrdRdfLib
 from mustrdAnzo import MustrdAnzo
@@ -95,12 +96,9 @@ class UpdateSparqlQuery(SparqlAction):
         super(UpdateSparqlQuery, self).__init__(query)
 
 
-# TODO figure out if **/* or *
-def run_specs(spec_path: Path) -> list[SpecResult]:
-    ttl_files = list(spec_path.glob('**/*.ttl'))
-    # ttl_files = list(spec_path.glob('*.ttl'))
-def run_specs(spec_path: Path, triplestore_spec_path: Path) -> list[SpecResult]:
-    os.chdir(spec_path)
+# TODO figure out if **/* or *, depends whether we want some folder structure or not
+def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
+    # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     logging.info(f"Found {len(ttl_files)} ttl files")
 
@@ -111,10 +109,16 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path) -> list[SpecResult]:
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     logging.info(f"Collected {len(spec_uris)} items")
 
-    tripleStore_config = Graph().parse(triplestore_spec_path)
     results = []
-    for tripleStore in get_triple_stores(tripleStore_config):
-        results = results + [run_spec(spec_uri, spec_graph, tripleStore) for spec_uri in spec_uris]
+
+    # run in vanilla rdflib
+    if triplestore_spec_path is None:
+        results = [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+    # run in triple stores
+    else:
+        triple_store_config = Graph().parse(triplestore_spec_path)
+        for triple_store in get_triple_stores(triple_store_config):
+            results = results + [run_triplestore_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
 
     return results
 
@@ -150,7 +154,7 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
     given = get_spec_component(subject=spec_uri,
                                predicate=MUST.hasGiven,
                                spec_graph=spec_graph,
-                               mustrdTripleStore=mustrd_triple_store)
+                               mustrd_triple_store=mustrd_triple_store)
 
     logging.debug(f"Given: {given.value}")
 
@@ -158,7 +162,7 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
     when = get_spec_component(subject=spec_uri,
                               predicate=MUST.hasWhen,
                               spec_graph=spec_graph,
-                              mustrdTripleStore=mustrd_triple_store)
+                              mustrd_triple_store=mustrd_triple_store)
 
     logging.debug(f"when: {when.value}")
 
@@ -166,12 +170,12 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
     then = get_spec_component(subject=spec_uri,
                               predicate=MUST.hasThen,
                               spec_graph=spec_graph,
-                              mustrdTripleStore=mustrd_triple_store)
+                              mustrd_triple_store=mustrd_triple_store)
 
     logging.debug(f"then: {then.value}")
 
     # Execute WHEN against GIVEN on the triple store
-    execute_when(when, given, then, spec_uri, mustrd_triple_store)
+    return execute_when(when, given, then, spec_uri, mustrd_triple_store)
 
 
 def execute_when(when, given, then, spec_uri, mustrd_triple_store):
@@ -193,7 +197,7 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
             if len(then_frame.index)!= len(results.index):
                 return SelectSpecFailure(spec_uri, then_frame.merge(results,
                       indicator = True,
-                      how = 'outer'))
+                      how = 'outer'), message='Not the same number of rows')
 
             df_diff = then_frame.compare(results, result_names=("expected", "actual"))
 
@@ -201,7 +205,7 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
                 return SpecPassed(spec_uri)
             else:
                 logging.info(f"Test failed: spec_uri: {spec_uri}")
-                return SelectSpecFailure(spec_uri, df_diff)
+                return SelectSpecFailure(spec_uri, df_diff, message="Test failed")
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
 
@@ -222,6 +226,15 @@ def get_triple_stores(triple_store_graph):
             inputGraph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
             triple_stores.append(MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
                             gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password))
+        elif tripleStoreType == MUST.graphDbConfig:
+            graphDbUrl = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
+            graphDbPort = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
+            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
+            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
+            graphdBRepo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
+            inputGraph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+            triple_stores.append(MustrdGraphDb(graphDbUrl=graphDbUrl, graphDbPort=graphDbPort,
+                                               username=username, password=password, graphDbRepository=graphdBRepo, inputGraph=inputGraph))
         else:
             raise Exception(f"Not Implemented {tripleStoreType}")
     return triple_stores
@@ -244,7 +257,7 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
 
     # Get specComponent from a file
     if data_source_type == MUST.FileDataSource:
-        file_path = Path(spec_graph.value(subject=source_node, predicate=MUST.file))
+        file_path = Path(os.path.abspath(spec_graph.value(subject=source_node, predicate=MUST.file)))
         spec_component.value = get_spec_spec_component_from_file(file_path)
     # Get specComponent directly from config file (in text string)
     elif data_source_type == MUST.textDataSource:
@@ -253,10 +266,10 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
     elif data_source_type == MUST.HttpDataSource:
         spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
     # get specComponent from ttl table
-    elif data_source_type ==MUST.TableDataSource:
+    elif data_source_type == MUST.TableDataSource:
         spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
     # get specComponent from reified statements
-    elif data_source_type ==MUST.StatementsDataSource:
+    elif data_source_type == MUST.StatementsDataSource:
         spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
     # From anzo specific source
     elif type(mustrd_triple_store) == MustrdAnzo:

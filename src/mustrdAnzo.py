@@ -2,7 +2,7 @@ import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
 
-
+# TODO responses need to be parsed in case they fail
 class MustrdAnzo:
     def __init__(self, anzoUrl, anzoPort, gqeURI, inputGraph,  username=None, password=None):
         self.anzoUrl = anzoUrl
@@ -22,6 +22,7 @@ class MustrdAnzo:
                                          auth=(self.username, self.password), data=data))
 
     def execute_construct(self, given, when):
+        self.clear_graph()
         self.upload_given(given)
         data = {'datasourceURI': self.gqeURI, 'query': when, 'default-graph-uri': self.inputGraph}
         url = f"https://{self.anzoUrl}:{self.anzoPort}/sparql?format=ttl"
@@ -59,12 +60,14 @@ class MustrdAnzo:
     def upload_given(self, given):
         insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
         data = {'datasourceURI': self.gqeURI, 'update': insertQuery}
-        requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
+        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
+        print(response)
 
     def clear_graph(self):
         clearQuery = f"CLEAR GRAPH <{self.inputGraph}>"
         data = {'datasourceURI': self.gqeURI, 'update': clearQuery}
-        requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
+        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
+        print(response)
 
     def manage_anzo_response(self, response):
         contentString = response.content.decode("utf-8")
