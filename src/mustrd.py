@@ -5,7 +5,7 @@ from itertools import groupby
 from pathlib import Path
 
 from rdflib import Graph, URIRef, Variable
-from rdflib.namespace import RDF, XSD, SH
+from rdflib.namespace import RDF, XSD
 from rdflib.compare import isomorphic, graph_diff
 from rdflib.term import Literal
 import pandas
@@ -99,11 +99,13 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     when = get_when(spec_uri, spec_graph)
     when_type = type(when)
     when_bindings = get_when_bindings(spec_uri, spec_graph)
+
     result = None
 
     if when_type == SelectSparqlQuery:
         then = get_then_select(spec_uri, spec_graph)
-        result = run_select_spec(spec_uri, given, when, then, when_bindings)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        result = run_select_spec(spec_uri, given, when, then, when_bindings, is_ordered)
     elif when_type == ConstructSparqlQuery:
         then = get_then_construct(spec_uri, spec_graph)
         result = run_construct_spec(spec_uri, given, when, then, when_bindings)
@@ -120,32 +122,17 @@ def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
                     then: pandas.DataFrame,
-                    bindings: dict = None) -> SpecResult:
+                    bindings: dict = None,
+                    ordered: bool = False) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
 
     try:
         result = given.query(when.query, initBindings=bindings)
-        data_dict = {}
-        columns = []
         series_list = []
 
-        for item in result:
-            for key, value in item.asdict().items():
-                if key not in columns:
-                    columns.append(key)
-                    data_dict[key] = []
-                    data_dict[key + "_datatype"] = []
+        columns = get_select_columns(result)
 
-        for item in result:
-            for key, value in item.asdict().items():
-                data_dict[key].append(value)
-                if type(value) == Literal:
-                    literal_type = XSD.string
-                    if hasattr(value, "datatype") and value.datatype:
-                        literal_type = value.datatype
-                    data_dict[key + "_datatype"].append(literal_type)
-                else:
-                    data_dict[key + "_datatype"].append(XSD.anyURI)
+        data_dict = populate_select_columns(columns, result)
 
         # convert dict to Series to avoid problem with array length
         for key, value in data_dict.items():
@@ -153,10 +140,16 @@ def run_select_spec(spec_uri: URIRef,
 
         if series_list:
             df = pandas.concat(series_list, axis=1)
+            when_ordered = False
 
-            if "order by ?" or "order by desc" or "order by asc" not in when.query.lower():
+            if "order by ?" not in when.query.lower() and "order by desc" not in when.query.lower() and "order by asc" not in when.query.lower():
                 df.sort_values(by=columns[::2], inplace=True)
+
                 df.reset_index(inplace=True, drop=True)
+                if ordered:
+                    logging.info(f"sh:order in {spec_uri} is ignored")
+            else:
+                when_ordered = True
 
             # Scenario 1: expected no result but got a result
             if then.empty:
@@ -165,11 +158,21 @@ def run_select_spec(spec_uri: URIRef,
                 df_diff = then.compare(df, result_names=("expected", "actual"))
             else:
                 # Scenario 2: expected a result and got a result
-                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                if df.shape == then.shape and (df.columns == then.columns).all():
-                    df_diff = then.compare(df, result_names=("expected", "actual"))
+                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
+                          f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
+                if when_ordered is True and not ordered:
+                    message += ". Actual result is ordered, must:then must contain sh:order on every row."
+                    if df.shape == then.shape and (df.columns == then.columns).all():
+                        df_diff = then.compare(df, result_names=("expected", "actual"))
+                        if df_diff.empty:
+                            df_diff = df
+                    else:
+                        df_diff = construct_df_diff(df, then)
                 else:
-                    df_diff = construct_df_diff(df, then)
+                    if df.shape == then.shape and (df.columns == then.columns).all():
+                        df_diff = then.compare(df, result_names=("expected", "actual"))
+                    else:
+                        df_diff = construct_df_diff(df, then)
         else:
 
             if then.empty:
@@ -275,10 +278,34 @@ def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
         return bindings
 
 
+def is_then_select_ordered(spec_uri: URIRef, spec_graph: Graph) -> bool:
+    ask_select_ordered = f"""
+    ASK {{
+    {{SELECT (count(?binding) as ?totalBindings) {{  
+    <{spec_uri}> <{MUST.then}> ?then .
+ 	?then a <{MUST.TableDataset}> ;
+       <{MUST.rows}> [ <{MUST.row}> [ <{MUST.variable}>  ?variable ;
+                      <{MUST.binding}>  ?binding ;
+                      ] ; ] .
+}} }}
+    {{SELECT (count(?binding) as ?orderedBindings) {{    
+    <{spec_uri}> <{MUST.then}> ?then .
+ 	?then a <{MUST.TableDataset}> ;
+       <{MUST.rows}> [ sh:order ?order ;
+                    <{MUST.row}> [ <{MUST.variable}>  ?variable ;
+                      <{MUST.binding}>  ?binding ;
+                      ] ; ] .
+}} }}
+    FIlTER(?totalBindings = ?orderedBindings)
+}}"""
+    is_ordered = spec_graph.query(ask_select_ordered)
+    return is_ordered.askAnswer
+
+
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
-    
+
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> [
@@ -333,13 +360,18 @@ def get_then_select(spec_uri: URIRef, spec_graph: Graph) -> pandas.DataFrame:
         WHERE {{ 
             <{spec_uri}> <{MUST.then}> ?then .
             ?then a <{MUST.TableDataset}> ;
-                  <{MUST.rows}> [ <{SH.order}> 1 ;
-                                  <{MUST.row}> [
+                  <{MUST.rows}> [ <{MUST.row}> [
                                     <{MUST.variable}> ?variable ;
                                     <{MUST.binding}> ?binding ;
                                     ] ; 
                                 ] .
-            }}"""
+            OPTIONAL {{ ?then <{MUST.rows}> [ sh:order ?order ;
+                                            <{MUST.row}> [            
+                                    <{MUST.variable}> ?variable ;
+                                    <{MUST.binding}> ?binding ;
+                                    ] ; 
+                                ] . }}
+            }} ORDER BY ASC(?order)"""
 
         expected_results = spec_graph.query(then_query)
         data_dict = {}
@@ -436,3 +468,32 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     for col in empty_copy.columns:
         empty_copy[col].values[:] = None
     return empty_copy
+
+
+def get_select_columns(result):
+    columns = []
+    for item in result:
+        for key, value in item.asdict().items():
+            if key not in columns:
+                columns.append(key)
+    return columns
+
+
+def populate_select_columns(columns, result):
+    data_dict = {}
+
+    for column in columns:
+        data_dict[column] = []
+        data_dict[column + "_datatype"] = []
+
+    for item in result:
+        for key, value in item.asdict().items():
+            data_dict[key].append(value)
+            if type(value) == Literal:
+                literal_type = XSD.string
+                if hasattr(value, "datatype") and value.datatype:
+                    literal_type = value.datatype
+                data_dict[key + "_datatype"].append(literal_type)
+            else:
+                data_dict[key + "_datatype"].append(XSD.anyURI)
+    return data_dict
