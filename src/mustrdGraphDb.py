@@ -2,6 +2,14 @@ import requests
 from rdflib import Graph
 
 
+def manage_graphdb_response(response):
+    content_string = response.content.decode("utf-8")
+    if response.status_code == 200:
+        return content_string
+    else:
+        raise Exception(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
+
+
 class MustrdGraphDb:
     def __init__(self, graphDbUrl, graphDbPort, graphDbRepository, inputGraph, username=None, password=None):
         self.graphDbUrl = graphDbUrl
@@ -15,27 +23,24 @@ class MustrdGraphDb:
         self.clear_graph()
         self.upload_given(given)
         url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}?query={when}"
-        return self.manage_graphdb_response(requests.post(url=url,
+        return manage_graphdb_response(requests.post(url=url,
                                                           auth=(self.username, self.password)))
 
     def execute_construct(self, given, when):
         self.upload_given(given)
         url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}?query={when}"
-        return Graph().parse(data=self.manage_graphdb_response(requests.get(url=url,
-                                                                             auth=(self.username, self.password))))
+        return Graph().parse(data=manage_graphdb_response(requests.get(url=url,
+                                                                       auth=(self.username, self.password))))
 
-    # TODO put in body for longer input files
+    # https://github.com/Semantic-partners/mustrd/issues/22
     def upload_given(self, given):
-        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
-        requests.post(url=f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/statements?update={insertQuery}", auth=(self.username, self.password))
+        insert_query = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
+        requests.post(
+            url=f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/statements?update={insert_query}",
+            auth=(self.username, self.password))
 
     def clear_graph(self):
-        clearQuery = f"CLEAR GRAPH <{self.inputGraph}>"
-        requests.post(url=f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/statements?update={clearQuery}", auth=(self.username, self.password))
-
-    def manage_graphdb_response(self, response):
-        contentString = response.content.decode("utf-8")
-        if response.status_code == 200:
-            return contentString
-        else:
-            raise Exception(f"GraphDb error, status code: {response.status_code}, content: {contentString}")
+        clear_query = f"CLEAR GRAPH <{self.inputGraph}>"
+        requests.post(
+            url=f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/statements?update={clear_query}",
+            auth=(self.username, self.password))
