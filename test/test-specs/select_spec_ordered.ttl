@@ -1,0 +1,35 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:a_complete_select_scenario_ordered
+    a          must:TestSpec ;
+    must:given [ a               must:StatementsDataset ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub1 ;
+                                   rdf:predicate test-data:pred1 ;
+                                   rdf:object    test-data:obj1 ; ] ,
+                                   [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub2 ;
+                                   rdf:predicate test-data:pred2 ;
+                                   rdf:object    test-data:obj2 ; ] ; ] ;
+    must:when  [ a          must:SelectSparql ;
+                 must:query "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p" ; ] ;
+    must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 2 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
