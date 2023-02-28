@@ -17,8 +17,7 @@ test-data:a_complete_select_scenario_variables_datatypes
                       must:binding  true ; ] ;
 ] ;
     must:then  [ a         must:TableDataset ;
-                 must:rows [ sh:order 1 ;
-                             must:row [ must:variable "s" ;
+                 must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
