@@ -27,6 +27,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_ordered)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables))
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"

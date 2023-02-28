@@ -3,9 +3,10 @@ from rdflib.namespace import Namespace
 from rdflib.term import Literal, Variable, URIRef
 
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, \
-    get_then_select
+    get_then_select, is_then_select_ordered
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+
 
 class TestRunSelectSpec:
     def test_select_spec_passes(self):
@@ -28,8 +29,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -72,8 +72,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
                                         ] ,
@@ -122,8 +121,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -172,8 +170,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -220,8 +217,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec 
            a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
                                         ] ;
@@ -262,8 +258,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -309,8 +304,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -428,8 +422,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -480,8 +473,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -526,8 +518,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row 
+                        must:rows [ must:row 
                                         [
                                        must:variable "o" ;
                                        must:binding 25.0  ; 
@@ -570,8 +561,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -583,8 +573,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ,
-                                    [ sh:order 1 ;
-                                        must:row [
+                                    [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -628,8 +617,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -677,8 +665,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -730,8 +717,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -780,8 +766,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -833,8 +818,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -846,8 +830,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ,
-                                   [ sh:order 1 ;
-                                    must:row [
+                                   [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:subject ; 
                                         ] ,
@@ -901,8 +884,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub1 ; 
                                         ] ,
@@ -914,8 +896,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj1  ; 
                                         ];  ] ,
-                                         [ sh:order 1 ;
-                                    must:row [
+                                    [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub4 ; 
                                         ] ,
@@ -970,15 +951,13 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then  [ a         must:TableDataset ;
-                 must:rows [ sh:order 1 ;
-                             must:row [ must:variable "s" ;
+                 must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ] ,
                                       [ must:variable "object" ;
                                         must:binding  test-data:object ; ] ; ] ,
-                            [ sh:order 1 ;
-                             must:row [ must:variable "s" ;
+                            [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ]; ] ;
@@ -1016,15 +995,13 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then  [ a         must:TableDataset ;
-                 must:rows [ sh:order 1 ;
-                             must:row [ must:variable "s" ;
+                 must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ] ,
                                       [ must:variable "object" ;
                                         must:binding  test-data:object ; ] ; ] ,
-                            [ sh:order 1 ;
-                             must:row [ must:variable "s" ;
+                            [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:object ; ]; ] ;
@@ -1068,8 +1045,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,
@@ -1121,8 +1097,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,                                                                               [
@@ -1171,8 +1146,7 @@ class TestRunSelectSpec:
         test-data:my_failing_spec
             a must:TestSpec ;
             must:then [ a must:TableDataset ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:subject ; 
                                         ] , [
@@ -1198,5 +1172,275 @@ class TestRunSelectSpec:
 |  0 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
 |  1 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
 |  2 | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_ordered_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 2 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
+
+    def test_select_spec_ordered_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 2 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('s', 'expected')                           | ('s', 'actual')                             | ('p', 'expected')                            | ('p', 'actual')                              | ('o', 'expected')                           | ('o', 'actual')                             |
+|---:|:--------------------------------------------|:--------------------------------------------|:---------------------------------------------|:---------------------------------------------|:--------------------------------------------|:--------------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub2 | https://semanticpartners.com/data/test/sub1 | https://semanticpartners.com/data/test/pred2 | https://semanticpartners.com/data/test/pred1 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj1 |
+|  1 | https://semanticpartners.com/data/test/sub1 | https://semanticpartners.com/data/test/sub2 | https://semanticpartners.com/data/test/pred1 | https://semanticpartners.com/data/test/pred2 | https://semanticpartners.com/data/test/obj1 | https://semanticpartners.com/data/test/obj2 |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_not_ordered_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+            assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
+|---:|:--------------------------------------------|:----------------------------------------|:---------------------------------------------|:----------------------------------------|:--------------------------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj1 | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 | https://semanticpartners.com/data/test/sub2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj2 | http://www.w3.org/2001/XMLSchema#anyURI |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_not_all_ordered_fails(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_failing_spec
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+            assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
+|---:|:--------------------------------------------|:----------------------------------------|:---------------------------------------------|:----------------------------------------|:--------------------------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/sub1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj1 | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 | https://semanticpartners.com/data/test/sub2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj2 | http://www.w3.org/2001/XMLSchema#anyURI |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_spec_expected_fewer_rows_fails(self):
+        triples = """
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+            test-data:sub test-data:pred test-data:obj .
+            test-data:subject test-data:predicate test-data:object .
+            """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+            select ?s ?p ?o { ?s ?p ?o } order by ?p
+            """
+        spec_graph = Graph()
+        spec = """
+            @prefix sh: <http://www.w3.org/ns/shacl#> .
+            @prefix must: <https://mustrd.com/model/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+            test-data:my_failing_spec
+                a must:TestSpec ;
+                must:then [ a must:TableDataset ;
+                            must:rows [ must:row [
+                                           must:variable "s" ;
+                                           must:binding test-data:sub ; 
+                                            ] ,
+                                            [
+                                           must:variable "p" ;
+                                           must:binding test-data:pred ; 
+                                            ] ,
+                                            [
+                                           must:variable "o" ;
+                                           must:binding test-data:obj  ; 
+                                            ];
+                             ] ; ].
+            """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        print(spec_result)
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+            assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
+|---:|:--------------------|:-----------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:----------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
