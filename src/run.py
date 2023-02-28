@@ -7,22 +7,31 @@ from colorama import Fore, Style
 
 def main(argv):
     path_under_test = None
+    triplestore_spec_path = None
     verbose = False
-    opts, args = getopt.getopt(argv, "hvp:", ["put="])
+    opts, args = getopt.getopt(argv, "hvp:s:", ["put="])
     for opt, arg in opts:
         if opt == '-h':
-            print('run.py -p <path_under_test>')
+            print('run.py -p <path_under_test> -s <triple_store_configuration_path>')
             sys.exit()
         elif opt in ("-p", "--put"):
             path_under_test = arg
         if opt in ("-v", "--verbose"):
             print("Verbose set")
             verbose = True
+        if opt in ("-s", "--store"):
+            triplestore_spec_path = arg
     if not path_under_test:
         sys.exit("path_under_test not set")
+    if not triplestore_spec_path:
+        print("Running default configuration")
     print('Path under test is', path_under_test)
 
-    results = run_specs(Path(path_under_test))
+    if triplestore_spec_path:
+        results = run_specs(Path(path_under_test), Path(triplestore_spec_path))
+    else:
+        results = run_specs(Path(path_under_test))
+
     pass_count = 0
     fail_count = 0
     for res in results:
