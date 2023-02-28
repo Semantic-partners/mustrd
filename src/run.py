@@ -1,6 +1,6 @@
 import sys
 import getopt
-from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure
+from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure
 from pathlib import Path
 from colorama import Fore, Style
 
@@ -21,6 +21,7 @@ def main(argv):
             verbose = True
         if opt in ("-s", "--store"):
             triplestore_spec_path = arg
+            print('Path for triple store configuration is', triplestore_spec_path)
     if not path_under_test:
         sys.exit("path_under_test not set")
     if not triplestore_spec_path:
@@ -54,7 +55,7 @@ def main(argv):
                 print(f"Failed {res.spec_uri}")
                 print(res.message)
                 print(res.table_comparison.to_markdown())
-            if type(res) == ConstructSpecFailure:
+            if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
                 print(f"Failed {res.spec_uri}")
 
 
