@@ -4,13 +4,14 @@
 
 test-data:a_complete_insert_data_scenario
     a          must:TestSpec ;
-    must:given [ a               must:StatementsDataset ;
-                 must:statements [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a          must:UpdateSparql ;
-                 must:query "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }" ; ] ;
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
+                                   must:statements [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }" ; ] ;
+                 must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a               must:StatementsDataset ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;

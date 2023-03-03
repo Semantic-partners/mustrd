@@ -120,7 +120,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
 
     # run in vanilla rdflib
     if triplestore_spec_path is None:
-        results = [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+        results += [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+        # results = results + [run_triplestore_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
     # run in triple stores
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
@@ -130,37 +131,60 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     return results
 
 
-def run_spec(spec_uri, spec_graph) -> SpecResult:
+def run_spec(spec_uri, spec_graph,  mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
-    given = get_given(spec_uri, spec_graph)
-    when = get_when(spec_uri, spec_graph)
-    when_type = type(when)
+
+    # TODO load given from file https://github.com/Semantic-partners/mustrd/issues/40
+    # given = get_given(spec_uri, spec_graph)
+    given_component = get_spec_component(subject=spec_uri,
+                               predicate=MUST.given,
+                               spec_graph=spec_graph)
+
+    logging.debug(f"Given: {given_component.value}")
+
+    given = Graph().parse(data=given_component.value)
+
+    when_component = get_spec_component(subject=spec_uri,
+                              predicate=MUST.when,
+                              spec_graph=spec_graph,
+                              mustrd_triple_store=mustrd_triple_store)
+
+    logging.debug(f"when: {when_component.value}")
+
+    # when = get_when(spec_uri, spec_graph)
+    # when_type = type(when)
     when_bindings = get_when_bindings(spec_uri, spec_graph)
     result = None
 
-    if when_type == SelectSparqlQuery:
+
+    # TODO load then from file https://github.com/Semantic-partners/mustrd/issues/41
+    if when_component.queryType == MUST.SelectSparql:
+        when = SelectSparqlQuery(when_component.value)
         then = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
         result = run_select_spec(spec_uri, given, when, then, when_bindings, is_ordered)
-    elif when_type == ConstructSparqlQuery:
+    elif when_component.queryType == MUST.ConstructSparql:
+        when = ConstructSparqlQuery(when_component.value)
         then = get_then_construct(spec_uri, spec_graph)
         result = run_construct_spec(spec_uri, given, when, then, when_bindings)
-    elif when_type == UpdateSparqlQuery:
+    elif when_component.queryType == MUST.UpdateSparql:
+        when = UpdateSparqlQuery(when_component.value)
         then = get_then_update(spec_uri, spec_graph)
         result = run_update_spec(spec_uri, given, when, then, when_bindings)
     else:
-        raise Exception(f"invalid spec when type {when_type}")
+        raise Exception(f"invalid spec when type {when_component.queryType}")
 
     return result
 
 
-def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResult:
+# TODO deprecate this once everything is in the other spec
+def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
     logging.info(f"\nRunning test: {spec_uri}")
 
     # Get GIVEN
     given = get_spec_component(subject=spec_uri,
-                               predicate=MUST.hasGiven,
+                               predicate=MUST.given,
                                spec_graph=spec_graph,
                                mustrd_triple_store=mustrd_triple_store)
 
@@ -168,7 +192,7 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
 
     # Get WHEN
     when = get_spec_component(subject=spec_uri,
-                              predicate=MUST.hasWhen,
+                              predicate=MUST.when,
                               spec_graph=spec_graph,
                               mustrd_triple_store=mustrd_triple_store)
 
@@ -176,7 +200,7 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
 
     # Get THEN
     then = get_spec_component(subject=spec_uri,
-                              predicate=MUST.hasThen,
+                              predicate=MUST.then,
                               spec_graph=spec_graph,
                               mustrd_triple_store=mustrd_triple_store)
 
@@ -306,6 +330,10 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
         raise Exception(f"Spec type not Implemented. specComponentNode: {source_node}. Type: {data_source_type}")
 
     if spec_graph.value(subject=spec_component_node, predicate=RDF.type) == MUST.when:
+        spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
+
+     # for new version, if this works remove above version
+    if predicate == URIRef('https://mustrd.com/model/when'):
         spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
     return spec_component
 
@@ -497,9 +525,9 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
         elif when.type == MUST.UpdateSparql:
             return UpdateSparqlQuery(when.query.value)
 
-
+# @TODO change query to match new structure
 def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ]  ] }}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{spec_uri}> <{MUST.when}> [ <{MUST.dataSource}> [ a <{MUST.textDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
@@ -729,15 +757,14 @@ def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
 
 def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
     then_query = f"""
-    SELECT ?then ?order ?variable ?binding
+    SELECT ?then ?variable ?binding
     WHERE {{ 
               <{subject}> <{predicate}> [
               <{MUST.dataSource}>  [
                 a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ <{SH.order}> 1 ;
-                            <{MUST.row}> [
-                            <{MUST.variable}> ?variable ;
-                            <{MUST.binding}> ?binding ;
+                <{MUST.rows}> [ <{MUST.row}> [
+                                    <{MUST.variable}> ?variable ;
+                                    <{MUST.binding}> ?binding ;
                             ] ; 
                         ] 
               ]
