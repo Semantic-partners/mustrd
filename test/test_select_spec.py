@@ -1,9 +1,14 @@
+import os
+
 from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.term import Literal, Variable, URIRef
 
+from pathlib import Path
+
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, \
     get_then_select, is_then_select_ordered, SpecPassedWithWarning
+from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -1493,3 +1498,46 @@ class TestRunSelectSpec:
 |  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_select_given_file_spec_passes(self):
+        project_root = get_project_root()
+        given_path = "test/data/given.ttl"
+        file_path = os.path.join(project_root, given_path)
+        print(file_path)
+        state = Graph().parse(file_path)
+
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then [ a must:TableDataset ;
+                        must:rows [ must:row [
+                                       must:variable "s" ;
+                                       must:binding test-data:sub ; 
+                                        ] ,
+                                        [
+                                       must:variable "p" ;
+                                       must:binding test-data:pred ; 
+                                        ] ,
+                                        [
+                                       must:variable "o" ;
+                                       must:binding test-data:obj  ; 
+                                        ];
+                         ] ; ].
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
