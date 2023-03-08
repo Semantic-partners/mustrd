@@ -6,8 +6,9 @@ from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
 from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure, \
-    SparqlParseFailure, get_spec_spec_component_from_file
+    SparqlParseFailure
 from graph_util import graph_comparison_message
+from spec_component import get_spec_spec_component_from_file
 from utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
