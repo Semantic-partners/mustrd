@@ -14,11 +14,12 @@ test-data:a_complete_select_scenario
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "select ?s ?p ?o { ?s ?p ?o }" ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a         must:TableDataset ;
-                 must:rows [ must:row [ must:variable "s" ;
+    must:then  [ must:dataSource [ a must:TableDataSource ;
+                                   must:rows [ must:row [
+                                        must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ] ; ] ;
-               ] .
+               ] ; ] .

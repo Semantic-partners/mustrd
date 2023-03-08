@@ -12,7 +12,7 @@ test-data:a_complete_insert_data_scenario
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }" ; ] ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a               must:StatementsDataset ;
+    must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -20,4 +20,4 @@ test-data:a_complete_insert_data_scenario
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] .
+                                   rdf:object    test-data:object ; ] ; ] ; ] .

@@ -1,13 +1,16 @@
 import os
+import io
 
+import pandas
 from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.term import Literal, Variable, URIRef
 
 from pathlib import Path
 
-from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, \
-    get_then_select, is_then_select_ordered, SpecPassedWithWarning
+from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
+    SpecPassedWithWarning, get_spec_component, get_spec_spec_component_from_file
+from namespace import MUST
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -20,8 +23,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -33,27 +34,25 @@ class TestRunSelectSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:sub ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding test-data:obj  ; 
-                                        ];
-                         ] ; ].
+            must:then  [ must:dataSource [ a must:TableDataSource ;
+                                   must:rows [ must:row [
+                                        must:variable "s" ;
+                                        must:binding  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ; ] ;
+               ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        t = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -76,7 +75,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
@@ -88,15 +87,18 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                 ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -112,8 +114,7 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred 1 .
         """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
+
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -125,7 +126,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -137,15 +138,18 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding 1.0  ; 
-                                        ];
+                                        ]; ] ;
                 ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -161,8 +165,7 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred 1 .
         """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
+
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -174,7 +177,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -186,22 +189,25 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding "1"  ; 
-                                        ];
+                                        ]; ] ;
                 ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             assert spec_result.spec_uri == spec_uri
-            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
-|---:|--------------------:|------------------:|:----------------------------------------|:-----------------------------------------|
-|  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#integer |"""
+            assert table_diff == """|    | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
+|---:|:----------------------------------------|:-----------------------------------------|
+|  0 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#integer |"""
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
@@ -210,8 +216,7 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
         """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
+
         select_query = """select ?s ?p ?o { typo }"""
         spec_graph = Graph()
         spec = """
@@ -220,20 +225,23 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         
         test-data:my_failing_spec 
-           a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            a must:TestSpec ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
-                                        ] ;
+                                        ] ; ] ;
                 ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -248,8 +256,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred "hello world" .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -262,7 +268,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -274,26 +280,27 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding "hello world"  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_with_variables_spec_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
         """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -308,7 +315,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -320,15 +327,18 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding "hello worlds"  ; 
-                                        ];
+                                        ]; ] ;
                 ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -345,8 +355,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?a ?b ?c { ?s ?p ?o }
         """
@@ -358,17 +366,20 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:EmptyResult ] .
+            must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_expect_empty_result_fails(self):
         triples = """
@@ -376,8 +387,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -389,14 +398,18 @@ class TestRunSelectSpec:
 
                 test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then [ a must:EmptyResult ] .
+                    must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -413,8 +426,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?a ?b ?c { ?s ?p ?o }
         """
@@ -426,7 +437,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -438,15 +449,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -463,8 +478,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred true .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -477,7 +490,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -489,18 +502,21 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding true  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_different_types_of_variables_spec_fails(self):
         triples = """
@@ -508,8 +524,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj , 25 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?o { ?s ?p ?o }
         """
@@ -522,20 +536,24 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row 
                                         [
                                        must:variable "o" ;
                                        must:binding 25.0  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -552,8 +570,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -565,7 +581,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -589,18 +605,20 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object ; 
-                                        ]; ] ; 
-                                         ].
+                                        ]; ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_expected_fewer_columns_fails(self):
         triples = """
@@ -608,8 +626,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -621,7 +637,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -629,15 +645,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -656,8 +676,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p { ?s ?p ?o }
         """
@@ -669,7 +687,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -681,15 +699,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -708,8 +730,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -721,7 +741,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -729,15 +749,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "obj" ;
                                        must:binding test-data:object  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -757,8 +781,6 @@ class TestRunSelectSpec:
         test-data:subject test-data:predicate test-data:object .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -770,7 +792,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -782,15 +804,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -809,8 +835,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -822,7 +846,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -846,15 +870,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object  ; 
-                                        ]; ] ;     
+                                        ]; ] ; ] ;    
                           ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -875,8 +903,6 @@ class TestRunSelectSpec:
         test-data:sub3 test-data:pred3 test-data:obj3 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -888,7 +914,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub1 ; 
@@ -912,15 +938,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:obj4  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -942,8 +972,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
         """
@@ -955,7 +983,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -965,18 +993,20 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ]; ] ;
-               ] .
+                                        must:binding  test-data:obj ; ]; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_with_optional_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
@@ -984,8 +1014,6 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred test-data:obj .
         test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
         """
-        state = Graph()
-        state.parse(data=triples, format="ttl")
 
         select_query = """
                 select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
@@ -999,7 +1027,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1009,15 +1037,17 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:object ; ]; ] ;
-               ] .
+                                        must:binding  test-data:object ; ]; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1036,8 +1066,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -1049,7 +1077,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -1061,15 +1089,19 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "obj" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1088,8 +1120,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -1101,22 +1131,26 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
                                         ] ,                                                                               [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1137,8 +1171,6 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -1150,22 +1182,26 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:subject ; 
                                         ] , [
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
-                                        ];
+                                        ]; ] ;
                          ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1187,8 +1223,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
         """
@@ -1200,7 +1234,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1214,19 +1248,21 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value,
+                                      then_ordered=then_component.ordered)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_ordered_passes_with_warning(self):
         triples = """
@@ -1235,8 +1271,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -1248,7 +1282,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1262,20 +1296,21 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
         warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
 
         expected_result = SpecPassedWithWarning(spec_uri, warning)
-        assert t == expected_result
+        assert spec_result == expected_result
 
     def test_select_spec_ordered_fails(self):
         triples = """
@@ -1284,8 +1319,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
         """
@@ -1297,7 +1330,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ sh:order 2 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1311,16 +1344,19 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1341,8 +1377,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
         """
@@ -1354,7 +1388,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1366,16 +1400,18 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_component.ordered)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1396,8 +1432,6 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
         """
@@ -1409,7 +1443,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a         must:TableDataset ;
+            must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1422,16 +1456,18 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1452,8 +1488,6 @@ class TestRunSelectSpec:
             test-data:subject test-data:predicate test-data:object .
             """
 
-        state = Graph()
-        state.parse(data=triples, format="ttl")
         select_query = """
             select ?s ?p ?o { ?s ?p ?o } order by ?p
             """
@@ -1464,8 +1498,8 @@ class TestRunSelectSpec:
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
-                a must:TestSpec ;
-                must:then [ a must:TableDataset ;
+                    a must:TestSpec ;
+                    must:then  [ must:dataSource [ a must:TableDataSource ;
                             must:rows [ must:row [
                                            must:variable "s" ;
                                            must:binding test-data:sub ; 
@@ -1477,16 +1511,19 @@ class TestRunSelectSpec:
                                             [
                                            must:variable "o" ;
                                            must:binding test-data:obj  ; 
-                                            ];
+                                            ]; ] ;
                              ] ; ].
             """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1499,12 +1536,11 @@ class TestRunSelectSpec:
         else:
             raise Exception(f"wrong spec result type {spec_result}")
 
-    def test_select_given_file_spec_passes(self):
+    def test_select_given_file_then_file_spec_passes(self):
         project_root = get_project_root()
         given_path = "test/data/given.ttl"
-        file_path = os.path.join(project_root, given_path)
-        print(file_path)
-        state = Graph().parse(file_path)
+        file_path = Path(os.path.join(project_root, given_path))
+        triples = get_spec_spec_component_from_file(file_path)
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1517,27 +1553,63 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:TableDataset ;
-                        must:rows [ must:row [
-                                       must:variable "s" ;
-                                       must:binding test-data:sub ; 
-                                        ] ,
-                                        [
-                                       must:variable "p" ;
-                                       must:binding test-data:pred ; 
-                                        ] ,
-                                        [
-                                       must:variable "o" ;
-                                       must:binding test-data:obj  ; 
-                                        ];
-                         ] ; ].
+            must:then  [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.csv" ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_select(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        then = pandas.read_csv(io.StringIO(then_component.value))
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then)
 
         expected_result = SpecPassed(spec_uri)
-        assert t == expected_result
+        assert spec_result == expected_result
+
+    def test_select_given_file_then_file_spec_fails(self):
+        project_root = get_project_root()
+        given_path = "test/data/given.ttl"
+        file_path = Path(os.path.join(project_root, given_path))
+        triples = get_spec_spec_component_from_file(file_path)
+
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then  [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/thenFail.csv" ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        then = pandas.read_csv(io.StringIO(then_component.value))
+
+        spec_result = run_select_spec(spec_uri, triples, select_query, then)
+
+        if type(spec_result) == SelectSpecFailure:
+            table_diff = spec_result.table_comparison.to_markdown()
+            message = spec_result.message
+            assert spec_result.spec_uri == spec_uri
+            assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
+            assert table_diff == """|    | ('o', 'expected')                           | ('o', 'actual')                            |
+|---:|:--------------------------------------------|:-------------------------------------------|
+|  0 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj |"""
+        else:
+            raise Exception(f"wrong spec result type {spec_result}")
