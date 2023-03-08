@@ -9,8 +9,9 @@ from rdflib.term import Literal, Variable, URIRef
 from pathlib import Path
 
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning, get_spec_component, get_spec_spec_component_from_file
+    SpecPassedWithWarning, get_spec_component
 from namespace import MUST
+from spec_component import get_spec_spec_component_from_file
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
