@@ -6,7 +6,7 @@ from pyparsing import ParseException
 from pathlib import Path
 
 from rdflib import Graph, URIRef, Variable, Literal
-from rdflib.namespace import RDF, XSD, SH
+from rdflib.namespace import RDF, XSD
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -169,6 +169,7 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
         if type(then_component.value) == pandas.DataFrame:
             then = then_component.value
         elif is_json(then_component.value):
+            # TODO this does not work here, reuse get_then_select
             then = json_results_to_panda_dataframe(then_component.value)
         else:
             then = pandas.read_csv(io.StringIO(then_component.value))
@@ -188,6 +189,7 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
     return result
 
 
+# https://github.com/Semantic-partners/mustrd/issues/65
 def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
     logging.info(f"\nRunning test: {spec_uri}")
@@ -235,12 +237,15 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
             else:
                 return ConstructSpecFailure(spec_uri, graph_compare)
         elif when.queryType == MUST.SelectSparql:
+            # TODO there is probably a better way to get is_ordered
             is_ordered = then.ordered
             results = json_results_to_panda_dataframe(
                 mustrd_triple_store.execute_select(given=given.value, when=when.value, bindings=when.bindings))
+            # TODO we could also move the transformation here and check of datatype SPARQLResult
             if type(then.value) == pandas.DataFrame:
                 then_frame = then.value
             elif is_json(then.value):
+                # TODO this does not work here, reuse get_then_select
                 then_frame = json_results_to_panda_dataframe(then.value)
             else:
                 then_frame = pandas.read_csv(io.StringIO(then.value))
@@ -258,8 +263,10 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
                 logging.info(f"Test failed: spec_uri: {spec_uri}")
                 return SelectSpecFailure(spec_uri, df_diff, message="Test failed")
         elif when.queryType == MUST.UpdateSparql:
+            # TODO  update case
             pass
         else:
+            # TODO wrong type failure
             pass
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
@@ -329,6 +336,7 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
         path = Path(os.path.join(project_root, file_path))
         spec_component.value = get_spec_spec_component_from_file(path)
     # Get specComponent directly from config file (in text string)
+    # TODO does this work for something other than when?
     elif data_source_type == MUST.textDataSource:
         spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
         spec_component.bindings = get_when_bindings(subject, spec_graph)
@@ -336,6 +344,7 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
     elif data_source_type == MUST.HttpDataSource:
         spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
     # get specComponent from ttl table
+    # TODO does this work for something other than then?
     elif data_source_type == MUST.TableDataSource:
         spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
         spec_component.ordered = is_then_select_ordered(subject, predicate, spec_graph)
