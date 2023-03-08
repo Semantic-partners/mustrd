@@ -12,7 +12,7 @@ test-data:a_complete_insert_scenario
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "insert { ?o ?p ?s } where {?s ?p ?o}" ; ] ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a               must:StatementsDataset ;
+    must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -20,4 +20,4 @@ test-data:a_complete_insert_scenario
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] ; ] .

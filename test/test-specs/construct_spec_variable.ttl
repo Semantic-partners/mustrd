@@ -17,8 +17,8 @@ test-data:a_complete_construct_scenario_with_variables
                       must:binding  test-data:sub ; ]
                        ; ] ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a               must:StatementsDataset ;
+    must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    "hello world" ; ] ; ] .
+                                   rdf:object    "hello world" ; ] ; ] ; ] .

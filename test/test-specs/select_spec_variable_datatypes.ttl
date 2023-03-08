@@ -16,11 +16,11 @@ test-data:a_complete_select_scenario_variables_datatypes
                  must:bindings [ must:variable "o" ;
                                  must:binding  true ; ] ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a         must:TableDataset ;
+    must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
                                         must:binding  true ; ] ; ] ;
-               ] .
+               ] ; ] .

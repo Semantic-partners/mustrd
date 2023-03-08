@@ -26,6 +26,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file_then_file)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_ordered)),

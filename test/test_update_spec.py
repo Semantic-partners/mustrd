@@ -28,7 +28,7 @@ class TestRunUpdateSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -36,7 +36,7 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -98,7 +98,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -106,7 +106,7 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] .
+                                   rdf:object    test-data:object ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -137,7 +137,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a must:EmptyResult ] .
+            must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -168,11 +168,11 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -203,7 +203,7 @@ class TestRunUpdateSpec:
         
         test-data:my_failing_insert_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -211,7 +211,7 @@ class TestRunUpdateSpec:
                                          [ a             rdf:Statement ;
                                            rdf:subject   test-data:obj ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:sub ; ] ; ] .
+                                           rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -260,7 +260,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_spec
             a must:TestSpec ;
-                must:then  [ a must:EmptyResult ] .
+            must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -309,11 +309,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_insert_data_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:subject ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:object ; ] ; ] .
+                                           rdf:object    test-data:object ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -361,11 +361,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_data_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] .
+                                           rdf:object    test-data:obj ; ]  ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -413,11 +413,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_insert_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] .
+                                           rdf:object    test-data:obj ; ]  ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -470,7 +470,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub1 ;
@@ -488,7 +488,7 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub2 ;
                             rdf:predicate test-data:predicate ;
                             rdf:object test-data:object ;
-                        ] ; ] .
+                        ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -520,7 +520,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
@@ -532,7 +532,7 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] ; ] .
+                        ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -560,13 +560,12 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_spec 
            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+           must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ sh:order 1 ;
                                     must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
-                                        ] ;
-                ] ; ].
+                                        ] ; ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -601,7 +600,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
@@ -611,7 +610,7 @@ class TestRunUpdateSpec:
                             a rdf:Statement ;
                             rdf:subject test-data:object ;
                             rdf:predicate test-data:predicate ;
-                            rdf:object test-data:subject ; ] ;
+                            rdf:object test-data:subject ; ] ; ] ;
                              ] .
         """
         spec_graph.parse(data=spec, format='ttl')

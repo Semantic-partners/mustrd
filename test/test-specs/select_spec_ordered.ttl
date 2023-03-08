@@ -18,7 +18,7 @@ test-data:a_complete_select_scenario_ordered
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p" ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a         must:TableDataset ;
+    must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -33,4 +33,4 @@ test-data:a_complete_select_scenario_ordered
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+               ] ; ] .
