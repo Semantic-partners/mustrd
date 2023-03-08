@@ -17,6 +17,7 @@ class TestRunSpecs:
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_when_file)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables)),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_data_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_scenario)),

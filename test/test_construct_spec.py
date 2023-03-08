@@ -1,10 +1,14 @@
+import os
+from pathlib import Path
+
 from rdflib import Graph, Variable, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
 from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure, \
-    SparqlParseFailure
+    SparqlParseFailure, get_spec_spec_component_from_file
 from graph_util import graph_comparison_message
+from utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -456,3 +460,41 @@ class TestRunConstructSpec:
                 spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
         else:
             raise Exception(f"wrong spec result type {spec_result}")
+
+    def test_construct_when_file_spec_passes(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub test-data:pred test-data:obj .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+
+        project_root = get_project_root()
+        given_path = "test/data/construct.rq"
+        file_path = Path(os.path.join(project_root, given_path))
+        construct_query = get_spec_spec_component_from_file(file_path)
+
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+                must:then  [ must:dataSource [ a must:StatementsDataSource ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:obj ;
+                                   rdf:predicate test-data:sub ;
+                                   rdf:object    test-data:pred ; ] ; ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_df = get_then_construct(spec_uri, spec_graph)
+        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+
+        expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
