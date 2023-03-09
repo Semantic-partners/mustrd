@@ -18,7 +18,7 @@ test-data:anzo_select
         must:queryType must:SelectSparql
     ];
 
-    must:hasThen [a must:given;
+    must:hasThen [a must:then;
                 must:dataSource [ a must:FileDataSource ;
                 must:file "test/anzotest/data/thenSuccess.csv"
     ]] .
