@@ -3,7 +3,7 @@ from rdflib.namespace import Namespace
 from rdflib.term import Literal, Variable, URIRef
 
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, SelectSparqlQuery, \
-    get_then_select, is_then_select_ordered
+    get_then_select, is_then_select_ordered, SpecPassedWithWarning
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -1218,9 +1218,58 @@ class TestRunSelectSpec:
 
         then_df = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
 
         expected_result = SpecPassed(spec_uri)
+        assert t == expected_result
+
+    def test_select_spec_ordered_passes_with_warning(self):
+        triples = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+        state = Graph()
+        state.parse(data=triples, format="ttl")
+        select_query = """
+        select ?s ?p ?o { ?s ?p ?o }
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix sh: <http://www.w3.org/ns/shacl#> .
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then  [ a         must:TableDataset ;
+                 must:rows [ sh:order 1 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 2 ;
+                             must:row [ must:variable "s" ;
+                                        must:binding  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj2 ; ] ; ] ;
+               ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+        warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
+
+        then_df = get_then_select(spec_uri, spec_graph)
+        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
+        t = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
+
+        expected_result = SpecPassedWithWarning(spec_uri, warning)
         assert t == expected_result
 
     def test_select_spec_ordered_fails(self):
@@ -1266,7 +1315,7 @@ class TestRunSelectSpec:
 
         then_df = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1321,7 +1370,7 @@ class TestRunSelectSpec:
 
         then_df = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1377,7 +1426,7 @@ class TestRunSelectSpec:
 
         then_df = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1432,7 +1481,7 @@ class TestRunSelectSpec:
 
         then_df = get_then_select(spec_uri, spec_graph)
         is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, ordered=is_ordered)
+        spec_result = run_select_spec(spec_uri, state, SelectSparqlQuery(select_query), then_df, then_ordered=is_ordered)
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()

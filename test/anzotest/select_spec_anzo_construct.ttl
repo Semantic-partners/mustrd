@@ -18,7 +18,7 @@ test-data:anzo_construct
                 must:queryType must:ConstructSparql
     ] ;
 
-    must:hasThen [a must:given;
+    must:hasThen [a must:then;
                 must:dataSource [ a must:FileDataSource ;
                 must:file "test/anzotest/data/given.ttl"
     ]] .

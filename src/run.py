@@ -1,6 +1,6 @@
 import sys
 import getopt
-from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure
+from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, SpecPassedWithWarning
 from pathlib import Path
 from colorama import Fore, Style
 
@@ -21,6 +21,7 @@ def main(argv):
             verbose = True
         if opt in ("-s", "--store"):
             triplestore_spec_path = arg
+            print('Path for triple store configuration is', triplestore_spec_path)
     if not path_under_test:
         sys.exit("path_under_test not set")
     if not triplestore_spec_path:
@@ -33,11 +34,15 @@ def main(argv):
         results = run_specs(Path(path_under_test))
 
     pass_count = 0
+    warning_count = 0
     fail_count = 0
     for res in results:
         if type(res) == SpecPassed:
             colour = Fore.GREEN
             pass_count += 1
+        elif type(res) == SpecPassedWithWarning:
+            colour = Fore.YELLOW
+            warning_count += 1
         else:
             colour = Fore.RED
             fail_count += 1
@@ -46,16 +51,22 @@ def main(argv):
     overview_colour = Fore.GREEN
     if fail_count:
         overview_colour = Fore.RED
-    print(f"{overview_colour}===== {fail_count} failures, {Fore.GREEN}{pass_count} passed{overview_colour} =====")
+    elif warning_count:
+        overview_colour = Fore.YELLOW
+    print(f"{overview_colour}===== {fail_count} failures, {pass_count} passed, "
+          f"{warning_count} passed with warnings {overview_colour}=====")
 
-    if verbose and fail_count:
+    if verbose and (fail_count or warning_count):
         for res in results:
             if type(res) == SelectSpecFailure:
-                print(f"Failed {res.spec_uri}")
+                print(f"{Fore.RED}Failed {res.spec_uri}")
                 print(res.message)
                 print(res.table_comparison.to_markdown())
-            if type(res) == ConstructSpecFailure:
+            if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
                 print(f"Failed {res.spec_uri}")
+            if type(res) == SpecPassedWithWarning:
+                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri}")
+                print(res.warning)
 
 
 if __name__ == "__main__":

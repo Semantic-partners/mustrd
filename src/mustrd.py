@@ -21,7 +21,6 @@ import io
 import json
 from pandas import DataFrame
 
-
 logging.basicConfig(level=logging.INFO)
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
@@ -46,6 +45,13 @@ class SpecResult:
 class SpecPassed(SpecResult):
     def __init__(self, spec_uri):
         super(SpecPassed, self).__init__(spec_uri)
+
+
+@dataclass()
+class SpecPassedWithWarning(SpecResult):
+    def __init__(self, spec_uri, warning):
+        super().__init__(spec_uri)
+        self.warning = warning
 
 
 @dataclass
@@ -97,6 +103,7 @@ class UpdateSparqlQuery(SparqlAction):
         super(UpdateSparqlQuery, self).__init__(query)
 
 
+# https://github.com/Semantic-partners/mustrd/issues/19
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
@@ -129,7 +136,6 @@ def run_spec(spec_uri, spec_graph) -> SpecResult:
     when = get_when(spec_uri, spec_graph)
     when_type = type(when)
     when_bindings = get_when_bindings(spec_uri, spec_graph)
-
     result = None
 
     if when_type == SelectSparqlQuery:
@@ -180,26 +186,29 @@ def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResul
     return execute_when(when, given, then, spec_uri, mustrd_triple_store)
 
 
+# https://github.com/Semantic-partners/mustrd/issues/18
+# https://github.com/Semantic-partners/mustrd/issues/38
 def execute_when(when, given, then, spec_uri, mustrd_triple_store):
     try:
         if when.queryType == MUST.ConstructSparql:
             results = mustrd_triple_store.execute_construct(given=given.value,
-                                                          when=when.value)
-            thenGraph = Graph().parse(data=then.value)
-            graph_compare = graph_comparison(thenGraph, results)
-            equal = isomorphic(results, thenGraph)
+                                                            when=when.value)
+            then_graph = Graph().parse(data=then.value)
+            graph_compare = graph_comparison(then_graph, results)
+            equal = isomorphic(results, then_graph)
             if equal:
                 return SpecPassed(spec_uri)
             else:
                 return ConstructSpecFailure(spec_uri, graph_compare)
         else:
-            results = json_results_to_panda_dataframe(mustrd_triple_store.execute_select(given=given.value, when=when.value))
+            results = json_results_to_panda_dataframe(
+                mustrd_triple_store.execute_select(given=given.value, when=when.value))
             then_frame = pandas.read_csv(io.StringIO(then.value))
             # Compare only compare with same number of rows
-            if len(then_frame.index)!= len(results.index):
+            if len(then_frame.index) != len(results.index):
                 return SelectSpecFailure(spec_uri, then_frame.merge(results,
-                      indicator = True,
-                      how = 'outer'), message='Not the same number of rows')
+                                                                    indicator=True,
+                                                                    how='outer'), message='Not the same number of rows')
 
             df_diff = then_frame.compare(results, result_names=("expected", "actual"))
 
@@ -220,23 +229,26 @@ def get_triple_stores(triple_store_graph):
             triple_stores.append(MustrdRdfLib())
         # Anzo graph via anzo
         elif tripleStoreType == MUST.anzoConfig:
-            anzoUrl = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
-            anzoPort = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
+            anzo_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
+            anzo_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
             username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
             password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
-            gqeURI = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
-            inputGraph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdAnzo(anzoUrl=anzoUrl, anzoPort=anzoPort,
-                            gqeURI=gqeURI, inputGraph=inputGraph,  username=username, password=password))
+            gqe_uri = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
+            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+            triple_stores.append(MustrdAnzo(anzoUrl=anzo_url, anzoPort=anzo_port,
+                                            gqeURI=gqe_uri, inputGraph=input_graph, username=username,
+                                            password=password))
+        # GraphDB
         elif tripleStoreType == MUST.graphDbConfig:
-            graphDbUrl = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
-            graphDbPort = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
+            graph_db_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
+            graph_db_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
             username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
             password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
-            graphdBRepo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
-            inputGraph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdGraphDb(graphDbUrl=graphDbUrl, graphDbPort=graphDbPort,
-                                               username=username, password=password, graphDbRepository=graphdBRepo, inputGraph=inputGraph))
+            graph_db_repo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
+            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+            triple_stores.append(MustrdGraphDb(graphDbUrl=graph_db_url, graphDbPort=graph_db_port,
+                                               username=username, password=password, graphDbRepository=graph_db_repo,
+                                               inputGraph=input_graph))
         else:
             raise Exception(f"Not Implemented {tripleStoreType}")
     return triple_stores
@@ -279,12 +291,14 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
         if data_source_type == MUST.anzoGraphmartDataSource:
             graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
             layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
-            spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart, layer=layer)
+            spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
+                                                                                         layer=layer)
         # Get WHEN specComponent from query builder
         elif data_source_type == MUST.anzoQueryBuilderDataSource:
             query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
             query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
-            spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder, queryName=query_name)
+            spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
+                                                                                   queryName=query_name)
     # If anzo specific function is called but no anzo defined
     elif data_source_type == MUST.anzoGraphmartDataSource or data_source_type == MUST.anzoQueryBuilderDataSource:
         raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
@@ -314,14 +328,14 @@ def json_results_to_panda_dataframe(result):
         columns = []
         values = []
         for key in binding:
-            valueObject = binding[key]
+            value_object = binding[key]
             columns.append(key)
-            values.append(str(valueObject["value"]))
+            values.append(str(value_object["value"]))
             columns.append(key + "_datatype")
-            if "type" in valueObject and valueObject["type"] == "literal":
+            if "type" in value_object and value_object["type"] == "literal":
                 literal_type = str(XSD.string)
-                if "datatype" in valueObject:
-                    literal_type = valueObject["datatype"]
+                if "datatype" in value_object:
+                    literal_type = value_object["datatype"]
                 values.append(literal_type)
             else:
                 values.append(str(XSD.anyURI))
@@ -335,8 +349,10 @@ def run_select_spec(spec_uri: URIRef,
                     when: SparqlAction,
                     then: pandas.DataFrame,
                     bindings: dict = None,
-                    ordered: bool = False) -> SpecResult:
+                    then_ordered: bool = False) -> SpecResult:
     logging.info(f"Running select spec {spec_uri}")
+
+    warning = None
 
     try:
         result = given.query(when.query, initBindings=bindings)
@@ -354,14 +370,16 @@ def run_select_spec(spec_uri: URIRef,
             df = pandas.concat(series_list, axis=1)
             when_ordered = False
 
-            if "order by ?" not in when.query.lower() and "order by desc" not in when.query.lower() and "order by asc" not in when.query.lower():
+            order_list = ["order by ?", "order by desc", "order by asc"]
+            if any(pattern in when.query.lower() for pattern in order_list):
+                when_ordered = True
+            else:
                 df.sort_values(by=columns[::2], inplace=True)
 
                 df.reset_index(inplace=True, drop=True)
-                if ordered:
-                    logging.info(f"sh:order in {spec_uri} is ignored")
-            else:
-                when_ordered = True
+                if then_ordered:
+                    warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
+                    logging.info(warning)
 
             # Scenario 1: expected no result but got a result
             if then.empty:
@@ -372,7 +390,7 @@ def run_select_spec(spec_uri: URIRef,
                 # Scenario 2: expected a result and got a result
                 message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
                           f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                if when_ordered is True and not ordered:
+                if when_ordered is True and not then_ordered:
                     message += ". Actual result is ordered, must:then must contain sh:order on every row."
                     if df.shape == then.shape and (df.columns == then.columns).all():
                         df_diff = then.compare(df, result_names=("expected", "actual"))
@@ -398,7 +416,10 @@ def run_select_spec(spec_uri: URIRef,
             df_diff = then.compare(df, result_names=("expected", "actual"))
 
         if df_diff.empty:
-            return SpecPassed(spec_uri)
+            if warning:
+                return SpecPassedWithWarning(spec_uri, warning)
+            else:
+                return SpecPassed(spec_uri)
         else:
             return SelectSpecFailure(spec_uri, df_diff, message)
 
@@ -464,7 +485,7 @@ def get_given(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return initial_state
 
 
-# Consider a SPARQL parser to determine query type https://github.com/cdhx/SPARQL_parse
+# https://github.com/Semantic-partners/mustrd/issues/12
 def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
     when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
     whens = spec_graph.query(when_query)
@@ -495,14 +516,14 @@ def is_then_select_ordered(spec_uri: URIRef, spec_graph: Graph) -> bool:
     ASK {{
     {{SELECT (count(?binding) as ?totalBindings) {{  
     <{spec_uri}> <{MUST.then}> ?then .
- 	?then a <{MUST.TableDataset}> ;
+    ?then a <{MUST.TableDataset}> ;
        <{MUST.rows}> [ <{MUST.row}> [ <{MUST.variable}>  ?variable ;
                       <{MUST.binding}>  ?binding ;
                       ] ; ] .
 }} }}
     {{SELECT (count(?binding) as ?orderedBindings) {{    
     <{spec_uri}> <{MUST.then}> ?then .
- 	?then a <{MUST.TableDataset}> ;
+    ?then a <{MUST.TableDataset}> ;
        <{MUST.rows}> [ sh:order ?order ;
                     <{MUST.row}> [ <{MUST.variable}>  ?variable ;
                       <{MUST.binding}>  ?binding ;

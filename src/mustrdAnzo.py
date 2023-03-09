@@ -1,10 +1,22 @@
+from dataclasses import dataclass
+
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
 
-# TODO responses need to be parsed in case they fail
+
+# add parameter types and return types
+def manage_anzo_response(response):
+    content_string = response.content.decode("utf-8")
+    if response.status_code == 200:
+        return content_string
+    else:
+        raise Exception(f"Anzo error, status code: {response.status_code}, content: {content_string}")
+
+
+# https://github.com/Semantic-partners/mustrd/issues/14
 class MustrdAnzo:
-    def __init__(self, anzoUrl, anzoPort, gqeURI, inputGraph,  username=None, password=None):
+    def __init__(self, anzoUrl, anzoPort, gqeURI, inputGraph, username=None, password=None):
         self.anzoUrl = anzoUrl
         self.anzoPort = anzoPort
         self.username = username
@@ -58,20 +70,15 @@ class MustrdAnzo:
         return self.anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()[0].get("query")
 
     def upload_given(self, given):
-        insertQuery = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
-        data = {'datasourceURI': self.gqeURI, 'update': insertQuery}
-        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
-        print(response)
+        insert_query = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
+        data = {'datasourceURI': self.gqeURI, 'update': insert_query}
+        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql",
+                                 auth=(self.username, self.password), data=data)
+        return response
 
     def clear_graph(self):
-        clearQuery = f"CLEAR GRAPH <{self.inputGraph}>"
-        data = {'datasourceURI': self.gqeURI, 'update': clearQuery}
-        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql", auth=(self.username, self.password), data=data)
-        print(response)
-
-    def manage_anzo_response(self, response):
-        contentString = response.content.decode("utf-8")
-        if response.status_code == 200:
-            return contentString
-        else:
-            raise Exception(f"Anzo error, status code: {response.status_code}, content: {contentString}")
+        clear_query = f"CLEAR GRAPH <{self.inputGraph}>"
+        data = {'datasourceURI': self.gqeURI, 'update': clear_query}
+        response = requests.post(url=f"https://{self.anzoUrl}:{self.anzoPort}/sparql",
+                                 auth=(self.username, self.password), data=data)
+        return response
