@@ -1,0 +1,18 @@
+name: 'Add issues to mustrd MVP'
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v0.4.1
+        with:
+          project-url: https://github.com/orgs/Semantic-partners/projects/1/views/1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          labeled: bug, enhancement, minor improvement, coding best practices, documentation, evaluation
+          label-operator: OR
