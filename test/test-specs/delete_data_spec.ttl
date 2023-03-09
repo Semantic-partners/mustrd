@@ -12,5 +12,5 @@ test-data:a_complete_delete_data_scenario
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }" ; ] ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+    must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
 

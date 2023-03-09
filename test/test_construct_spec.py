@@ -5,24 +5,24 @@ from rdflib import Graph, Variable, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_construct_spec, get_then_construct, ConstructSparqlQuery, ConstructSpecFailure, \
-    SparqlParseFailure
+from mustrd import SpecPassed, run_construct_spec, ConstructSpecFailure, SparqlParseFailure
 from graph_util import graph_comparison_message
-from spec_component import get_spec_spec_component_from_file
+from namespace import MUST
+from spec_component import get_spec_spec_component_from_file, get_spec_component
 from utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunConstructSpec:
-    def test_construct_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
+    given_sub_pred_obj = """
+    @prefix test-data: <https://semanticpartners.com/data/test/> .
+    test-data:sub test-data:pred test-data:obj .
+    """
 
+    def test_construct_spec_passes(self):
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
         construct { ?o ?s ?p } { ?s ?p ?o }
         """
@@ -44,20 +44,19 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_construct_spec(spec_uri, state, construct_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_construct_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
         construct { ?p ?o ?s } { ?s ?p ?o }
         """
@@ -79,8 +78,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_construct_spec(spec_uri, state, construct_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -104,9 +107,9 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" , test-data:obj .
         """
-
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         construct_query = """
         construct { ?s ?p ?o } { ?s ?p ?o }
         """
@@ -131,8 +134,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -142,9 +149,9 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
         """
-
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         construct_query = """
         construct { ?s ?p ?o } { ?s ?p ?o }
         """
@@ -169,8 +176,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
 
         assert result.spec_uri == spec_uri
 
@@ -194,13 +205,8 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_expect_empty_result_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
         construct { ?s ?p ?o } { ?s ?p ?o }
         """
@@ -213,26 +219,24 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                  must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+                  must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        t = run_construct_spec(spec_uri, state, construct_query, then_component.value, bindings=binding)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_construct_unexpected_result_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
         construct { ?s ?p ?o } { ?s ?p ?o }
         """
@@ -244,15 +248,18 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec
             a must:TestSpec ;
-                must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+                must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
 
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        result = run_construct_spec(spec_uri, state, construct_query, then_component.value)
 
         assert result.spec_uri == spec_uri
 
@@ -275,13 +282,8 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_unexpected_empty_result_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
         construct { ?s ?p ?o } { ?s ?p ?o }
         """
@@ -306,8 +308,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
 
         assert result.spec_uri == spec_uri
 
@@ -337,6 +343,7 @@ class TestRunConstructSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         construct_query = """
         construct { ?o ?p ?s } { ?s ?p ?o }
         """
@@ -365,8 +372,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_construct_spec(spec_uri, state, construct_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -379,6 +390,7 @@ class TestRunConstructSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         construct_query = """
         construct { ?o ?p ?s } { ?s ?p ?o }
         """
@@ -402,8 +414,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_construct_spec(spec_uri, state, construct_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -426,12 +442,8 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_statement_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """construct ?s ?p ?o where { typo }"""
         spec_graph = Graph()
         spec = """
@@ -452,8 +464,11 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        spec_result = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_construct_spec(spec_uri, state, construct_query, then_component.value)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -463,13 +478,8 @@ class TestRunConstructSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_construct_when_file_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
         given_path = "test/data/construct.rq"
@@ -494,8 +504,12 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_construct(spec_uri, spec_graph)
-        t = run_construct_spec(spec_uri, state, ConstructSparqlQuery(construct_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_construct_spec(spec_uri, state, construct_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result

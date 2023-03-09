@@ -14,4 +14,4 @@ test-data:a_complete_select_scenario_expected_empty_result
     must:when  [ must:dataSource [ a must:textDataSource ;
                                    must:text  "select ?a ?b ?c { ?s ?p ?o }" ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+    must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .

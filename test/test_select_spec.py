@@ -18,12 +18,14 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunSelectSpec:
-    def test_select_spec_passes(self):
-        triples = """
+    given_sub_pred_obj = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
         """
 
+    def test_select_spec_passes(self):
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -53,18 +55,14 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        t = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        t = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -99,7 +97,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -115,6 +113,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred 1 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -150,7 +150,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -166,6 +166,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred 1 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -201,7 +203,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -213,11 +215,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_invalid_select_statement_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """select ?s ?p ?o { typo }"""
         spec_graph = Graph()
         spec = """
@@ -242,7 +241,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -256,6 +255,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -292,7 +293,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
@@ -302,6 +303,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -339,7 +342,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -351,11 +354,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_expect_empty_result_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?a ?b ?c { ?s ?p ?o }
         """
@@ -367,7 +367,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+            must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -377,17 +377,14 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
 
     def test_select_spec_expect_empty_result_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -399,7 +396,7 @@ class TestRunSelectSpec:
 
                 test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ must:dataSource [ a must:EmptyResult ] ; ] .
+                    must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -409,7 +406,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -422,11 +419,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_unexpected_empty_result_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?a ?b ?c { ?s ?p ?o }
         """
@@ -461,7 +455,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -478,6 +472,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred true .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -514,7 +510,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
@@ -524,6 +520,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj , 25 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?o { ?s ?p ?o }
@@ -553,7 +551,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -570,6 +568,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -616,17 +616,14 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
 
     def test_select_spec_expected_fewer_columns_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -657,7 +654,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -672,11 +669,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_expected_more_columns_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p { ?s ?p ?o }
         """
@@ -711,7 +705,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -726,11 +720,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_expected_fewer_and_different_columns_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -761,7 +752,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -781,6 +772,8 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         test-data:subject test-data:predicate test-data:object .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -816,7 +809,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -831,11 +824,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_expected_more_rows_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -882,7 +872,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -903,6 +893,8 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         test-data:sub3 test-data:pred3 test-data:obj3 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -950,7 +942,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -972,6 +964,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred test-data:obj .
         test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
@@ -1004,7 +998,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
@@ -1015,6 +1009,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred test-data:obj .
         test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
                 select ?s ?o ?object { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }
@@ -1048,7 +1044,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1062,11 +1058,8 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_select_spec_expected_different_column_names_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
         """
@@ -1101,7 +1094,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1120,6 +1113,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1150,7 +1145,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1171,6 +1166,8 @@ class TestRunSelectSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj , test-data:object .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1201,7 +1198,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1223,6 +1220,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
@@ -1259,7 +1258,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
                                       then_ordered=then_component.ordered)
 
         expected_result = SpecPassed(spec_uri)
@@ -1271,6 +1270,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1308,7 +1309,8 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+                                      then_ordered=then_component.ordered)
 
         expected_result = SpecPassedWithWarning(spec_uri, warning)
         assert spec_result == expected_result
@@ -1319,6 +1321,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
@@ -1355,8 +1359,8 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
-
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+                                      then_ordered=then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1377,6 +1381,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
@@ -1411,7 +1417,7 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1432,6 +1438,8 @@ class TestRunSelectSpec:
         test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p
@@ -1467,7 +1475,8 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+                                      then_ordered=then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1488,6 +1497,8 @@ class TestRunSelectSpec:
             test-data:sub test-data:pred test-data:obj .
             test-data:subject test-data:predicate test-data:object .
             """
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
             select ?s ?p ?o { ?s ?p ?o } order by ?p
@@ -1523,7 +1534,8 @@ class TestRunSelectSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph)
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then_component.value, then_ordered=then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+                                      then_ordered=then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1542,6 +1554,8 @@ class TestRunSelectSpec:
         given_path = "test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
         triples = get_spec_spec_component_from_file(file_path)
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1567,7 +1581,7 @@ class TestRunSelectSpec:
 
         then = pandas.read_csv(io.StringIO(then_component.value))
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then)
+        spec_result = run_select_spec(spec_uri, state, select_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert spec_result == expected_result
@@ -1577,6 +1591,8 @@ class TestRunSelectSpec:
         given_path = "test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
         triples = get_spec_spec_component_from_file(file_path)
+        state = Graph()
+        state.parse(data=triples, format="ttl")
 
         select_query = """
         select ?s ?p ?o { ?s ?p ?o }
@@ -1602,7 +1618,7 @@ class TestRunSelectSpec:
 
         then = pandas.read_csv(io.StringIO(then_component.value))
 
-        spec_result = run_select_spec(spec_uri, triples, select_query, then)
+        spec_result = run_select_spec(spec_uri, state, select_query, then)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()

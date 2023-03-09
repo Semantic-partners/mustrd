@@ -21,7 +21,10 @@ class SpecComponent:
     bindings: dict = None
 
 
-def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=MustrdRdfLib()):
+def get_spec_component(subject: URIRef,
+                       predicate: URIRef,
+                       spec_graph: Graph,
+                       mustrd_triple_store=MustrdRdfLib()) -> SpecComponent:
     spec_component = SpecComponent()
 
     spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
@@ -36,57 +39,62 @@ def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=Mustr
     if data_source_type is None:
         raise Exception(f"Node has no rdf type {subject} {predicate}")
 
-    # https://github.com/Semantic-partners/mustrd/issues/53
     # Get specComponent from a file
-    if data_source_type == MUST.FileDataSource:
-        file_path = Path(spec_graph.value(subject=source_node, predicate=MUST.file))
-        project_root = get_project_root()
-        path = Path(os.path.join(project_root, file_path))
-        spec_component.value = get_spec_spec_component_from_file(path)
-    # Get specComponent directly from config file (in text string)
-    elif data_source_type == MUST.textDataSource:
-        spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
-        if predicate == MUST.when:
-            spec_component.bindings = get_when_bindings(subject, spec_graph)
-    # Get specComponent with http GET protocol
-    elif data_source_type == MUST.HttpDataSource:
-        spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
-    # get specComponent from ttl table
-    elif data_source_type == MUST.TableDataSource:
-        spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
-        if predicate == MUST.then:
-            spec_component.ordered = is_then_select_ordered(subject, predicate, spec_graph)
-    elif data_source_type == MUST.EmptyResult:
-        spec_component.value = get_empty_spec()
-    # get specComponent from reified statements
-    elif data_source_type == MUST.StatementsDataSource:
-        spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
-    # From anzo specific source
-    elif type(mustrd_triple_store) == MustrdAnzo:
-        # Get GIVEN or THEN from anzo graphmart
-        if data_source_type == MUST.anzoGraphmartDataSource:
-            graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
-            layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
-            spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
-                                                                                         layer=layer)
-        # Get WHEN specComponent from query builder
-        elif data_source_type == MUST.anzoQueryBuilderDataSource:
-            query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
-            query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
-            spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
-                                                                                   queryName=query_name)
-    # If anzo specific function is called but no anzo defined
-    elif data_source_type == MUST.anzoGraphmartDataSource or data_source_type == MUST.anzoQueryBuilderDataSource:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
-    else:
-        raise Exception(f"Spec type not Implemented. specComponentNode: {source_node}. Type: {data_source_type}")
+    match data_source_type:
+        case MUST.FileDataSource:
+            file_path = Path(spec_graph.value(subject=source_node, predicate=MUST.file))
+            project_root = get_project_root()
+            path = Path(os.path.join(project_root, file_path))
+            spec_component.value = get_spec_spec_component_from_file(path)
+        # Get specComponent directly from config file (in text string)
+        case MUST.textDataSource:
+            spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
+            if predicate == MUST.when:
+                spec_component.bindings = get_when_bindings(subject, spec_graph)
+        # Get specComponent with http GET protocol
+        case MUST.HttpDataSource:
+            spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
+        # get specComponent from ttl table
+        case MUST.TableDataSource:
+            spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
+            if predicate == MUST.then:
+                spec_component.ordered = is_then_select_ordered(subject, predicate, spec_graph)
+        case MUST.EmptyTableResult:
+            spec_component.value = pandas.DataFrame()
+        case MUST.EmptyGraphResult:
+            spec_component.value = Graph()
+        # get specComponent from reified statements
+        case MUST.StatementsDataSource:
+            spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
+        # From anzo specific source
+        case MUST.anzoGraphmartDataSource:
+            if type(mustrd_triple_store) == MustrdAnzo:
+            # Get GIVEN or THEN from anzo graphmart
+                graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
+                layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
+                spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
+                                                                                             layer=layer)
+            else:
+                raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
+        case MUST.anzoQueryBuilderDataSource:
+            # Get WHEN specComponent from query builder
+            if type(mustrd_triple_store) == MustrdAnzo:
+                query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
+                query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
+                spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
+                                                                                       queryName=query_name)
+            # If anzo specific function is called but no anzo defined
+            else:
+                raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
+        case _:
+            raise Exception(f"Spec type not Implemented. specComponentNode: {source_node}. Type: {data_source_type}")
 
     if predicate == URIRef('https://mustrd.com/model/when'):
         spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
     return spec_component
 
 
-def get_spec_spec_component_from_file(path: Path):
+def get_spec_spec_component_from_file(path: Path) -> str:
     # project_root = get_project_root()
     # file_path = Path(os.path.join(project_root, path))
 
@@ -99,11 +107,9 @@ def get_spec_spec_component_from_file(path: Path):
     return str(content)
 
 
-def get_empty_spec() -> pandas.DataFrame:
-    return pandas.DataFrame()
-
-
-def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
+def get_spec_from_statements(subject: URIRef,
+                             predicate: URIRef,
+                             spec_graph: Graph) -> str:
     statements_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
 
@@ -128,7 +134,9 @@ def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
 
 
 # https://github.com/Semantic-partners/mustrd/issues/50
-def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
+def get_spec_from_table(subject: URIRef,
+                        predicate: URIRef,
+                        spec_graph: Graph) -> str:
     then_query = f"""
     SELECT ?then ?order ?variable ?binding
     WHERE {{ {{
@@ -183,7 +191,8 @@ def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
     return df
 
 
-def get_when_bindings(subject, spec_graph: Graph) -> dict:
+def get_when_bindings(subject: URIRef,
+                      spec_graph: Graph) -> dict:
     when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ <{MUST.dataSource}> [ a <{MUST.textDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
@@ -196,7 +205,7 @@ def get_when_bindings(subject, spec_graph: Graph) -> dict:
         return bindings
 
 
-def is_then_select_ordered(subject, predicate, spec_graph: Graph) -> bool:
+def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:
     ask_select_ordered = f"""
     ASK {{
     {{SELECT (count(?binding) as ?totalBindings) {{  
