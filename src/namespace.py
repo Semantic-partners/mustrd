@@ -23,21 +23,16 @@ class MUST(DefinedNamespace):
     given: URIRef
     when: URIRef
     then: URIRef
-    hasGiven: URIRef
-    hasWhen: URIRef
-    hasThen: URIRef
     query: URIRef
     bindings: URIRef
     SelectSparql: URIRef
     ConstructSparql: URIRef
     UpdateSparql: URIRef
 
-    StatementsDataset: URIRef
     statements: URIRef
 
     TableDataSource: URIRef
     StatementsDataSource: URIRef
-    TableDataset: URIRef
     rows: URIRef
     row: URIRef
     variable: URIRef
