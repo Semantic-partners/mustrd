@@ -38,7 +38,7 @@ class MustrdAnzo:
             self.upload_given(given)
             if bindings:
                 when = query_with_bindings(bindings, when)
-            data = {'datasourceURI': self.gqe_uri, 'query': when, 'default-graph-uri': self.input_graph}
+            data = {'datasourceURI': self.gqe_uri, 'query': when, 'default-graph-uri': self.input_graph, 'skipCache':'true'}
             url = f"https://{self.url}:{self.port}/sparql?format=application/sparql-results+json"
             return manage_anzo_response(requests.post(url=url,
                                                       auth=(self.username, self.password),
@@ -53,7 +53,7 @@ class MustrdAnzo:
             self.upload_given(given)
             if bindings:
                 when = query_with_bindings(bindings, when)
-            data = {'datasourceURI': self.gqe_uri, 'query': when, 'default-graph-uri': self.input_graph}
+            data = {'datasourceURI': self.gqe_uri, 'query': when, 'default-graph-uri': self.input_graph, 'skipCache':'true'}
             url = f"https://{self.url}:{self.port}/sparql?format=ttl"
             return Graph().parse(data=manage_anzo_response(requests.post(url=url,
                                                                          auth=(self.username, self.password),
