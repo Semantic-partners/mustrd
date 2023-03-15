@@ -10,9 +10,13 @@ test-data:a_complete_select_scenario_with_variables
                                    must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ,
+                                  [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub ;
+                                   rdf:predicate test-data:pred ;
                                    rdf:object    "hello world" ; ] ; ] ; ] ;
     must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o { ?s ?p ?o }" ;
+                                   must:text  "select ?s ?p ?o where { ?s ?p ?o }" ;
                  must:bindings [ must:variable "o" ;
                                  must:binding  "hello world" ; ] ; ] ;
                  must:queryType must:SelectSparql   ; ] ;

@@ -136,7 +136,7 @@ def get_spec_from_statements(subject: URIRef,
 # https://github.com/Semantic-partners/mustrd/issues/50
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
-                        spec_graph: Graph) -> str:
+                        spec_graph: Graph) -> pandas.DataFrame:
     then_query = f"""
     SELECT ?then ?order ?variable ?binding
     WHERE {{ {{
@@ -187,6 +187,7 @@ def get_spec_from_table(subject: URIRef,
         series_list.append(pandas.Series(value, name=key))
 
     df = pandas.concat(series_list, axis=1)
+    df.fillna('', inplace=True)
 
     return df
 

@@ -961,8 +961,8 @@ class TestRunSelectSpec:
     def test_select_spec_with_optional_passes(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub1 test-data:pred test-data:obj .
-        test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        test-data:sub1 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        test-data:sub2 test-data:pred test-data:obj .
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
@@ -1006,8 +1006,8 @@ class TestRunSelectSpec:
     def test_select_spec_with_optional_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub1 test-data:pred test-data:obj .
-        test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        test-data:sub1 test-data:pred test-data:obj ; test-data:predicate test-data:object.
+        test-data:sub2 test-data:pred test-data:obj .
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
