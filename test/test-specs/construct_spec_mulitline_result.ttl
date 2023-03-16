@@ -4,18 +4,19 @@
 
 test-data:a_complete_construct_scenario_multiline_result
     a          must:TestSpec ;
-    must:given [ a               must:StatementsDataset ;
-                 must:statements [ a             rdf:Statement ;
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
+                                   must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
                                    rdf:object    test-data:obj ; ] ,
                                   [ a             rdf:Statement ;
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] ;
-    must:when  [ a          must:ConstructSparql ;
-                 must:query "construct { ?o ?s ?p } { ?s ?p ?o }" ; ] ;
-    must:then  [ a               must:StatementsDataset ;
+                                   rdf:object    test-data:object ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "construct { ?o ?s ?p } { ?s ?p ?o }" ; ] ;
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
@@ -24,4 +25,4 @@ test-data:a_complete_construct_scenario_multiline_result
                                    rdf:subject   test-data:object ;
                                    rdf:predicate test-data:subject ;
                                    rdf:object    test-data:predicate ; ] ;
-                ] .
+                ] ; ].

@@ -2,11 +2,11 @@ import logging
 from dataclasses import dataclass
 from itertools import groupby
 
+import colorlog
 from pyparsing import ParseException
 from pathlib import Path
 
-from rdflib import Graph, URIRef, Variable, Literal
-from rdflib.namespace import RDF, XSD, SH
+from rdflib import Graph, URIRef, Literal, RDF, XSD
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -16,12 +16,24 @@ from namespace import MUST
 from mustrdRdfLib import MustrdRdfLib
 from mustrdAnzo import MustrdAnzo
 import requests
-import os
 import io
 import json
 from pandas import DataFrame
 
-logging.basicConfig(level=logging.INFO)
+from spec_component import get_spec_component
+
+LOG_LEVEL = logging.INFO
+
+log = colorlog.getLogger(__name__)
+log.setLevel(LOG_LEVEL)
+
+ch = logging.StreamHandler()
+ch.setLevel(LOG_LEVEL)
+
+ch.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)s: %(name)s %(white)s%(message)s'))
+
+log.addHandler(ch)
+
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 
@@ -81,11 +93,6 @@ class SparqlAction:
 
 
 @dataclass
-class SpecComponent:
-    value: str = None
-
-
-@dataclass
 class SelectSparqlQuery(SparqlAction):
     def __init__(self, query):
         super(SelectSparqlQuery, self).__init__(query)
@@ -107,20 +114,20 @@ class UpdateSparqlQuery(SparqlAction):
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
-    logging.info(f"Found {len(ttl_files)} ttl files")
+    log.info(f"Found {len(ttl_files)} ttl files")
 
     spec_graph = Graph()
     for file in ttl_files:
-        logging.info(f"Parse: {file}")
+        log.info(f"Parse: {file}")
         spec_graph.parse(file)
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
-    logging.info(f"Collected {len(spec_uris)} items")
+    log.info(f"Collected {len(spec_uris)} items")
 
     results = []
 
     # run in vanilla rdflib
     if triplestore_spec_path is None:
-        results = [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+        results += [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
     # run in triple stores
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
@@ -129,64 +136,87 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
 
     return results
 
-
-def run_spec(spec_uri, spec_graph) -> SpecResult:
+# https://github.com/Semantic-partners/mustrd/issues/58
+# https://github.com/Semantic-partners/mustrd/issues/13
+def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
-    given = get_given(spec_uri, spec_graph)
-    when = get_when(spec_uri, spec_graph)
-    when_type = type(when)
-    when_bindings = get_when_bindings(spec_uri, spec_graph)
-    result = None
 
-    if when_type == SelectSparqlQuery:
-        then = get_then_select(spec_uri, spec_graph)
-        is_ordered = is_then_select_ordered(spec_uri, spec_graph)
-        result = run_select_spec(spec_uri, given, when, then, when_bindings, is_ordered)
-    elif when_type == ConstructSparqlQuery:
-        then = get_then_construct(spec_uri, spec_graph)
-        result = run_construct_spec(spec_uri, given, when, then, when_bindings)
-    elif when_type == UpdateSparqlQuery:
-        then = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, given, when, then, when_bindings)
-    else:
-        raise Exception(f"invalid spec when type {when_type}")
+    given_component = get_spec_component(subject=spec_uri,
+                                         predicate=MUST.given,
+                                         spec_graph=spec_graph,
+                                         mustrd_triple_store=mustrd_triple_store)
+
+    log.debug(f"Given: {given_component.value}")
+
+    given = Graph().parse(data=given_component.value)
+
+    when_component = get_spec_component(subject=spec_uri,
+                                        predicate=MUST.when,
+                                        spec_graph=spec_graph,
+                                        mustrd_triple_store=mustrd_triple_store)
+
+    log.debug(f"when: {when_component.value}")
+
+    then_component = get_spec_component(subject=spec_uri,
+                                        predicate=MUST.then,
+                                        spec_graph=spec_graph,
+                                        mustrd_triple_store=mustrd_triple_store)
+
+    log.debug(f"then: {then_component.value}")
+
+    match when_component.queryType:
+        case MUST.SelectSparql:
+            if type(then_component.value) == pandas.DataFrame:
+                then = then_component.value
+            else:
+                then = pandas.read_csv(io.StringIO(then_component.value))
+            result = run_select_spec(spec_uri, given, when_component.value, then, when_component.bindings,
+                                     then_component.ordered, mustrd_triple_store)
+        case MUST.ConstructSparql:
+            then = Graph().parse(data=then_component.value)
+            result = run_construct_spec(spec_uri, given, when_component.value, then, when_component.bindings)
+        case MUST.UpdateSparql:
+            then = get_then_update(spec_uri, spec_graph)
+            result = run_update_spec(spec_uri, given, when_component.value, then, when_component.bindings)
+        case _:
+            raise Exception(f"invalid spec when type {when_component.queryType}")
 
     return result
 
 
-def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store) -> SpecResult:
+# https://github.com/Semantic-partners/mustrd/issues/65
+def run_triplestore_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
     spec_uri = URIRef(str(spec_uri))
-    logging.info(f"\nRunning test: {spec_uri}")
+    log.info(f"\nRunning test: {spec_uri}")
 
     # Get GIVEN
     given = get_spec_component(subject=spec_uri,
-                               predicate=MUST.hasGiven,
+                               predicate=MUST.given,
                                spec_graph=spec_graph,
                                mustrd_triple_store=mustrd_triple_store)
 
-    logging.debug(f"Given: {given.value}")
+    log.debug(f"Given: {given.value}")
 
     # Get WHEN
     when = get_spec_component(subject=spec_uri,
-                              predicate=MUST.hasWhen,
+                              predicate=MUST.when,
                               spec_graph=spec_graph,
                               mustrd_triple_store=mustrd_triple_store)
 
-    logging.debug(f"when: {when.value}")
+    log.debug(f"when: {when.value}")
 
     # Get THEN
     then = get_spec_component(subject=spec_uri,
-                              predicate=MUST.hasThen,
+                              predicate=MUST.then,
                               spec_graph=spec_graph,
                               mustrd_triple_store=mustrd_triple_store)
 
-    logging.debug(f"then: {then.value}")
+    log.debug(f"then: {then.value}")
 
     # Execute WHEN against GIVEN on the triple store
     return execute_when(when, given, then, spec_uri, mustrd_triple_store)
 
 
-# https://github.com/Semantic-partners/mustrd/issues/18
 # https://github.com/Semantic-partners/mustrd/issues/38
 def execute_when(when, given, then, spec_uri, mustrd_triple_store):
     try:
@@ -200,10 +230,16 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
                 return SpecPassed(spec_uri)
             else:
                 return ConstructSpecFailure(spec_uri, graph_compare)
-        else:
+        elif when.queryType == MUST.SelectSparql:
+            is_ordered = then.ordered
             results = json_results_to_panda_dataframe(
-                mustrd_triple_store.execute_select(given=given.value, when=when.value))
-            then_frame = pandas.read_csv(io.StringIO(then.value))
+                mustrd_triple_store.execute_select(given=given.value, when=when.value, bindings=when.bindings))
+            if type(then.value) == pandas.DataFrame:
+                then_frame = then.value
+            elif is_json(then.value):
+                then_frame = json_results_to_panda_dataframe(then.value)
+            else:
+                then_frame = pandas.read_csv(io.StringIO(then.value))
             # Compare only compare with same number of rows
             if len(then_frame.index) != len(results.index):
                 return SelectSpecFailure(spec_uri, then_frame.merge(results,
@@ -215,10 +251,22 @@ def execute_when(when, given, then, spec_uri, mustrd_triple_store):
             if df_diff.empty:
                 return SpecPassed(spec_uri)
             else:
-                logging.info(f"Test failed: spec_uri: {spec_uri}")
+                log.info(f"Test failed: spec_uri: {spec_uri}")
                 return SelectSpecFailure(spec_uri, df_diff, message="Test failed")
+        elif when.queryType == MUST.UpdateSparql:
+            pass
+        else:
+            pass
     except ParseException as e:
         return SparqlParseFailure(spec_uri, e)
+
+
+def is_json(myjson):
+    try:
+        json.loads(myjson)
+    except ValueError as e:
+        return False
+    return True
 
 
 def get_triple_stores(triple_store_graph):
@@ -254,72 +302,6 @@ def get_triple_stores(triple_store_graph):
     return triple_stores
 
 
-def get_spec_component(subject, predicate, spec_graph, mustrd_triple_store=MustrdRdfLib()):
-    spec_component = SpecComponent()
-
-    spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
-    if spec_component_node is None:
-        raise Exception(f"specComponent Node empty for {subject} {predicate}")
-
-    source_node = spec_graph.value(subject=spec_component_node, predicate=MUST.dataSource)
-    if source_node is None:
-        raise Exception(f"No data source for specComponent {subject} {predicate}")
-
-    data_source_type = spec_graph.value(subject=source_node, predicate=RDF.type)
-    if data_source_type is None:
-        raise Exception(f"Node has no rdf type {subject} {predicate}")
-
-    # Get specComponent from a file
-    if data_source_type == MUST.FileDataSource:
-        file_path = Path(os.path.abspath(spec_graph.value(subject=source_node, predicate=MUST.file)))
-        spec_component.value = get_spec_spec_component_from_file(file_path)
-    # Get specComponent directly from config file (in text string)
-    elif data_source_type == MUST.textDataSource:
-        spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
-    # Get specComponent with http GET protocol
-    elif data_source_type == MUST.HttpDataSource:
-        spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
-    # get specComponent from ttl table
-    elif data_source_type == MUST.TableDataSource:
-        spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
-    # get specComponent from reified statements
-    elif data_source_type == MUST.StatementsDataSource:
-        spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
-    # From anzo specific source
-    elif type(mustrd_triple_store) == MustrdAnzo:
-        # Get GIVEN or THEN from anzo graphmart
-        if data_source_type == MUST.anzoGraphmartDataSource:
-            graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
-            layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
-            spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
-                                                                                         layer=layer)
-        # Get WHEN specComponent from query builder
-        elif data_source_type == MUST.anzoQueryBuilderDataSource:
-            query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
-            query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
-            spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
-                                                                                   queryName=query_name)
-    # If anzo specific function is called but no anzo defined
-    elif data_source_type == MUST.anzoGraphmartDataSource or data_source_type == MUST.anzoQueryBuilderDataSource:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
-    else:
-        raise Exception(f"Spec type not Implemented. specComponentNode: {source_node}. Type: {data_source_type}")
-
-    if spec_graph.value(subject=spec_component_node, predicate=RDF.type) == MUST.when:
-        spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
-    return spec_component
-
-
-def get_spec_spec_component_from_file(path: Path):
-    content = ""
-    if os.path.isdir(path):
-        for entry in path.iterdir():
-            content += entry.read_text()
-    else:
-        content = path.read_text()
-    return str(content)
-
-
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
 def json_results_to_panda_dataframe(result):
     json_result = json.loads(result)
@@ -341,21 +323,25 @@ def json_results_to_panda_dataframe(result):
                 values.append(str(XSD.anyURI))
 
         frames = pandas.concat(objs=[frames, pandas.DataFrame([values], columns=columns)], ignore_index=True)
+        if frames.size == 0:
+            frames = pandas.DataFrame()
     return frames
 
 
+# https://github.com/Semantic-partners/mustrd/issues/52
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
-                    when: SparqlAction,
+                    when: str,
                     then: pandas.DataFrame,
                     bindings: dict = None,
-                    then_ordered: bool = False) -> SpecResult:
-    logging.info(f"Running select spec {spec_uri}")
+                    then_ordered: bool = False,
+                    mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
+    log.info(f"Running select spec {spec_uri}")
 
     warning = None
 
     try:
-        result = given.query(when.query, initBindings=bindings)
+        result = mustrd_triple_store.execute_select(given, when, bindings)
         series_list = []
 
         columns = get_select_columns(result)
@@ -371,7 +357,7 @@ def run_select_spec(spec_uri: URIRef,
             when_ordered = False
 
             order_list = ["order by ?", "order by desc", "order by asc"]
-            if any(pattern in when.query.lower() for pattern in order_list):
+            if any(pattern in when.lower() for pattern in order_list):
                 when_ordered = True
             else:
                 df.sort_values(by=columns[::2], inplace=True)
@@ -379,7 +365,7 @@ def run_select_spec(spec_uri: URIRef,
                 df.reset_index(inplace=True, drop=True)
                 if then_ordered:
                     warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
-                    logging.info(warning)
+                    log.info(warning)
 
             # Scenario 1: expected no result but got a result
             if then.empty:
@@ -431,11 +417,12 @@ def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: SparqlAction,
                        then: Graph,
-                       bindings: dict = None) -> SpecResult:
-    logging.info(f"Running construct spec {spec_uri}")
+                       bindings: dict = None,
+                       mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
+    log.info(f"Running construct spec {spec_uri}")
 
     try:
-        result = given.query(when.query, initBindings=bindings).graph
+        result = mustrd_triple_store.execute_construct(given, when, bindings)
 
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
@@ -451,12 +438,12 @@ def run_update_spec(spec_uri: URIRef,
                     given: Graph,
                     when: SparqlAction,
                     then: Graph,
-                    bindings: dict = None) -> SpecResult:
-    logging.info(f"Running update spec {spec_uri}")
+                    bindings: dict = None,
+                    mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
+    log.info(f"Running update spec {spec_uri}")
 
     try:
-        result = given
-        result.update(when.query, initBindings=bindings)
+        result = mustrd_triple_store.execute_update(given, when, bindings)
 
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
@@ -479,12 +466,6 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
 
 
-def get_given(spec_uri: URIRef, spec_graph: Graph) -> Graph:
-    given_query = f"""CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{spec_uri}> <{MUST.given}> [ a <{MUST.StatementsDataset}>; <{MUST.statements}> [ a <{RDF.Statement}> ; <{RDF.subject}> ?s ; <{RDF.predicate}> ?p ; <{RDF.object}> ?o ; ] ] }}"""
-    initial_state = spec_graph.query(given_query).graph
-    return initial_state
-
-
 # https://github.com/Semantic-partners/mustrd/issues/12
 def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
     when_query = f"""SELECT ?type ?query {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.query}> ?query ; ] }}"""
@@ -498,43 +479,6 @@ def get_when(spec_uri: URIRef, spec_graph: Graph) -> SparqlAction:
             return UpdateSparqlQuery(when.query.value)
 
 
-def get_when_bindings(spec_uri: URIRef, spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{spec_uri}> <{MUST.when}> [ a ?type ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ]  ] }}"""
-    when_bindings = spec_graph.query(when_bindings_query)
-
-    if len(when_bindings.bindings) == 0:
-        return {}
-    else:
-        bindings = {}
-        for binding in when_bindings:
-            bindings[Variable(binding.variable.value)] = binding.binding
-        return bindings
-
-
-def is_then_select_ordered(spec_uri: URIRef, spec_graph: Graph) -> bool:
-    ask_select_ordered = f"""
-    ASK {{
-    {{SELECT (count(?binding) as ?totalBindings) {{  
-    <{spec_uri}> <{MUST.then}> ?then .
-    ?then a <{MUST.TableDataset}> ;
-       <{MUST.rows}> [ <{MUST.row}> [ <{MUST.variable}>  ?variable ;
-                      <{MUST.binding}>  ?binding ;
-                      ] ; ] .
-}} }}
-    {{SELECT (count(?binding) as ?orderedBindings) {{    
-    <{spec_uri}> <{MUST.then}> ?then .
-    ?then a <{MUST.TableDataset}> ;
-       <{MUST.rows}> [ sh:order ?order ;
-                    <{MUST.row}> [ <{MUST.variable}>  ?variable ;
-                      <{MUST.binding}>  ?binding ;
-                      ] ; ] .
-}} }}
-    FIlTER(?totalBindings = ?orderedBindings)
-}}"""
-    is_ordered = spec_graph.query(ask_select_ordered)
-    return is_ordered.askAnswer
-
-
 def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
@@ -542,14 +486,14 @@ def get_then_construct(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> [
-            a <{MUST.StatementsDataset}> ;
+        <{MUST.dataSource}> [
+            a <{MUST.StatementsDataSource}> ;
             <{MUST.statements}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ;
-            ]
+            ] ; ] ; ]
     }}
     """
     expected_results = spec_graph.query(then_query).graph
@@ -564,14 +508,14 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> [
-            a <{MUST.StatementsDataset}> ;
+        <{MUST.dataSource}> [
+            a <{MUST.StatementsDataSource}> ;
             <{MUST.statements}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ;
-            ]
+            ] ; ] ; ]
     }}
     """
     expected_results = spec_graph.query(then_query).graph
@@ -703,49 +647,6 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     return empty_copy
 
 
-def get_spec_from_statements(subject, predicate, spec_graph: Graph) -> str:
-    statements_query = f"""
-    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
-
-    CONSTRUCT {{ ?s ?p ?o }}
-    {{
-            <{subject}> <{predicate}> [
-              <{MUST.dataSource}>  [
-                a <{MUST.StatementsDataSource}> ;
-                <{MUST.statements}> [
-                    a rdf:Statement ;
-                    rdf:subject ?s ;
-                    rdf:predicate ?p ;
-                    rdf:object ?o ;
-                ] ;
-              ]
-            ]
-
-    }}
-    """
-    results = spec_graph.query(statements_query).graph
-    return results.serialize(format="ttl")
-
-
-def get_spec_from_table(subject, predicate, spec_graph: Graph) -> str:
-    then_query = f"""
-    SELECT ?then ?order ?variable ?binding
-    WHERE {{ 
-              <{subject}> <{predicate}> [
-              <{MUST.dataSource}>  [
-                a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ <{SH.order}> 1 ;
-                            <{MUST.row}> [
-                            <{MUST.variable}> ?variable ;
-                            <{MUST.binding}> ?binding ;
-                            ] ; 
-                        ] 
-              ]
-            ]
-        }}"""
-    return spec_graph.query(then_query).serialize(format="json").decode("utf-8")
-
-
 def get_select_columns(result):
     columns = []
     for item in result:
@@ -764,12 +665,12 @@ def populate_select_columns(columns, result):
 
     for item in result:
         for key, value in item.asdict().items():
-            data_dict[key].append(value)
+            data_dict[key].append(str(value))
             if type(value) == Literal:
                 literal_type = XSD.string
                 if hasattr(value, "datatype") and value.datatype:
                     literal_type = value.datatype
-                data_dict[key + "_datatype"].append(literal_type)
+                data_dict[key + "_datatype"].append(str(literal_type))
             else:
-                data_dict[key + "_datatype"].append(XSD.anyURI)
+                data_dict[key + "_datatype"].append(str(XSD.anyURI))
     return data_dict

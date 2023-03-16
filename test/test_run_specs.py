@@ -17,6 +17,7 @@ class TestRunSpecs:
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_when_file)),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables)),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_data_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_scenario)),
@@ -25,6 +26,8 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_insert_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file)),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file_then_file)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result)),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_ordered)),

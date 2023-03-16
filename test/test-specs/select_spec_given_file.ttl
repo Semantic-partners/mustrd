@@ -4,23 +4,18 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:a_complete_select_scenario_variables_datatypes
+test-data:a_complete_select_scenario_given_file
     a          must:TestSpec ;
-    must:given [ must:dataSource [ a must:StatementsDataSource ;
-                                   must:statements [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    true ; ] ; ] ; ] ;
+    must:given [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/given.ttl" ] ; ] ;
     must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o { ?s ?p ?o }" ;
-                 must:bindings [ must:variable "o" ;
-                                 must:binding  true ; ] ; ] ;
-                 must:queryType must:SelectSparql   ; ] ;
+                                   must:text  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ; ] ;
+                 must:queryType must:SelectSparql ; ] ;
     must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  true ; ] ; ] ;
+                                        must:binding  test-data:obj ; ] ; ] ;
                ] ; ] .

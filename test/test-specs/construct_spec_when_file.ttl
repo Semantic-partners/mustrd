@@ -2,22 +2,18 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_insert_scenario
+test-data:a_complete_construct_scenario_when_file
     a          must:TestSpec ;
     must:given [ must:dataSource [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ; ] ;
-    must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "insert { ?o ?p ?s } where {?s ?p ?o}" ; ] ;
-                 must:queryType must:UpdateSparql  ; ] ;
+    must:when  [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/construct.rq" ] ;
+                 must:queryType must:ConstructSparql  ; ] ;
     must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:obj ; ] ,
-                                 [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] ; ] .
+                                   rdf:predicate test-data:sub ;
+                                   rdf:object    test-data:pred ; ] ; ] ; ] .

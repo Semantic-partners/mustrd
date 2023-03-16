@@ -1,0 +1,15 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:a_complete_select_scenario_given_file_then_file
+    a          must:TestSpec ;
+    must:given [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/given.ttl" ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ; ] ;
+                 must:queryType must:SelectSparql ; ] ;
+    must:then  [ must:dataSource [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.csv" ] ; ] .

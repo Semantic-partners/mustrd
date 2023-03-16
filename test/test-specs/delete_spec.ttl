@@ -4,12 +4,13 @@
 
 test-data:a_complete_delete_scenario
     a          must:TestSpec ;
-    must:given [ a               must:StatementsDataset ;
-                 must:statements [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a          must:UpdateSparql ;
-                 must:query "delete { ?s ?p ?o } where {?s ?p ?o}" ; ] ;
-    must:then  [ a must:EmptyResult ] .
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
+                                   must:statements [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "delete { ?s ?p ?o } where {?s ?p ?o}" ; ] ;
+                 must:queryType must:UpdateSparql  ; ] ;
+    must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
 
