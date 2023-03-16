@@ -1,8 +1,23 @@
+import logging
+import colorlog
 import sys
 import getopt
-from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, SpecPassedWithWarning
+from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
+    SpecPassedWithWarning
 from pathlib import Path
 from colorama import Fore, Style
+
+LOG_LEVEL = logging.INFO
+
+log = colorlog.getLogger(__name__)
+log.setLevel(LOG_LEVEL)
+
+ch = logging.StreamHandler()
+ch.setLevel(LOG_LEVEL)
+
+ch.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)s: %(name)s %(white)s%(message)s'))
+
+log.addHandler(ch)
 
 
 def main(argv):
@@ -16,17 +31,17 @@ def main(argv):
             sys.exit()
         elif opt in ("-p", "--put"):
             path_under_test = arg
+            log.info(f"Path under test is {path_under_test}")
         if opt in ("-v", "--verbose"):
-            print("Verbose set")
+            log.info(f"Verbose set")
             verbose = True
         if opt in ("-s", "--store"):
             triplestore_spec_path = arg
-            print('Path for triple store configuration is', triplestore_spec_path)
+            log.info(f"Path for triple store configuration is {triplestore_spec_path}")
     if not path_under_test:
         sys.exit("path_under_test not set")
     if not triplestore_spec_path:
-        print("Running default configuration")
-    print('Path under test is', path_under_test)
+        log.info(f"No triple store configuration added, running default configuration")
 
     if triplestore_spec_path:
         results = run_specs(Path(path_under_test), Path(triplestore_spec_path))

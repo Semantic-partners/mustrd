@@ -6,3 +6,4 @@ colorama==0.4.6
 requests==2.28.2
 pyanzo==3.3.4
 pyparsing~=3.0.9
+colorlog~=6.7.0

@@ -43,7 +43,8 @@ class MUST(DefinedNamespace):
     variable: URIRef
     binding: URIRef
 
-    EmptyResult: URIRef
+    EmptyGraphResult: URIRef
+    EmptyTableResult: URIRef
 
     #Anzo
     anzoConfig: URIRef

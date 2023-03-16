@@ -4,19 +4,21 @@ from rdflib.compare import isomorphic
 
 from mustrd import SpecPassed, run_update_spec, get_then_update, UpdateSparqlQuery, UpdateSpecFailure, SparqlParseFailure
 from graph_util import graph_comparison_message
+from namespace import MUST
+from spec_component import get_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunUpdateSpec:
-    def test_insert_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
+    given_sub_pred_obj = """
+    @prefix test-data: <https://semanticpartners.com/data/test/> .
+    test-data:sub test-data:pred test-data:obj .
+    """
 
+    def test_insert_spec_passes(self):
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         insert_query = """
         insert { ?o ?p ?s } where {?s ?p ?o}
         """
@@ -28,7 +30,7 @@ class TestRunUpdateSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -36,26 +38,25 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, insert_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_delete_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_query = """
         delete { ?s ?p ?o } where {?s ?p ?o}
         """
@@ -67,26 +68,24 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a must:EmptyResult ] .
+                  must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        t = run_update_spec(spec_uri, state, delete_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_insert_data_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         insert_data_query = """
         insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }
         """
@@ -98,7 +97,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -106,26 +105,25 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] .
+                                   rdf:object    test-data:object ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_data_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, insert_data_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_delete_data_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_data_query = """
         delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }
         """
@@ -137,26 +135,24 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a must:EmptyResult ] .
+            must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_data_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        t = run_update_spec(spec_uri, state, delete_data_query, then_component.value)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_delete_insert_spec_passes(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_insert_query = """
         delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}
         """
@@ -168,30 +164,29 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, delete_insert_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_insert_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         insert_query = """
         insert { ?o ?p ?s } where {?s ?p ?o}
         """
@@ -203,7 +198,7 @@ class TestRunUpdateSpec:
         
         test-data:my_failing_insert_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -211,14 +206,18 @@ class TestRunUpdateSpec:
                                          [ a             rdf:Statement ;
                                            rdf:subject   test-data:obj ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:sub ; ] ; ] .
+                                           rdf:object    test-data:sub ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_insert_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_update_spec(spec_uri, state, insert_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -242,13 +241,8 @@ class TestRunUpdateSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_delete_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_query = """
         delete { ?s ?p ?obj } where {?s ?p ?o}
         """
@@ -260,19 +254,21 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_spec
             a must:TestSpec ;
-                must:then  [ a must:EmptyResult ] .
+            must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_delete_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        result = run_update_spec(spec_uri, state, delete_query, then_component.value)
 
         assert result.spec_uri == spec_uri
 
         expected_in_expected_not_in_actual = Graph()
-        # expected_in_expected_not_in_actual.add((TEST_DATA.obj, TEST_DATA.predicate, TEST_DATA.sub))
 
         expected_in_actual_not_in_expected = Graph()
         expected_in_actual_not_in_expected.add((TEST_DATA.sub, TEST_DATA.pred, TEST_DATA.obj))
@@ -291,13 +287,8 @@ class TestRunUpdateSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_insert_data_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         insert_data_query = """
         insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }
         """
@@ -309,18 +300,22 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_insert_data_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:subject ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:object ; ] ; ] .
+                                           rdf:object    test-data:object ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_insert_data_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_data_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_update_spec(spec_uri, state, insert_data_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -343,13 +338,8 @@ class TestRunUpdateSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_delete_data_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_data_query = """
         delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }
         """
@@ -361,18 +351,22 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_data_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] .
+                                           rdf:object    test-data:obj ; ]  ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_delete_data_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_data_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_update_spec(spec_uri, state, delete_data_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -395,13 +389,8 @@ class TestRunUpdateSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_delete_insert_data_spec_fails_with_graph_comparison(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
-
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         delete_insert_query = """
         delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}
         """
@@ -413,18 +402,22 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_insert_spec
             a must:TestSpec ;
-            must:then  [ a               must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] .
+                                           rdf:object    test-data:obj ; ]  ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_delete_insert_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        result = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        result = run_update_spec(spec_uri, state, delete_insert_query, then)
 
         assert result.spec_uri == spec_uri
 
@@ -452,11 +445,10 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub1 test-data:pred test-data:obj .
         test-data:sub2 test-data:pred test-data:obj ; test-data:predicate test-data:object .
-
         """
-
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         insert_query = """
         insert { ?s ?p ?o ; ?pred ?obj . } where { ?s ?p ?o OPTIONAL { ?s ?pred ?obj } }
         """
@@ -470,7 +462,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub1 ;
@@ -488,14 +480,18 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub2 ;
                             rdf:predicate test-data:predicate ;
                             rdf:object test-data:object ;
-                        ] ; ] .
+                        ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, insert_query, then, binding)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
@@ -505,9 +501,9 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" , test-data:obj .
         """
-
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         delete_insert_query = """
         delete { ?s ?p ?o } insert { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }
         """
@@ -520,7 +516,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
@@ -532,25 +528,25 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] ; ] .
+                        ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_insert_query), then_df, binding)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, delete_insert_query, then, binding)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result
 
     def test_insert_statement_spec_fails(self):
-        triples = """
-        @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred test-data:obj .
-        """
         state = Graph()
-        state.parse(data=triples, format="ttl")
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
         insert_query = """insert ?s ?p ?o where { typo }"""
         spec_graph = Graph()
         spec = """
@@ -560,20 +556,22 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_spec 
            a must:TestSpec ;
-            must:then [ a must:TableDataset ;
+           must:then  [ must:dataSource [ a must:TableDataSource ;
                         must:rows [ sh:order 1 ;
                                     must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
-                                        ] ;
-                ] ; ].
+                                        ] ; ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        spec_result = run_update_spec(spec_uri, state, UpdateSparqlQuery(insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+
+        spec_result = run_update_spec(spec_uri, state, insert_query, then_component.value)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -590,6 +588,7 @@ class TestRunUpdateSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
+
         delete_insert_query = """
         delete { ?s ?p ?o } insert { ?o ?p ?s } where { ?s ?p ?o }
         """
@@ -601,7 +600,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataset ;
+            must:then  [ must:dataSource [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
@@ -611,15 +610,19 @@ class TestRunUpdateSpec:
                             a rdf:Statement ;
                             rdf:subject test-data:object ;
                             rdf:predicate test-data:predicate ;
-                            rdf:object test-data:subject ; ] ;
+                            rdf:object test-data:subject ; ] ; ] ;
                              ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_df = get_then_update(spec_uri, spec_graph)
-        t = run_update_spec(spec_uri, state, UpdateSparqlQuery(delete_insert_query), then_df)
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph)
+        then = Graph().parse(data=then_component.value)
+
+        t = run_update_spec(spec_uri, state, delete_insert_query, then)
 
         expected_result = SpecPassed(spec_uri)
         assert t == expected_result

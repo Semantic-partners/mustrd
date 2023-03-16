@@ -6,18 +6,19 @@
 
 test-data:a_complete_select_scenario_ordered
     a          must:TestSpec ;
-    must:given [ a               must:StatementsDataset ;
-                 must:statements [ a             rdf:Statement ;
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
+                                   must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:pred1 ;
                                    rdf:object    test-data:obj1 ; ] ,
                                    [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub2 ;
                                    rdf:predicate test-data:pred2 ;
-                                   rdf:object    test-data:obj2 ; ] ; ] ;
-    must:when  [ a          must:SelectSparql ;
-                 must:query "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p" ; ] ;
-    must:then  [ a         must:TableDataset ;
+                                   rdf:object    test-data:obj2 ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p" ; ] ;
+                 must:queryType must:SelectSparql   ; ] ;
+    must:then  [ must:dataSource [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -32,4 +33,4 @@ test-data:a_complete_select_scenario_ordered
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj2 ; ] ; ] ;
-               ] .
+               ] ; ] .
