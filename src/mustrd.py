@@ -278,39 +278,45 @@ def is_json(myjson: str) -> bool:
         return False
     return True
 
+def get_triple_store_dispatch(tripleStoreType):
+    return tripleStoreType
+
+get_triple_store = MultiMethod("get_triple_store", get_triple_store_dispatch)
 
 def get_triple_stores(triple_store_graph: Graph) -> list:
     triple_stores = []
     for tripleStoreConfig, type, tripleStoreType in triple_store_graph.triples((None, RDF.type, None)):
         log.info(f"get_triple_stores {tripleStoreConfig=}, {type=}, {tripleStoreType=}")
-        # Local rdf lib triple store
-        if tripleStoreType == MUST.rdfLibConfig:
-            triple_stores.append(MustrdRdfLib())
-        # Anzo graph via anzo
-        elif tripleStoreType == MUST.anzoConfig:
-            anzo_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
-            anzo_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
-            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
-            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
-            gqe_uri = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
-            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdAnzo(anzo_url=anzo_url, anzo_port=anzo_port,
-                                            gqe_uri=gqe_uri, input_graph=input_graph, username=username,
-                                            password=password))
-        # GraphDB
-        elif tripleStoreType == MUST.graphDbConfig:
-            graph_db_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
-            graph_db_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
-            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
-            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
-            graph_db_repo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
-            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdGraphDb(graphdb_url=graph_db_url, graphdb_port=graph_db_port,
-                                               username=username, password=password, graphdb_repository=graph_db_repo,
-                                               input_graph=input_graph))
-        else:
-            raise Exception(f"Not Implemented {tripleStoreType}")
+        triple_stores.append(get_triple_store(tripleStoreType, triple_store_graph, tripleStoreConfig))
     return triple_stores
+
+@get_triple_store.method(MUST.rdfLibConfig)
+def get_triplestore_graphdb(tripleStoreType, triple_store_graph, tripleStoreConfig):
+    graph_db_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
+    graph_db_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
+    username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
+    password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
+    graph_db_repo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
+    input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+    return MustrdGraphDb(graphdb_url=graph_db_url, graphdb_port=graph_db_port,
+                                               username=username, password=password, graphdb_repository=graph_db_repo,
+                                               input_graph=input_graph)
+
+@get_triple_store.method(MUST.anzoConfig)
+def get_triplestore_anzo(tripleStoreType, triple_store_graph, triple_stores, tripleStoreConfig):
+    anzo_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
+    anzo_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
+    username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
+    password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
+    gqe_uri = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
+    input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
+    return MustrdAnzo(anzo_url=anzo_url, anzo_port=anzo_port,
+                                            gqe_uri=gqe_uri, input_graph=input_graph, username=username,
+                                            password=password)
+
+@get_triple_store.method(MUST.graphDbConfig)
+def _get_triplestore_rdflib(tripleStoreType, triple_store_graph, tripleStoreConfig):
+    return MustrdRdfLib()
 
 
 # Get column order
