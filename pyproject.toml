@@ -12,6 +12,7 @@ pandas = "^1.5.2"
 multimethods-py = "^0.5.3"
 colorlog = "^6.7.0"
 requests = "^2.28.2"
+pyanzo = "^3.3.7"
 
 [tool.poetry.dev-dependencies]
 

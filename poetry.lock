@@ -343,6 +343,22 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "pyanzo"
+version = "3.3.7"
+description = "PyAnzo is a library for interacting with Anzo"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "pyanzo-3.3.7.tar.gz", hash = "sha256:b01b223aea41df983faf69fdd014045e32ab809af3b62731fe723c4ddc61322e"},
+]
+
+[package.dependencies]
+rdflib = ">=5.0.0"
+requests = ">=2.23.0"
+urllib3 = ">=1.25.11"
+
+[[package]]
 name = "pycodestyle"
 version = "2.10.0"
 description = "Python style guide checker"
@@ -528,4 +544,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "f6241fdb4d17b37b4846f028418b23549335bfde71342d0496797cf2a9296cde"
+content-hash = "d47b7df160b443fadd01585a4d5a673b1dc3cead5be7740d0e6c9f57633e2f75"

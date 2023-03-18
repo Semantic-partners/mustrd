@@ -163,6 +163,8 @@ pandas==1.5.2 ; python_version >= "3.8" and python_version < "4.0" \
 pluggy==1.0.0 ; python_version >= "3.8" and python_version < "4.0" \
     --hash=sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159 \
     --hash=sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3
+pyanzo==3.3.7 ; python_version >= "3.8" and python_version < "4.0" \
+    --hash=sha256:b01b223aea41df983faf69fdd014045e32ab809af3b62731fe723c4ddc61322e
 pyparsing==3.0.9 ; python_version >= "3.8" and python_version < "4.0" \
     --hash=sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb \
     --hash=sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc
