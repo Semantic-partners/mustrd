@@ -22,7 +22,7 @@ from pandas import DataFrame
 
 from spec_component import get_spec_component
 
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 
 log = colorlog.getLogger(__name__)
 log.setLevel(LOG_LEVEL)
@@ -114,7 +114,7 @@ class UpdateSparqlQuery(SparqlAction):
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
-    log.info(f"Found {len(ttl_files)} ttl files")
+    log.info(f"Found {len(ttl_files)} ttl files in {spec_path}")
 
     spec_graph = Graph()
     for file in ttl_files:
