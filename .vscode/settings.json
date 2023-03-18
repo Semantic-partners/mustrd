@@ -1,0 +1,9 @@
+{
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.testing.pytestPath": ".venv/bin/pytest",
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
