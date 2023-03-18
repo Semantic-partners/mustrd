@@ -81,8 +81,8 @@ def get_spec_component(subject: URIRef,
             if type(mustrd_triple_store) == MustrdAnzo:
                 query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
                 query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
-                spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
-                                                                                       queryName=query_name)
+                spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folder_name=query_folder,
+                                                                                       query_name=query_name)
             # If anzo specific function is called but no anzo defined
             else:
                 raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")

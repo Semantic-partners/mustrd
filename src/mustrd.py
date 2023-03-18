@@ -9,6 +9,7 @@ from rdflib import Graph, URIRef, RDF, XSD
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
+import logging
 
 from mustrdGraphDb import MustrdGraphDb
 from namespace import MUST
@@ -111,29 +112,35 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
-    # os.chdir(spec_path)
-    ttl_files = list(spec_path.glob('*.ttl'))
-    log.info(f"Found {len(ttl_files)} ttl files")
+    try: 
+        # os.chdir(spec_path)
+        ttl_files = list(spec_path.glob('*.ttl'))
+        log.info(f"Found {len(ttl_files)} ttl files")
 
-    spec_graph = Graph()
-    for file in ttl_files:
-        log.info(f"Parse: {file}")
-        spec_graph.parse(file)
-    spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
-    log.info(f"Collected {len(spec_uris)} items")
+        spec_graph = Graph()
+        for file in ttl_files:
+            log.info(f"Parse: {file}")
+            spec_graph.parse(file)
+        spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
+        log.info(f"Collected {len(spec_uris)} items")
 
-    results = []
+        results = []
 
-    # run in vanilla rdflib
-    if triplestore_spec_path is None:
-        results += [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
-    # run in triple stores
-    else:
-        triple_store_config = Graph().parse(triplestore_spec_path)
-        for triple_store in get_triple_stores(triple_store_config):
-            results = results + [run_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+        # run in vanilla rdflib
+        if triplestore_spec_path is None:
+            results += [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+        # run in triple stores
+        else:
+            triple_store_config = Graph().parse(triplestore_spec_path)
+            for triple_store in get_triple_stores(triple_store_config):
+                results = results + [run_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
 
-    return results
+        return results
+    except Exception as e: 
+        raise Exception({
+            'spec_path': spec_path.as_posix(), 
+            'triplestore_spec_path': triplestore_spec_path.as_posix(),
+            'message': e.args}, e)
 
 
 # https://github.com/Semantic-partners/mustrd/issues/58
@@ -214,6 +221,7 @@ def is_json(myjson: str) -> bool:
 def get_triple_stores(triple_store_graph: Graph) -> list:
     triple_stores = []
     for tripleStoreConfig, type, tripleStoreType in triple_store_graph.triples((None, RDF.type, None)):
+        log.info(f"get_triple_stores {tripleStoreConfig=}, {type=}, {tripleStoreType=}")
         # Local rdf lib triple store
         if tripleStoreType == MUST.rdfLibConfig:
             triple_stores.append(MustrdRdfLib())
