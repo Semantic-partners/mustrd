@@ -41,6 +41,10 @@ class MUST(DefinedNamespace):
     EmptyGraphResult: URIRef
     EmptyTableResult: URIRef
 
+    # runner uris
+    fileSource: URIRef
+    loadedFromFile: URIRef
+
     #Anzo
     anzoConfig: URIRef
     anzoURL: URIRef
