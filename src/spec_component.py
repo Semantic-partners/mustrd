@@ -27,6 +27,9 @@ def get_spec_component_dispatch(subject: URIRef,
                        mustrd_triple_store=MustrdRdfLib()):
     spec_component_node = get_spec_component_node(subject, predicate, spec_graph)
     source_node = get_source_node(subject, predicate, spec_graph, spec_component_node)
+    return get_data_source_type(subject, predicate, spec_graph, source_node)
+
+def get_data_source_type(subject, predicate, spec_graph, source_node):
     data_source_type = spec_graph.value(subject=source_node, predicate=RDF.type)
     if data_source_type is None:
         raise Exception(f"Node has no rdf type {subject} {predicate}")
@@ -134,7 +137,8 @@ def _get_spec_component_anzoGraphmartDataSource(subject: URIRef,
         spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
                                                                                             layer=layer)
     else:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
+        # this seems like a weird else
+        raise Exception(f"You must define {MUST.anzoConfig} to use MUST.anzoGraphmartDataSource")
 
     validate_spec_component(predicate, spec_graph, spec_component, spec_component_node)
     return spec_component
@@ -154,7 +158,7 @@ def _get_spec_component_anzoQueryBuilderDataSource(subject: URIRef,
                                                                                 query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
+        raise Exception(f"You must define {MUST.anzoConfig} to use MUST.anzoQueryBuilderDataSource")
 
     validate_spec_component(predicate, spec_graph, spec_component, spec_component_node)
     return spec_component
