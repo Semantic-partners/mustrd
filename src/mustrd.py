@@ -198,9 +198,10 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
     except Exception as e:
         log.error(e)
         return SparqlExecutionError(spec_uri, e)
-    finally:
-        if type(mustrd_triple_store) == MustrdAnzo and close_connection:
-            mustrd_triple_store.clear_graph()
+    # https://github.com/Semantic-partners/mustrd/issues/78
+    # finally:
+    #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
+    #         mustrd_triple_store.clear_graph()
 
 
 def is_json(myjson: str) -> bool:
