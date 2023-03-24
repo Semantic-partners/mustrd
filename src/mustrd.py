@@ -171,7 +171,7 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
                 if type(then_component.value) == pandas.DataFrame:
                     then = then_component.value
                 else:
-                    then = pandas.read_csv(io.StringIO(then_component.value))
+                    then = pandas.read_csv(io.StringIO(then_component.value), keep_default_na=False)
                 result = run_select_spec(spec_uri, given, when_component.value, then, when_component.bindings,
                                          then_component.ordered, mustrd_triple_store)
             case MUST.ConstructSparql:
@@ -237,9 +237,9 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
             graph_db_repo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
             input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdGraphDb(graphdb_url=graph_db_url, graphdb_port=graph_db_port,
-                                               username=username, password=password, graphdb_repository=graph_db_repo,
-                                               input_graph=input_graph))
+            triple_stores.append(MustrdGraphDb(graphDbUrl=graph_db_url, graphDbPort=graph_db_port,
+                                               username=username, password=password, graphDbRepository=graph_db_repo,
+                                               inputGraph=input_graph))
         else:
             raise Exception(f"Not Implemented {tripleStoreType}")
     return triple_stores

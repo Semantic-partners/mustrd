@@ -19,14 +19,14 @@ class MustrdGraphDb:
         self.repository = graphDbRepository
         self.inputGraph = inputGraph
 
-    def execute_select(self, given, when):
+    def execute_select(self, given, when, bindings: dict = None):
         self.clear_graph()
         self.upload_given(given)
         url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}?query={when}"
         return manage_graphdb_response(requests.post(url=url,
                                                           auth=(self.username, self.password)))
 
-    def execute_construct(self, given, when):
+    def execute_construct(self, given, when, bindings: dict = None):
         self.upload_given(given)
         url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}?query={when}"
         return Graph().parse(data=manage_graphdb_response(requests.get(url=url,
