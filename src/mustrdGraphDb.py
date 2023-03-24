@@ -34,11 +34,14 @@ class MustrdGraphDb:
                                                                        auth=(self.username, self.password))))
 
     # https://github.com/Semantic-partners/mustrd/issues/22
-    def upload_given(self, given):
-        insert_query = f"INSERT DATA {{graph <{self.inputGraph}>{{{given}}}}}"
-        requests.post(
-            url=f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/statements?update={insert_query}",
-            auth=(self.username, self.password))
+    def upload_given(self, given: Graph):
+        try:
+            url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}/rdf-graphs/service?graph={self.inputGraph}"
+            return requests.put(url=url,
+                                                            auth=(self.username, self.password),data = given.serialize(format="ttl"),
+                                                            headers = {'Content-Type': 'text/turtle'})
+        except ConnectionError:
+            raise
 
     def clear_graph(self):
         clear_query = f"CLEAR GRAPH <{self.inputGraph}>"
