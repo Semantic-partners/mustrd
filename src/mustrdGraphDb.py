@@ -22,9 +22,10 @@ class MustrdGraphDb:
     def execute_select(self, given, when, bindings: dict = None):
         self.clear_graph()
         self.upload_given(given)
-        url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}?query={when}"
+        url = f"{self.graphDbUrl}:{self.graphDbPort}/repositories/{self.repository}"
         return manage_graphdb_response(requests.post(url=url,
-                                                          auth=(self.username, self.password)))
+                                                          auth=(self.username, self.password),data = when,  
+                                                          headers = {'Content-Type': 'application/sparql-query', 'Accept': 'application/sparql-results+json'}))
 
     def execute_construct(self, given, when, bindings: dict = None):
         self.upload_given(given)
