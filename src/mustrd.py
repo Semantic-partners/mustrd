@@ -2,14 +2,13 @@ import logger_setup
 from dataclasses import dataclass
 
 from pyparsing import ParseException
-from pathlib import Path
+from pathlib import Path, WindowsPath
 from requests import ConnectionError, ConnectTimeout
 from pathlib import PosixPath 
 from rdflib import Graph, URIRef, RDF, XSD
 import rdflib
 from rdflib.compare import isomorphic, graph_diff
 import pandas
-import logging
 from multimethods import MultiMethod, Default
 
 from mustrdGraphDb import MustrdGraphDb
@@ -130,7 +129,7 @@ def run_specs_against_rdflib(triplestore_spec_path, spec_graph, spec_uris):
     log.info("run_specs_against_rdflib")
     return [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
 
-@run_specs_multi.method(PosixPath)
+@run_specs_multi.method(Path)
 def run_specs_against_triplestores(triplestore_spec_path, spec_graph, spec_uris):
     log.info("run_specs_against_triplestores")
     triple_store_config = Graph().parse(triplestore_spec_path)
@@ -165,7 +164,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
             log.info(f"Parse: {file}")
             spec_graph.parse(file)
             filePath = str(file.absolute())
-            log.error(f"{filePath=}")
+            # log.error(f"{filePath=}")
             spec_graph.add((MUST.fileSource, MUST.loadedFromFile, rdflib.Literal(filePath)))
         spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
         log.info(f"Collected {len(spec_uris)} items")
@@ -232,9 +231,9 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
     except Exception as e:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, e)
-    finally:
-        if type(mustrd_triple_store) == MustrdAnzo and close_connection:
-            mustrd_triple_store.clear_graph()
+    # finally:
+    #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
+    #         mustrd_triple_store.clear_graph()
 
 
 @run_when.method(MUST.UpdateSparql)
@@ -278,7 +277,9 @@ def is_json(myjson: str) -> bool:
         return False
     return True
 
-def get_triple_store_dispatch(tripleStoreType):
+
+
+def get_triple_store_dispatch(tripleStoreType, triple_store_graph, triple_stores, tripleStoreConfig):
     return tripleStoreType
 
 get_triple_store = MultiMethod("get_triple_store", get_triple_store_dispatch)
@@ -287,11 +288,12 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
     triple_stores = []
     for tripleStoreConfig, type, tripleStoreType in triple_store_graph.triples((None, RDF.type, None)):
         log.info(f"get_triple_stores {tripleStoreConfig=}, {type=}, {tripleStoreType=}")
-        triple_stores.append(get_triple_store(tripleStoreType, triple_store_graph, tripleStoreConfig))
+        triple_stores.append(get_triple_store(tripleStoreType, triple_store_graph, triple_stores, tripleStoreConfig))
     return triple_stores
 
-@get_triple_store.method(MUST.rdfLibConfig)
-def get_triplestore_graphdb(tripleStoreType, triple_store_graph, tripleStoreConfig):
+
+@get_triple_store.method(MUST.graphDbConfig)
+def get_triplestore_graphdb(tripleStoreType, triple_store_graph, triple_stores, tripleStoreConfig):
     graph_db_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
     graph_db_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
     username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
@@ -314,8 +316,8 @@ def get_triplestore_anzo(tripleStoreType, triple_store_graph, triple_stores, tri
                                             gqe_uri=gqe_uri, input_graph=input_graph, username=username,
                                             password=password)
 
-@get_triple_store.method(MUST.graphDbConfig)
-def _get_triplestore_rdflib(tripleStoreType, triple_store_graph, tripleStoreConfig):
+@get_triple_store.method(MUST.rdfLibConfig)
+def _get_triplestore_rdflib(tripleStoreType, triple_store_graph, triple_stores, tripleStoreConfig):
     return MustrdRdfLib()
 
 
