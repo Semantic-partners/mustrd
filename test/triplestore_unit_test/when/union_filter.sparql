@@ -1,0 +1,9 @@
+SELECT ?subj  WHERE {
+   ?subj a <test:class>;
+     <test:prop1> ?obj
+   {
+     FILTER(?obj =<test:b1>)
+   } UNION {
+     FILTER(?obj =<test:b2>)
+   }
+}
