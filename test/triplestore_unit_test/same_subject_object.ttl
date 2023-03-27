@@ -1,0 +1,23 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:same_subject_object
+    a          must:TestSpec ;
+
+    must:given [must:dataSource [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/given/same_subject_object.ttl"
+    ]];
+
+    must:when [must:dataSource [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/when/same_subject_object.sparql"
+        ];
+        must:queryType must:SelectSparql
+    ];
+
+    must:then [must:dataSource [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/then/same_subject_object.csv"
+    ]].
+

@@ -1,0 +1,8 @@
+<test:a1> <test:prop1> <test:a2> .
+<test:a2> <test:prop2> <test:a3> .
+
+<test:a1> <test:prop2> <test:a4> .
+<test:a4> <test:prop1> <test:a5> .
+
+<test:a1> <test:prop2> <test:a6> .
+<test:a6> <test:prop2> <test:a7> .
