@@ -11,7 +11,6 @@ class TestRunSpecs:
     def test_find_specs_in_path_and_run_them(self):
         project_root = get_project_root()
         test_spec_path = project_root / "test" / "test-specs"
-
         results = run_specs(test_spec_path)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [

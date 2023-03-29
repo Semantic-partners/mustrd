@@ -9,6 +9,7 @@ from rdflib import Graph, URIRef, RDF, XSD
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
+from multimethods import MultiMethod, Default
 
 from mustrdGraphDb import MustrdGraphDb
 from namespace import MUST
@@ -166,26 +167,9 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
     log.debug(f"then: {then_component.value}")
 
     try:
-        match when_component.queryType:
-            case MUST.SelectSparql:
-                if type(then_component.value) == pandas.DataFrame:
-                    then = then_component.value
-                else:
-                    then = pandas.read_csv(io.StringIO(then_component.value))
-                result = run_select_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                         then_component.ordered, mustrd_triple_store)
-            case MUST.ConstructSparql:
-                then = Graph().parse(data=then_component.value)
-                result = run_construct_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                            mustrd_triple_store)
-            case MUST.UpdateSparql:
-                then = get_then_update(spec_uri, spec_graph)
-                result = run_update_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                         mustrd_triple_store)
-            case _:
-                raise Exception(f"invalid spec when type {when_component.queryType}")
+        log.info(f"run_when {spec_uri=}, {mustrd_triple_store=}, {given=}, {when_component=}, {then_component=}")
+        return run_when(spec_uri, spec_graph, mustrd_triple_store, given, when_component, then_component)
 
-        return result
     except ParseException as e:
         log.error(e)
         return SparqlParseFailure(spec_uri, e)
@@ -195,14 +179,56 @@ def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecRe
         message = template.format(type(e).__name__, e.args)
         log.error(message)
         return TripleStoreConnectionError(spec_uri, message)
+    except TypeError as e:
+        raise
     except Exception as e:
-        log.error(e)
+        log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, e)
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
     #         mustrd_triple_store.clear_graph()
 
+def dispatch_run_when(spec_uri, spec_graph, mustrd_triple_store, given, when_component, then_component):
+    to = when_component.queryType
+    log.info(f"dispatch_run_when {to}")
+    return to
+
+run_when = MultiMethod('run_when', dispatch_run_when)
+
+@run_when.method(MUST.UpdateSparql)
+def _multi_run_when_update(spec_uri, spec_graph, mustrd_triple_store, given, when_component, then_component):
+    log.info(f" _multi_run_when_update(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+
+    then = get_then_update(spec_uri, spec_graph)
+    result = run_update_spec(spec_uri, given, when_component.value, then, when_component.bindings,
+                                         mustrd_triple_store)
+
+    return result
+
+@run_when.method(MUST.ConstructSparql)
+def _multi_run_when_construct(spec_uri, spec_graph, mustrd_triple_store, given, when_component, then_component):
+    log.info(f" _multi_run_when_construct(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+
+    then = Graph().parse(data=then_component.value)
+    result = run_construct_spec(spec_uri, given, when_component.value, then, when_component.bindings,
+                                            mustrd_triple_store)
+    return result
+
+@run_when.method(MUST.SelectSparql)
+def _multi_run_when_select(spec_uri, spec_graph, mustrd_triple_store, given, when_component, then_component):
+    log.info(f" _multi_run_when_select(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+    if type(then_component.value) == pandas.DataFrame:
+        then = then_component.value
+    else:
+        then = pandas.read_csv(io.StringIO(then_component.value))
+    result = run_select_spec(spec_uri, given, when_component.value, then, when_component.bindings,
+                                         then_component.ordered, mustrd_triple_store)
+    return result
+
+@run_when.method(Default)
+def _multi_run_when_default(spec_uri, mustrd_triple_store, given, when_component, then_component):
+    raise Exception(f"invalid {spec_uri=} when type {when_component.queryType}")
 
 def is_json(myjson: str) -> bool:
     try:
@@ -358,6 +384,7 @@ def run_select_spec(spec_uri: URIRef,
             else:
                 return SpecPassed(spec_uri)
         else:
+            log.error(message)
             return SelectSpecFailure(spec_uri, df_diff, message)
 
     except ParseException as e:
@@ -370,7 +397,8 @@ def run_construct_spec(spec_uri: URIRef,
                        then: Graph,
                        bindings: dict = None,
                        mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
-    log.info(f"Running construct spec {spec_uri}")
+    fileSource = list(given.objects(MUST.fileSource, MUST.loadedFromFile))
+    log.info(f"Running construct spec {spec_uri} {fileSource=}")
 
     try:
         result = mustrd_triple_store.execute_construct(given, when, bindings)
