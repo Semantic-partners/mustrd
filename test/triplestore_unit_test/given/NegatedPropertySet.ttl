@@ -1,0 +1,4 @@
+<test:a1> <test:prop1> <test:a2>.
+<test:a1> <test:prop2> <test:a3>.
+<test:a2> <test:prop1> <test:a4>.
+<test:a2> <test:prop2> <test:a5>.
