@@ -5,7 +5,7 @@ description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucum
 authors = ["John Placek <john.placek@semanticpartners.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 rdflib = "^6.2.0"
 pytest = "^7.2.0"
 pandas = "^1.5.2"

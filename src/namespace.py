@@ -10,6 +10,9 @@ class MUST(DefinedNamespace):
     tripleStoreConfig: URIRef
     inputGraph: URIRef
     rdfLibConfig: URIRef
+    rdfLib: URIRef
+    anzo: URIRef
+    graphDb: URIRef
     dataSource:  URIRef
     FileDataSource: URIRef
     file: URIRef
@@ -45,12 +48,16 @@ class MUST(DefinedNamespace):
     fileSource: URIRef
     loadedFromFile: URIRef
 
+    # config parameters
+    url: URIRef
+    port: URIRef
+    username: URIRef
+    password: URIRef
+    inputGraph: URIRef
+    repository: URIRef
+
     #Anzo
     anzoConfig: URIRef
-    anzoURL: URIRef
-    anzoPort: URIRef
-    anzoUser: URIRef
-    anzoPassword: URIRef
     anzoGraphmartDataSource: URIRef
     graphmart: URIRef
     layer: URIRef
@@ -59,8 +66,4 @@ class MUST(DefinedNamespace):
 
     #GraphDb
     graphDbConfig: URIRef
-    graphDbUrl: URIRef
-    graphDbPort: URIRef
-    graphDbUser: URIRef
-    graphDbPassword: URIRef
-    graphDbRepo: URIRef
+
