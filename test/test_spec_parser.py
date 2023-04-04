@@ -22,22 +22,22 @@ class TestSpecParserTest:
             
             <{select_spec_uri}>
                  a          must:TestSpec ;
-    must:given [ must:dataSource [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
-                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
-    must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; ] ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:textDataSource ;
+                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ must:dataSource [ a must:TableDataSource ;
+    must:then  [ a must:TableDataSource ;
                                    must:rows [ must:row [
                                         must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ; ] ;
+                                        must:binding  test-data:obj ; ] ;
                ] ; ] .
             """
 
@@ -50,19 +50,19 @@ class TestSpecParserTest:
 
             <{construct_spec_uri}>
                 a          must:TestSpec ;
-    must:given [ must:dataSource [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
-                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
-    must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; ] ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:textDataSource ;
+                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ must:dataSource [ a must:StatementsDataSource ;
+    must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] ; ] .
+                                   rdf:object    test-data:pred ; ] ; ] .
             """
 
     def test_given(self):

@@ -12,12 +12,26 @@ from namespace import MUST
 from utils import get_project_root
 
 
-# https://github.com/Semantic-partners/mustrd/issues/51
 @dataclass
 class SpecComponent:
     value: str = None
     ordered: bool = False
     bindings: dict = None
+
+
+# @dataclass
+# class GivenSpec(SpecComponent):
+#     pass
+#
+#
+# @dataclass
+# class WhenSpec(SpecComponent):
+#     bindings: dict = None
+#
+#
+# @dataclass
+# class ThenSpec(SpecComponent):
+#     ordered: bool = False
 
 
 def get_spec_component(subject: URIRef,
@@ -30,29 +44,29 @@ def get_spec_component(subject: URIRef,
     if spec_component_node is None:
         raise Exception(f"specComponent Node empty for {subject} {predicate}")
 
-    source_node = spec_graph.value(subject=spec_component_node, predicate=MUST.dataSource)
-    if source_node is None:
-        raise Exception(f"No data source for specComponent {subject} {predicate}")
+    # source_node = spec_graph.value(subject=spec_component_node, predicate=MUST.dataSource)
+    # if source_node is None:
+    #     raise Exception(f"No data source for specComponent {subject} {predicate}")
 
-    data_source_type = spec_graph.value(subject=source_node, predicate=RDF.type)
+    data_source_type = spec_graph.value(subject=spec_component_node, predicate=RDF.type)
     if data_source_type is None:
         raise Exception(f"Node has no rdf type {subject} {predicate}")
 
     # Get specComponent from a file
     match data_source_type:
         case MUST.FileDataSource:
-            file_path = Path(spec_graph.value(subject=source_node, predicate=MUST.file))
+            file_path = Path(spec_graph.value(subject=spec_component_node, predicate=MUST.file))
             project_root = get_project_root()
             path = Path(os.path.join(project_root, file_path))
             spec_component.value = get_spec_spec_component_from_file(path)
         # Get specComponent directly from config file (in text string)
         case MUST.textDataSource:
-            spec_component.value = str(spec_graph.value(subject=source_node, predicate=MUST.text))
+            spec_component.value = str(spec_graph.value(subject=spec_component_node, predicate=MUST.text))
             if predicate == MUST.when:
                 spec_component.bindings = get_when_bindings(subject, spec_graph)
         # Get specComponent with http GET protocol
         case MUST.HttpDataSource:
-            spec_component.value = requests.get(spec_graph.value(subject=source_node, predicate=MUST.dataSourceUrl)).content
+            spec_component.value = requests.get(spec_graph.value(subject=spec_component_node, predicate=MUST.dataSourceUrl)).content
         # get specComponent from ttl table
         case MUST.TableDataSource:
             spec_component.value = get_spec_from_table(subject, predicate, spec_graph)
@@ -69,22 +83,22 @@ def get_spec_component(subject: URIRef,
         case MUST.anzoGraphmartDataSource:
             if mustrd_triple_store["type"] == MUST.anzo:
             # Get GIVEN or THEN from anzo graphmart
-                graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
-                layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
+                graphmart = spec_graph.value(subject=spec_component_node, predicate=MUST.graphmart)
+                layer = spec_graph.value(subject=spec_component_node, predicate=MUST.layer)
                 spec_component.value = get_spec_component_from_graphmart(graphMart=graphmart, layer=layer)
             else:
                 raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
         case MUST.anzoQueryBuilderDataSource:
             # Get WHEN specComponent from query builder
             if mustrd_triple_store["type"] == MUST.anzo:
-                query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
-                query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
+                query_folder = spec_graph.value(subject=spec_component_node, predicate=MUST.queryFolder)
+                query_name = spec_graph.value(subject=spec_component_node, predicate=MUST.queryName)
                 spec_component.value = get_query_from_querybuilder(folderName=query_folder, queryName=query_name)
             # If anzo specific function is called but no anzo defined
             else:
                 raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
         case _:
-            raise Exception(f"Spec type not Implemented. specComponentNode: {source_node}. Type: {data_source_type}")
+            raise Exception(f"Spec type not Implemented. specComponentNode: {spec_component_node}. Type: {data_source_type}")
 
     if predicate == URIRef('https://mustrd.com/model/when'):
         spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
@@ -113,7 +127,6 @@ def get_spec_from_statements(subject: URIRef,
     CONSTRUCT {{ ?s ?p ?o }}
     {{
             <{subject}> <{predicate}> [
-              <{MUST.dataSource}>  [
                 a <{MUST.StatementsDataSource}> ;
                 <{MUST.statements}> [
                     a rdf:Statement ;
@@ -121,7 +134,6 @@ def get_spec_from_statements(subject: URIRef,
                     rdf:predicate ?p ;
                     rdf:object ?o ;
                 ] ;
-              ]
             ]
 
     }}
@@ -138,21 +150,19 @@ def get_spec_from_table(subject: URIRef,
     SELECT ?then ?order ?variable ?binding
     WHERE {{ {{
          <{subject}> <{predicate}> [
-            <{MUST.dataSource}>  [ 
                 a <{MUST.TableDataSource}> ;
                 <{MUST.rows}> [ 
                     <{MUST.row}> [
                         <{MUST.variable}> ?variable ;
                         <{MUST.binding}> ?binding ; ] ; 
-                            ] ; ] ; ].}} 
+                            ] ; ].}} 
     OPTIONAL {{ <{subject}> <{predicate}> [
-            <{MUST.dataSource}>  [ 
                 a <{MUST.TableDataSource}> ;
                 <{MUST.rows}> [  sh:order ?order ;
                                     <{MUST.row}> [
                             <{MUST.variable}> ?variable ;
                             <{MUST.binding}> ?binding ; ] ;
-                        ] ; ] ; ].}}
+                        ] ; ].}}
     }} ORDER BY ASC(?order)"""
 
     expected_results = spec_graph.query(then_query)
@@ -191,7 +201,7 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ <{MUST.dataSource}> [ a <{MUST.textDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ] ; ]  ;}}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.textDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
@@ -208,26 +218,22 @@ def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph
     ASK {{
     {{SELECT (count(?binding) as ?totalBindings) {{  
     <{subject}> <{predicate}> [
-              <{MUST.dataSource}>  [
                 a <{MUST.TableDataSource}> ;
                 <{MUST.rows}> [ <{MUST.row}> [
                                     <{MUST.variable}> ?variable ;
                                     <{MUST.binding}> ?binding ;
                             ] ; 
-                        ] 
               ]
             ]
 }} }}
     {{SELECT (count(?binding) as ?orderedBindings) {{    
     <{subject}> <{predicate}> [
-              <{MUST.dataSource}>  [
                 a <{MUST.TableDataSource}> ;
        <{MUST.rows}> [ sh:order ?order ;
                     <{MUST.row}> [ 
                     <{MUST.variable}> ?variable ;
                                     <{MUST.binding}> ?binding ;
                             ] ; 
-                        ] 
               ]
             ]
 }} }}

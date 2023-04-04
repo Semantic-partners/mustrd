@@ -39,7 +39,7 @@ class TestRunSelectSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                                    must:rows [ must:row [
                                         must:variable "s" ;
                                         must:binding  test-data:sub ; ],
@@ -47,7 +47,7 @@ class TestRunSelectSpec:
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ] ; ] ;
-               ] ; ] .
+               ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -77,7 +77,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
@@ -90,7 +90,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -131,7 +131,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -144,7 +144,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding 1.0  ; 
                                         ]; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -185,7 +185,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -198,7 +198,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "1"  ; 
                                         ]; ] ;
-                ] ; ].
+                 ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -232,12 +232,12 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
                                         ] ; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -277,7 +277,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -290,7 +290,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "hello world"  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -328,7 +328,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -341,7 +341,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "hello worlds"  ; 
                                         ]; ] ;
-                ] ; ].
+                 ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -378,7 +378,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
+            must:then  [ a must:EmptyTableResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -408,7 +408,7 @@ class TestRunSelectSpec:
 
                 test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
+                    must:then  [ a must:EmptyTableResult ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -445,7 +445,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -458,7 +458,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -501,7 +501,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -514,7 +514,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding true  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -550,13 +550,13 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row 
                                         [
                                        must:variable "o" ;
                                        must:binding 25.0  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -598,7 +598,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -622,7 +622,7 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object ; 
-                                        ]; ] ; ] ; ].
+                                        ]; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -652,7 +652,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -661,7 +661,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -700,7 +700,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -713,7 +713,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -752,7 +752,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -761,7 +761,7 @@ class TestRunSelectSpec:
                                        must:variable "obj" ;
                                        must:binding test-data:object  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -806,7 +806,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -819,7 +819,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -858,7 +858,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -882,7 +882,7 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object  ; 
-                                        ]; ] ; ] ;    
+                                        ]; ] ;    
                           ].
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -929,7 +929,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub1 ; 
@@ -954,7 +954,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj4  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1001,7 +1001,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1011,7 +1011,7 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ]; ] ; ] ; ] .
+                                        must:binding  test-data:obj ; ]; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1048,7 +1048,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1058,7 +1058,7 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:object ; ]; ] ; ] ; ] .
+                                        must:binding  test-data:object ; ]; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1096,7 +1096,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -1109,7 +1109,7 @@ class TestRunSelectSpec:
                                        must:variable "obj" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1153,7 +1153,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -1161,7 +1161,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1207,7 +1207,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:subject ; 
@@ -1215,7 +1215,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1262,7 +1262,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1276,7 +1276,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1313,7 +1313,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1327,7 +1327,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1365,7 +1365,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 2 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1379,7 +1379,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1426,7 +1426,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1438,7 +1438,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1484,7 +1484,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1497,7 +1497,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1544,7 +1544,7 @@ class TestRunSelectSpec:
 
             test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ must:dataSource [ a must:TableDataSource ;
+                    must:then  [ a must:TableDataSource ;
                             must:rows [ must:row [
                                            must:variable "s" ;
                                            must:binding test-data:sub ; 
@@ -1557,7 +1557,7 @@ class TestRunSelectSpec:
                                            must:variable "o" ;
                                            must:binding test-data:obj  ; 
                                             ]; ] ;
-                             ] ; ].
+                             ].
             """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1602,8 +1602,8 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:FileDataSource ;
-                                   must:file "test/data/thenSuccess.csv" ] ; ] .
+            must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1640,8 +1640,8 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:FileDataSource ;
-                                   must:file "test/data/thenFail.csv" ] ; ] .
+            must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenFail.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 

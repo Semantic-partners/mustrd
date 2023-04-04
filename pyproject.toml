@@ -2,7 +2,9 @@
 name = "mustrd"
 version = "0.1.0"
 description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucumber."
-authors = ["John Placek <john.placek@semanticpartners.com>"]
+authors = ["John Placek <john.placek@semanticpartners.com>",
+    "Juliane Piñeiro-Winkler <juliane.pineiro-winkler@semanticpartners.com>",
+    "Aymeric Picou <aymeric.picou@semanticpartners.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"

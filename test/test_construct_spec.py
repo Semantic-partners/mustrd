@@ -36,11 +36,11 @@ class TestRunConstructSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ must:dataSource [ a must:StatementsDataSource ;
+                must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] ; ] .
+                                   rdf:object    test-data:pred ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -71,11 +71,11 @@ class TestRunConstructSpec:
         
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] ; ] .
+                                   rdf:object    test-data:pred ; ] ;  ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -130,13 +130,13 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object "hello world" ;
-                        ] ; ] ; ] .
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -173,13 +173,13 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] ; ] ; ] .
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -229,7 +229,7 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                  must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
+                  must:then  [ a must:EmptyGraphResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -259,7 +259,7 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec
             a must:TestSpec ;
-                must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
+                must:then  [ a must:EmptyGraphResult ] .
 
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -308,13 +308,13 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec
             a must:TestSpec ;
-                must:then  [ must:dataSource [ a must:StatementsDataSource ;
+                must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] ; ] ; ] .
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -368,7 +368,7 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
@@ -378,8 +378,7 @@ class TestRunConstructSpec:
                             a rdf:Statement ;
                             rdf:subject test-data:object ;
                             rdf:predicate test-data:predicate ;
-                            rdf:object test-data:subject ; ] ; ] ;
-                             ] .
+                            rdf:object test-data:subject ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -416,12 +415,12 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
                             rdf:predicate test-data:pred ;
-                            rdf:object test-data:sub ; ] ; ] ;
+                            rdf:object test-data:sub ; ] ;
                              ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -468,12 +467,12 @@ class TestRunConstructSpec:
 
         test-data:my_failing_spec 
            a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ sh:order 1 ;
                                     must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
-                                        ] ; ] ; ] ; ].
+                                        ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -510,11 +509,11 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ must:dataSource [ a must:StatementsDataSource ;
+                must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] ; ] .
+                                   rdf:object    test-data:pred ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
