@@ -12,7 +12,7 @@ test-data:a_complete_select_scenario_variables_datatypes
                                    rdf:predicate test-data:pred ;
                                    rdf:object    true ; ] ; ] ; ] ;
     must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o { ?s ?p ?o }" ;
+                                   must:text  "select ?s ?p ?o where { ?s ?p ?o }" ;
                  must:bindings [ must:variable "o" ;
                                  must:binding  true ; ] ; ] ;
                  must:queryType must:SelectSparql   ; ] ;

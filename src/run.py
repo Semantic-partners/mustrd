@@ -1,23 +1,12 @@
-import logging
-import colorlog
+import logger_setup
 import sys
 import getopt
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
-    SpecPassedWithWarning
+    SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure
 from pathlib import Path
 from colorama import Fore, Style
 
-LOG_LEVEL = logging.INFO
-
-log = colorlog.getLogger(__name__)
-log.setLevel(LOG_LEVEL)
-
-ch = logging.StreamHandler()
-ch.setLevel(LOG_LEVEL)
-
-ch.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)s: %(name)s %(white)s%(message)s'))
-
-log.addHandler(ch)
+log = logger_setup.setup_logger(__name__)
 
 
 def main(argv):
@@ -68,8 +57,10 @@ def main(argv):
         overview_colour = Fore.RED
     elif warning_count:
         overview_colour = Fore.YELLOW
-    print(f"{overview_colour}===== {fail_count} failures, {pass_count} passed, "
-          f"{warning_count} passed with warnings {overview_colour}=====")
+
+    logger_setup.flush()
+    print(f"{overview_colour}===== {fail_count} failures, {Fore.GREEN}{pass_count} passed, "
+          f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count):
         for res in results:
@@ -82,6 +73,9 @@ def main(argv):
             if type(res) == SpecPassedWithWarning:
                 print(f"{Fore.YELLOW}Passed with warning {res.spec_uri}")
                 print(res.warning)
+            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or type(res) == SparqlParseFailure:
+                print(f"Failed {res.spec_uri}")
+                print(res.exception)
 
 
 if __name__ == "__main__":
