@@ -2,7 +2,7 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_construct_scenario_when_file
+test-data:a_complete_construct_scenario_when_file_then_file
     a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
@@ -12,8 +12,5 @@ test-data:a_complete_construct_scenario_when_file
     must:when  [ a must:FileDataSource ;
                                    must:file "test/data/construct.rq" ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
-                                   rdf:subject   test-data:obj ;
-                                   rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] .
+    must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.nt" ] .

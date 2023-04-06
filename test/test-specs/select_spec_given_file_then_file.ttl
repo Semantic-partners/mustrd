@@ -12,4 +12,4 @@ test-data:a_complete_select_scenario_given_file_then_file
                                    must:text  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ;
                  must:queryType must:SelectSparql ; ] ;
     must:then  [ a must:FileDataSource ;
-                                   must:file "test/data/thenSuccess.csv" ] .
+                                   must:file "test/data/thenSuccess.xlsx" ] .

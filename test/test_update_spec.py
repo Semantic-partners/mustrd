@@ -50,9 +50,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, insert_query, then, self.triple_store)
+        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -119,9 +118,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, insert_data_query, then, self.triple_store)
+        t = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -184,9 +182,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then, self.triple_store)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -223,9 +220,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        result = run_update_spec(spec_uri, state, insert_query, then, self.triple_store)
+        result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -323,9 +319,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        result = run_update_spec(spec_uri, state, insert_data_query, then, self.triple_store)
+        result = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -375,9 +370,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        result = run_update_spec(spec_uri, state, delete_data_query, then, self.triple_store)
+        result = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -427,9 +421,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        result = run_update_spec(spec_uri, state, delete_insert_query, then, self.triple_store)
+        result = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -502,9 +495,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, insert_query, then, self.triple_store, binding)
+        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store, binding)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -551,9 +543,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then, self.triple_store, binding)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store, binding)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -636,9 +627,8 @@ class TestRunUpdateSpec:
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
-        then = Graph().parse(data=then_component.value)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then, self.triple_store)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
