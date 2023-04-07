@@ -7,8 +7,7 @@ import pandas
 import requests
 from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD
 
-from mustrdAnzo import MustrdAnzo
-from mustrdRdfLib import MustrdRdfLib
+from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder
 from namespace import MUST
 from utils import get_project_root
 
@@ -24,7 +23,7 @@ class SpecComponent:
 def get_spec_component(subject: URIRef,
                        predicate: URIRef,
                        spec_graph: Graph,
-                       mustrd_triple_store=MustrdRdfLib()) -> SpecComponent:
+                       mustrd_triple_store: dict) -> SpecComponent:
     spec_component = SpecComponent()
 
     spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
@@ -68,21 +67,19 @@ def get_spec_component(subject: URIRef,
             spec_component.value = get_spec_from_statements(subject, predicate, spec_graph)
         # From anzo specific source
         case MUST.anzoGraphmartDataSource:
-            if type(mustrd_triple_store) == MustrdAnzo:
+            if mustrd_triple_store["type"] == MUST.anzo:
             # Get GIVEN or THEN from anzo graphmart
                 graphmart = spec_graph.value(subject=source_node, predicate=MUST.graphmart)
                 layer = spec_graph.value(subject=source_node, predicate=MUST.layer)
-                spec_component.value = mustrd_triple_store.get_spec_component_from_graphmart(graphMart=graphmart,
-                                                                                             layer=layer)
+                spec_component.value = get_spec_component_from_graphmart(graphMart=graphmart, layer=layer)
             else:
                 raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")
         case MUST.anzoQueryBuilderDataSource:
             # Get WHEN specComponent from query builder
-            if type(mustrd_triple_store) == MustrdAnzo:
+            if mustrd_triple_store["type"] == MUST.anzo:
                 query_folder = spec_graph.value(subject=source_node, predicate=MUST.queryFolder)
                 query_name = spec_graph.value(subject=source_node, predicate=MUST.queryName)
-                spec_component.value = mustrd_triple_store.get_query_from_querybuilder(folderName=query_folder,
-                                                                                       queryName=query_name)
+                spec_component.value = get_query_from_querybuilder(folderName=query_folder, queryName=query_name)
             # If anzo specific function is called but no anzo defined
             else:
                 raise Exception(f"You must define {MUST.anzoConfig} to use {data_source_type}")

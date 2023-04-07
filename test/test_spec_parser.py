@@ -11,6 +11,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestSpecParserTest:
+    triple_store = {"type": MUST.rdfLib}
     select_spec_uri = TEST_DATA.a_complete_select_spec
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -69,7 +70,8 @@ class TestSpecParserTest:
         spec_graph.parse(data=self.select_spec, format='ttl')
         given_component = get_spec_component(subject=self.select_spec_uri,
                                              predicate=MUST.given,
-                                             spec_graph=spec_graph)
+                                             spec_graph=spec_graph,
+                                             mustrd_triple_store=self.triple_store)
         given = Graph()
         given.parse(data=given_component.value, format='ttl')
 
@@ -88,7 +90,8 @@ class TestSpecParserTest:
 
         when_component = get_spec_component(subject=self.select_spec_uri,
                                             predicate=MUST.when,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         expected_query = "select ?s ?p ?o { ?s ?p ?o }"
 
@@ -99,7 +102,8 @@ class TestSpecParserTest:
         spec_graph.parse(data=self.select_spec, format='ttl')
         then_component = get_spec_component(subject=self.select_spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         expected_df = pandas.DataFrame(
             [[str(TEST_DATA.sub), str(XSD.anyURI), str(TEST_DATA.pred), str(XSD.anyURI), str(TEST_DATA.obj), str(XSD.anyURI)]],
@@ -113,7 +117,8 @@ class TestSpecParserTest:
         spec_graph.parse(data=self.construct_spec, format='ttl')
         when_component = get_spec_component(subject=self.construct_spec_uri,
                                             predicate=MUST.when,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         expected_query = "construct { ?o ?s ?p } { ?s ?p ?o }"
 
@@ -125,7 +130,8 @@ class TestSpecParserTest:
 
         then_component = get_spec_component(subject=self.construct_spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         then = Graph()
         then.parse(data=then_component.value, format='ttl')
