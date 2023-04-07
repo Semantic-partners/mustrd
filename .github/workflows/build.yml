@@ -39,7 +39,7 @@ jobs:
         # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
       - name: Generate coverage HTML report
-        run: coverage html --directory=htmlcov
+        run: coverage html --directory=htmlcov --include=src/*
       - name: Upload coverage HTML report
         uses: actions/upload-artifact@v3
         with:
@@ -49,6 +49,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report
-          path: src/htmlcov/index.html
+          path: htmlcov/index.html
           retention-days: 7
         if: ${{ always() }}
