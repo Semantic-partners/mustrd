@@ -264,10 +264,7 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 def _multi_run_when_update(spec: Specification):
     # log.info(f" _multi_run_when_update(spec_uri, mustrd_triple_store, given, when_component, then_component):")
 
-    if type(spec.then.value) == Graph:
-        then = spec.then.value
-    else:
-        then = Graph().parse(data=spec.then.value)
+    then = spec.then.value
 
     result = run_update_spec(spec.spec_uri, spec.given, spec.when.value, then,
                              spec.triple_store, spec.when.bindings)
