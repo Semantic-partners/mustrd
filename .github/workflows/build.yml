@@ -43,12 +43,13 @@ jobs:
       - name: Upload coverage HTML report
         uses: actions/upload-artifact@v3
         with:
-          name: coverage-html
+          name: coverage-htmlcov
           path: htmlcov
       - name: Upload coverage report
         uses: actions/upload-artifact@v3
         with:
-          name: coverage-report
+          name: coverage-report-html
           path: htmlcov/index.html
+          packaging: raw
           retention-days: 7
         if: ${{ always() }}
