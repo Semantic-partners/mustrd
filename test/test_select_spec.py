@@ -23,6 +23,8 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
+    triple_store = {"type": MUST.rdfLib}
+
     def test_select_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
@@ -53,11 +55,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_select_spec(spec_uri, state, select_query, then_component.value)
+        t = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
@@ -95,9 +98,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -148,9 +152,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -201,9 +206,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -239,9 +245,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -291,11 +298,13 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
+                                      bindings=binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_with_variables_spec_fails_with_expected_vs_actual_table_comparison(self):
@@ -340,9 +349,11 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
+                                      bindings=binding)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -375,11 +386,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_spec_expect_empty_result_fails(self):
@@ -404,9 +416,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -453,9 +466,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -508,11 +522,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, bindings=binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_spec_different_types_of_variables_spec_fails(self):
@@ -549,9 +564,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, bindings=binding)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -614,11 +630,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_spec_expected_fewer_columns_fails(self):
@@ -652,9 +669,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -703,9 +721,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -750,9 +769,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -807,9 +827,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -870,9 +891,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -940,9 +962,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -996,11 +1019,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_spec_with_optional_fails_with_expected_vs_actual_table_comparison(self):
@@ -1042,9 +1066,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
@@ -1092,9 +1117,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1143,9 +1169,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1196,9 +1223,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1256,12 +1284,13 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_spec_ordered_passes_with_warning(self):
@@ -1307,12 +1336,13 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
 
-        expected_result = SpecPassedWithWarning(spec_uri, warning)
+        expected_result = SpecPassedWithWarning(spec_uri, self.triple_store["type"], warning)
         assert spec_result == expected_result
 
     def test_select_spec_ordered_fails(self):
@@ -1357,9 +1387,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
 
         print(spec_result)
@@ -1415,9 +1446,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1473,9 +1505,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
 
         print(spec_result)
@@ -1532,9 +1565,10 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value,
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
 
         print(spec_result)
@@ -1577,13 +1611,14 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         then = pandas.read_csv(io.StringIO(then_component.value))
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then)
+        spec_result = run_select_spec(spec_uri, state, select_query, then, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
 
     def test_select_given_file_then_file_spec_fails(self):
@@ -1614,11 +1649,12 @@ class TestRunSelectSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
         then = pandas.read_csv(io.StringIO(then_component.value))
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then)
+        spec_result = run_select_spec(spec_uri, state, select_query, then, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()

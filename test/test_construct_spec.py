@@ -20,6 +20,8 @@ class TestRunConstructSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
+    triple_store = {"type": MUST.rdfLib}
+
     def test_construct_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
@@ -46,12 +48,13 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then)
+        t = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_construct_spec_fails_with_graph_comparison(self):
@@ -80,10 +83,11 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then)
+        result = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -96,8 +100,12 @@ class TestRunConstructSpec:
         result_type = type(result)
         if result_type == ConstructSpecFailure:
             graph_comparison = result.graph_comparison
-            assert isomorphic(graph_comparison.in_expected_not_in_actual, expected_in_expected_not_in_actual), graph_comparison_message(expected_in_expected_not_in_actual, graph_comparison.in_expected_not_in_actual)
-            assert isomorphic(graph_comparison.in_actual_not_in_expected, expected_in_actual_not_in_expected), graph_comparison_message(expected_in_actual_not_in_expected, graph_comparison.in_actual_not_in_expected)
+            assert isomorphic(graph_comparison.in_expected_not_in_actual,
+                              expected_in_expected_not_in_actual), graph_comparison_message(
+                expected_in_expected_not_in_actual, graph_comparison.in_expected_not_in_actual)
+            assert isomorphic(graph_comparison.in_actual_not_in_expected,
+                              expected_in_actual_not_in_expected), graph_comparison_message(
+                expected_in_actual_not_in_expected, graph_comparison.in_actual_not_in_expected)
             assert len(graph_comparison.in_both.all_nodes()) == 0
         else:
             raise Exception(f"Unexpected result type {result_type}")
@@ -136,12 +144,13 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
+        t = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store, bindings=binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_construct_spec_with_variable_fails_with_graph_comparison(self):
@@ -178,10 +187,11 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
+        result = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store, bindings=binding)
 
         assert result.spec_uri == spec_uri
 
@@ -227,11 +237,12 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then_component.value, bindings=binding)
+        t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store, bindings=binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_construct_unexpected_result_spec_fails(self):
@@ -257,9 +268,10 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then_component.value)
+        result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -310,10 +322,11 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then, bindings=binding)
+        result = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store, bindings=binding)
 
         assert result.spec_uri == spec_uri
 
@@ -374,12 +387,13 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then)
+        t = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_construct_spec_result_mismatch_fails_with_graph_comparison(self):
@@ -416,10 +430,11 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then)
+        result = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -466,9 +481,10 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_construct_spec(spec_uri, state, construct_query, then_component.value)
+        spec_result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -506,10 +522,11 @@ class TestRunConstructSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
         then = Graph().parse(data=then_component.value)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then)
+        t = run_construct_spec(spec_uri, state, construct_query, then, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
