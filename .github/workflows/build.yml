@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-#        python-version: ["3.7", "3.8", "3.9", "3.10"]
         python-version: ["3.10"]
 
     steps:
@@ -40,16 +39,10 @@ jobs:
         if: ${{ always() }}
       - name: Generate coverage HTML report
         run: coverage html --directory=htmlcov --include=src/*
-      - name: Upload coverage HTML report
+      - name: Upload coverage HTML summary
         uses: actions/upload-artifact@v3
         with:
           name: coverage-htmlcov
           path: htmlcov
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report-html
-          path: htmlcov/index.html
-          packaging: raw
           retention-days: 7
         if: ${{ always() }}
