@@ -1,7 +1,5 @@
 import os
-import io
 
-import pandas
 from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.term import Literal, Variable, URIRef
@@ -11,7 +9,7 @@ from pathlib import Path
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
     SpecPassedWithWarning, get_spec_component
 from namespace import MUST
-from spec_component import get_spec_spec_component_from_file
+from spec_component import get_spec_spec_component_from_file, TableThenSpec
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -39,7 +37,7 @@ class TestRunSelectSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                                    must:rows [ must:row [
                                         must:variable "s" ;
                                         must:binding  test-data:sub ; ],
@@ -47,7 +45,7 @@ class TestRunSelectSpec:
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ] ; ] ;
-               ] ; ] .
+               ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -62,6 +60,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
         state = Graph()
@@ -77,7 +76,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
@@ -90,7 +89,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -105,6 +104,7 @@ class TestRunSelectSpec:
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
@@ -131,7 +131,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -144,7 +144,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding 1.0  ; 
                                         ]; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -159,6 +159,7 @@ class TestRunSelectSpec:
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
@@ -185,7 +186,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -198,7 +199,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "1"  ; 
                                         ]; ] ;
-                ] ; ].
+                 ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -213,6 +214,7 @@ class TestRunSelectSpec:
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
 |---:|:----------------------------------------|:-----------------------------------------|
@@ -232,12 +234,12 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
                                         ] ; ] ;
-                ] ; ].
+                ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -251,6 +253,7 @@ class TestRunSelectSpec:
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SparqlParseFailure:
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert str(
                 spec_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
@@ -277,7 +280,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -290,7 +293,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "hello world"  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -306,6 +309,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_with_variables_spec_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
@@ -328,7 +332,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -341,7 +345,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding "hello worlds"  ; 
                                         ]; ] ;
-                ] ; ].
+                 ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -357,6 +361,7 @@ class TestRunSelectSpec:
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('o', 'expected')   | ('o', 'actual')   |
 |---:|:--------------------|:------------------|
@@ -378,7 +383,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
+            must:then  [ a must:EmptyTableResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -392,6 +397,7 @@ class TestRunSelectSpec:
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
+        assert type(then_component) == TableThenSpec
         assert spec_result == expected_result
 
     def test_select_spec_expect_empty_result_fails(self):
@@ -408,7 +414,7 @@ class TestRunSelectSpec:
 
                 test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ must:dataSource [ a must:EmptyTableResult ] ; ] .
+                    must:then  [ a must:EmptyTableResult ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -424,6 +430,7 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                            | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
 |---:|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
@@ -445,7 +452,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -458,7 +465,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -474,6 +481,7 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
 |---:|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:--------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
@@ -501,7 +509,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -514,7 +522,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding true  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -529,6 +537,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_different_types_of_variables_spec_fails(self):
         triples = """
@@ -550,13 +559,13 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row 
                                         [
                                        must:variable "o" ;
                                        must:binding 25.0  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -572,6 +581,7 @@ class TestRunSelectSpec:
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
@@ -598,7 +608,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -622,7 +632,7 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object ; 
-                                        ]; ] ; ] ; ].
+                                        ]; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -637,6 +647,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_expected_fewer_columns_fails(self):
         state = Graph()
@@ -652,7 +663,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -661,7 +672,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -678,6 +689,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                            | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
@@ -700,7 +712,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -713,7 +725,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -730,6 +742,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 2 column(s)"
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
@@ -752,7 +765,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -761,7 +774,7 @@ class TestRunSelectSpec:
                                        must:variable "obj" ;
                                        must:binding test-data:object  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -778,6 +791,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('obj', 'expected')                           | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
@@ -806,7 +820,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -819,7 +833,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -836,6 +850,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
@@ -858,7 +873,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -882,7 +897,7 @@ class TestRunSelectSpec:
                                         [
                                        must:variable "o" ;
                                        must:binding test-data:object  ; 
-                                        ]; ] ; ] ;    
+                                        ]; ] ;    
                           ].
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -900,6 +915,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   | ('p', 'expected')                                | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('o', 'expected')                             | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
@@ -929,7 +945,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub1 ; 
@@ -954,7 +970,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj4  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -971,6 +987,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 3 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                           | ('s', 'actual')                             | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                            | ('p', 'actual')                              | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('o', 'expected')                           | ('o', 'actual')                             | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                |
@@ -1001,7 +1018,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1011,7 +1028,7 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ]; ] ; ] ; ] .
+                                        must:binding  test-data:obj ; ]; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1026,6 +1043,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_with_optional_fails_with_expected_vs_actual_table_comparison(self):
         triples = """
@@ -1048,7 +1066,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1058,7 +1076,7 @@ class TestRunSelectSpec:
                             [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:object ; ]; ] ; ] ; ] .
+                                        must:binding  test-data:object ; ]; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1074,6 +1092,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                             | ('o', 'actual')                            |
@@ -1096,7 +1115,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -1109,7 +1128,7 @@ class TestRunSelectSpec:
                                        must:variable "obj" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1126,6 +1145,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
@@ -1153,7 +1173,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:sub ; 
@@ -1161,7 +1181,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1178,6 +1198,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
@@ -1207,7 +1228,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                         must:rows [ must:row [
                                        must:variable "s" ;
                                        must:binding test-data:subject ; 
@@ -1215,7 +1236,7 @@ class TestRunSelectSpec:
                                        must:variable "o" ;
                                        must:binding test-data:obj  ; 
                                         ]; ] ;
-                         ] ; ].
+                         ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1232,6 +1253,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
@@ -1262,7 +1284,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1276,7 +1298,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1292,6 +1314,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_ordered_passes_with_warning(self):
         triples = """
@@ -1313,7 +1336,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1327,7 +1350,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1344,6 +1367,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassedWithWarning(spec_uri, self.triple_store["type"], warning)
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_spec_ordered_fails(self):
         triples = """
@@ -1365,7 +1389,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 2 ;
                              must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
@@ -1379,7 +1403,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1397,6 +1421,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                           | ('s', 'actual')                             | ('p', 'expected')                            | ('p', 'actual')                              | ('o', 'expected')                           | ('o', 'actual')                             |
@@ -1426,7 +1451,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1438,7 +1463,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1455,6 +1480,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
             assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
@@ -1484,7 +1510,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:TableDataSource ;
+            must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1497,7 +1523,7 @@ class TestRunSelectSpec:
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj2 ; ] ; ] ; ] ; ] .
+                                        must:binding  test-data:obj2 ; ] ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1515,6 +1541,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
             assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
@@ -1544,7 +1571,7 @@ class TestRunSelectSpec:
 
             test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ must:dataSource [ a must:TableDataSource ;
+                    must:then  [ a must:TableDataSource ;
                             must:rows [ must:row [
                                            must:variable "s" ;
                                            must:binding test-data:sub ; 
@@ -1557,7 +1584,7 @@ class TestRunSelectSpec:
                                            must:variable "o" ;
                                            must:binding test-data:obj  ; 
                                             ]; ] ;
-                             ] ; ].
+                             ].
             """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1575,6 +1602,7 @@ class TestRunSelectSpec:
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
             assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
@@ -1602,8 +1630,8 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:FileDataSource ;
-                                   must:file "test/data/thenSuccess.csv" ] ; ] .
+            must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1614,12 +1642,11 @@ class TestRunSelectSpec:
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
 
-        then = pandas.read_csv(io.StringIO(then_component.value))
-
-        spec_result = run_select_spec(spec_uri, state, select_query, then, self.triple_store)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
+        assert type(then_component) == TableThenSpec
 
     def test_select_given_file_then_file_spec_fails(self):
         project_root = get_project_root()
@@ -1640,8 +1667,8 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:FileDataSource ;
-                                   must:file "test/data/thenFail.csv" ] ; ] .
+            must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenFail.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1652,13 +1679,12 @@ class TestRunSelectSpec:
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
 
-        then = pandas.read_csv(io.StringIO(then_component.value))
-
-        spec_result = run_select_spec(spec_uri, state, select_query, then, self.triple_store)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
             table_diff = spec_result.table_comparison.to_markdown()
             message = spec_result.message
+            assert type(then_component) == TableThenSpec
             assert spec_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                           | ('o', 'actual')                            |
