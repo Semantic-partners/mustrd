@@ -1,0 +1,16 @@
+name: My Action
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  my_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: My Step
+        run: echo "Hello, World!"
