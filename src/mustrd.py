@@ -13,7 +13,6 @@ from multimethods import MultiMethod, Default
 
 from namespace import MUST
 import requests
-import io
 import json
 from pandas import DataFrame
 
@@ -91,6 +90,11 @@ class SparqlExecutionError(SpecResult):
 
 
 @dataclass
+class SpecificationError(SpecResult):
+    exception: ValueError
+
+
+@dataclass
 class TripleStoreConnectionError(SpecResult):
     exception: ConnectionError
 
@@ -124,6 +128,7 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
+# https://github.com/Semantic-partners/mustrd/issues/103
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
@@ -150,7 +155,12 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     results = []
 
     if triplestore_spec_path is None:
-        specs += [get_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
+        for spec_uri in spec_uris:
+            try:
+                specs += [get_spec(spec_uri, spec_graph)]
+            except ValueError as e:
+                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+
         results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
     else:
@@ -178,36 +188,37 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
 # https://github.com/Semantic-partners/mustrd/issues/58
 # https://github.com/Semantic-partners/mustrd/issues/13
 def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
-    if mustrd_triple_store is None:
-        mustrd_triple_store = {"type": MUST.rdfLib}
+    try:
+        if mustrd_triple_store is None:
+            mustrd_triple_store = {"type": MUST.rdfLib}
 
-    spec_uri = URIRef(str(spec_uri))
+        spec_uri = URIRef(str(spec_uri))
 
-    given_component = get_spec_component(subject=spec_uri,
-                                         predicate=MUST.given,
-                                         spec_graph=spec_graph,
-                                         mustrd_triple_store=mustrd_triple_store)
+        given_component = get_spec_component(subject=spec_uri,
+                                             predicate=MUST.given,
+                                             spec_graph=spec_graph,
+                                             mustrd_triple_store=mustrd_triple_store)
 
-    log.debug(f"Given: {given_component.value}")
+        log.debug(f"Given: {given_component.value}")
 
-    given = Graph().parse(data=given_component.value)
+        when_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.when,
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=mustrd_triple_store)
 
-    when_component = get_spec_component(subject=spec_uri,
-                                        predicate=MUST.when,
-                                        spec_graph=spec_graph,
-                                        mustrd_triple_store=mustrd_triple_store)
+        log.debug(f"when: {when_component.value}")
 
-    log.debug(f"when: {when_component.value}")
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=mustrd_triple_store)
 
-    then_component = get_spec_component(subject=spec_uri,
-                                        predicate=MUST.then,
-                                        spec_graph=spec_graph,
-                                        mustrd_triple_store=mustrd_triple_store)
+        log.debug(f"then: {then_component.value}")
 
-    log.debug(f"then: {then_component.value}")
-
-    # https://github.com/Semantic-partners/mustrd/issues/92
-    return Specification(spec_uri, mustrd_triple_store, given, when_component, then_component)
+        # https://github.com/Semantic-partners/mustrd/issues/92
+        return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
+    except ValueError:
+        raise
 
 
 def run_spec(spec: Specification) -> SpecResult:
@@ -219,7 +230,7 @@ def run_spec(spec: Specification) -> SpecResult:
         return run_when(spec)
 
     except ParseException as e:
-        log.error(e)
+        log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
         # close_connection = False
@@ -228,6 +239,8 @@ def run_spec(spec: Specification) -> SpecResult:
         log.error(message)
         return TripleStoreConnectionError(spec_uri, triple_store["type"], message)
     except TypeError as e:
+        log.error(f"{type(e)} {e}")
+        # https://github.com/Semantic-partners/mustrd/issues/97
         raise
     except Exception as e:
         log.error(f"{type(e)} {e}")
@@ -251,10 +264,7 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 def _multi_run_when_update(spec: Specification):
     # log.info(f" _multi_run_when_update(spec_uri, mustrd_triple_store, given, when_component, then_component):")
 
-    if type(spec.then.value) == Graph:
-        then = spec.then.value
-    else:
-        then = Graph().parse(data=spec.then.value)
+    then = spec.then.value
 
     result = run_update_spec(spec.spec_uri, spec.given, spec.when.value, then,
                              spec.triple_store, spec.when.bindings)
@@ -265,11 +275,7 @@ def _multi_run_when_update(spec: Specification):
 @run_when.method(MUST.ConstructSparql)
 def _multi_run_when_construct(spec: Specification):
     # log.info(f" _multi_run_when_construct(spec_uri, mustrd_triple_store, given, when_component, then_component):")
-
-    if type(spec.then.value) == Graph:
-        then = spec.then.value
-    else:
-        then = Graph().parse(data=spec.then.value)
+    then = spec.then.value
     result = run_construct_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.when.bindings)
     return result
 
@@ -277,10 +283,7 @@ def _multi_run_when_construct(spec: Specification):
 @run_when.method(MUST.SelectSparql)
 def _multi_run_when_select(spec: Specification):
     # log.info(f" _multi_run_when_select(spec_uri, mustrd_triple_store, given, when_component, then_component):")
-    if type(spec.then.value) == pandas.DataFrame:
-        then = spec.then.value
-    else:
-        then = pandas.read_csv(io.StringIO(spec.then.value))
+    then = spec.then.value
     result = run_select_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.then.ordered,
                              spec.when.bindings)
     return result
