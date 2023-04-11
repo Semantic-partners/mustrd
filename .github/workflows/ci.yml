@@ -11,6 +11,7 @@ jobs:
   test:
     name: Run tests & display coverage
     runs-on: ubuntu-latest
+    needs: build
     strategy:
       matrix:
         python-version: [ "3.10" ]
@@ -35,7 +36,7 @@ jobs:
           pip install pytest coverage
           pip install -r requirements.txt
       - name: Create coverage config file
-        run: echo "relative_files = True" > .coveragerc
+        run: echo -e "[run]\nrelative_files = True" >> .coveragerc
       - name: Test with pytest
         run: coverage run -m pytest test/ --doctest-modules
       - name: Coverage comment
