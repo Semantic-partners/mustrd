@@ -6,7 +6,7 @@
 
 test-data:a_complete_select_scenario_optional_result
     a          must:TestSpec ;
-    must:given [ must:dataSource [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataSource ;
                                    must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:pred ;
@@ -18,11 +18,11 @@ test-data:a_complete_select_scenario_optional_result
                                   [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] ; ] ;
-    must:when  [ must:dataSource [ a must:textDataSource ;
-                                   must:text  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ; ] ;
+                                   rdf:object    test-data:object ; ] ; ] ;
+    must:when  [ a must:textDataSource ;
+                                   must:text  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ must:dataSource [ a must:TableDataSource ;
+    must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -33,4 +33,4 @@ test-data:a_complete_select_scenario_optional_result
                                         must:binding  test-data:sub2 ; ],
                                       [ must:variable "o" ;
                                         must:binding  test-data:obj ; ]; ] ;
-               ] ; ] .
+               ] .

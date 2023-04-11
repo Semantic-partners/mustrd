@@ -6,7 +6,7 @@
 
 test-data:a_complete_select_scenario_with_variables
     a          must:TestSpec ;
-    must:given [ must:dataSource [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataSource ;
                                    must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -14,17 +14,17 @@ test-data:a_complete_select_scenario_with_variables
                                   [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    "hello world" ; ] ; ] ; ] ;
-    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   rdf:object    "hello world" ; ] ; ] ;
+    must:when  [ a must:textDataSource ;
                                    must:text  "select ?s ?p ?o where { ?s ?p ?o }" ;
                  must:bindings [ must:variable "o" ;
-                                 must:binding  "hello world" ; ] ; ] ;
+                                 must:binding  "hello world" ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ must:dataSource [ a must:TableDataSource ;
+    must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  "hello world" ; ] ; ] ;
+                                        must:binding  "hello world" ; ] ;
                ] ; ] .
