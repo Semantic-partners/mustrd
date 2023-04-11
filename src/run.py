@@ -3,7 +3,7 @@ import sys
 import getopt
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
     SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure, \
-    TestSkipped, SpecificationError
+    TestSkipped
 from pathlib import Path
 from colorama import Fore, Style
 
@@ -81,8 +81,7 @@ def main(argv):
             if type(res) == SpecPassedWithWarning:
                 print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
                 print(res.warning)
-            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
-                    type(res) == SparqlParseFailure or type(res) == SpecificationError:
+            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or type(res) == SparqlParseFailure:
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.exception)
             if type(res) == TestSkipped:

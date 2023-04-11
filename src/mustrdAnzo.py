@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 
 
 # https://github.com/Semantic-partners/mustrd/issues/73
+# add parameter types and return types
 def manage_anzo_response(response: Response) -> str:
     content_string = response.content.decode("utf-8")
     if response.status_code == 200:
@@ -86,7 +87,6 @@ def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
         "query")
 
 
-# https://github.com/Semantic-partners/mustrd/issues/102
 def get_query_from_step(triple_store: dict, query_step_uri):
     query = f"""SELECT ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)

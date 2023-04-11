@@ -1,11 +1,11 @@
 import pandas
 
+from mustrd import get_spec_component
 from rdflib import Graph
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
 from namespace import MUST
-from spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, get_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -22,22 +22,22 @@ class TestSpecParserTest:
             
             <{select_spec_uri}>
                  a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
-                                                     rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
+                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; ] ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:TableDataSource ;
+    must:then  [ must:dataSource [ a must:TableDataSource ;
                                    must:rows [ must:row [
                                         must:variable "s" ;
                                         must:binding  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:binding  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ;
+                                        must:binding  test-data:obj ; ] ; ] ;
                ] ; ] .
             """
 
@@ -50,19 +50,19 @@ class TestSpecParserTest:
 
             <{construct_spec_uri}>
                 a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ must:dataSource [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
-                                                     rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
+                                                     rdf:object    test-data:obj ; ] ; ] ; ] ;
+    must:when  [ must:dataSource [ a must:textDataSource ;
+                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; ] ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
+    must:then  [ must:dataSource [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] .
+                                   rdf:object    test-data:pred ; ] ; ] ; ] .
             """
 
     def test_given(self):
@@ -72,7 +72,8 @@ class TestSpecParserTest:
                                              predicate=MUST.given,
                                              spec_graph=spec_graph,
                                              mustrd_triple_store=self.triple_store)
-        given = given_component.value
+        given = Graph()
+        given.parse(data=given_component.value, format='ttl')
 
         expected_triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -81,7 +82,6 @@ class TestSpecParserTest:
         expected_initial_state = Graph()
         expected_initial_state.parse(data=expected_triples, format='ttl')
 
-        assert type(given_component) == GivenSpec
         assert isomorphic(given, expected_initial_state), graph_comparison_message(expected_initial_state, given)
 
     def test_when_select(self):
@@ -95,7 +95,6 @@ class TestSpecParserTest:
 
         expected_query = "select ?s ?p ?o { ?s ?p ?o }"
 
-        assert type(when_component) == WhenSpec
         assert when_component.value == expected_query
 
     def test_then_select(self):
@@ -112,7 +111,6 @@ class TestSpecParserTest:
 
         df_diff = expected_df.compare(then_component.value, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
-        assert type(then_component) == TableThenSpec
 
     def test_when_construct(self):
         spec_graph = Graph()
@@ -125,7 +123,6 @@ class TestSpecParserTest:
         expected_query = "construct { ?o ?s ?p } { ?s ?p ?o }"
 
         assert when_component.value == expected_query
-        assert type(when_component) == WhenSpec
 
     def test_then_construct(self):
         spec_graph = Graph()
@@ -136,10 +133,10 @@ class TestSpecParserTest:
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
 
-        then = then_component.value
+        then = Graph()
+        then.parse(data=then_component.value, format='ttl')
 
         expected_graph = Graph()
         expected_graph.add((TEST_DATA.obj, TEST_DATA.sub, TEST_DATA.pred))
 
-        assert type(then_component) == ThenSpec
         assert isomorphic(then, expected_graph), graph_comparison_message(expected_graph, then)
