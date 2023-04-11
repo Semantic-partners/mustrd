@@ -34,6 +34,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest coverage
           pip install -r requirements.txt
+      - name: Create coverage config file
+        run: echo "relative_files = True" > .coveragerc
       - name: Test with pytest
         run: coverage run -m pytest test/ --doctest-modules
       - name: Coverage comment
