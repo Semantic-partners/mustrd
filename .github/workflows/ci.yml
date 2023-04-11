@@ -35,7 +35,7 @@ jobs:
           pip install pytest coverage
           pip install -r requirements.txt
       - name: Test with pytest
-        run: coverage run -m pytest test/ --doctest-modules -relative-files=true
+        run: coverage run -m pytest test/ --doctest-modules
       - name: Coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
