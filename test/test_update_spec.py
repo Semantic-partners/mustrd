@@ -5,7 +5,7 @@ from rdflib.compare import isomorphic
 from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure
 from graph_util import graph_comparison_message
 from namespace import MUST
-from spec_component import get_spec_component
+from spec_component import parse_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -46,7 +46,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -76,7 +76,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -114,7 +114,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -144,7 +144,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -178,7 +178,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -216,7 +216,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_insert_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -264,7 +264,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_delete_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -315,7 +315,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_insert_data_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -366,7 +366,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_delete_data_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -417,7 +417,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_delete_insert_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -491,7 +491,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -539,7 +539,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -572,7 +572,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -623,7 +623,7 @@ class TestRunUpdateSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
