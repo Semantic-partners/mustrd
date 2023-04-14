@@ -1,3 +1,6 @@
+import configparser
+import os
+
 import logger_setup
 from dataclasses import dataclass
 
@@ -18,6 +21,7 @@ from pandas import DataFrame
 
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
+from utils import get_project_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -318,8 +322,13 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             triple_store["type"] = MUST.anzo
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
-            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
-            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            try:
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username", triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password", triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+            except (FileNotFoundError, ValueError) as e:
+                # TODO find a better way to propagate this
+                triple_store["error"] = e
+                # raise
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
@@ -328,8 +337,13 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             triple_store["type"] = MUST.graphDb
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
-            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
-            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            try:
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username", triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password", triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+            except (FileNotFoundError, ValueError) as e:
+                # TODO find a better way to propagate this
+                triple_store["error"] = e
+                # raise
             triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
                                                                   predicate=MUST.repository)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
@@ -337,8 +351,26 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
         else:
             triple_store["type"] = triple_store_type
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
+
+
+        # TODO Check if all necessary parameters are present
+
         triple_stores.append(triple_store)
     return triple_stores
+
+
+# TODO propagate error up so it can be transformed
+def get_credential_from_file(triple_store_name, credential, config_path: str) -> str:
+    project_root = get_project_root()
+    path = Path(os.path.join(project_root, config_path))
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Credentials config file not found: {path}")
+    try:
+        config = configparser.ConfigParser()
+        config.read(path)
+        return config.get(str(triple_store_name), credential)
+    except configparser.Error as e:
+        raise ValueError(f"Error reading credentials config file: {e}")
 
 
 # Get column order
@@ -379,6 +411,7 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
+# https://github.com/Semantic-partners/mustrd/issues/110
 # https://github.com/Semantic-partners/mustrd/issues/52
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
