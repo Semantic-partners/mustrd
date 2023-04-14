@@ -187,8 +187,6 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     return results
 
 
-# https://github.com/Semantic-partners/mustrd/issues/58
-# https://github.com/Semantic-partners/mustrd/issues/13
 def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
