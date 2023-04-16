@@ -2,7 +2,7 @@
 
 // tag::body[]
 
-[![Coverage badge](https://github.com/Semantic-partners/mustrd/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/Semantic-partners/mustrd/tree/python-coverage-comment-action-data)
+image:{https://github.com/Semantic-partners/mustrd/raw/python-coverage-comment-action-data/badge.svg}[Coverage badge,link={https://github.com/Semantic-partners/mustrd/tree/python-coverage-comment-action-data}]
 
 === Why?
 
