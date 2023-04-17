@@ -323,44 +323,69 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
-                triple_store["username"] = get_credential_from_file(triple_store_config, "username", triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
-                triple_store["password"] = get_credential_from_file(triple_store_config, "password", triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.password))
             except (FileNotFoundError, ValueError) as e:
-                # TODO find a better way to propagate this
                 triple_store["error"] = e
                 # raise
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
+            try:
+                check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+            except ValueError as e:
+                triple_store["error"] = e
         # GraphDB
         elif triple_store_type == MUST.graphDbConfig:
             triple_store["type"] = MUST.graphDb
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
-                triple_store["username"] = get_credential_from_file(triple_store_config, "username", triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
-                triple_store["password"] = get_credential_from_file(triple_store_config, "password", triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.password))
             except (FileNotFoundError, ValueError) as e:
-                # TODO find a better way to propagate this
                 triple_store["error"] = e
                 # raise
             triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
                                                                   predicate=MUST.repository)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
+
+            try:
+                check_triple_store_params(triple_store, ["url", "port", "repository"])
+            except ValueError as e:
+                triple_store["error"] = e
         else:
             triple_store["type"] = triple_store_type
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
-
-
-        # TODO Check if all necessary parameters are present
 
         triple_stores.append(triple_store)
     return triple_stores
 
 
-# TODO propagate error up so it can be transformed
+def check_triple_store_params(triple_store, required_params):
+    missing_params = [param for param in required_params if triple_store.get(param) is None]
+    if missing_params:
+        raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
+                         f"Missing required parameter(s): {', '.join(missing_params)}.")
+
+
 def get_credential_from_file(triple_store_name, credential, config_path: str) -> str:
+    if config_path is None:
+        raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
+                         f"Missing required parameter: {credential}.")
     project_root = get_project_root()
     path = Path(os.path.join(project_root, config_path))
     if not os.path.isfile(path):
