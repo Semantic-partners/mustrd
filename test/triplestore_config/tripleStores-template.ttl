@@ -3,8 +3,8 @@
 must:anzoConfig1 a must:anzoConfig;
         must:url "";
         must:port "";
-        must:username "";
-        must:password "";
+        must:username "test/triplestore_config/tripleStoreCredentials.ini" ;
+        must:password "test/triplestore_config/tripleStoreCredentials.ini" ;
         must:gqeURI "";
         must:inputGraph "" .
 
@@ -13,8 +13,8 @@ must:rdfLibConfig1 a must:rdfLibConfig .
 must:graphDbConfig1  a must:graphDbConfig ;
         must:url "";
         must:port "";
-        must:username "";
-        must:password "";
+        must:username "test/triplestore_config/tripleStoreCredentials.ini" ;
+        must:password "test/triplestore_config/tripleStoreCredentials.ini" ;
         must:inputGraph "" ;
         must:repository "" .
 
