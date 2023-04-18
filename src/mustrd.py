@@ -133,7 +133,8 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
+def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
+              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
@@ -161,7 +162,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     if triplestore_spec_path is None:
         for spec_uri in spec_uris:
             try:
-                specs += [get_spec(spec_uri, spec_graph)]
+                specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
             except FileNotFoundError as e:
@@ -179,7 +180,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
             else:
-                specs = specs + [get_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+                specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store) for spec_uri in spec_uris]
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
 
@@ -193,7 +194,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
 
 # https://github.com/Semantic-partners/mustrd/issues/58
 # https://github.com/Semantic-partners/mustrd/issues/13
-def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None,
+             when_path: Path = None, then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.rdfLib}
@@ -203,6 +205,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
+                                               folder_location=given_path,
                                                mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"Given: {given_component.value}")
@@ -210,6 +213,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
+                                              folder_location=when_path,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"when: {when_component.value}")
@@ -217,6 +221,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=then_path,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"then: {then_component.value}")

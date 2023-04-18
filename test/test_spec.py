@@ -38,6 +38,7 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
     def test_file_not_found(self):
@@ -60,6 +61,7 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_from_file_fails(self):
@@ -82,6 +84,7 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_wrong_file_format_fails(self):
@@ -104,5 +107,6 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 

@@ -49,11 +49,13 @@ class SpecComponentDetails:
     mustrd_triple_store: dict
     spec_component_node: URIRef
     data_source_type: URIRef
+    folder_location: Path
 
 
 def parse_spec_component(subject: URIRef,
                          predicate: URIRef,
                          spec_graph: Graph,
+                         folder_location: Path,
                          mustrd_triple_store: dict) -> SpecComponent:
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
     # all_data_source_types = []
@@ -67,7 +69,8 @@ def parse_spec_component(subject: URIRef,
                 spec_graph=spec_graph,
                 mustrd_triple_store=mustrd_triple_store,
                 spec_component_node=spec_component_node,
-                data_source_type=data_source_type)
+                data_source_type=data_source_type,
+                folder_location=folder_location)
             spec_components.append(get_spec_component(spec_component_details))
         # all_data_source_types.extend(data_source_types)
     # return all_data_source_types
@@ -162,6 +165,18 @@ def get_data_source_types(subject, predicate, spec_graph, source_node):
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
 
+@get_spec_component.method((MUST.FolderDataSource, MUST.given))
+def _get_spec_component_folderdatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.filename)
+
+    path = Path(os.path.join(spec_component_details.folder_location, file_name))
+    spec_component.value = Graph().parse(data=get_spec_spec_component_from_file(path))
+    return spec_component
+
+
 @get_spec_component.method((MUST.FileDataSource, MUST.given))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -217,8 +232,8 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
             return spec_component
 
 
-@get_spec_component.method((MUST.textDataSource, MUST.when))
-def _get_spec_component_textDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.TextDataSource, MUST.when))
+def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get specComponent directly from config file (in text string)
@@ -457,7 +472,7 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.textDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ]  ;}}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:

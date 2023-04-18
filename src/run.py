@@ -14,30 +14,40 @@ log = logger_setup.setup_logger(__name__)
 def main(argv):
     path_under_test = None
     triplestore_spec_path = None
+    given_path = None
+    when_path = None
+    then_path = None
     verbose = False
-    opts, args = getopt.getopt(argv, "hvp:s:", ["put="])
+    opts, args = getopt.getopt(argv, "hvp:c:g:w:t:", ["put=", "given=", "when=", "then="])
     for opt, arg in opts:
         if opt == '-h':
-            print('run.py -p <path_under_test> -s <triple_store_configuration_path>')
+            print('run.py -p <path_under_test> -c <triple_store_configuration_path> '
+                  '-g <given_path> -w <when_path> -t <then_path>')
             sys.exit()
         elif opt in ("-p", "--put"):
-            path_under_test = arg
+            path_under_test = Path(arg)
             log.info(f"Path under test is {path_under_test}")
         if opt in ("-v", "--verbose"):
             log.info(f"Verbose set")
             verbose = True
-        if opt in ("-s", "--store"):
-            triplestore_spec_path = arg
+        if opt in ("-c", "--config"):
+            triplestore_spec_path = Path(arg)
             log.info(f"Path for triple store configuration is {triplestore_spec_path}")
+        if opt in ("-g", "--given"):
+            given_path = Path(arg)
+            log.info(f"Path for given folder is {given_path}")
+        if opt in ("-w", "--when"):
+            when_path = Path(arg)
+            log.info(f"Path for when folder is {when_path}")
+        if opt in ("-t", "--then"):
+            then_path = Path(arg)
+            log.info(f"Path for then folder is {then_path}")
     if not path_under_test:
         sys.exit("path_under_test not set")
     if not triplestore_spec_path:
         log.info(f"No triple store configuration added, running default configuration")
 
-    if triplestore_spec_path:
-        results = run_specs(Path(path_under_test), Path(triplestore_spec_path))
-    else:
-        results = run_specs(Path(path_under_test))
+    results = run_specs(path_under_test, triplestore_spec_path, given_path, when_path, then_path)
 
     pass_count = 0
     warning_count = 0

@@ -14,13 +14,11 @@ class MUST(DefinedNamespace):
     anzo: URIRef
     graphDb: URIRef
     dataSource:  URIRef
-    FileDataSource: URIRef
     file: URIRef
+    filename: URIRef
     queryFolder: URIRef
     queryName: URIRef
-    HttpDataSource: URIRef
     dataSourceUrl: URIRef
-    textDataSource: URIRef
     text: URIRef
     queryType: URIRef
     given: URIRef
@@ -34,15 +32,21 @@ class MUST(DefinedNamespace):
 
     statements: URIRef
 
+    # specification data sources
     TableDataSource: URIRef
     StatementsDataSource: URIRef
+    FileDataSource: URIRef
+    HttpDataSource: URIRef
+    TextDataSource: URIRef
+    FolderDataSource: URIRef
+    EmptyGraphResult: URIRef
+    EmptyTableResult: URIRef
+
     rows: URIRef
     row: URIRef
     variable: URIRef
     binding: URIRef
 
-    EmptyGraphResult: URIRef
-    EmptyTableResult: URIRef
 
     # runner uris
     fileSource: URIRef

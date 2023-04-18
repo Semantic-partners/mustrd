@@ -2,13 +2,10 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_construct_scenario
+test-data:a_complete_construct_scenario_from_folders
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
-                                                     rdf:subject   test-data:sub ;
-                                                     rdf:predicate test-data:pred ;
-                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:given [ a must:FolderDataSource ;
+                 must:filename "given.ttl" ] ;
     must:when  [ a must:TextDataSource ;
                  must:text  "construct { ?o ?s ?p } where { ?s ?p ?o }" ;
                  must:queryType must:ConstructSparql  ; ] ;

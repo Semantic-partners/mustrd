@@ -47,9 +47,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
@@ -77,9 +78,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
 
@@ -115,9 +117,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
@@ -145,9 +148,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
 
@@ -179,9 +183,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
@@ -217,9 +222,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_insert_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
@@ -265,9 +271,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_delete_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         result = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
 
@@ -316,9 +323,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_insert_data_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         result = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
@@ -367,9 +375,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_delete_data_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         result = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
 
@@ -418,9 +427,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_delete_insert_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         result = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
@@ -492,9 +502,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store, binding)
 
@@ -540,9 +551,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store, binding)
 
@@ -573,9 +585,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
@@ -624,9 +637,10 @@ class TestRunUpdateSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 

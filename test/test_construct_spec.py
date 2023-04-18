@@ -49,6 +49,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -84,6 +85,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -145,6 +147,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -189,6 +192,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -240,6 +244,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -273,6 +278,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -328,6 +334,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -393,6 +400,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -436,6 +444,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -487,6 +496,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         spec_result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -529,6 +539,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -573,11 +584,13 @@ class TestRunConstructSpec:
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
+                                               folder_location=None,
                                                mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, given_component.value, construct_query, then_component.value,

@@ -52,9 +52,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         t = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -96,9 +97,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -151,9 +153,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -206,9 +209,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -246,9 +250,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -300,9 +305,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       bindings=binding)
@@ -352,9 +358,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       bindings=binding)
@@ -390,9 +397,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -421,9 +429,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -472,9 +481,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -529,11 +539,13 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, bindings=binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
+                                      bindings=binding)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert spec_result == expected_result
@@ -572,11 +584,13 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, bindings=binding)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
+                                      bindings=binding)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -639,9 +653,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -679,9 +694,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -732,9 +748,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -781,9 +798,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -840,9 +858,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -905,9 +924,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -977,9 +997,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1035,9 +1056,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1083,9 +1105,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1135,9 +1158,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1188,9 +1212,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1243,9 +1268,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1305,9 +1331,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
@@ -1358,9 +1385,10 @@ class TestRunSelectSpec:
         warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
@@ -1410,9 +1438,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
@@ -1470,11 +1499,13 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store, then_component.ordered)
+        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
+                                      then_component.ordered)
 
         print(spec_result)
         if type(spec_result) == SelectSpecFailure:
@@ -1530,9 +1561,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
@@ -1591,9 +1623,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_failing_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       then_ordered=then_component.ordered)
@@ -1638,9 +1671,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -1675,9 +1709,10 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
 
         then_component = parse_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 

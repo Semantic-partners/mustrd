@@ -13,7 +13,7 @@ test-data:a_complete_construct_scenario_multiline_result
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
                                    rdf:object    test-data:object ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
+    must:when  [ a must:TextDataSource ;
                                    must:text  "construct { ?o ?s ?p } where { ?s ?p ?o }" ;
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
