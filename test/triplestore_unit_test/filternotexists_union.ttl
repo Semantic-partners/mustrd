@@ -7,17 +7,16 @@
 test-data:filternotexists_union
     a          must:TestSpec ;
 
-    must:given [must:dataSource [ a must:FileDataSource ;
+    must:given [ a must:FileDataSource ;
                 must:file "./test/triplestore_unit_test/given/filternotexists_union.ttl"
-    ]];
-
-    must:when [must:dataSource [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/filternotexists_union.sparql"
-        ];
-        must:queryType must:SelectSparql
     ];
 
-    must:then [must:dataSource [ a must:FileDataSource ;
+    must:when [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/when/filternotexists_union.sparql";
+                must:queryType must:SelectSparql
+    ];
+
+    must:then [ a must:FileDataSource ;
                 must:file "./test/triplestore_unit_test/then/filternotexists_union.csv"
-    ]].
+    ].
 

@@ -7,17 +7,16 @@
 test-data:property_path_star
     a          must:TestSpec ;
 
-    must:given [must:dataSource [ a must:FileDataSource ;
+    must:given [ a must:FileDataSource ;
                 must:file "./test/triplestore_unit_test/given/property_path_star.ttl"
-    ]];
-
-    must:when [must:dataSource [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/property_path_star.sparql"
-        ];
-        must:queryType must:SelectSparql
     ];
 
-    must:then [must:dataSource [ a must:FileDataSource ;
+    must:when [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/when/property_path_star.sparql";
+                must:queryType must:SelectSparql
+    ];
+
+    must:then [ a must:FileDataSource ;
                 must:file "./test/triplestore_unit_test/then/property_path_star.csv"
-    ]].
+    ].
 

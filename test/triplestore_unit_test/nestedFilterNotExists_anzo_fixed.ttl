@@ -7,17 +7,15 @@
 test-data:nestedFilterNotExists_anzo_fixed
     a          must:TestSpec ;
 
-    must:given [must:dataSource [ a must:FileDataSource ;
+    must:given [ a must:FileDataSource ;
                 must:file "./test/triplestore_unit_test/given/nestedFilterNotExists.ttl"
-    ]];
-
-    must:when [must:dataSource [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/nestedFilterNotExists_fixed_for_anzo.sparql"
-        ];
-        must:queryType must:SelectSparql
     ];
 
-    must:then [must:dataSource [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/then/nestedFilterNotExists_results.csv"
-    ]].
+    must:when [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/when/nestedFilterNotExists_fixed_for_anzo.sparql";
+                must:queryType must:SelectSparql
+    ];
 
+    must:then [ a must:FileDataSource ;
+                must:file "./test/triplestore_unit_test/then/nestedFilterNotExists_results.csv"
+    ].
