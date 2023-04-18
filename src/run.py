@@ -6,6 +6,8 @@ from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailur
     TestSkipped, SpecificationError
 from pathlib import Path
 from colorama import Fore, Style
+from tabulate import tabulate
+from collections import defaultdict
 
 log = logger_setup.setup_logger(__name__)
 
@@ -43,20 +45,43 @@ def main(argv):
     fail_count = 0
     skipped_count = 0
     print("===== Result Overview =====")
+
+    # Get a list of all unique spec uris and triple stores
+    spec_uris = list(set(result.spec_uri for result in results))
+    triple_stores = list(set(result.triple_store for result in results))
+
+    # Create a dictionary to hold the status for each spec URI and triple store
+    status_dict = {spec_uri: {triple_store: '' for triple_store in triple_stores} for spec_uri in spec_uris}
+
+    status_counts = defaultdict(lambda: defaultdict(int))
+    colours = defaultdict(lambda: defaultdict(int))
+    colours[SpecPassed]= Fore.GREEN
+    colours[SpecPassedWithWarning] = Fore.YELLOW
+    colours[TestSkipped] = Fore.YELLOW
+    # Populate the status dictionary with the results
+    for result in results:
+        status_counts[result.triple_store][type(result)] += 1
+        status_dict[result.spec_uri][result.triple_store] = f"{colours.get(type(result), Fore.RED)}{type(result).__name__}{Style.RESET_ALL}"
+
+    # Convert the status dictionary to a list of rows for tabulate
+    table_rows = [[spec_uri] + [status_dict[spec_uri][triple_store] for triple_store in triple_stores] for spec_uri in spec_uris]
+    status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
+                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}" 
+                    for triple_store in triple_stores] for status in set(type(result) for result in results)]
+
+    print(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
+    print(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
+
+    
     for res in results:
         if type(res) == SpecPassed:
-            colour = Fore.GREEN
             pass_count += 1
         elif type(res) == SpecPassedWithWarning:
-            colour = Fore.YELLOW
             warning_count += 1
         elif type(res) == TestSkipped:
-            colour = Fore.YELLOW
             skipped_count += 1
         else:
-            colour = Fore.RED
             fail_count += 1
-        print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
 
     overview_colour = Fore.GREEN
     if fail_count:
@@ -88,7 +113,6 @@ def main(argv):
             if type(res) == TestSkipped:
                 print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
                 print(res.message)
-
 
 if __name__ == "__main__":
     main(sys.argv[1:])
