@@ -2,15 +2,15 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_delete_data_scenario
+test-data:a_complete_construct_scenario_when_file_then_file
     a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
                                    must:statements [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }" ;
-                 must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a must:EmptyGraphResult ] .
-
+    must:when  [ a must:FileDataSource ;
+                                   must:file "test/data/construct.rq" ;
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.nt" ] .

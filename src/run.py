@@ -2,7 +2,8 @@ import logger_setup
 import sys
 import getopt
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
-    SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure
+    SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure, \
+    TestSkipped, SpecificationError
 from pathlib import Path
 from colorama import Fore, Style
 
@@ -40,6 +41,8 @@ def main(argv):
     pass_count = 0
     warning_count = 0
     fail_count = 0
+    skipped_count = 0
+    print("===== Result Overview =====")
     for res in results:
         if type(res) == SpecPassed:
             colour = Fore.GREEN
@@ -47,35 +50,44 @@ def main(argv):
         elif type(res) == SpecPassedWithWarning:
             colour = Fore.YELLOW
             warning_count += 1
+        elif type(res) == TestSkipped:
+            colour = Fore.YELLOW
+            skipped_count += 1
         else:
             colour = Fore.RED
             fail_count += 1
-        print(f"{res.spec_uri} {colour}{type(res).__name__}{Style.RESET_ALL}")
+        print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
 
     overview_colour = Fore.GREEN
     if fail_count:
+        overview_colour = Fore.RED
+    elif skipped_count:
         overview_colour = Fore.RED
     elif warning_count:
         overview_colour = Fore.YELLOW
 
     logger_setup.flush()
-    print(f"{overview_colour}===== {fail_count} failures, {Fore.GREEN}{pass_count} passed, "
+    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
           f"{overview_colour}{warning_count} passed with warnings =====")
 
-    if verbose and (fail_count or warning_count):
+    if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
             if type(res) == SelectSpecFailure:
-                print(f"{Fore.RED}Failed {res.spec_uri}")
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.message)
                 print(res.table_comparison.to_markdown())
             if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
-                print(f"Failed {res.spec_uri}")
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
             if type(res) == SpecPassedWithWarning:
-                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri}")
+                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
                 print(res.warning)
-            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or type(res) == SparqlParseFailure:
-                print(f"Failed {res.spec_uri}")
+            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
+                    type(res) == SparqlParseFailure or type(res) == SpecificationError:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.exception)
+            if type(res) == TestSkipped:
+                print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+                print(res.message)
 
 
 if __name__ == "__main__":

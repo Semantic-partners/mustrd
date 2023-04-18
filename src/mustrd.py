@@ -3,28 +3,35 @@ from dataclasses import dataclass
 
 from pyparsing import ParseException
 from pathlib import Path
-from requests import ConnectionError, ConnectTimeout
+from requests import ConnectionError, ConnectTimeout, HTTPError
 
 from rdflib import Graph, URIRef, RDF, XSD
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
+from multimethods import MultiMethod, Default
 
-from mustrdGraphDb import MustrdGraphDb
 from namespace import MUST
-from mustrdRdfLib import MustrdRdfLib
-from mustrdAnzo import MustrdAnzo
 import requests
-import io
 import json
 from pandas import DataFrame
 
-from spec_component import get_spec_component
+from spec_component import get_spec_component, SpecComponent
+from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 
 log = logger_setup.setup_logger(__name__)
 
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+
+
+@dataclass
+class Specification:
+    spec_uri: URIRef
+    triple_store: dict
+    given: Graph
+    when: SpecComponent
+    then: SpecComponent
 
 
 @dataclass
@@ -37,21 +44,22 @@ class GraphComparison:
 @dataclass
 class SpecResult:
     spec_uri: URIRef
+    triple_store: URIRef
 
     def __hash__(self):
-        return hash(self.spec_uri)
+        return hash(self.spec_uri, self.triple_store)
 
 
 @dataclass
 class SpecPassed(SpecResult):
-    def __init__(self, spec_uri):
-        super(SpecPassed, self).__init__(spec_uri)
+    def __init__(self, spec_uri, triple_store):
+        super(SpecPassed, self).__init__(spec_uri, triple_store)
 
 
 @dataclass()
 class SpecPassedWithWarning(SpecResult):
-    def __init__(self, spec_uri, warning):
-        super().__init__(spec_uri)
+    def __init__(self, spec_uri, triple_store, warning):
+        super().__init__(spec_uri, triple_store)
         self.warning = warning
 
 
@@ -82,8 +90,18 @@ class SparqlExecutionError(SpecResult):
 
 
 @dataclass
+class SpecificationError(SpecResult):
+    exception: ValueError
+
+
+@dataclass
 class TripleStoreConnectionError(SpecResult):
     exception: ConnectionError
+
+
+@dataclass
+class TestSkipped(SpecResult):
+    message: str
 
 
 @dataclass
@@ -110,98 +128,170 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
+# https://github.com/Semantic-partners/mustrd/issues/103
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
 
     spec_graph = Graph()
+    subject_uris = set()
+    duplicates = []
     for file in ttl_files:
         log.info(f"Parse: {file}")
-        spec_graph.parse(file)
+        file_graph = Graph()
+        file_graph.parse(file)
+        for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+            if subject_uri in subject_uris:
+                duplicates.append((file, subject_uri))
+                log.warning(f"Duplicate subject URI found: {file} {subject_uri}. File will not be parsed.")
+            else:
+                subject_uris.add(subject_uri)
+                spec_graph.parse(file)
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     log.info(f"Collected {len(spec_uris)} items")
 
+    specs = []
     results = []
 
-    # run in vanilla rdflib
     if triplestore_spec_path is None:
-        results += [run_spec(spec_uri, spec_graph) for spec_uri in spec_uris]
-    # run in triple stores
+        for spec_uri in spec_uris:
+            try:
+                specs += [get_spec(spec_uri, spec_graph)]
+            except ValueError as e:
+                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+
+        results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
+                                                       f" skipped") for file, spec_uri in duplicates]
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
         for triple_store in get_triple_stores(triple_store_config):
-            results = results + [run_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+            if "error" in triple_store:
+                log.error(f"{triple_store['error']}. No specs run for this triple store.")
+                results += [TestSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                            spec_uris]
+                results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
+                                                                        f" skipped") for file, spec_uri in duplicates]
+            else:
+                specs = specs + [get_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+                results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
+                                                                        f" skipped") for file, spec_uri in duplicates]
+
+    log.info(f"Extracted {len(specs)} specifications")
+
+    for specification in specs:
+        results += [run_spec(specification)]
 
     return results
 
 
 # https://github.com/Semantic-partners/mustrd/issues/58
 # https://github.com/Semantic-partners/mustrd/issues/13
-def run_spec(spec_uri, spec_graph, mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
-    close_connection = True
-    spec_uri = URIRef(str(spec_uri))
-
-    given_component = get_spec_component(subject=spec_uri,
-                                         predicate=MUST.given,
-                                         spec_graph=spec_graph,
-                                         mustrd_triple_store=mustrd_triple_store)
-
-    log.debug(f"Given: {given_component.value}")
-
-    given = Graph().parse(data=given_component.value)
-
-    when_component = get_spec_component(subject=spec_uri,
-                                        predicate=MUST.when,
-                                        spec_graph=spec_graph,
-                                        mustrd_triple_store=mustrd_triple_store)
-
-    log.debug(f"when: {when_component.value}")
-
-    then_component = get_spec_component(subject=spec_uri,
-                                        predicate=MUST.then,
-                                        spec_graph=spec_graph,
-                                        mustrd_triple_store=mustrd_triple_store)
-
-    log.debug(f"then: {then_component.value}")
-
+def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
     try:
-        match when_component.queryType:
-            case MUST.SelectSparql:
-                if type(then_component.value) == pandas.DataFrame:
-                    then = then_component.value
-                else:
-                    then = pandas.read_csv(io.StringIO(then_component.value), keep_default_na=False)
-                result = run_select_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                         then_component.ordered, mustrd_triple_store)
-            case MUST.ConstructSparql:
-                then = Graph().parse(data=then_component.value)
-                result = run_construct_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                            mustrd_triple_store)
-            case MUST.UpdateSparql:
-                then = get_then_update(spec_uri, spec_graph)
-                result = run_update_spec(spec_uri, given, when_component.value, then, when_component.bindings,
-                                         mustrd_triple_store)
-            case _:
-                raise Exception(f"invalid spec when type {when_component.queryType}")
+        if mustrd_triple_store is None:
+            mustrd_triple_store = {"type": MUST.rdfLib}
 
-        return result
+        spec_uri = URIRef(str(spec_uri))
+
+        given_component = get_spec_component(subject=spec_uri,
+                                             predicate=MUST.given,
+                                             spec_graph=spec_graph,
+                                             mustrd_triple_store=mustrd_triple_store)
+
+        log.debug(f"Given: {given_component.value}")
+
+        when_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.when,
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=mustrd_triple_store)
+
+        log.debug(f"when: {when_component.value}")
+
+        then_component = get_spec_component(subject=spec_uri,
+                                            predicate=MUST.then,
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=mustrd_triple_store)
+
+        log.debug(f"then: {then_component.value}")
+
+        # https://github.com/Semantic-partners/mustrd/issues/92
+        return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
+    except ValueError:
+        raise
+
+
+def run_spec(spec: Specification) -> SpecResult:
+    spec_uri = spec.spec_uri
+    triple_store = spec.triple_store
+    # close_connection = True
+    try:
+        log.info(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        return run_when(spec)
+
     except ParseException as e:
-        log.error(e)
-        return SparqlParseFailure(spec_uri, e)
-    except (ConnectionError, TimeoutError, ConnectTimeout) as e:
-        close_connection = False
+        log.error(f"{type(e)} {e}")
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
+    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
+        # close_connection = False
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
         log.error(message)
-        return TripleStoreConnectionError(spec_uri, message)
+        return TripleStoreConnectionError(spec_uri, triple_store["type"], message)
+    except TypeError as e:
+        log.error(f"{type(e)} {e}")
+        # https://github.com/Semantic-partners/mustrd/issues/97
+        raise
     except Exception as e:
-        log.error(e)
-        return SparqlExecutionError(spec_uri, e)
+        log.error(f"{type(e)} {e}")
+        return SparqlExecutionError(spec_uri, triple_store["type"], e)
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
     #         mustrd_triple_store.clear_graph()
+
+
+def dispatch_run_when(spec: Specification):
+    to = spec.when.queryType
+    log.info(f"dispatch_run_when to SPARQL type {to}")
+    return to
+
+
+run_when = MultiMethod('run_when', dispatch_run_when)
+
+
+@run_when.method(MUST.UpdateSparql)
+def _multi_run_when_update(spec: Specification):
+    # log.info(f" _multi_run_when_update(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+
+    then = spec.then.value
+
+    result = run_update_spec(spec.spec_uri, spec.given, spec.when.value, then,
+                             spec.triple_store, spec.when.bindings)
+
+    return result
+
+
+@run_when.method(MUST.ConstructSparql)
+def _multi_run_when_construct(spec: Specification):
+    # log.info(f" _multi_run_when_construct(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+    then = spec.then.value
+    result = run_construct_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.when.bindings)
+    return result
+
+
+@run_when.method(MUST.SelectSparql)
+def _multi_run_when_select(spec: Specification):
+    # log.info(f" _multi_run_when_select(spec_uri, mustrd_triple_store, given, when_component, then_component):")
+    then = spec.then.value
+    result = run_select_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.then.ordered,
+                             spec.when.bindings)
+    return result
+
+
+@run_when.method(Default)
+def _multi_run_when_default(spec: Specification):
+    raise Exception(f"invalid {spec.spec_uri=} when type {spec.when.queryType}")
 
 
 def is_json(myjson: str) -> bool:
@@ -214,34 +304,36 @@ def is_json(myjson: str) -> bool:
 
 def get_triple_stores(triple_store_graph: Graph) -> list:
     triple_stores = []
-    for tripleStoreConfig, type, tripleStoreType in triple_store_graph.triples((None, RDF.type, None)):
+    for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
+        triple_store = {}
         # Local rdf lib triple store
-        if tripleStoreType == MUST.rdfLibConfig:
-            triple_stores.append(MustrdRdfLib())
+        if triple_store_type == MUST.rdfLibConfig:
+            triple_store["type"] = MUST.rdfLib
         # Anzo graph via anzo
-        elif tripleStoreType == MUST.anzoConfig:
-            anzo_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoURL)
-            anzo_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPort)
-            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoUser)
-            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.anzoPassword)
-            gqe_uri = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.gqeURI)
-            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdAnzo(anzo_url=anzo_url, anzo_port=anzo_port,
-                                            gqe_uri=gqe_uri, input_graph=input_graph, username=username,
-                                            password=password))
+        elif triple_store_type == MUST.anzoConfig:
+            triple_store["type"] = MUST.anzo
+            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
+            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
+            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
+            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
+            triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                                   predicate=MUST.inputGraph)
         # GraphDB
-        elif tripleStoreType == MUST.graphDbConfig:
-            graph_db_url = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUrl)
-            graph_db_port = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPort)
-            username = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbUser)
-            password = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbPassword)
-            graph_db_repo = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.graphDbRepo)
-            input_graph = triple_store_graph.value(subject=tripleStoreConfig, predicate=MUST.inputGraph)
-            triple_stores.append(MustrdGraphDb(graphDbUrl=graph_db_url, graphDbPort=graph_db_port,
-                                               username=username, password=password, graphDbRepository=graph_db_repo,
-                                               inputGraph=input_graph))
+        elif triple_store_type == MUST.graphDbConfig:
+            triple_store["type"] = MUST.graphDb
+            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
+            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
+            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
+            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
+                                                                  predicate=MUST.repository)
+            triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                                   predicate=MUST.inputGraph)
         else:
-            raise Exception(f"Not Implemented {tripleStoreType}")
+            triple_store["type"] = triple_store_type
+            triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
+        triple_stores.append(triple_store)
     return triple_stores
 
 
@@ -288,15 +380,15 @@ def run_select_spec(spec_uri: URIRef,
                     given: Graph,
                     when: str,
                     then: pandas.DataFrame,
-                    bindings: dict = None,
+                    triple_store: dict,
                     then_ordered: bool = False,
-                    mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
-    log.info(f"Running select spec {spec_uri}")
+                    bindings: dict = None) -> SpecResult:
+    log.info(f"Running select spec {spec_uri} on {triple_store['type']}")
 
     warning = None
 
     try:
-        result = mustrd_triple_store.execute_select(given, when, bindings)
+        result = execute_select_spec(triple_store, given, when, bindings)
         if is_json(result):
             df = json_results_to_panda_dataframe(result)
             columns = json_results_order(result)
@@ -354,57 +446,61 @@ def run_select_spec(spec_uri: URIRef,
 
         if df_diff.empty:
             if warning:
-                return SpecPassedWithWarning(spec_uri, warning)
+                return SpecPassedWithWarning(spec_uri, triple_store["type"], warning)
             else:
-                return SpecPassed(spec_uri)
+                return SpecPassed(spec_uri, triple_store["type"])
         else:
-            return SelectSpecFailure(spec_uri, df_diff, message)
+            log.error(message)
+            return SelectSpecFailure(spec_uri, triple_store["type"], df_diff, message)
 
     except ParseException as e:
-        return SparqlParseFailure(spec_uri, e)
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
 
 
 def run_construct_spec(spec_uri: URIRef,
                        given: Graph,
                        when: str,
                        then: Graph,
-                       bindings: dict = None,
-                       mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
-    log.info(f"Running construct spec {spec_uri}")
+                       triple_store: dict,
+                       bindings: dict = None) -> SpecResult:
+    log.info(f"Running construct spec {spec_uri} on {triple_store['type']}")
 
     try:
-        result = mustrd_triple_store.execute_construct(given, when, bindings)
+        result = execute_construct_spec(triple_store, given, when, bindings)
+        # result = mustrd_triple_store.execute_construct(given, when, bindings)
 
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
         if equal:
-            return SpecPassed(spec_uri)
+            return SpecPassed(spec_uri, triple_store["type"])
         else:
-            return ConstructSpecFailure(spec_uri, graph_compare)
+            return ConstructSpecFailure(spec_uri, triple_store["type"], graph_compare)
     except ParseException as e:
-        return SparqlParseFailure(spec_uri, e)
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
 
 
 def run_update_spec(spec_uri: URIRef,
                     given: Graph,
-                    when: SparqlAction,
+                    when: str,
                     then: Graph,
-                    bindings: dict = None,
-                    mustrd_triple_store=MustrdRdfLib()) -> SpecResult:
-    log.info(f"Running update spec {spec_uri}")
+                    triple_store: dict,
+                    bindings: dict = None) -> SpecResult:
+    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
 
     try:
-        result = mustrd_triple_store.execute_update(given, when, bindings)
+        result = execute_update_spec(triple_store, given, when, bindings)
 
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
         if equal:
-            return SpecPassed(spec_uri)
+            return SpecPassed(spec_uri, triple_store["type"])
         else:
-            return UpdateSpecFailure(spec_uri, graph_compare)
+            return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
 
     except ParseException as e:
-        return SparqlParseFailure(spec_uri, e)
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
+    except NotImplementedError as ex:
+        return TestSkipped(spec_uri, triple_store["type"], ex)
 
 
 def graph_comparison(expected_graph, actual_graph) -> GraphComparison:

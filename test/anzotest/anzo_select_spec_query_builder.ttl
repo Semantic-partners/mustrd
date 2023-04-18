@@ -1,0 +1,19 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:anzo_select_query_builder
+    a          must:TestSpec ;
+    must:given [ a must:FileDataSource ;
+                must:file "test/anzotest/data/given.ttl"
+    ];
+
+    must:when  [ a must:anzoQueryBuilderDataSource ;
+                    must:queryFolder "Mustrd";
+                    must:queryName "mustrd-select" ;
+                    must:queryType must:SelectSparql
+    ];
+    must:then [ a must:FileDataSource ;
+                must:file "test/anzotest/data/thenSuccess.csv"
+    ] .

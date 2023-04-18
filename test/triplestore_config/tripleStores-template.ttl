@@ -1,12 +1,22 @@
 @prefix must:      <https://mustrd.com/model/> .
 
 must:anzoConfig a must:anzoConfig;
-        must:anzoURL "";
-        must:anzoPort ;
-        must:anzoUser "";
-        must:anzoPassword "";
+        must:url "";
+        must:port "";
+        must:username "";
+        must:password "";
         must:gqeURI "";
         must:inputGraph "" .
 
 must:rdfLibConfig a must:rdfLibConfig .
+
+must:graphDbConfig  a must:graphDbConfig ;
+        must:url "";
+        must:port "";
+        must:username "";
+        must:password "";
+        must:inputGraph "" ;
+        must:repository "" .
+
+
 

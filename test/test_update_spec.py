@@ -2,7 +2,7 @@ from rdflib import Graph, Variable, Literal, URIRef
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_update_spec, get_then_update, UpdateSparqlQuery, UpdateSpecFailure, SparqlParseFailure
+from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure
 from graph_util import graph_comparison_message
 from namespace import MUST
 from spec_component import get_spec_component
@@ -15,6 +15,8 @@ class TestRunUpdateSpec:
     @prefix test-data: <https://semanticpartners.com/data/test/> .
     test-data:sub test-data:pred test-data:obj .
     """
+
+    triple_store = {"type": MUST.rdfLib}
 
     def test_insert_spec_passes(self):
         state = Graph()
@@ -30,7 +32,7 @@ class TestRunUpdateSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -38,7 +40,7 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -46,12 +48,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_query, then)
+        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_delete_spec_passes(self):
@@ -68,7 +70,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                  must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
+                  must:then  [ a must:EmptyGraphResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -76,11 +78,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_query, then_component.value)
+        t = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_insert_data_spec_passes(self):
@@ -97,7 +100,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -105,7 +108,7 @@ class TestRunUpdateSpec:
                                  [ a             rdf:Statement ;
                                    rdf:subject   test-data:subject ;
                                    rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] ; ] .
+                                   rdf:object    test-data:object ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -113,12 +116,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_data_query, then)
+        t = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_delete_data_spec_passes(self):
@@ -135,7 +138,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
+            must:then  [ a must:EmptyGraphResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -143,11 +146,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_data_query, then_component.value)
+        t = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_delete_insert_spec_passes(self):
@@ -164,11 +168,11 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:sub ; ] ; ] ; ] .
+                                   rdf:object    test-data:sub ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -176,12 +180,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_insert_spec_fails_with_graph_comparison(self):
@@ -198,7 +202,7 @@ class TestRunUpdateSpec:
         
         test-data:my_failing_insert_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -206,7 +210,7 @@ class TestRunUpdateSpec:
                                          [ a             rdf:Statement ;
                                            rdf:subject   test-data:obj ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:sub ; ] ; ] ; ] .
+                                           rdf:object    test-data:sub ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -214,10 +218,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, insert_query, then)
+        result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -254,7 +258,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:EmptyGraphResult ] ; ] .
+            must:then  [ a must:EmptyGraphResult ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -262,9 +266,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_query, then_component.value)
+        result = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -300,11 +305,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_insert_data_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:subject ;
                                            rdf:predicate test-data:predicate ;
-                                           rdf:object    test-data:object ; ] ; ] ; ] .
+                                           rdf:object    test-data:object ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -312,10 +317,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, insert_data_query, then)
+        result = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -351,11 +356,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_data_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] ; ].
+                                           rdf:object    test-data:obj ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -363,10 +368,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_data_query, then)
+        result = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -402,11 +407,11 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_insert_spec
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                          must:statements [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
-                                           rdf:object    test-data:obj ; ]  ; ] ; ] .
+                                           rdf:object    test-data:obj ; ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -414,10 +419,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_insert_query, then)
+        result = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -462,7 +467,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub1 ;
@@ -480,7 +485,7 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub2 ;
                             rdf:predicate test-data:predicate ;
                             rdf:object test-data:object ;
-                        ] ; ] ; ] .
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -488,12 +493,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_query, then, binding)
+        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store, binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_delete_insert_with_variables_spec_passes(self):
@@ -516,7 +521,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
@@ -528,7 +533,7 @@ class TestRunUpdateSpec:
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] ; ] ; ] .
+                        ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -536,12 +541,12 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then, binding)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store, binding)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_insert_statement_spec_fails(self):
@@ -556,12 +561,12 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_spec 
            a must:TestSpec ;
-           must:then  [ must:dataSource [ a must:TableDataSource ;
+           must:then  [ a must:TableDataSource ;
                         must:rows [ sh:order 1 ;
                                     must:row [
                                        must:variable "s" ;
                                        must:binding test-data:wrong-subject ; 
-                                        ] ; ] ; ] ; ].
+                                        ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -569,9 +574,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        spec_result = run_update_spec(spec_uri, state, insert_query, then_component.value)
+        spec_result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -600,7 +606,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ must:dataSource [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataSource ;
                         must:statements [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
@@ -610,7 +616,7 @@ class TestRunUpdateSpec:
                             a rdf:Statement ;
                             rdf:subject test-data:object ;
                             rdf:predicate test-data:predicate ;
-                            rdf:object test-data:subject ; ] ; ] ;
+                            rdf:object test-data:subject ; ] ;
                              ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -619,10 +625,10 @@ class TestRunUpdateSpec:
 
         then_component = get_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
-                                            spec_graph=spec_graph)
-        then = Graph().parse(data=then_component.value)
+                                            spec_graph=spec_graph,
+                                            mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then)
+        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
 
-        expected_result = SpecPassed(spec_uri)
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
