@@ -8,6 +8,7 @@ from pathlib import Path
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
+from functools import reduce
 
 log = logger_setup.setup_logger(__name__)
 
@@ -40,48 +41,43 @@ def main(argv):
     else:
         results = run_specs(Path(path_under_test))
 
-    pass_count = 0
-    warning_count = 0
-    fail_count = 0
-    skipped_count = 0
     print("===== Result Overview =====")
-
     # Get a list of all unique spec uris and triple stores
     spec_uris = list(set(result.spec_uri for result in results))
     triple_stores = list(set(result.triple_store for result in results))
 
-    # Create a dictionary to hold the status for each spec URI and triple store
-    status_dict = {spec_uri: {triple_store: '' for triple_store in triple_stores} for spec_uri in spec_uris}
-
+    status_dict= defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
     colours = defaultdict(lambda: defaultdict(int))
-    colours[SpecPassed]= Fore.GREEN
-    colours[SpecPassedWithWarning] = Fore.YELLOW
-    colours[TestSkipped] = Fore.YELLOW
+
+    colours[SpecPassed.__name__]= Fore.GREEN
+    colours[SpecPassedWithWarning.__name__] = Fore.YELLOW
+    colours[TestSkipped.__name__] = Fore.YELLOW
     # Populate the status dictionary with the results
     for result in results:
-        status_counts[result.triple_store][type(result)] += 1
-        status_dict[result.spec_uri][result.triple_store] = f"{colours.get(type(result), Fore.RED)}{type(result).__name__}{Style.RESET_ALL}"
+        type_name = type(result).__name__
+        status_counts[result.triple_store][type_name] += 1
+        if type(result) not in [SpecPassed, SpecPassedWithWarning, TestSkipped]:
+            status_counts[result.triple_store]['failed'] += 1
+        status_dict[result.spec_uri][result.triple_store] = f"{colours.get(type_name, Fore.RED)}{type_name}{Style.RESET_ALL}"
+
+    all_status = list(set(status for inner_dict in status_counts.values() for status in inner_dict.keys()))
 
     # Convert the status dictionary to a list of rows for tabulate
     table_rows = [[spec_uri] + [status_dict[spec_uri][triple_store] for triple_store in triple_stores] for spec_uri in spec_uris]
-    status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
+    status_rows = [[f"{colours.get(status, Fore.RED)}{status}{Style.RESET_ALL}"] +
                    [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}" 
-                    for triple_store in triple_stores] for status in set(type(result) for result in results)]
+                    for triple_store in triple_stores] for status in all_status]
 
     print(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
     print(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
 
-    
-    for res in results:
-        if type(res) == SpecPassed:
-            pass_count += 1
-        elif type(res) == SpecPassedWithWarning:
-            warning_count += 1
-        elif type(res) == TestSkipped:
-            skipped_count += 1
-        else:
-            fail_count += 1
+    agg_status = reduce(lambda acc, inner_dict: {k: acc.get(k, 0) + inner_dict.get(k, 0) for k in set(acc) | set(inner_dict)}, map(lambda outer_dict: outer_dict[1], status_counts.items()))
+
+    pass_count = agg_status.get(SpecPassed.__name__, 0)
+    warning_count = agg_status.get(SpecPassedWithWarning.__name__, 0)
+    fail_count = agg_status.get('failed', 0)
+    skipped_count = agg_status.get(TestSkipped.__name__, 0)
 
     overview_colour = Fore.GREEN
     if fail_count:
