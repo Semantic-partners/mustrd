@@ -10,7 +10,7 @@ test-data:a_complete_construct_scenario_with_variables
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    "hello world" ; ] ;  ] ;
     must:when  [ a must:TextDataSource ;
-                                   must:text  "construct { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }" ;
+                                   must:queryText  "construct { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }" ;
                  must:bindings [ must:variable "o" ;
                       must:binding  "hello world" ; ] ,
                        [ must:variable "s" ;

@@ -140,6 +140,7 @@ def _combine_given_specs(spec_components):
         raise ValueError(f"Parsing of multiple components of MUST.then for tables not implemented")
     return spec_components[0]
 
+
 @combine_specs.method(Default)
 def _combine_specs_default(spec_components):
     raise ValueError(f"Parsing of multiple components of this type not implemented")
@@ -170,7 +171,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.filename)
+                                                             predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     spec_component.value = Graph().parse(data=get_spec_spec_component_from_file(path))
@@ -238,7 +239,7 @@ def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDeta
 
     # Get specComponent directly from config file (in text string)
     spec_component.value = str(
-        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.text))
+        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryText))
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
@@ -297,12 +298,12 @@ def _get_spec_component_StatementsDataSource(spec_component_details: SpecCompone
 
 
 # https://github.com/Semantic-partners/mustrd/issues/38
-@get_spec_component.method((MUST.anzoGraphmartDataSource, MUST.given))
-@get_spec_component.method((MUST.anzoGraphmartDataSource, MUST.then))
-def _get_spec_component_anzoGraphmartDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.given))
+@get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.then))
+def _get_spec_component_AnzoGraphmartDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    if spec_component_details.mustrd_triple_store["type"] == MUST.anzo:
+    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
         # Get GIVEN or THEN from anzo graphmart
         graphmart = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.graphmart)
         layer = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.layer)
@@ -310,17 +311,17 @@ def _get_spec_component_anzoGraphmartDataSource(spec_component_details: SpecComp
             triple_store=spec_component_details.mustrd_triple_store, graphmart=graphmart,
             layer=layer)
     else:
-        raise ValueError(f"You must define {MUST.anzoConfig} to use MUST.anzoGraphmartDataSource")
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartDataSource}")
 
     return spec_component
 
 
-@get_spec_component.method((MUST.anzoQueryBuilderDataSource, MUST.when))
-def _get_spec_component_anzoQueryBuilderDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.AnzoQueryBuilderDataSource, MUST.when))
+def _get_spec_component_AnzoQueryBuilderDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == MUST.anzo:
+    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
         query_folder = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryFolder)
         query_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryName)
         spec_component.value = get_query_from_querybuilder(triple_store=spec_component_details.mustrd_triple_store,
@@ -328,7 +329,7 @@ def _get_spec_component_anzoQueryBuilderDataSource(spec_component_details: SpecC
                                                            query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.anzoConfig} to use MUST.anzoQueryBuilderDataSource")
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderDataSource}")
 
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)

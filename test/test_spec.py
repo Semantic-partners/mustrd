@@ -14,7 +14,7 @@ class TestRunSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.rdfLib}
+    triple_store = {"type": MUST.RdfLib}
 
     def test_no_rdf_type_fails(self):
         spec_graph = Graph()

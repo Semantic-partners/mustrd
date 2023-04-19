@@ -11,7 +11,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestSpecParserTest:
-    triple_store = {"type": MUST.rdfLib}
+    triple_store = {"type": MUST.RdfLib}
     select_spec_uri = TEST_DATA.a_complete_select_spec
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -28,7 +28,7 @@ class TestSpecParserTest:
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextDataSource ;
-                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
+                                   must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
                                    must:rows [ must:row [
@@ -56,7 +56,7 @@ class TestSpecParserTest:
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextDataSource ;
-                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
+                                   must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;

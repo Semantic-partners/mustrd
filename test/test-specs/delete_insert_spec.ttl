@@ -10,7 +10,7 @@ test-data:a_complete_delete_insert_scenario
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextDataSource ;
-                                   must:text  "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}" ;
+                                   must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}" ;
                  must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;

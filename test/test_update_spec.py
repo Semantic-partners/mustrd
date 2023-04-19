@@ -16,7 +16,7 @@ class TestRunUpdateSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.rdfLib}
+    triple_store = {"type": MUST.RdfLib}
 
     def test_insert_spec_passes(self):
         state = Graph()

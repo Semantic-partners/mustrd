@@ -164,11 +164,11 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
             try:
                 specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
-                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
             except FileNotFoundError as e:
-                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
 
-        results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
+        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
@@ -198,7 +198,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None,
              when_path: Path = None, then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
-            mustrd_triple_store = {"type": MUST.rdfLib}
+            mustrd_triple_store = {"type": MUST.RdfLib}
 
         spec_uri = URIRef(str(spec_uri))
 
@@ -320,11 +320,11 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
         # Local rdf lib triple store
-        if triple_store_type == MUST.rdfLibConfig:
-            triple_store["type"] = MUST.rdfLib
+        if triple_store_type == MUST.RdfLibConfig:
+            triple_store["type"] = MUST.RdfLib
         # Anzo graph via anzo
-        elif triple_store_type == MUST.anzoConfig:
-            triple_store["type"] = MUST.anzo
+        elif triple_store_type == MUST.AnzoConfig:
+            triple_store["type"] = MUST.Anzo
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -347,8 +347,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             except ValueError as e:
                 triple_store["error"] = e
         # GraphDB
-        elif triple_store_type == MUST.graphDbConfig:
-            triple_store["type"] = MUST.graphDb
+        elif triple_store_type == MUST.GraphDbConfig:
+            triple_store["type"] = MUST.GraphDb
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -580,21 +580,21 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
 
 
+# TODO can this be deprecated?
 def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
-        <{spec_uri}> <{MUST.then}> [
-        <{MUST.dataSource}> [
+        <{spec_uri}> <{MUST.then}> 
             a <{MUST.StatementsDataSource}> ;
             <{MUST.statements}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ; ] ; ]
+            ] ; ] 
     }}
     """
     expected_results = spec_graph.query(then_query).graph

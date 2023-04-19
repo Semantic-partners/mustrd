@@ -20,7 +20,7 @@ test-data:a_complete_select_scenario_optional_result
                                    rdf:predicate test-data:predicate ;
                                    rdf:object    test-data:object ; ] ; ] ;
     must:when  [ a must:TextDataSource ;
-                                   must:text  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ;
+                                   must:queryText  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ;
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
