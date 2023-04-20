@@ -9,7 +9,7 @@ from pathlib import Path
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
     SpecPassedWithWarning
 from namespace import MUST
-from spec_component import get_spec_spec_component_from_file, TableThenSpec, parse_spec_component
+from spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -1648,7 +1648,7 @@ class TestRunSelectSpec:
         project_root = get_project_root()
         given_path = "test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
-        triples = get_spec_spec_component_from_file(file_path)
+        triples = get_spec_component_from_file(file_path)
         state = Graph()
         state.parse(data=triples, format="ttl")
 
@@ -1686,7 +1686,7 @@ class TestRunSelectSpec:
         project_root = get_project_root()
         given_path = "test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
-        triples = get_spec_spec_component_from_file(file_path)
+        triples = get_spec_component_from_file(file_path)
         state = Graph()
         state.parse(data=triples, format="ttl")
 

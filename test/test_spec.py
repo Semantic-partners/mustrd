@@ -26,7 +26,7 @@ class TestRunSpec:
 
     triple_store = {"type": MUST.RdfLib}
 
-    def test_no_rdf_type_fails(self):
+    def test_no_rdf_type_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -51,7 +51,7 @@ class TestRunSpec:
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_file_not_found(self):
+    def test_file_not_found_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -74,7 +74,7 @@ class TestRunSpec:
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_spec_from_file_fails(self):
+    def test_spec_then_from_file_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -97,7 +97,30 @@ class TestRunSpec:
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_spec_wrong_file_format_fails(self):
+    def test_spec_given_from_file_error(self):
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+                must:then  [ a must:FileDataSource ;
+                                   must:file "test/data" ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        with pytest.raises(ValueError):
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.then,
+                                 spec_graph=spec_graph,
+                                 folder_location=None,
+                                 mustrd_triple_store=self.triple_store)
+
+    def test_spec_wrong_file_format_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -120,7 +143,7 @@ class TestRunSpec:
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_spec_folder_path_missing_fails(self):
+    def test_spec_folder_path_missing_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -173,3 +196,35 @@ class TestRunSpec:
 
         assert type(then_component) == ThenSpec
         assert isomorphic(then, then_component.value)
+
+    def test_invalid_data_source_predicate_combination_error(self):
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+                 must:given  [ a must:TableDataSource ;
+                                   must:rows [ must:row [
+                                        must:variable "s" ;
+                                        must:binding  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ;
+               ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        with pytest.raises(ValueError) as error_message:
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.given,
+                                 spec_graph=spec_graph,
+                                 folder_location=None,
+                                 mustrd_triple_store=self.triple_store)
+        assert str(error_message.value) == f"Invalid combination of data source type ({MUST.TableDataSource}) and predicate ({MUST.given})"
+

@@ -139,7 +139,7 @@ def _combine_then_specs(spec_components):
 
 
 @combine_specs.method(TableThenSpec)
-def _combine_given_specs(spec_components):
+def _combine_table_then_specs(spec_components):
     if len(spec_components) != 1:
         raise ValueError(f"Parsing of multiple components of MUST.then for tables not implemented")
     return spec_components[0]
@@ -178,7 +178,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
                                                              predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
-    spec_component.value = Graph().parse(data=get_spec_spec_component_from_file(path))
+    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     return spec_component
 
 
@@ -190,7 +190,7 @@ def _get_spec_component_folderdatasource_when(spec_component_details: SpecCompon
                                                              predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
-    spec_component.value = get_spec_spec_component_from_file(path)
+    spec_component.value = get_spec_component_from_file(path)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
@@ -225,7 +225,7 @@ def get_then_from_file(path: Path, spec_component: ThenSpec):
 
         if file_format is not None:
             g = Graph()
-            g.parse(data=get_spec_spec_component_from_file(path), format=file_format)
+            g.parse(data=get_spec_component_from_file(path), format=file_format)
             spec_component.value = g
             return spec_component
 
@@ -237,7 +237,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
                                                              predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
-    spec_component.value = Graph().parse(data=get_spec_spec_component_from_file(path))
+    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     return spec_component
 
 
@@ -248,7 +248,7 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
-    spec_component.value = get_spec_spec_component_from_file(path)
+    spec_component.value = get_spec_component_from_file(path)
 
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
@@ -408,7 +408,7 @@ def get_spec_component_nodes(subject, predicate, spec_graph):
     return spec_component_nodes
 
 
-def get_spec_spec_component_from_file(path: Path) -> str:
+def get_spec_component_from_file(path: Path) -> str:
     # project_root = get_project_root()
     # file_path = Path(os.path.join(project_root, path))
 
