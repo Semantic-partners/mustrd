@@ -580,7 +580,6 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
 
 
-# TODO can this be deprecated?
 def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
     prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
