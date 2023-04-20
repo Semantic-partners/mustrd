@@ -63,6 +63,10 @@ def parse_spec_component(subject: URIRef,
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
         for data_source_type in data_source_types:
+            if data_source_type == MUST.FolderDataSource and folder_location is None:
+                raise ValueError(
+                    f"Cannot load data for {predicate}. "
+                    f"{MUST.FolderDataSource} needs to be used with parameter for folder path.")
             spec_component_details = SpecComponentDetails(
                 subject=subject,
                 predicate=predicate,
@@ -178,6 +182,53 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     return spec_component
 
 
+@get_spec_component.method((MUST.FolderDataSource, MUST.when))
+def _get_spec_component_folderdatasource_when(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.fileName)
+
+    path = Path(os.path.join(spec_component_details.folder_location, file_name))
+    spec_component.value = get_spec_spec_component_from_file(path)
+    get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
+                   spec_component_details.spec_component_node)
+    return spec_component
+
+
+@get_spec_component.method((MUST.FolderDataSource, MUST.then))
+def _get_spec_component_folderdatasource_then(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.fileName)
+
+    path = Path(os.path.join(spec_component_details.folder_location, file_name))
+    return get_then_from_file(path, spec_component)
+
+
+def get_then_from_file(path: Path, spec_component: ThenSpec):
+    if path.is_dir():
+        raise ValueError(f"Path {path} is a directory, expected a file")
+
+    # https://github.com/Semantic-partners/mustrd/issues/94
+    if path.suffix in {".csv", ".xlsx", ".xls"}:
+        df = pandas.read_csv(path) if path.suffix == ".csv" else pandas.read_excel(path)
+        then_spec = TableThenSpec()
+        then_spec.value = df
+        return then_spec
+    else:
+        try:
+            file_format = util.guess_format(path)
+        except AttributeError:
+            raise ValueError(f"Unsupported file format: {path.suffix}")
+
+        if file_format is not None:
+            g = Graph()
+            g.parse(data=get_spec_spec_component_from_file(path), format=file_format)
+            spec_component.value = g
+            return spec_component
+
 @get_spec_component.method((MUST.FileDataSource, MUST.given))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -211,26 +262,7 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
     file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
-    if path.is_dir():
-        raise ValueError(f"Path {path} is a directory, expected a file")
-
-    # https://github.com/Semantic-partners/mustrd/issues/94
-    if path.suffix in {".csv", ".xlsx", ".xls"}:
-        df = pandas.read_csv(path) if path.suffix == ".csv" else pandas.read_excel(path)
-        then_spec = TableThenSpec()
-        then_spec.value = df
-        return then_spec
-    else:
-        try:
-            file_format = util.guess_format(path)
-        except AttributeError:
-            raise ValueError(f"Unsupported file format: {path.suffix}")
-
-        if file_format is not None:
-            g = Graph()
-            g.parse(data=get_spec_spec_component_from_file(path), format=file_format)
-            spec_component.value = g
-            return spec_component
+    return get_then_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.TextDataSource, MUST.when))

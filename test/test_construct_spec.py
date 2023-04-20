@@ -599,3 +599,50 @@ class TestRunConstructSpec:
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
         assert type(then_component) == ThenSpec
+
+    def test_construct_when_file_from_folder_spec_passes(self):
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
+
+        project_root = get_project_root()
+        folder_path = Path(os.path.join(project_root, "test/data"))
+
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+                must:when [ a must:FolderDataSource ;
+                            must:fileName "construct.rq" ;
+                            must:queryType must:ConstructSparql ; ] ;
+                must:then  [ a must:StatementsDataSource ;
+                             must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:obj ;
+                                   rdf:predicate test-data:sub ;
+                                   rdf:object    test-data:pred ; ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=folder_path,
+                                              mustrd_triple_store=self.triple_store)
+
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
+
+        t = run_construct_spec(spec_uri, state, when_component.value, then_component.value, self.triple_store)
+
+        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
+        assert t == expected_result
+        assert type(then_component) == ThenSpec
+
