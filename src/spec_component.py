@@ -229,6 +229,7 @@ def get_then_from_file(path: Path, spec_component: ThenSpec):
             spec_component.value = g
             return spec_component
 
+
 @get_spec_component.method((MUST.FileDataSource, MUST.given))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -370,10 +371,9 @@ def _get_spec_component_AnzoQueryBuilderDataSource(spec_component_details: SpecC
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    # spec_component_node = get_spec_component_nodes(spec_component_details.subject, spec_component_details.predicate, spec_component_details.spec_graph)
-    # data_source_type = get_data_source_types(spec_component_details.subject, spec_component_details.predicate, spec_component_details.spec_graph, spec_component_node)
     raise ValueError(
-        f"Invalid combination of data source type ({spec_component_details.data_source_type}) and predicate ({spec_component_details.predicate})")
+        f"Invalid combination of data source type ({spec_component_details.data_source_type}) and "
+        f"spec component ({spec_component_details.predicate})")
 
 
 # https://github.com/Semantic-partners/mustrd/issues/87
@@ -387,8 +387,6 @@ def init_spec_component(predicate):
     else:
         spec_component = SpecComponent()
 
-    # spec_component_node = get_spec_component_nodes(subject, predicate, spec_graph)
-
     return spec_component
 
 
@@ -401,7 +399,6 @@ def get_spec_component_nodes(subject, predicate, spec_graph):
     spec_component_nodes = []
     for spec_component_node in spec_graph.objects(subject=subject, predicate=predicate):
         spec_component_nodes.append(spec_component_node)
-    # spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
     # It shouldn't even be possible to get this far as an empty node indicates an invalid RDF file
     if spec_component_nodes is None:
         raise ValueError(f"specComponent Node empty for {subject} {predicate}")
@@ -470,7 +467,6 @@ def get_spec_from_table(subject: URIRef,
     }} ORDER BY ASC(?order)"""
 
     expected_results = spec_graph.query(then_query)
-    # return spec_graph.query(then_query).serialize(format="json").decode("utf-8")
 
     data_dict = {}
     columns = []

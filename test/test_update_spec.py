@@ -2,7 +2,7 @@ from rdflib import Graph, Variable, Literal, URIRef
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure
+from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure, SpecSkipped
 from graph_util import graph_comparison_message
 from namespace import MUST
 from spec_component import parse_spec_component
@@ -646,3 +646,45 @@ class TestRunUpdateSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
+
+    def test_insert_spec_not_implemented_skipped(self):
+        triple_store = {"type": MUST.Anzo}
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
+        insert_query = """
+        insert { ?o ?p ?s } where {?s ?p ?o}
+        """
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+            must:then  [ a must:StatementsDataSource ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ,
+                                 [ a             rdf:Statement ;
+                                   rdf:subject   test-data:obj ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:sub ; ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=triple_store)
+
+        t = run_update_spec(spec_uri, state, insert_query, then_component.value, triple_store)
+        message = NotImplementedError(f"SPARQL UPDATE not implemented for {MUST.Anzo}")
+        assert type(t) == SpecSkipped
+        assert type(message) == NotImplementedError
+        assert str(t.message) == str(message)
+

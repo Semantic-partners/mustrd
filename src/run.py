@@ -3,14 +3,13 @@ import sys
 import getopt
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
     SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure, \
-    TestSkipped, SpecificationError
+    SpecSkipped
 from pathlib import Path
 from colorama import Fore, Style
 
 log = logger_setup.setup_logger(__name__)
 
 
-# https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
     path_under_test = None
     triplestore_spec_path = None
@@ -61,7 +60,7 @@ def main(argv):
         elif type(res) == SpecPassedWithWarning:
             colour = Fore.YELLOW
             warning_count += 1
-        elif type(res) == TestSkipped:
+        elif type(res) == SpecSkipped:
             colour = Fore.YELLOW
             skipped_count += 1
         else:
@@ -73,13 +72,13 @@ def main(argv):
     if fail_count:
         overview_colour = Fore.RED
     elif skipped_count:
-        overview_colour = Fore.RED
+        overview_colour = Fore.YELLOW
     elif warning_count:
         overview_colour = Fore.YELLOW
 
     logger_setup.flush()
-    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
-          f"{overview_colour}{warning_count} passed with warnings =====")
+    print(f"{overview_colour}===== {Fore.RED}{fail_count} failures, {Fore.YELLOW}{skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+          f"{Fore.YELLOW}{warning_count} passed with warnings{overview_colour} =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
@@ -93,10 +92,10 @@ def main(argv):
                 print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
                 print(res.warning)
             if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
-                    type(res) == SparqlParseFailure or type(res) == SpecificationError:
+                    type(res) == SparqlParseFailure:
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.exception)
-            if type(res) == TestSkipped:
+            if type(res) == SpecSkipped:
                 print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
                 print(res.message)
 

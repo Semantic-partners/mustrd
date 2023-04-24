@@ -3,7 +3,7 @@ import urllib.parse
 import requests
 from pyparsing import ParseException
 from rdflib import Graph
-from requests import ConnectionError, HTTPError
+from requests import ConnectionError, HTTPError, RequestException
 
 
 # https://github.com/Semantic-partners/mustrd/issues/72
@@ -16,7 +16,7 @@ def manage_graphdb_response(response) -> str:
     elif response.status_code == 401:
         raise HTTPError(f"GraphDB authentication error, status code: {response.status_code}, content: {content_string}")
     else:
-        raise Exception(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
+        raise RequestException(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
 
 
 # wrap the entire select in another select to add the graph, allows for a more complicated where

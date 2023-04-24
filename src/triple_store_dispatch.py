@@ -41,7 +41,7 @@ def execute_construct_anzo(triple_store: dict, given: Graph, when: str, bindings
 
 @execute_construct_spec.method(Default)
 def execute_construct_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):
-    raise Exception(f"SPARQL CONSTRUCT not implemented for {triple_store['type']}")
+    raise NotImplementedError(f"SPARQL CONSTRUCT not implemented for {triple_store['type']}")
 
 
 def dispatch_select(triple_store: dict, given: Graph, when: str, bindings: dict):
@@ -70,7 +70,7 @@ def execute_select_anzo(triple_store: dict, given: Graph, when: str, bindings: d
 
 @execute_select_spec.method(Default)
 def execute_select_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):
-    raise Exception(f"SPARQL SELECT not implemented for {triple_store['type']}")
+    raise NotImplementedError(f"SPARQL SELECT not implemented for {triple_store['type']}")
 
 
 def dispatch_update(triple_store: dict, given: Graph, when: str, bindings: dict):
