@@ -27,7 +27,10 @@ def insert_graph(when, input_graph):
 # https://github.com/Semantic-partners/mustrd/issues/22
 def upload_given(triple_store: dict, given: Graph):
     try:
-        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/rdf-graphs/service?graph={triple_store['input_graph']}"
+        graph = "default"
+        if triple_store['input_graph']: 
+            graph = urllib.parse.urlencode({'graph': triple_store['input_graph']})
+        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/rdf-graphs/service?{graph}"
         manage_graphdb_response(requests.put(url=url,
                                                         auth=(triple_store['username'], triple_store['password']),data = given.serialize(format="ttl"),
                                                         headers = {'Content-Type': 'text/turtle'}))
@@ -42,6 +45,7 @@ def parse_bindings(bindings: dict):
     return bindings_string
 
 
+# FIXME In GDB querying default graph queries all the graphs
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     # if "where {" not in when.lower():
     #     raise ParseException(pstr='GraphDB Implementation: No WHERE clause in query.')
@@ -80,13 +84,13 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
         upload_given(triple_store, given)
         bindings_string = ""
         if bindings:
-            bindings_string = parse_bindings(bindings)
-        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}?query={when}{bindings_string}"
+            bindings_string = "?" + parse_bindings(bindings)
+        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}{bindings_string}"
         # return Graph().parse(data=manage_graphdb_response(requests.get(url=url)))
-        return Graph().parse(data=manage_graphdb_response(requests.request("GET",
-                                                                           url=url,
+        return Graph().parse(data=manage_graphdb_response(requests.post(url=url,data = when,
                                                                            auth=(triple_store['username'],
-                                                                                 triple_store['password']))))
+                                                                                 triple_store['password']),
+                                                                                 headers={'Content-Type': 'application/sparql-query'})))
 
     except ConnectionError:
         raise
