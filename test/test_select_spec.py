@@ -57,6 +57,7 @@ class TestRunSelectSpec:
                                               folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
+
         t = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -158,6 +159,7 @@ class TestRunSelectSpec:
                                               folder_location=None,
                                               mustrd_triple_store=self.triple_store)
 
+
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
         if type(spec_result) == SelectSpecFailure:
@@ -213,6 +215,7 @@ class TestRunSelectSpec:
                                               spec_graph=spec_graph,
                                               folder_location=None,
                                               mustrd_triple_store=self.triple_store)
+
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 
@@ -362,6 +365,7 @@ class TestRunSelectSpec:
                                               spec_graph=spec_graph,
                                               folder_location=None,
                                               mustrd_triple_store=self.triple_store)
+
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store,
                                       bindings=binding)
@@ -752,6 +756,7 @@ class TestRunSelectSpec:
                                               spec_graph=spec_graph,
                                               folder_location=None,
                                               mustrd_triple_store=self.triple_store)
+
 
         spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
 

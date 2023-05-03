@@ -164,9 +164,9 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
             try:
                 specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
-                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
             except FileNotFoundError as e:
-                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
 
         results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
@@ -192,10 +192,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     return results
 
 
-# https://github.com/Semantic-partners/mustrd/issues/58
-# https://github.com/Semantic-partners/mustrd/issues/13
-def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None,
-             when_path: Path = None, then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.RdfLib}

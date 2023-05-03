@@ -9,6 +9,7 @@ from mustrd import SpecPassed, run_construct_spec, ConstructSpecFailure, SparqlP
 from graph_util import graph_comparison_message
 from namespace import MUST
 from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
+
 from utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")

@@ -191,6 +191,7 @@ def _get_spec_component_folderdatasource_when(spec_component_details: SpecCompon
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     spec_component.value = get_spec_component_from_file(path)
+
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
@@ -272,6 +273,7 @@ def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDeta
     # Get specComponent directly from config file (in text string)
     spec_component.value = str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryText))
+
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
@@ -446,7 +448,6 @@ def get_spec_from_statements(subject: URIRef,
     return results.serialize(format="ttl")
 
 
-# https://github.com/Semantic-partners/mustrd/issues/50
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:

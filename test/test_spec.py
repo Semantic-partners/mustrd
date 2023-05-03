@@ -10,6 +10,7 @@ from namespace import MUST
 from spec_component import parse_spec_component, ThenSpec
 from utils import get_project_root
 
+
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
@@ -27,6 +28,7 @@ class TestRunSpec:
     triple_store = {"type": MUST.RdfLib}
 
     def test_no_rdf_type_error(self):
+
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
