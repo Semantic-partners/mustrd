@@ -328,7 +328,6 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"Invalid combination of data source type ({spec_component_details.data_source_type}) and predicate ({spec_component_details.predicate})")
 
 
-# https://github.com/Semantic-partners/mustrd/issues/87
 def init_spec_component(predicate):
     if predicate == MUST.given:
         spec_component = GivenSpec()
@@ -398,7 +397,6 @@ def get_spec_from_statements(subject: URIRef,
     return results.serialize(format="ttl")
 
 
-# https://github.com/Semantic-partners/mustrd/issues/50
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
