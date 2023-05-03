@@ -8,6 +8,7 @@ from rdflib.compare import isomorphic
 from mustrd import SpecPassed, run_construct_spec, ConstructSpecFailure, SparqlParseFailure
 from graph_util import graph_comparison_message
 from namespace import MUST
+
 from spec_component import get_spec_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
 from utils import get_project_root
 
@@ -45,6 +46,7 @@ class TestRunConstructSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
@@ -146,7 +148,6 @@ class TestRunConstructSpec:
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
                                               mustrd_triple_store=self.triple_store)
-
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
                                bindings=binding)
 
@@ -325,6 +326,7 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_failing_construct_spec
 
+
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
@@ -389,6 +391,7 @@ class TestRunConstructSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
@@ -520,8 +523,8 @@ class TestRunConstructSpec:
                  must:statements [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
-                                   rdf:object    test-data:pred ; ] ; ] .
-        """
+                                   rdf:object    test-data:pred ; ] ; ] ."""
+
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
@@ -564,8 +567,8 @@ class TestRunConstructSpec:
                                    rdf:predicate test-data:sub1 ;
                                    rdf:object    test-data:pred1 ; ] ; ] ; 
                  must:then  [ a must:FileDataSource ;
-                                   must:file "test/data/thenSuccess.nt" ] .
-        """
+                                   must:file "test/data/thenSuccess.nt" ] ."""
+
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
@@ -586,3 +589,4 @@ class TestRunConstructSpec:
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
         assert type(then_component) == ThenSpec
+

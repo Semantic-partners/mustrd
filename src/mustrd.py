@@ -160,6 +160,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
                 specs += [get_spec(spec_uri, spec_graph)]
             except ValueError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+
             except FileNotFoundError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
 
@@ -221,7 +222,6 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         raise
     except FileNotFoundError:
         raise
-
 
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
