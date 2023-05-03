@@ -235,6 +235,7 @@ def _get_spec_component_textDataSource(spec_component_details: SpecComponentDeta
 @get_spec_component.method((MUST.HttpDataSource, MUST.given))
 @get_spec_component.method((MUST.HttpDataSource, MUST.when))
 @get_spec_component.method((MUST.HttpDataSource, MUST.then))
+
 def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -247,6 +248,7 @@ def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDeta
 
 
 @get_spec_component.method((MUST.TableDataSource, MUST.then))
+
 def _get_spec_component_TableDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     table_then = TableThenSpec()
     # get specComponent from ttl table
