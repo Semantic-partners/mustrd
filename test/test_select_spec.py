@@ -7,9 +7,9 @@ from rdflib.term import Literal, Variable, URIRef
 from pathlib import Path
 
 from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning, get_spec_component
+    SpecPassedWithWarning
 from namespace import MUST
-from spec_component import get_spec_spec_component_from_file, TableThenSpec
+from spec_component import get_spec_spec_component_from_file, TableThenSpec, parse_spec_component
 from src.utils import get_project_root
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -51,7 +51,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -95,7 +95,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -150,7 +150,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -205,7 +205,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -245,7 +245,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -299,7 +299,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -351,7 +351,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -389,7 +389,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -420,7 +420,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -471,7 +471,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -528,7 +528,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -571,7 +571,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -638,7 +638,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -678,7 +678,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -731,7 +731,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -780,7 +780,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -839,7 +839,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -904,7 +904,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -976,7 +976,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1034,7 +1034,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1082,7 +1082,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1134,7 +1134,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1187,7 +1187,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1242,7 +1242,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1304,7 +1304,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1357,7 +1357,7 @@ class TestRunSelectSpec:
         spec_uri = TEST_DATA.my_first_spec
         warning = f"sh:order in {spec_uri} is ignored, no ORDER BY in query"
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1409,7 +1409,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1469,7 +1469,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1529,7 +1529,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1590,7 +1590,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1637,7 +1637,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -1674,7 +1674,7 @@ class TestRunSelectSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
-        then_component = get_spec_component(subject=spec_uri,
+        then_component = parse_spec_component(subject=spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
