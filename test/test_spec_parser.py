@@ -5,7 +5,7 @@ from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
 from namespace import MUST
-from spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, get_spec_component
+from spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, parse_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -68,7 +68,7 @@ class TestSpecParserTest:
     def test_given(self):
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
-        given_component = get_spec_component(subject=self.select_spec_uri,
+        given_component = parse_spec_component(subject=self.select_spec_uri,
                                              predicate=MUST.given,
                                              spec_graph=spec_graph,
                                              mustrd_triple_store=self.triple_store)
@@ -88,7 +88,7 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
 
-        when_component = get_spec_component(subject=self.select_spec_uri,
+        when_component = parse_spec_component(subject=self.select_spec_uri,
                                             predicate=MUST.when,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -101,7 +101,7 @@ class TestSpecParserTest:
     def test_then_select(self):
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
-        then_component = get_spec_component(subject=self.select_spec_uri,
+        then_component = parse_spec_component(subject=self.select_spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -117,7 +117,7 @@ class TestSpecParserTest:
     def test_when_construct(self):
         spec_graph = Graph()
         spec_graph.parse(data=self.construct_spec, format='ttl')
-        when_component = get_spec_component(subject=self.construct_spec_uri,
+        when_component = parse_spec_component(subject=self.construct_spec_uri,
                                             predicate=MUST.when,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)
@@ -131,7 +131,7 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.construct_spec, format='ttl')
 
-        then_component = get_spec_component(subject=self.construct_spec_uri,
+        then_component = parse_spec_component(subject=self.construct_spec_uri,
                                             predicate=MUST.then,
                                             spec_graph=spec_graph,
                                             mustrd_triple_store=self.triple_store)

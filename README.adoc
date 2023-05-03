@@ -2,6 +2,8 @@
 
 // tag::body[]
 
+image::https://github.com/Semantic-partners/mustrd/raw/python-coverage-comment-action-data/badge.svg[Coverage badge,link="https://github.com/Semantic-partners/mustrd/tree/python-coverage-comment-action-data"]
+
 === Why?
 
 How do you know your SPARQL, whether it's in a pipeline, or a query, is doing what you intend? 
