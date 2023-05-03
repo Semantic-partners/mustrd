@@ -192,7 +192,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     return results
 
 
-def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_path: Path = None,
+             then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.RdfLib}
