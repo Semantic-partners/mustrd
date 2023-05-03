@@ -1,6 +1,6 @@
 @prefix must:      <https://mustrd.com/model/> .
 
-must:anzoConfig a must:anzoConfig;
+must:anzoConfig1 a must:anzoConfig;
         must:url "";
         must:port "";
         must:username "";
@@ -8,9 +8,9 @@ must:anzoConfig a must:anzoConfig;
         must:gqeURI "";
         must:inputGraph "" .
 
-must:rdfLibConfig a must:rdfLibConfig .
+must:rdfLibConfig1 a must:rdfLibConfig .
 
-must:graphDbConfig  a must:graphDbConfig ;
+must:graphDbConfig1  a must:graphDbConfig ;
         must:url "";
         must:port "";
         must:username "";
