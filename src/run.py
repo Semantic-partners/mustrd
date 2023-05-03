@@ -10,6 +10,7 @@ from colorama import Fore, Style
 log = logger_setup.setup_logger(__name__)
 
 
+# https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
     path_under_test = None
     triplestore_spec_path = None

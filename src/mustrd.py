@@ -16,7 +16,7 @@ import requests
 import json
 from pandas import DataFrame
 
-from spec_component import get_spec_component, SpecComponent
+from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 
 log = logger_setup.setup_logger(__name__)
@@ -160,6 +160,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
                 specs += [get_spec(spec_uri, spec_graph)]
             except ValueError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+            except FileNotFoundError as e:
+                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
 
         results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
@@ -185,8 +187,6 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     return results
 
 
-# https://github.com/Semantic-partners/mustrd/issues/58
-# https://github.com/Semantic-partners/mustrd/issues/13
 def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
@@ -194,30 +194,32 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
 
         spec_uri = URIRef(str(spec_uri))
 
-        given_component = get_spec_component(subject=spec_uri,
-                                             predicate=MUST.given,
-                                             spec_graph=spec_graph,
-                                             mustrd_triple_store=mustrd_triple_store)
+        given_component = parse_spec_component(subject=spec_uri,
+                                               predicate=MUST.given,
+                                               spec_graph=spec_graph,
+                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"Given: {given_component.value}")
 
-        when_component = get_spec_component(subject=spec_uri,
-                                            predicate=MUST.when,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=mustrd_triple_store)
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"when: {when_component.value}")
 
-        then_component = get_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=mustrd_triple_store)
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"then: {then_component.value}")
 
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
     except ValueError:
+        raise
+    except FileNotFoundError:
         raise
 
 
@@ -226,7 +228,7 @@ def run_spec(spec: Specification) -> SpecResult:
     triple_store = spec.triple_store
     # close_connection = True
     try:
-        log.info(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
         return run_when(spec)
 
     except ParseException as e:
