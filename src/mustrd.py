@@ -56,15 +56,12 @@ class SpecResult:
 
 @dataclass
 class SpecPassed(SpecResult):
-    def __init__(self, spec_uri, triple_store):
-        super(SpecPassed, self).__init__(spec_uri, triple_store)
+    pass
 
 
 @dataclass()
 class SpecPassedWithWarning(SpecResult):
-    def __init__(self, spec_uri, triple_store, warning):
-        super().__init__(spec_uri, triple_store)
-        self.warning = warning
+    warning: str
 
 
 @dataclass
@@ -115,20 +112,17 @@ class SparqlAction:
 
 @dataclass
 class SelectSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(SelectSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class ConstructSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(ConstructSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class UpdateSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(UpdateSparqlQuery, self).__init__(query)
+    pass
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
