@@ -17,7 +17,7 @@ class TestRunSpecs:
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario), MUST.rdfLib),
-            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_from_folders), MUST.RdfLib)
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_from_folders), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result), MUST.rdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiple_given_multiple_then), MUST.rdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_when_file_then_file), MUST.rdfLib),
