@@ -9,8 +9,8 @@ test-data:a_complete_delete_data_scenario
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }" ;
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }" ;
                  must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a must:EmptyGraphResult ] .
 

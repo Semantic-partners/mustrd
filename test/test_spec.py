@@ -1,9 +1,15 @@
+import os
+from pathlib import Path
+
 import pytest
 from rdflib import Graph
+from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
 from namespace import MUST
-from spec_component import parse_spec_component
+from spec_component import parse_spec_component, ThenSpec
+from utils import get_project_root
+
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -14,9 +20,15 @@ class TestRunSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.rdfLib}
+    then_obj_sub_pred = """
+    @prefix test-data: <https://semanticpartners.com/data/test/> .
+    test-data:obj test-data:sub test-data:pred .
+    """
 
-    def test_no_rdf_type_fails(self):
+    triple_store = {"type": MUST.RdfLib}
+
+    def test_no_rdf_type_error(self):
+
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -38,9 +50,10 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_file_not_found(self):
+    def test_file_not_found_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -60,9 +73,10 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_spec_from_file_fails(self):
+    def test_spec_then_from_file_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -82,9 +96,33 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
 
-    def test_spec_wrong_file_format_fails(self):
+    def test_spec_given_from_file_error(self):
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+                must:then  [ a must:FileDataSource ;
+                                   must:file "test/data" ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        with pytest.raises(ValueError):
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.then,
+                                 spec_graph=spec_graph,
+                                 folder_location=None,
+                                 mustrd_triple_store=self.triple_store)
+
+    def test_spec_wrong_file_format_error(self):
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -104,5 +142,91 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
+                                 folder_location=None,
                                  mustrd_triple_store=self.triple_store)
+
+    def test_spec_folder_path_missing_error(self):
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+                must:then  [ a must:FolderDataSource ;
+                                   must:file "thenSuccess.nt" ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        with pytest.raises(ValueError):
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.then,
+                                 spec_graph=spec_graph,
+                                 folder_location=None,
+                                 mustrd_triple_store=self.triple_store)
+
+    def test_spec_file_from_folder_passes(self):
+        project_root = get_project_root()
+        folder_path = Path(os.path.join(project_root, "test/data"))
+
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_failing_spec 
+            a must:TestSpec ;
+                must:then  [ a must:FolderDataSource ;
+                                   must:fileName "thenSuccess.nt" ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_failing_spec
+
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=folder_path,
+                                              mustrd_triple_store=self.triple_store)
+
+        then = Graph()
+        then.parse(data=self.then_obj_sub_pred, format="ttl")
+
+        assert type(then_component) == ThenSpec
+        assert isomorphic(then, then_component.value)
+
+    def test_invalid_data_source_predicate_combination_error(self):
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.com/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+        test-data:my_first_spec 
+            a must:TestSpec ;
+                 must:given  [ a must:TableDataSource ;
+                                   must:rows [ must:row [
+                                        must:variable "s" ;
+                                        must:binding  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:binding  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:binding  test-data:obj ; ] ;
+               ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        with pytest.raises(ValueError) as error_message:
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.given,
+                                 spec_graph=spec_graph,
+                                 folder_location=None,
+                                 mustrd_triple_store=self.triple_store)
+        assert str(error_message.value) == f"Invalid combination of data source type ({MUST.TableDataSource}) and predicate ({MUST.given})"
 
