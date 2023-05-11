@@ -12,10 +12,12 @@ class TestRunSpecs:
     def test_find_specs_in_path_and_run_them(self):
         project_root = get_project_root()
         test_spec_path = project_root / "test" / "test-specs"
-        results = run_specs(test_spec_path)
+        folder = project_root / "test" / "data"
+        results = run_specs(spec_path=test_spec_path, given_path=folder, when_path=folder, then_path=folder)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario), MUST.rdfLib),
+            SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_from_folders), MUST.RdfLib)
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiline_result), MUST.rdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_multiple_given_multiple_then), MUST.rdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_when_file_then_file), MUST.rdfLib),
