@@ -5,6 +5,7 @@ import logger_setup
 from namespace import MUST
 from mustrdGraphDb import execute_select as execute_graphdb_select
 from mustrdGraphDb import execute_construct as execute_graphdb_construct
+from mustrdGraphDb import execute_update as execute_graphdb_update
 from mustrdAnzo import execute_select as execute_anzo_select
 from mustrdAnzo import execute_construct as execute_anzo_construct
 from mustrdRdfLib import execute_select as execute_rdflib_select
@@ -86,6 +87,9 @@ execute_update_spec = MultiMethod('execute_update_spec', dispatch_update)
 def execute_update_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_rdflib_update(triple_store, given, when, bindings)
 
+@execute_update_spec.method(MUST.graphDb)
+def execute_update_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+    return execute_graphdb_update(triple_store, given, when, bindings)
 
 @execute_update_spec.method(Default)
 def execute_update_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):
