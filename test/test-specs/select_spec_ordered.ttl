@@ -15,8 +15,8 @@ test-data:a_complete_select_scenario_ordered
                                    rdf:subject   test-data:sub2 ;
                                    rdf:predicate test-data:pred2 ;
                                    rdf:object    test-data:obj2 ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o where { ?s ?p ?o } ORDER BY ?p" ;
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "select ?s ?p ?o where { ?s ?p ?o } ORDER BY ?p" ;
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
                  must:rows [ sh:order 1 ;

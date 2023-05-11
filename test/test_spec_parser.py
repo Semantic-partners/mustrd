@@ -11,7 +11,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestSpecParserTest:
-    triple_store = {"type": MUST.rdfLib}
+    triple_store = {"type": MUST.RdfLib}
     select_spec_uri = TEST_DATA.a_complete_select_spec
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -27,8 +27,8 @@ class TestSpecParserTest:
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
                                    must:rows [ must:row [
@@ -55,8 +55,8 @@ class TestSpecParserTest:
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
                  must:statements [ a             rdf:Statement ;
@@ -69,9 +69,11 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
         given_component = parse_spec_component(subject=self.select_spec_uri,
-                                             predicate=MUST.given,
-                                             spec_graph=spec_graph,
-                                             mustrd_triple_store=self.triple_store)
+                                               predicate=MUST.given,
+                                               spec_graph=spec_graph,
+                                               folder_location=None,
+                                               mustrd_triple_store=self.triple_store)
+                                               
         given = given_component.value
 
         expected_triples = """
@@ -89,9 +91,10 @@ class TestSpecParserTest:
         spec_graph.parse(data=self.select_spec, format='ttl')
 
         when_component = parse_spec_component(subject=self.select_spec_uri,
-                                            predicate=MUST.when,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         expected_query = "select ?s ?p ?o { ?s ?p ?o }"
 
@@ -102,12 +105,14 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.select_spec, format='ttl')
         then_component = parse_spec_component(subject=self.select_spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         expected_df = pandas.DataFrame(
-            [[str(TEST_DATA.sub), str(XSD.anyURI), str(TEST_DATA.pred), str(XSD.anyURI), str(TEST_DATA.obj), str(XSD.anyURI)]],
+            [[str(TEST_DATA.sub), str(XSD.anyURI), str(TEST_DATA.pred), str(XSD.anyURI), str(TEST_DATA.obj),
+              str(XSD.anyURI)]],
             columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
 
         df_diff = expected_df.compare(then_component.value, result_names=("expected", "actual"))
@@ -118,9 +123,10 @@ class TestSpecParserTest:
         spec_graph = Graph()
         spec_graph.parse(data=self.construct_spec, format='ttl')
         when_component = parse_spec_component(subject=self.construct_spec_uri,
-                                            predicate=MUST.when,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         expected_query = "construct { ?o ?s ?p } { ?s ?p ?o }"
 
@@ -132,9 +138,10 @@ class TestSpecParserTest:
         spec_graph.parse(data=self.construct_spec, format='ttl')
 
         then_component = parse_spec_component(subject=self.construct_spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
 
         then = then_component.value
 

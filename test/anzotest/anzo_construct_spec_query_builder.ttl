@@ -10,7 +10,7 @@ test-data:anzo_construct_query_builder
                 must:file "test/anzotest/data/given.ttl"
     ];
 
-    must:when  [ a must:anzoQueryBuilderDataSource ;
+    must:when  [ a must:AnzoQueryBuilderDataSource ;
                     must:queryFolder "Mustrd";
                     must:queryName "mustrd-construct" ;
                     must:queryType must:ConstructSparql

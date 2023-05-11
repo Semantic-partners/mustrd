@@ -127,7 +127,8 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
+def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
+              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
@@ -155,14 +156,14 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     if triplestore_spec_path is None:
         for spec_uri in spec_uris:
             try:
-                specs += [get_spec(spec_uri, spec_graph)]
+                specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
 
             except FileNotFoundError as e:
                 results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
 
-        results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
+        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
@@ -174,7 +175,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
             else:
-                specs = specs + [get_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+                specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store) for spec_uri in spec_uris]
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
 
@@ -186,16 +187,18 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     return results
 
 
-def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_path: Path = None,
+             then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
-            mustrd_triple_store = {"type": MUST.rdfLib}
+            mustrd_triple_store = {"type": MUST.RdfLib}
 
         spec_uri = URIRef(str(spec_uri))
 
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
+                                               folder_location=given_path,
                                                mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"Given: {given_component.value}")
@@ -203,6 +206,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
+                                              folder_location=when_path,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"when: {when_component.value}")
@@ -210,6 +214,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = No
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
+                                              folder_location=then_path,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"then: {then_component.value}")
@@ -307,11 +312,11 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
         # Local rdf lib triple store
-        if triple_store_type == MUST.rdfLibConfig:
-            triple_store["type"] = MUST.rdfLib
+        if triple_store_type == MUST.RdfLibConfig:
+            triple_store["type"] = MUST.RdfLib
         # Anzo graph via anzo
-        elif triple_store_type == MUST.anzoConfig:
-            triple_store["type"] = MUST.anzo
+        elif triple_store_type == MUST.AnzoConfig:
+            triple_store["type"] = MUST.Anzo
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -334,8 +339,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
             except ValueError as e:
                 triple_store["error"] = e
         # GraphDB
-        elif triple_store_type == MUST.graphDbConfig:
-            triple_store["type"] = MUST.graphDb
+        elif triple_store_type == MUST.GraphDbConfig:
+            triple_store["type"] = MUST.GraphDb
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -573,15 +578,14 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
-        <{spec_uri}> <{MUST.then}> [
-        <{MUST.dataSource}> [
+        <{spec_uri}> <{MUST.then}> 
             a <{MUST.StatementsDataSource}> ;
             <{MUST.statements}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ; ] ; ]
+            ] ; ] 
     }}
     """
     expected_results = spec_graph.query(then_query).graph
