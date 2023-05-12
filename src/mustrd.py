@@ -158,10 +158,10 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
             try:
                 specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
-                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
 
             except FileNotFoundError as e:
-                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
 
         results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
@@ -175,7 +175,13 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
             else:
-                specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store) for spec_uri in spec_uris]
+                for spec_uri in spec_uris:
+                    try:
+                        specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                    except ValueError as e:
+                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
+                    except FileNotFoundError as e:
+                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
 
@@ -225,6 +231,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
         raise
     except FileNotFoundError:
         raise
+
 
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
