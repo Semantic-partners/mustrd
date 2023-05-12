@@ -6,30 +6,54 @@ from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailur
     TestSkipped, SpecificationError
 from pathlib import Path
 from colorama import Fore, Style
-from utils import get_project_root
 
 log = logger_setup.setup_logger(__name__)
 
 
 # https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
+    triplestore_spec_path = None
+    given_path = None
+    when_path = None
+    then_path = None
+    verbose = None
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--put", help="Path under test - required", required=True)
     parser.add_argument("-v", "--verbose", help="verbose logging", action='store_true')
-    parser.add_argument("-s", "--store", help="Path to triple store configuration" )
-    triplestore_spec_path = parser.parse_args().store
-    path_under_test = parser.parse_args().put
-    verbose =  parser.parse_args().verbose
+    parser.add_argument("-c", "--config", help="Path to triple store configuration", default=None)
+    parser.add_argument("-g", "--given", help="Folder for given files", default=None)
+    parser.add_argument("-w", "--when", help="Folder for when files", default=None)
+    parser.add_argument("-t", "--then", help="Folder for then files", default=None)
+
+    args = parser.parse_args()
+
+    path_under_test = Path(args.put)
     log.info(f"Path under test is {path_under_test}")
-    project_root = get_project_root()
-    folder = project_root / "test" / "data"
+
+    if args.verbose is not None:
+        verbose = args.verbose
+        log.info(f"Verbose set")
+
+    if args.config is not None:
+        triplestore_spec_path = args.config
+
+    if args.given is not None:
+        given_path = Path(args.given)
+        log.info(f"Path for given folder is {given_path}")
+    if args.when is not None:
+        when_path = Path(args.when)
+        log.info(f"Path for when folder is {when_path}")
+    if args.then is not None:
+        then_path = Path(args.then)
+        log.info(f"Path for then folder is {then_path}")
 
     if triplestore_spec_path:
         log.info(f"Path for triple store configuration is {triplestore_spec_path}")
-        results = run_specs(Path(path_under_test), Path(triplestore_spec_path), given_path=folder, when_path=folder, then_path=folder)
     else:
         log.info(f"No triple store configuration added, running default configuration")
-        results = run_specs(Path(path_under_test), given_path=folder, when_path=folder, then_path=folder)
+
+    results = run_specs(path_under_test, triplestore_spec_path, given_path, when_path, then_path)
 
     pass_count = 0
     warning_count = 0
@@ -50,7 +74,6 @@ def main(argv):
             colour = Fore.RED
             fail_count += 1
         print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
-
 
     if fail_count or skipped_count :
         overview_colour = Fore.RED
