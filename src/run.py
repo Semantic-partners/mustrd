@@ -6,6 +6,7 @@ from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailur
     TestSkipped, SpecificationError
 from pathlib import Path
 from colorama import Fore, Style
+from utils import get_project_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -20,13 +21,15 @@ def main(argv):
     path_under_test = parser.parse_args().put
     verbose =  parser.parse_args().verbose
     log.info(f"Path under test is {path_under_test}")
+    project_root = get_project_root()
+    folder = project_root / "test" / "data"
 
     if triplestore_spec_path:
         log.info(f"Path for triple store configuration is {triplestore_spec_path}")
-        results = run_specs(Path(path_under_test), Path(triplestore_spec_path))
+        results = run_specs(Path(path_under_test), Path(triplestore_spec_path), given_path=folder, when_path=folder, then_path=folder)
     else:
         log.info(f"No triple store configuration added, running default configuration")
-        results = run_specs(Path(path_under_test))
+        results = run_specs(Path(path_under_test), given_path=folder, when_path=folder, then_path=folder)
 
     pass_count = 0
     warning_count = 0

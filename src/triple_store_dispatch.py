@@ -87,7 +87,7 @@ execute_update_spec = MultiMethod('execute_update_spec', dispatch_update)
 def execute_update_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_rdflib_update(triple_store, given, when, bindings)
 
-@execute_update_spec.method(MUST.graphDb)
+@execute_update_spec.method(MUST.GraphDb)
 def execute_update_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_graphdb_update(triple_store, given, when, bindings)
 
