@@ -8,15 +8,15 @@ test-data:union_bind
     a          must:TestSpec ;
 
     must:given [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/given/union.ttl"
+                must:file "./test/triplestore_w3c_compliance/given/union.ttl"
     ];
 
     must:when [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/union_bind.sparql";
+                must:file "./test/triplestore_w3c_compliance/when/union_bind.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/then/union_results.csv"
+                must:file "./test/triplestore_w3c_compliance/then/union_results.csv"
     ].
 

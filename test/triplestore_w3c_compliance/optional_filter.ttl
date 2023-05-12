@@ -8,15 +8,15 @@ test-data:optional_filter
     a          must:TestSpec ;
 
     must:given [a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/given/optional_filter.ttl"
+                must:file "./test/triplestore_w3c_compliance/given/optional_filter.ttl"
     ];
 
     must:when [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/optional_filter.sparql";
+                must:file "./test/triplestore_w3c_compliance/when/optional_filter.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/then/optional_filter.csv"
+                must:file "./test/triplestore_w3c_compliance/then/optional_filter.csv"
     ].
 

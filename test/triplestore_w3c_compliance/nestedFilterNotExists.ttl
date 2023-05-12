@@ -8,15 +8,15 @@ test-data:nestedFilterNotExists
     a          must:TestSpec ;
 
     must:given [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/given/nestedFilterNotExists.ttl"
+                must:file "./test/triplestore_w3c_compliance/given/nestedFilterNotExists.ttl"
     ];
 
     must:when [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/when/nestedFilterNotExists.sparql";
+                must:file "./test/triplestore_w3c_compliance/when/nestedFilterNotExists.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataSource ;
-                must:file "./test/triplestore_unit_test/then/nestedFilterNotExists_results.csv"
+                must:file "./test/triplestore_w3c_compliance/then/nestedFilterNotExists_results.csv"
     ].
 
