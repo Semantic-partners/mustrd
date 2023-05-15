@@ -1,6 +1,6 @@
 import os
 
-import tomlkit
+import tomli
 
 import logger_setup
 from dataclasses import dataclass
@@ -397,8 +397,8 @@ def get_credential_from_file(triple_store_name, credential, config_path: str) ->
         raise FileNotFoundError(f"Credentials config file not found: {path}")
     try:
         with open(path, "rb") as f:
-            config = tomlkit.load(f)
-    except tomlkit.exceptions.ParseError as e:
+            config = tomli.load(f)
+    except tomli.TOMLDecodeError as e:
         raise ValueError(f"Error reading credentials config file: {e}")
     return config[str(triple_store_name)][credential]
 
