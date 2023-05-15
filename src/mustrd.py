@@ -1,5 +1,6 @@
-import configparser
 import os
+
+import tomlkit
 
 import logger_setup
 from dataclasses import dataclass
@@ -395,11 +396,11 @@ def get_credential_from_file(triple_store_name, credential, config_path: str) ->
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Credentials config file not found: {path}")
     try:
-        config = configparser.ConfigParser()
-        config.read(path)
-        return config.get(str(triple_store_name), credential)
-    except configparser.Error as e:
+        with open(path, "rb") as f:
+            config = tomlkit.load(f)
+    except tomlkit.exceptions.ParseError as e:
         raise ValueError(f"Error reading credentials config file: {e}")
+    return config[str(triple_store_name)][credential]
 
 
 # Get column order
