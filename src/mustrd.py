@@ -136,14 +136,20 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     spec_graph = Graph()
     subject_uris = set()
     duplicates = []
+    ignored = []
     for file in ttl_files:
         log.info(f"Parse: {file}")
         file_graph = Graph()
         file_graph.parse(file)
+        file_name = file.name
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
             if subject_uri in subject_uris:
                 duplicates.append((file, subject_uri))
                 log.warning(f"Duplicate subject URI found: {file} {subject_uri}. File will not be parsed.")
+            elif  MUST.InheritedState  in file_graph.objects( predicate=RDF.type ) and \
+                        MUST.UpdateSparql in  file_graph.objects( predicate=MUST.queryType ):
+                ignored.append((file_name, subject_uri))
+                log.warning(f"An attempted update on an inherited state was found: {file_name} {subject_uri} will not be parsed.")
             else:
                 subject_uris.add(subject_uri)
                 spec_graph.parse(file)
@@ -165,6 +171,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
 
         results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
+        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Attempted update on inherited state. {file},"
+                                                       f" skipped") for file, spec_uri in ignored]
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
         for triple_store in get_triple_stores(triple_store_config):
@@ -172,8 +180,6 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
                 log.error(f"{triple_store['error']}. No specs run for this triple store.")
                 results += [TestSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
                             spec_uris]
-                results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                        f" skipped") for file, spec_uri in duplicates]
             else:
                 for spec_uri in spec_uris:
                     try:
@@ -182,8 +188,10 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
                         results += [SpecificationError(spec_uri, triple_store['type'], e)]
                     except FileNotFoundError as e:
                         results += [SpecificationError(spec_uri, triple_store['type'], e)]
-                results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
+            results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
+            results += [TestSkipped(spec_uri, triple_store['type'], f"Attempted update on inherited state. {file},"
+                                                           f" skipped") for file, spec_uri in ignored]
 
     log.info(f"Extracted {len(specs)} specifications")
 

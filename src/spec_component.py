@@ -169,6 +169,11 @@ def get_data_source_types(subject, predicate, spec_graph, source_node):
 
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
+@get_spec_component.method((MUST.InheritedState, MUST.given))
+def _get_spec_component_inheritedstate_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+    return spec_component
+
 
 @get_spec_component.method((MUST.FolderDataSource, MUST.given))
 def _get_spec_component_folderdatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:

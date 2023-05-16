@@ -40,6 +40,7 @@ class MUST(DefinedNamespace):
     FolderDataSource: URIRef
     EmptyGraphResult: URIRef
     EmptyTableResult: URIRef
+    InheritedState: URIRef
 
     # runner uris
     fileSource: URIRef

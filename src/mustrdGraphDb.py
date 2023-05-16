@@ -43,7 +43,8 @@ def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict =
     else:
         clear_graph(triple_store)
         when = insert_graph(when, triple_store["input_graph"])
-    upload_given(triple_store, given)
+    if given is not None:
+        upload_given(triple_store, given)
     bindings_string = ""
     if bindings:
         bindings_string = parse_bindings(bindings)

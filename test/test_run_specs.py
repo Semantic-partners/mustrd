@@ -1,7 +1,7 @@
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
-from mustrd import run_specs, SpecPassed
+from mustrd import run_specs, SpecPassed, TestSkipped
 from namespace import MUST
 from src.utils import get_project_root
 
@@ -24,6 +24,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_data_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_scenario), MUST.RdfLib),
+            TestSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_inherited_given_scenario), MUST.RdfLib, message="Attempted update on inherited state. delete_insert_with_inherited_given_spec.ttl, skipped" ),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_optional_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_subselect_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_scenario), MUST.RdfLib),
@@ -33,6 +34,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file_then_file), MUST.RdfLib),
+            SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_inherited_state), MUST.RdfLib) ,
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_ordered), MUST.RdfLib),

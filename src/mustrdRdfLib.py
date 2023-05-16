@@ -2,7 +2,12 @@ from rdflib import Graph
 
 
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-    return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
+    if given is  None :
+        return '{"results": {"bindings": []}, "head": {"vars": ["s", "p", "o"]}}'
+    else:
+        return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
+
+
 
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
