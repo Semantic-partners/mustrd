@@ -1,4 +1,5 @@
 import urllib.parse
+import re
 
 import requests
 from pyparsing import ParseException
@@ -15,6 +16,8 @@ def manage_graphdb_response(response) -> str:
         pass
     elif response.status_code == 401:
         raise HTTPError(f"GraphDB authentication error, status code: {response.status_code}, content: {content_string}")
+    elif response.status_code == 406:
+        raise HTTPError(f"GraphDB  error, status code: {response.status_code}, content: {content_string}")
     else:
         raise Exception(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
 
@@ -47,72 +50,97 @@ def parse_bindings(bindings: dict):
 
 # FIXME In GDB querying default graph queries all the graphs
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-    # if "where {" not in when.lower():
-    #     raise ParseException(pstr='GraphDB Implementation: No WHERE clause in query.')
-    try:
-        if triple_store["input_graph"] is None:
-            drop_default_graph(triple_store)
-        else:
-            clear_graph(triple_store)
-            when = insert_graph(when, triple_store["input_graph"])
-        upload_given(triple_store, given)
-        bindings_string = ""
-        if bindings:
-            bindings_string = "?" + parse_bindings(bindings)
-        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}{bindings_string}"
-        headers = {
-            'Content-Type': 'application/sparql-query', 
-            'Accept': 'application/sparql-results+json'
-        }
-        return manage_graphdb_response(requests.post(url=url,data = when, 
-                                                        auth=(triple_store['username'], triple_store['password']),
-                                                        headers=headers))
-    except ConnectionError:
-        raise
+    if triple_store["input_graph"] is None:
+        drop_default_graph(triple_store)
+    else:
+        clear_graph(triple_store)
+        when = insert_graph(when, triple_store["input_graph"])
+    upload_given(triple_store, given)
+    return post_query(triple_store, when, "application/sparql-results+json", bindings)
 
+def _contains_clause(clause_type, query) -> bool:
+    if re.search(f"(?i){clause_type}[ ]*{{.+?}}",query):
+        return True
+    else:
+        return False
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    if "where {" not in when.lower():
-        raise ParseException(pstr='GraphDB Implementation: No WHERE clause in query.')
-    try:
-        if triple_store["input_graph"] is None:
-            drop_default_graph(triple_store)
-        else:
-            clear_graph(triple_store)
-            split_when = when.lower().split("where {", 1)
-            when = split_when[0] + "where { GRAPH <" + triple_store["input_graph"] + "> {" + split_when[1] + "}"
-        upload_given(triple_store, given)
-        bindings_string = ""
-        if bindings:
-            bindings_string = "?" + parse_bindings(bindings)
-        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}{bindings_string}"
-        # return Graph().parse(data=manage_graphdb_response(requests.get(url=url)))
-        return Graph().parse(data=manage_graphdb_response(requests.post(url=url,data = when,
-                                                                           auth=(triple_store['username'],
-                                                                                 triple_store['password']),
-                                                                                 headers={'Content-Type': 'application/sparql-query'})))
+    if triple_store["input_graph"] is None:
+        drop_default_graph(triple_store)
+    else:
+        clear_graph(triple_store)
+        split_when = when.lower().split("where {", 1)
+        when = split_when[0] + "where { GRAPH <" + triple_store["input_graph"] + "> {" + split_when[1] + "}"
+    upload_given(triple_store, given)
+    return Graph().parse(post_query(triple_store, when, "text/turtle"))
 
-    except ConnectionError:
-        raise
+def insert_graph_into_clause(clause_type, query, input_graph) -> str:
+    if clause_type == 'where':
+        start, end = re.search(f"(?i)({clause_type}[ ]*{{)(.+}})", query).groups()
+    else:
+        start, end = re.search(f"(?i)({clause_type}[ ]*{{)(.+?}})", query).groups()
+    return start + 'GRAPH <' + input_graph + '> {' + end + '} '
+
+def insert_graph_into_query(when, input_graph):
+    delete_clause = insert_clause = where_clause = ''
+    if _contains_clause('delete', when):
+        delete_clause = insert_graph_into_clause('delete', when, input_graph)
+    if _contains_clause('delete data', when):
+        delete_clause = insert_graph_into_clause('delete data', when, input_graph)
+    if _contains_clause('insert', when):
+        insert_clause = insert_graph_into_clause('insert', when, input_graph)
+    if _contains_clause('insert data', when):
+        insert_clause = insert_graph_into_clause('insert data', when, input_graph)
+    if _contains_clause('where', when):
+        where_clause = insert_graph_into_clause('where', when, input_graph)
+    return delete_clause + insert_clause + where_clause
+
+
+def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+
+    if triple_store["input_graph"] is None:
+        drop_default_graph(triple_store)
+    else:
+        clear_graph(triple_store)
+        when = insert_graph_into_query(when, triple_store["input_graph"] )
+    upload_given(triple_store, given)
+    bindings_string = ""
+    if bindings:
+        bindings_string = parse_bindings(bindings)
+    post_update_query(triple_store, f"{when}{bindings_string}")
+
+    #now fetch the resulting rdf
+    if triple_store["input_graph"] is None:
+        query = "CONSTRUCT {?s ?p ?o} where { ?s ?p ?o }"
+    else:
+        query=f"CONSTRUCT {{?s ?p ?o}} where {{GRAPH <{triple_store['input_graph']}> {{ ?s ?p ?o }}}}"
+
+    return  Graph().parse(data=post_query(triple_store, query, 'text/turtle'))
 
 
 def clear_graph(triple_store: dict):
-    try:
-        clear_query = f"CLEAR GRAPH <{triple_store['input_graph']}>"
-        response = requests.post(
-            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements?update={clear_query}",
-            auth=(triple_store["username"], triple_store["password"]))
-        manage_graphdb_response(response)
-    except ConnectionError:
-        raise
+    post_update_query(triple_store, f"CLEAR GRAPH <{triple_store['input_graph']}>")
 
 
 def drop_default_graph(triple_store: dict):
+    post_update_query(triple_store, "DROP DEFAULT")
+
+
+def post_update_query(triple_store: dict, query: str, bindings: dict = None):
     try:
-        clear_query = "DROP DEFAULT"
-        response = requests.post(
-            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements?update={clear_query}",
-            auth=(triple_store["username"], triple_store["password"]))
-        manage_graphdb_response(response)
+        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+                                                    data = query, params=bindings, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
     except ConnectionError:
         raise
+
+def post_query(triple_store: dict, query: str, accept: str, bindings: dict = None):
+    headers = {
+        'Content-Type': 'application/sparql-query', 
+        'Accept': accept
+    }
+    try:
+        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+                                                    data = query, params=bindings, auth=(triple_store['username'], triple_store['password']), headers=headers))
+    except ConnectionError:
+        raise
+

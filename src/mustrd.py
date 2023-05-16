@@ -1,3 +1,6 @@
+import configparser
+import os
+
 import logger_setup
 from dataclasses import dataclass
 
@@ -16,8 +19,9 @@ import requests
 import json
 from pandas import DataFrame
 
-from spec_component import get_spec_component, SpecComponent
+from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
+from utils import get_project_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -52,15 +56,12 @@ class SpecResult:
 
 @dataclass
 class SpecPassed(SpecResult):
-    def __init__(self, spec_uri, triple_store):
-        super(SpecPassed, self).__init__(spec_uri, triple_store)
+    pass
 
 
 @dataclass()
 class SpecPassedWithWarning(SpecResult):
-    def __init__(self, spec_uri, triple_store, warning):
-        super().__init__(spec_uri, triple_store)
-        self.warning = warning
+    warning: str
 
 
 @dataclass
@@ -111,25 +112,23 @@ class SparqlAction:
 
 @dataclass
 class SelectSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(SelectSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class ConstructSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(ConstructSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class UpdateSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(UpdateSparqlQuery, self).__init__(query)
+    pass
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecResult]:
+def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
+              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
@@ -157,11 +156,14 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     if triplestore_spec_path is None:
         for spec_uri in spec_uris:
             try:
-                specs += [get_spec(spec_uri, spec_graph)]
+                specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
             except ValueError as e:
-                results += [SpecificationError(spec_uri, MUST.rdfLib, e)]
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
 
-        results += [TestSkipped(spec_uri, MUST.rdfLib, f"Duplicate subject URI found for {file},"
+            except FileNotFoundError as e:
+                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
+
+        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
     else:
         triple_store_config = Graph().parse(triplestore_spec_path)
@@ -173,7 +175,13 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
             else:
-                specs = specs + [get_spec(spec_uri, spec_graph, triple_store) for spec_uri in spec_uris]
+                for spec_uri in spec_uris:
+                    try:
+                        specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                    except ValueError as e:
+                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
+                    except FileNotFoundError as e:
+                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
                 results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
 
@@ -185,39 +193,43 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None) -> list[SpecR
     return results
 
 
-# https://github.com/Semantic-partners/mustrd/issues/58
-# https://github.com/Semantic-partners/mustrd/issues/13
-def get_spec(spec_uri: URIRef, spec_graph: Graph, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_path: Path = None,
+             then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
-            mustrd_triple_store = {"type": MUST.rdfLib}
+            mustrd_triple_store = {"type": MUST.RdfLib}
 
         spec_uri = URIRef(str(spec_uri))
 
-        given_component = get_spec_component(subject=spec_uri,
-                                             predicate=MUST.given,
-                                             spec_graph=spec_graph,
-                                             mustrd_triple_store=mustrd_triple_store)
+        given_component = parse_spec_component(subject=spec_uri,
+                                               predicate=MUST.given,
+                                               spec_graph=spec_graph,
+                                               folder_location=given_path,
+                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"Given: {given_component.value}")
 
-        when_component = get_spec_component(subject=spec_uri,
-                                            predicate=MUST.when,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=mustrd_triple_store)
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=when_path,
+                                              mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"when: {when_component.value}")
 
-        then_component = get_spec_component(subject=spec_uri,
-                                            predicate=MUST.then,
-                                            spec_graph=spec_graph,
-                                            mustrd_triple_store=mustrd_triple_store)
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=then_path,
+                                              mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"then: {then_component.value}")
 
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
     except ValueError:
+        raise
+    except FileNotFoundError:
         raise
 
 
@@ -226,7 +238,7 @@ def run_spec(spec: Specification) -> SpecResult:
     triple_store = spec.triple_store
     # close_connection = True
     try:
-        log.info(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
         return run_when(spec)
 
     except ParseException as e:
@@ -307,34 +319,87 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
         # Local rdf lib triple store
-        if triple_store_type == MUST.rdfLibConfig:
-            triple_store["type"] = MUST.rdfLib
+        if triple_store_type == MUST.RdfLibConfig:
+            triple_store["type"] = MUST.RdfLib
         # Anzo graph via anzo
-        elif triple_store_type == MUST.anzoConfig:
-            triple_store["type"] = MUST.anzo
+        elif triple_store_type == MUST.AnzoConfig:
+            triple_store["type"] = MUST.Anzo
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
-            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
-            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            try:
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.password))
+            except (FileNotFoundError, ValueError) as e:
+                triple_store["error"] = e
+                # raise
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
+            try:
+                check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+            except ValueError as e:
+                triple_store["error"] = e
         # GraphDB
-        elif triple_store_type == MUST.graphDbConfig:
-            triple_store["type"] = MUST.graphDb
+        elif triple_store_type == MUST.GraphDbConfig:
+            triple_store["type"] = MUST.GraphDb
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
-            triple_store["username"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.username)
-            triple_store["password"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.password)
+            try:
+                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.username))
+                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
+                                                                    triple_store_graph.value(
+                                                                        subject=triple_store_config,
+                                                                        predicate=MUST.password))
+            except (FileNotFoundError, ValueError) as e:
+                triple_store["error"] = e
+                # raise
             triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
                                                                   predicate=MUST.repository)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
+
+            try:
+                check_triple_store_params(triple_store, ["url", "port", "repository"])
+            except ValueError as e:
+                triple_store["error"] = e
         else:
             triple_store["type"] = triple_store_type
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
+
         triple_stores.append(triple_store)
     return triple_stores
+
+
+def check_triple_store_params(triple_store, required_params):
+    missing_params = [param for param in required_params if triple_store.get(param) is None]
+    if missing_params:
+        raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
+                         f"Missing required parameter(s): {', '.join(missing_params)}.")
+
+
+def get_credential_from_file(triple_store_name, credential, config_path: str) -> str:
+    if config_path is None:
+        raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
+                         f"Missing required parameter: {credential}.")
+    project_root = get_project_root()
+    path = Path(os.path.join(project_root, config_path))
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Credentials config file not found: {path}")
+    try:
+        config = configparser.ConfigParser()
+        config.read(path)
+        return config.get(str(triple_store_name), credential)
+    except configparser.Error as e:
+        raise ValueError(f"Error reading credentials config file: {e}")
 
 
 # Get column order
@@ -375,6 +440,7 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
+# https://github.com/Semantic-partners/mustrd/issues/110
 # https://github.com/Semantic-partners/mustrd/issues/52
 def run_select_spec(spec_uri: URIRef,
                     given: Graph,
@@ -519,15 +585,14 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
-        <{spec_uri}> <{MUST.then}> [
-        <{MUST.dataSource}> [
+        <{spec_uri}> <{MUST.then}> 
             a <{MUST.StatementsDataSource}> ;
             <{MUST.statements}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ; ] ; ]
+            ] ; ] 
     }}
     """
     expected_results = spec_graph.query(then_query).graph

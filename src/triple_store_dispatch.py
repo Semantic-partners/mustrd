@@ -5,6 +5,7 @@ import logger_setup
 from namespace import MUST
 from mustrdGraphDb import execute_select as execute_graphdb_select
 from mustrdGraphDb import execute_construct as execute_graphdb_construct
+from mustrdGraphDb import execute_update as execute_graphdb_update
 from mustrdAnzo import execute_select as execute_anzo_select
 from mustrdAnzo import execute_construct as execute_anzo_construct
 from mustrdRdfLib import execute_select as execute_rdflib_select
@@ -24,17 +25,17 @@ def dispatch_construct(triple_store: dict, given: Graph, when: str, bindings: di
 execute_construct_spec = MultiMethod('execute_construct_spec', dispatch_construct)
 
 
-@execute_construct_spec.method(MUST.rdfLib)
+@execute_construct_spec.method(MUST.RdfLib)
 def execute_construct_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_rdflib_construct(triple_store, given, when, bindings)
 
 
-@execute_construct_spec.method(MUST.graphDb)
+@execute_construct_spec.method(MUST.GraphDb)
 def execute_construct_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_graphdb_construct(triple_store, given, when, bindings)
 
 
-@execute_construct_spec.method(MUST.anzo)
+@execute_construct_spec.method(MUST.Anzo)
 def execute_construct_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_anzo_construct(triple_store, given, when, bindings)
 
@@ -53,17 +54,17 @@ def dispatch_select(triple_store: dict, given: Graph, when: str, bindings: dict)
 execute_select_spec = MultiMethod('execute_select_spec', dispatch_select)
 
 
-@execute_select_spec.method(MUST.rdfLib)
+@execute_select_spec.method(MUST.RdfLib)
 def execute_select_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     return execute_rdflib_select(triple_store, given, when, bindings)
 
 
-@execute_select_spec.method(MUST.graphDb)
+@execute_select_spec.method(MUST.GraphDb)
 def execute_select_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     return execute_graphdb_select(triple_store, given, when, bindings)
 
 
-@execute_select_spec.method(MUST.anzo)
+@execute_select_spec.method(MUST.Anzo)
 def execute_select_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     return execute_anzo_select(triple_store, given, when, bindings)
 
@@ -82,10 +83,13 @@ def dispatch_update(triple_store: dict, given: Graph, when: str, bindings: dict)
 execute_update_spec = MultiMethod('execute_update_spec', dispatch_update)
 
 
-@execute_update_spec.method(MUST.rdfLib)
+@execute_update_spec.method(MUST.RdfLib)
 def execute_update_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_rdflib_update(triple_store, given, when, bindings)
 
+@execute_update_spec.method(MUST.GraphDb)
+def execute_update_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+    return execute_graphdb_update(triple_store, given, when, bindings)
 
 @execute_update_spec.method(Default)
 def execute_update_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):

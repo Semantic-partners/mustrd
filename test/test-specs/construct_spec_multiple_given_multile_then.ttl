@@ -1,0 +1,24 @@
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+test-data:a_complete_construct_scenario_multiple_given_multiple_then
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataSource ;
+                                   must:statements [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub1 ;
+                                                     rdf:predicate test-data:pred1 ;
+                                                     rdf:object    test-data:obj1 ; ] ; ] ;
+    must:given [ a must:FileDataSource ;
+                 must:file "test/data/given.ttl"  ] ;
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "construct { ?o ?s ?p } where { ?s ?p ?o }" ;
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then  [ a must:StatementsDataSource ;
+                 must:statements [ a             rdf:Statement ;
+                                   rdf:subject   test-data:obj1 ;
+                                   rdf:predicate test-data:sub1 ;
+                                   rdf:object    test-data:pred1 ; ] ;
+                ] ;
+    must:then  [ a must:FileDataSource ;
+                                   must:file "test/data/thenSuccess.nt" ] .

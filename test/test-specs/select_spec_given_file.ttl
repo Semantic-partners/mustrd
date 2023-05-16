@@ -8,8 +8,8 @@ test-data:a_complete_select_scenario_given_file
     a          must:TestSpec ;
     must:given [ a must:FileDataSource ;
                                    must:file "test/data/given.ttl" ] ;
-    must:when  [ a must:textDataSource ;
-                                   must:text  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ;
+    must:when  [ a must:TextDataSource ;
+                                   must:queryText  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ;
                  must:queryType must:SelectSparql ; ] ;
     must:then  [ a must:TableDataSource ;
                  must:rows [ must:row [ must:variable "s" ;
