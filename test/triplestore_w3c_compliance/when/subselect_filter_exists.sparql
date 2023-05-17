@@ -1,0 +1,10 @@
+SELECT ?b ?c  WHERE {
+    ?b <test:prop2> ?c
+    FILTER EXISTS {
+      {
+          SELECT ?b WHERE {
+              ?a <test:prop1> ?b
+          }
+      }
+    }
+}

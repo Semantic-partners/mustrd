@@ -1,0 +1,3 @@
+SELECT ?finalNode  WHERE {
+   <test:a1> <test:prop1>{4} ?finalNode .
+}

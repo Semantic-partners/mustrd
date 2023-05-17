@@ -1,0 +1,21 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:NegatedPropertySet_plus
+    a          must:TestSpec ;
+
+    must:given [ a must:FileDataSource ;
+                must:file "./test/triplestore_w3c_compliance/given/property_path_precedence.ttl"
+    ];
+
+    must:when [ a must:FileDataSource ;
+                must:file "./test/triplestore_w3c_compliance/when/NegatedPropertySet_plus.sparql";
+                must:queryType must:SelectSparql
+    ];
+
+    must:then [ a must:FileDataSource ;
+                must:file "./test/triplestore_w3c_compliance/then/NegatedPropertySet_plus.csv"
+    ].
