@@ -72,6 +72,7 @@ def post_query(triple_store: dict, query: str, accept: str, params: dict = None)
         raise
 
 def add_graph_to_params(params, graph):
+    graph = graph or "http://rdf4j.org/schema/rdf4j#nil" 
     if params:
         params['default-graph-uri'] = graph
     else:
