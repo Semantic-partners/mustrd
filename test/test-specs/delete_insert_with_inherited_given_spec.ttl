@@ -9,4 +9,4 @@ test-data:a_complete_delete_insert_with_inherited_given_scenario
     must:when  [ a must:TextDataSource ;
                                    must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}" ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a must:EmptyTableResult ] .
+    must:then  [ a must:EmptyGraphResult ] .
