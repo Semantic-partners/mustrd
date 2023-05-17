@@ -1,0 +1,3 @@
+SELECT  ?entity  WHERE {
+   ?entity <test:prop> ?entity
+}
