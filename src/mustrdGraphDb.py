@@ -44,7 +44,7 @@ def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict =
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     upload_given(triple_store, given)
-    return Graph().parse(post_query(triple_store, when, "text/turtle", bindings))
+    return Graph().parse(data=post_query(triple_store, when, "text/turtle", bindings))
 
 def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     upload_given(triple_store, given)
