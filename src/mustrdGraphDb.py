@@ -51,6 +51,18 @@ def insert_graph(when, input_graph):
     new_when = f"SELECT * WHERE {{ GRAPH <{input_graph}> {{ {when} }} }}"
     return new_when
 
+# https://github.com/Semantic-partners/mustrd/issues/22
+def upload_given(triple_store: dict, given: Graph):
+    try:
+        graph = "default"
+        if triple_store['input_graph']: 
+            graph = urllib.parse.urlencode({'graph': triple_store['input_graph']})
+        url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/rdf-graphs/service?{graph}"
+        manage_graphdb_response(requests.put(url=url,
+                                                        auth=(triple_store['username'], triple_store['password']),data = given.serialize(format="ttl"),
+                                                        headers = {'Content-Type': 'text/turtle'}))
+    except ConnectionError:
+        raise
 
 def parse_bindings(bindings: dict):
     bindings_string = ""
@@ -60,18 +72,15 @@ def parse_bindings(bindings: dict):
     return bindings_string
 
 
+# https://github.com/Semantic-partners/mustrd/issues/122
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-
     if triple_store["input_graph"] is None:
         drop_default_graph(triple_store)
     else:
         clear_graph(triple_store)
         when = insert_graph(when, triple_store["input_graph"])
     upload_given(triple_store, given)
-    bindings_string = ""
-    if bindings:
-        bindings_string = parse_bindings(bindings)
-    return post_select_query(triple_store, f"{when}{bindings_string}")
+    return post_query(triple_store, when, "application/sparql-results+json", bindings)
 
 def _contains_clause(clause_type, query) -> bool:
     if re.search(f"(?i){clause_type}[ ]*{{.+?}}",query):
@@ -80,9 +89,6 @@ def _contains_clause(clause_type, query) -> bool:
         return False
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    if "where {" not in when.lower():
-        raise ParseException(pstr='GraphDB Implementation: No WHERE clause in query.')
-
     if triple_store["input_graph"] is None:
         drop_default_graph(triple_store)
     else:
@@ -90,10 +96,7 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
         split_when = when.lower().split("where {", 1)
         when = split_when[0] + "where { GRAPH <" + triple_store["input_graph"] + "> {" + split_when[1] + "}"
     upload_given(triple_store, given)
-    bindings_string = ""
-    if bindings:
-        bindings_string = parse_bindings(bindings)
-    return Graph().parse(data=post_construct_query(triple_store, f"{when}{bindings_string}"))
+    return Graph().parse(post_query(triple_store, when, "text/turtle"))
 
 def insert_graph_into_clause(clause_type, query, input_graph) -> str:
     if clause_type == 'where':
@@ -136,18 +139,8 @@ def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict =
     else:
         query=f"CONSTRUCT {{?s ?p ?o}} where {{GRAPH <{triple_store['input_graph']}> {{ ?s ?p ?o }}}}"
 
-    return  Graph().parse(data=post_construct_query(triple_store, query))
+    return  Graph().parse(data=post_query(triple_store, query, 'text/turtle'))
 
-
-
-# https://github.com/Semantic-partners/mustrd/issues/22
-def upload_given(triple_store: dict, given: Graph):
-    serialized_given = given.serialize(format="nt")
-    if triple_store["input_graph"] is None:
-        post_update_query(triple_store, urllib.parse.quote_plus(f"INSERT DATA {{ {serialized_given} }}"))
-    else:
-        post_update_query(triple_store, urllib.parse.quote_plus(f"INSERT DATA {{graph <{triple_store['input_graph']}>"
-                                                   f"{{{serialized_given}}}}}"))
 
 def clear_graph(triple_store: dict):
     post_update_query(triple_store, f"CLEAR GRAPH <{triple_store['input_graph']}>")
@@ -157,27 +150,21 @@ def drop_default_graph(triple_store: dict):
     post_update_query(triple_store, "DROP DEFAULT")
 
 
-def post_update_query(triple_store: dict, query: str):
+def post_update_query(triple_store: dict, query: str, bindings: dict = None):
     try:
-        manage_graphdb_response(requests.post(
-        url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements?update={query}",
-        auth=(triple_store["username"], triple_store["password"])))
+        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
+                                                    data = query, params=bindings, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
     except ConnectionError:
         raise
 
-def post_select_query(triple_store: dict, query: str):
+def post_query(triple_store: dict, query: str, accept: str, bindings: dict = None):
+    headers = {
+        'Content-Type': 'application/sparql-query', 
+        'Accept': accept
+    }
     try:
-        return manage_graphdb_response(requests.get(
-            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}?query={query}",
-            auth=(triple_store["username"], triple_store["password"]),
-            headers={'Accept': 'application/sparql-results+json'}))
+        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+                                                    data = query, params=bindings, auth=(triple_store['username'], triple_store['password']), headers=headers))
     except ConnectionError:
         raise
 
-def post_construct_query(triple_store: dict, query: str):
-    try:
-        return manage_graphdb_response(requests.get(
-            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}?query={query}",
-            auth=(triple_store["username"], triple_store["password"])))
-    except ConnectionError:
-        raise
