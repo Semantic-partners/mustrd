@@ -36,19 +36,21 @@ def upload_given(triple_store: dict, given: Graph):
     except ConnectionError:
         raise
 
+def parse_bindings(bindings: dict = None):
+    return None if not bindings else {f"${k}" : str(v.n3()) for k, v in bindings.items()}
 
 # https://github.com/Semantic-partners/mustrd/issues/122
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     upload_given(triple_store, given)
-    return post_query(triple_store, when, "application/sparql-results+json", bindings)
+    return post_query(triple_store, when, "application/sparql-results+json", parse_bindings(bindings))
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     upload_given(triple_store, given)
-    return Graph().parse(data=post_query(triple_store, when, "text/turtle", bindings))
+    return Graph().parse(data=post_query(triple_store, when, "text/turtle", parse_bindings(bindings)))
 
 def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     upload_given(triple_store, given)
-    post_update_query(triple_store, when, bindings)
+    post_update_query(triple_store, when, parse_bindings(bindings))
     return  Graph().parse(data=post_query(triple_store, "CONSTRUCT {?s ?p ?o} where { ?s ?p ?o }", 'text/turtle'))
 
 def post_update_query(triple_store: dict, query: str, params: dict = None):
