@@ -48,7 +48,7 @@ def parse_bindings(bindings: dict):
     return bindings_string
 
 
-# FIXME In GDB querying default graph queries all the graphs
+# https://github.com/Semantic-partners/mustrd/issues/122
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     if triple_store["input_graph"] is None:
         drop_default_graph(triple_store)
