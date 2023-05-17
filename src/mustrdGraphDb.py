@@ -128,7 +128,7 @@ def drop_default_graph(triple_store: dict):
 
 def post_update_query(triple_store: dict, query: str, bindings: dict = None):
     try:
-        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
                                                     data = query, params=bindings, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
     except ConnectionError:
         raise
