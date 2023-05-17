@@ -28,6 +28,8 @@ def upload_given(triple_store: dict, given: Graph):
         if triple_store['input_graph']: 
             graph = urllib.parse.urlencode({'graph': triple_store['input_graph']})
         url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/rdf-graphs/service?{graph}"
+        # graph store PUT drop silently the graph or default and upload the payload
+        # https://www.w3.org/TR/sparql11-http-rdf-update/#http-put
         manage_graphdb_response(requests.put(url=url,
                                                         auth=(triple_store['username'], triple_store['password']),data = given.serialize(format="ttl"),
                                                         headers = {'Content-Type': 'text/turtle'}))
