@@ -23,6 +23,7 @@ from pandas import DataFrame
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
+from colorama import Fore, Style
 
 log = logger_setup.setup_logger(__name__)
 
@@ -128,7 +129,7 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
+def run_specs(spec_path: Path, triple_stores, given_path: Path = None,
               when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
@@ -160,39 +161,24 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     specs = []
     results = []
 
-    if triplestore_spec_path is None:
-        for spec_uri in spec_uris:
-            try:
-                specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
-            except ValueError as e:
-                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
 
-            except FileNotFoundError as e:
-                results += [SpecificationError(spec_uri, MUST.RdfLib, e)]
-
-        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
-                                                       f" skipped") for file, spec_uri in duplicates]
-        results += [TestSkipped(spec_uri, MUST.RdfLib, f"Attempted update on inherited state. {file},"
+    for triple_store in triple_stores:
+        if "error" in triple_store:
+            log.error(f"{triple_store['error']}. No specs run for this triple store.")
+            results += [TestSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                        spec_uris]
+        else:
+            for spec_uri in spec_uris:
+                try:
+                    specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                except ValueError as e:
+                    results += [SpecificationError(spec_uri, triple_store['type'], e)]
+                except FileNotFoundError as e:
+                    results += [SpecificationError(spec_uri, triple_store['type'], e)]
+        results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
+                                                                    f" skipped") for file, spec_uri in duplicates]
+        results += [TestSkipped(spec_uri, triple_store['type'], f"Attempted update on inherited state. {file},"
                                                        f" skipped") for file, spec_uri in ignored]
-    else:
-        triple_store_config = Graph().parse(triplestore_spec_path)
-        for triple_store in get_triple_stores(triple_store_config):
-            if "error" in triple_store:
-                log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                results += [TestSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
-                            spec_uris]
-            else:
-                for spec_uri in spec_uris:
-                    try:
-                        specs = specs + [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
-                    except ValueError as e:
-                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
-                    except FileNotFoundError as e:
-                        results += [SpecificationError(spec_uri, triple_store['type'], e)]
-            results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                        f" skipped") for file, spec_uri in duplicates]
-            results += [TestSkipped(spec_uri, triple_store['type'], f"Attempted update on inherited state. {file},"
-                                                           f" skipped") for file, spec_uri in ignored]
 
     log.info(f"Extracted {len(specs)} specifications")
 
@@ -673,3 +659,54 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     for col in empty_copy.columns:
         empty_copy[col].values[:] = None
     return empty_copy
+
+def review_results(results, verbose):
+    pass_count = 0
+    warning_count = 0
+    fail_count = 0
+    skipped_count = 0
+    print("===== Result Overview =====")
+    for res in results:
+        if type(res) == SpecPassed:
+            colour = Fore.GREEN
+            pass_count += 1
+        elif type(res) == SpecPassedWithWarning:
+            colour = Fore.YELLOW
+            warning_count += 1
+        elif type(res) == TestSkipped:
+            colour = Fore.YELLOW
+            skipped_count += 1
+        else:
+            colour = Fore.RED
+            fail_count += 1
+        print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
+
+    if fail_count or skipped_count :
+        overview_colour = Fore.RED
+    elif warning_count:
+        overview_colour = Fore.YELLOW
+    else:
+        overview_colour = Fore.GREEN
+
+    logger_setup.flush()
+    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+          f"{overview_colour}{warning_count} passed with warnings =====")
+
+    if verbose and (fail_count or warning_count or skipped_count):
+        for res in results:
+            if type(res) == SelectSpecFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                print(res.message)
+                print(res.table_comparison.to_markdown())
+            if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            if type(res) == SpecPassedWithWarning:
+                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+                print(res.warning)
+            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
+                    type(res) == SparqlParseFailure or type(res) == SpecificationError:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                print(res.exception)
+            if type(res) == TestSkipped:
+                print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+                print(res.message)
