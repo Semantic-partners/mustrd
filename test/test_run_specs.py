@@ -1,7 +1,7 @@
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
-from mustrd import run_specs, SpecPassed, TestSkipped
+from mustrd import run_specs, SpecPassed, TestSkipped, get_specs,review_results
 from namespace import MUST
 from src.utils import get_project_root
 
@@ -13,7 +13,12 @@ class TestRunSpecs:
         project_root = get_project_root()
         test_spec_path = project_root / "test" / "test-specs"
         folder = project_root / "test" / "data"
-        results = run_specs(spec_path=test_spec_path, given_path=folder, when_path=folder, then_path=folder)
+        verbose = False
+        triple_stores = [{'type': MUST.RdfLib}]
+        spec_uris, spec_graph, results = get_specs(test_spec_path, triple_stores)
+
+        final_results = run_specs( spec_uris, spec_graph, results, triple_stores, folder, folder, folder)
+        review_results(final_results, verbose)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario), MUST.RdfLib),
@@ -24,7 +29,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_data_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_scenario), MUST.RdfLib),
-            TestSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_inherited_given_scenario), MUST.RdfLib, message="Attempted update on inherited state. delete_insert_with_inherited_given_spec.ttl, skipped" ),
+            TestSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_inherited_given_scenario), MUST.RdfLib, message="Attempted update on inherited state. delete_insert_with_inherited_given_spec.ttl. Test skipped" ),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_optional_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_subselect_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_scenario), MUST.RdfLib),

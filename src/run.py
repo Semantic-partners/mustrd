@@ -2,7 +2,7 @@ import argparse
 import logger_setup
 import sys
 from rdflib import Graph
-from mustrd import run_specs, get_triple_stores, review_results
+from mustrd import run_specs, get_triple_stores, review_results, get_specs
 from pathlib import Path
 from namespace import MUST
 
@@ -48,8 +48,11 @@ def main(argv):
         then_path = Path(args.then)
         log.info(f"Path for then folder is {then_path}")
 
-    results = run_specs(path_under_test, triple_stores, given_path, when_path, then_path)
-    review_results(results, verbose)
+    spec_uris, spec_graph, results = get_specs(path_under_test, triple_stores)
+
+    final_results = run_specs( spec_uris, spec_graph, results, triple_stores, given_path, when_path, then_path)
+
+    review_results(final_results, verbose)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

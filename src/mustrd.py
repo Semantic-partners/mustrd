@@ -129,38 +129,42 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def run_specs(spec_path: Path, triple_stores, given_path: Path = None,
-              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
+def get_specs(spec_path: Path, triple_stores):
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
 
     spec_graph = Graph()
     subject_uris = set()
-    duplicates = []
-    ignored = []
+    results = []
+
     for file in ttl_files:
         log.info(f"Parse: {file}")
-        file_graph = Graph()
-        file_graph.parse(file)
+        file_graph= Graph().parse(file)
         file_name = file.name
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
             if subject_uri in subject_uris:
-                duplicates.append((file, subject_uri))
-                log.warning(f"Duplicate subject URI found: {file} {subject_uri}. File will not be parsed.")
+                log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
+                results += [TestSkipped(subject_uri, triple_store["type"], f"Duplicate subject URI found for {file.name}. Test skipped")
+                            for triple_store in triple_stores]
             elif  MUST.InheritedState  in file_graph.objects( predicate=RDF.type ) and \
                         MUST.UpdateSparql in  file_graph.objects( predicate=MUST.queryType ):
-                ignored.append((file_name, subject_uri))
-                log.warning(f"An attempted update on an inherited state was found: {file_name} {subject_uri} will not be parsed.")
+                log.warning(f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
+                results += [TestSkipped(subject_uri, triple_store["type"], f"Attempted update on inherited state. {file.name}. Test skipped")
+                                                                        for triple_store in triple_stores]
             else:
                 subject_uris.add(subject_uri)
                 spec_graph.parse(file)
+
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     log.info(f"Collected {len(spec_uris)} items")
+    return  spec_uris, spec_graph, results
+
+
+def run_specs(spec_uris, spec_graph, results, triple_stores, given_path: Path = None,
+              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
 
     specs = []
-    results = []
-
 
     for triple_store in triple_stores:
         if "error" in triple_store:
@@ -175,10 +179,6 @@ def run_specs(spec_path: Path, triple_stores, given_path: Path = None,
                     results += [SpecificationError(spec_uri, triple_store['type'], e)]
                 except FileNotFoundError as e:
                     results += [SpecificationError(spec_uri, triple_store['type'], e)]
-        results += [TestSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                    f" skipped") for file, spec_uri in duplicates]
-        results += [TestSkipped(spec_uri, triple_store['type'], f"Attempted update on inherited state. {file},"
-                                                       f" skipped") for file, spec_uri in ignored]
 
     log.info(f"Extracted {len(specs)} specifications")
 
