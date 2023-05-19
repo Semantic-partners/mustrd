@@ -172,7 +172,7 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
                     try:
                         specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
                     except (ValueError, FileNotFoundError) as e:
-                        results += [SpecSkipped(spec_uri, MUST.RdfLib, e)]
+                        results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
                 results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
@@ -237,7 +237,7 @@ def run_spec(spec: Specification) -> SpecResult:
     except ParseException as e:
         log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
+    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)

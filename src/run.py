@@ -58,10 +58,10 @@ def main(argv):
 
     print("===== Result Overview =====")
     # Init dictionaries
-    status_dict= defaultdict(lambda: defaultdict(int))
+    status_dict = defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
     colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
-    # Populate dictionaries from resutls
+    # Populate dictionaries from results
     for result in results:
         status_counts[result.triple_store][type(result)] += 1
         status_dict[result.spec_uri][result.triple_store] = type(result)
@@ -95,8 +95,8 @@ def main(argv):
         overview_colour = Fore.GREEN
 
     logger_setup.flush()
-    print(f"{overview_colour}===== {Fore.RED}{fail_count} failures, {Fore.YELLOW}{skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
-          f"{Fore.YELLOW}{warning_count} passed with warnings{overview_colour} =====")
+    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+          f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
