@@ -191,6 +191,7 @@ def _get_spec_component_folderdatasource_when(spec_component_details: SpecCompon
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     spec_component.value = get_spec_component_from_file(path)
+
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
@@ -241,7 +242,6 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
     spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     return spec_component
 
-
 @get_spec_component.method((MUST.FileDataSource, MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -273,6 +273,7 @@ def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDeta
     # Get specComponent directly from config file (in text string)
     spec_component.value = str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryText))
+
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
@@ -284,6 +285,7 @@ def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDeta
 @get_spec_component.method((MUST.HttpDataSource, MUST.given))
 @get_spec_component.method((MUST.HttpDataSource, MUST.when))
 @get_spec_component.method((MUST.HttpDataSource, MUST.then))
+
 def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -296,6 +298,7 @@ def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDeta
 
 
 @get_spec_component.method((MUST.TableDataSource, MUST.then))
+
 def _get_spec_component_TableDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     table_then = TableThenSpec()
     # get specComponent from ttl table

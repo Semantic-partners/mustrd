@@ -1,5 +1,6 @@
-import configparser
 import os
+
+import tomli
 
 import logger_setup
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from pandas import DataFrame
 
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
+from utils import get_project_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -55,15 +57,12 @@ class SpecResult:
 
 @dataclass
 class SpecPassed(SpecResult):
-    def __init__(self, spec_uri, triple_store):
-        super(SpecPassed, self).__init__(spec_uri, triple_store)
+    pass
 
 
 @dataclass()
 class SpecPassedWithWarning(SpecResult):
-    def __init__(self, spec_uri, triple_store, warning):
-        super().__init__(spec_uri, triple_store)
-        self.warning = warning
+    warning: str
 
 
 @dataclass
@@ -109,20 +108,17 @@ class SparqlAction:
 
 @dataclass
 class SelectSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(SelectSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class ConstructSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(ConstructSparqlQuery, self).__init__(query)
+    pass
 
 
 @dataclass
 class UpdateSparqlQuery(SparqlAction):
-    def __init__(self, query):
-        super(UpdateSparqlQuery, self).__init__(query)
+    pass
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
@@ -190,10 +186,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     return results
 
 
-# https://github.com/Semantic-partners/mustrd/issues/58
-# https://github.com/Semantic-partners/mustrd/issues/13
-def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None,
-             when_path: Path = None, then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
+def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_path: Path = None,
+             then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.RdfLib}
@@ -383,21 +377,24 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
 def check_triple_store_params(triple_store, required_params):
     missing_params = [param for param in required_params if triple_store.get(param) is None]
     if missing_params:
-        raise ValueError(f"Missing required parameter(s): {', '.join(missing_params)} for connection to {triple_store['type']}.")
+        raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
+                         f"Missing required parameter(s): {', '.join(missing_params)}.")
 
 
 def get_credential_from_file(triple_store_name, credential, config_path: str) -> str:
     if config_path is None:
-        raise ValueError(f"Missing required parameter: {credential} for connection defined in {triple_store_name}.")
-    path = Path(config_path)
+        raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
+                         f"Missing required parameter: {credential}.")
+    project_root = get_project_root()
+    path = Path(os.path.join(project_root, config_path))
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Credentials config file not found: {path}")
     try:
-        config = configparser.ConfigParser()
-        config.read(path)
-        return config.get(str(triple_store_name), credential)
-    except configparser.Error as e:
+        with open(path, "rb") as f:
+            config = tomli.load(f)
+    except tomli.TOMLDecodeError as e:
         raise ValueError(f"Error reading credentials config file: {e}")
+    return config[str(triple_store_name)][credential]
 
 
 # Get column order
@@ -579,6 +576,27 @@ def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
     in_expected_not_in_actual = (in_expected - in_actual)
     in_actual_not_in_expected = (in_actual - in_expected)
     return GraphComparison(in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+
+
+def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
+    then_query = f"""
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+
+    CONSTRUCT {{ ?s ?p ?o }}
+    {{
+        <{spec_uri}> <{MUST.then}> 
+            a <{MUST.StatementsDataSource}> ;
+            <{MUST.statements}> [
+                a rdf:Statement ;
+                rdf:subject ?s ;
+                rdf:predicate ?p ;
+                rdf:object ?o ;
+            ] ; ] 
+    }}
+    """
+    expected_results = spec_graph.query(then_query).graph
+
+    return expected_results
 
 
 def calculate_row_difference(df1: pandas.DataFrame,

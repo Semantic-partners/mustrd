@@ -1,7 +1,8 @@
-import unittest
 import tempfile
 import os
 import unittest
+
+import toml
 from rdflib import Graph, Literal, URIRef, RDF
 
 from mustrd import get_credential_from_file, get_triple_stores
@@ -12,7 +13,13 @@ class TestGetCredentialFromFile(unittest.TestCase):
     def setUp(self):
         # Create a temporary config file for testing
         self.config_file = tempfile.NamedTemporaryFile(delete=False)
-        self.config_file.write(b"[triple_store_name]\nusername=test_user\npassword=test_password\n")
+        config_data = {
+            "triple_store_name": {
+                "username": "test_user",
+                "password": "test_password"
+            }
+        }
+        self.config_file.write(toml.dumps(config_data).encode("utf-8"))
         self.config_file.close()
 
     def tearDown(self):
@@ -55,11 +62,21 @@ class TestGetTripleStores(unittest.TestCase):
     def setUp(self):
         # Create a temporary config file for testing
         self.config_file = tempfile.NamedTemporaryFile(delete=False)
-        self.config_file = tempfile.NamedTemporaryFile(delete=False)
-        self.config_file.write(
-            b"[https://mustrd.com/model/AnzoConfig1]\nusername=test_user\npassword=test_password\n\n")
-        self.config_file.write(
-            b"[https://mustrd.com/model/GraphDbConfig1]\nusername=test_user\npassword=test_password\n\n")
+
+        config_data = {
+            "https://mustrd.com/model/AnzoConfig1": {
+                "username": "test_user",
+                "password": "test_password"
+            },
+            "https://mustrd.com/model/GraphDbConfig1": {
+                "username": "test_user",
+                "password": "test_password"
+            }
+        }
+
+        toml_data = toml.dumps(config_data)
+
+        self.config_file.write(toml_data.encode("utf-8"))
         self.config_file.close()
 
     def tearDown(self):

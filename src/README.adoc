@@ -5,7 +5,7 @@
 
 Run these commands from the project root. Ensure you have python3 installed.
 
-`pip3 install requirements.txt`
+`pip3 install  -r requirements.txt`
 
 `python3 src/run.py -v -p "test/test-specs"`
 

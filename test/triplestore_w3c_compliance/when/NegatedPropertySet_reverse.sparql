@@ -1,0 +1,3 @@
+SELECT ?obj  WHERE {
+   <test:a2> !^<test:doesNotExist> ?obj
+}

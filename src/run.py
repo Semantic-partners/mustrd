@@ -1,80 +1,98 @@
+import argparse
 import logger_setup
 import sys
-import getopt
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
     SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure, \
     SpecSkipped
 from pathlib import Path
 from colorama import Fore, Style
+from tabulate import tabulate
+from collections import defaultdict
 
 log = logger_setup.setup_logger(__name__)
 
 
 def main(argv):
-    path_under_test = None
     triplestore_spec_path = None
     given_path = None
     when_path = None
     then_path = None
-    verbose = False
-    opts, args = getopt.getopt(argv, "hvp:c:g:w:t:", ["put=", "given=", "when=", "then="])
-    for opt, arg in opts:
-        if opt == '-h':
-            print('run.py -p <path_under_test> -c <triple_store_configuration_path> '
-                  '-g <given_path> -w <when_path> -t <then_path>')
-            sys.exit()
-        elif opt in ("-p", "--put"):
-            path_under_test = Path(arg)
-            log.info(f"Path under test is {path_under_test}")
-        if opt in ("-v", "--verbose"):
-            log.info(f"Verbose set")
-            verbose = True
-        if opt in ("-c", "--config"):
-            triplestore_spec_path = Path(arg)
-            log.info(f"Path for triple store configuration is {triplestore_spec_path}")
-        if opt in ("-g", "--given"):
-            given_path = Path(arg)
-            log.info(f"Path for given folder is {given_path}")
-        if opt in ("-w", "--when"):
-            when_path = Path(arg)
-            log.info(f"Path for when folder is {when_path}")
-        if opt in ("-t", "--then"):
-            then_path = Path(arg)
-            log.info(f"Path for then folder is {then_path}")
-    if not path_under_test:
-        sys.exit("path_under_test not set")
-    if not triplestore_spec_path:
+    verbose = None
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--put", help="Path under test - required", required=True)
+    parser.add_argument("-v", "--verbose", help="verbose logging", action='store_true')
+    parser.add_argument("-c", "--config", help="Path to triple store configuration", default=None)
+    parser.add_argument("-g", "--given", help="Folder for given files", default=None)
+    parser.add_argument("-w", "--when", help="Folder for when files", default=None)
+    parser.add_argument("-t", "--then", help="Folder for then files", default=None)
+
+    args = parser.parse_args()
+
+    path_under_test = Path(args.put)
+    log.info(f"Path under test is {path_under_test}")
+
+    if args.verbose is not None:
+        verbose = args.verbose
+        log.info(f"Verbose set")
+
+    if args.config is not None:
+        triplestore_spec_path = args.config
+
+    if args.given is not None:
+        given_path = Path(args.given)
+        log.info(f"Path for given folder is {given_path}")
+    if args.when is not None:
+        when_path = Path(args.when)
+        log.info(f"Path for when folder is {when_path}")
+    if args.then is not None:
+        then_path = Path(args.then)
+        log.info(f"Path for then folder is {then_path}")
+
+    if triplestore_spec_path:
+        log.info(f"Path for triple store configuration is {triplestore_spec_path}")
+    else:
         log.info(f"No triple store configuration added, running default configuration")
 
     results = run_specs(path_under_test, triplestore_spec_path, given_path, when_path, then_path)
 
-    pass_count = 0
-    warning_count = 0
-    fail_count = 0
-    skipped_count = 0
     print("===== Result Overview =====")
-    for res in results:
-        if type(res) == SpecPassed:
-            colour = Fore.GREEN
-            pass_count += 1
-        elif type(res) == SpecPassedWithWarning:
-            colour = Fore.YELLOW
-            warning_count += 1
-        elif type(res) == SpecSkipped:
-            colour = Fore.YELLOW
-            skipped_count += 1
-        else:
-            colour = Fore.RED
-            fail_count += 1
-        print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
+    # Init dictionaries
+    status_dict= defaultdict(lambda: defaultdict(int))
+    status_counts = defaultdict(lambda: defaultdict(int))
+    colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
+    # Populate dictionaries from resutls
+    for result in results:
+        status_counts[result.triple_store][type(result)] += 1
+        status_dict[result.spec_uri][result.triple_store] = type(result)
 
-    overview_colour = Fore.GREEN
-    if fail_count:
+    # Get the list of statuses and list of unique triple stores
+    statuses = list(status for inner_dict in status_dict.values() for status in inner_dict.values())
+    triple_stores = list(set(status for inner_dict in status_dict.values() for status in inner_dict.keys()))
+
+    # Convert dictionaries to list for tabulate
+    table_rows = [[spec_uri] + [f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__ }{Style.RESET_ALL}"
+                                for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
+
+    status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
+                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}"
+                    for triple_store in triple_stores] for status in set(statuses)]
+
+    # Display tables with tabulate
+    print(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
+    print(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
+
+    pass_count = statuses.count(SpecPassed)
+    warning_count = statuses.count(SpecPassedWithWarning)
+    skipped_count = statuses.count(SpecSkipped)
+    fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
+
+    if fail_count or skipped_count:
         overview_colour = Fore.RED
-    elif skipped_count:
-        overview_colour = Fore.YELLOW
     elif warning_count:
         overview_colour = Fore.YELLOW
+    else:
+        overview_colour = Fore.GREEN
 
     logger_setup.flush()
     print(f"{overview_colour}===== {Fore.RED}{fail_count} failures, {Fore.YELLOW}{skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "

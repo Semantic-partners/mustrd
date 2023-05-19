@@ -514,8 +514,8 @@ class TestRunConstructSpec:
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
-        given_path = "test/data/construct.rq"
-        file_path = Path(os.path.join(project_root, given_path))
+        when_path = "test/data/construct.rq"
+        file_path = Path(os.path.join(project_root, when_path))
         construct_query = get_spec_component_from_file(file_path)
 
         spec_graph = Graph()

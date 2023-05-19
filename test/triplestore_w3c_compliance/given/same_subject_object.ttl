@@ -1,0 +1,3 @@
+<test:entity1> <test:prop> <test:entity1> .
+<test:entity2> <test:prop> <test:entity1> .
+<test:entity3> <test:prop> <test:entity4> .
