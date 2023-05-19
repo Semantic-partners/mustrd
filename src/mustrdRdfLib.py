@@ -1,15 +1,25 @@
 from rdflib import Graph
+from requests import RequestException
 
 
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-    return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
+    try:
+        return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
+    except Exception as e:
+        raise RequestException(e)
 
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    return given.query(when, initBindings=bindings).graph
+    try:
+        return given.query(when, initBindings=bindings).graph
+    except Exception as e:
+        raise RequestException(e)
 
 
 def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    result = given
-    result.update(when, initBindings=bindings)
-    return result
+    try:
+        result = given
+        result.update(when, initBindings=bindings)
+        return result
+    except Exception as e:
+        raise RequestException(e)
