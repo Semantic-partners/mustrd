@@ -1,2 +1,2 @@
 
-<test:s> <test:p> <test:o1> .
+<test:s> <test:p> "hello world" .
