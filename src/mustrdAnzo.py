@@ -67,7 +67,7 @@ def get_spec_component_from_graphmart(triple_store: dict, graphmart, layer=None)
                              triple_store['password'])
     return anzo_client.query_graphmart(graphmart=graphmart, data_layers=layer,
                                        query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
-                                       skip_cache=True).as_quad_store()
+                                       skip_cache=True).as_quad_store().as_rdflib_graph()
 
 
 def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
