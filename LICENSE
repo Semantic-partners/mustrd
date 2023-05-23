@@ -1,4 +1,3 @@
-"""
 MIT License
 
 Copyright (c) 2023 Semantic Partners Ltd
@@ -20,20 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-"""
-
-from rdflib import Graph
-
-
-def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-    return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
-
-
-def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    return given.query(when, initBindings=bindings).graph
-
-
-def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    result = given
-    result.update(when, initBindings=bindings)
-    return result
