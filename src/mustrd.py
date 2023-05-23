@@ -140,30 +140,48 @@ def get_specs(spec_path: Path, triple_stores):
 
     for file in ttl_files:
         log.info(f"Parse: {file}")
-        file_graph= Graph().parse(file)
-        file_name = file.name
+        file_graph = Graph().parse(file)
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+            error_messages = []
+            query_types = file_graph.objects(predicate=MUST.queryType)
+            result_types = [file_graph.objects(subject=then, predicate=RDF.type) for then in
+                            file_graph.objects(subject_uri, MUST.then)]
             if subject_uri in subject_uris:
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
-                results += [TestSkipped(subject_uri, triple_store["type"], f"Duplicate subject URI found for {file.name}. Test skipped")
-                            for triple_store in triple_stores]
-            elif  MUST.InheritedState  in file_graph.objects( predicate=RDF.type ) and \
-                        MUST.UpdateSparql in  file_graph.objects( predicate=MUST.queryType ):
-                log.warning(f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
-                results += [TestSkipped(subject_uri, triple_store["type"], f"Attempted update on inherited state. {file.name}. Test skipped")
-                                                                        for triple_store in triple_stores]
-            else:
-                subject_uris.add(subject_uri)
-                spec_graph.parse(file)
+                error_messages += [f"Duplicate subject URI found in {file.name}."]
+
+            if MUST.InheritedState in file_graph.objects(predicate=RDF.type) and \
+                    MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
+                log.warning(
+                    f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
+                error_messages += [f"Attempted update on inherited state found in {file.name}."]
+
+            if (MUST.SelectSparql in query_types) and (
+                    MUST.EmptyGraphResult in result_types or MUST.StatementsDataSource in result_types):
+                log.warning(
+                    f"Incompatible when and then statements found: {file.name}. {subject_uri} will not be parsed.")
+                error_messages += [f"Incompatible when and then statements found in {file.name}"]
+
+            if (MUST.UpdateSparql in query_types) and (MUST.EmptyTableResult in result_types or MUST.TableDataSource in result_types):
+                log.warning(
+                    f"Incompatible when and then statements found: {file.name}. {subject_uri} will not be parsed.")
+                error_messages += [f"Incompatible when and then statements foundin  {file.name}"]
+
+        if len(error_messages) > 0:
+            error_message = " ".join(msg for msg in error_messages)
+            results += [TestSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
+                        triple_stores]
+        else:
+            subject_uris.add(subject_uri)
+            spec_graph.parse(file)
 
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     log.info(f"Collected {len(spec_uris)} items")
-    return  spec_uris, spec_graph, results
+    return spec_uris, spec_graph, results
 
 
 def run_specs(spec_uris, spec_graph, results, triple_stores, given_path: Path = None,
               when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
-
     specs = []
 
     for triple_store in triple_stores:
@@ -660,6 +678,7 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
         empty_copy[col].values[:] = None
     return empty_copy
 
+
 def review_results(results, verbose):
     pass_count = 0
     warning_count = 0
@@ -681,7 +700,7 @@ def review_results(results, verbose):
             fail_count += 1
         print(f"{res.spec_uri} {res.triple_store} {colour}{type(res).__name__}{Style.RESET_ALL}")
 
-    if fail_count or skipped_count :
+    if fail_count or skipped_count:
         overview_colour = Fore.RED
     elif warning_count:
         overview_colour = Fore.YELLOW

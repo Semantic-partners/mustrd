@@ -36,7 +36,7 @@ def main(argv):
     else:
         triplestore_spec_path = Path(args.config)
         log.info(f"Path for triple store configuration is {triplestore_spec_path}")
-        triple_stores =get_triple_stores(Graph().parse(triplestore_spec_path))
+        triple_stores = get_triple_stores(Graph().parse(triplestore_spec_path))
 
     if args.given is not None:
         given_path = Path(args.given)
