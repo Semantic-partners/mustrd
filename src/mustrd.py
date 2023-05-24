@@ -143,7 +143,6 @@ def get_specs(spec_path: Path, triple_stores):
         file_graph = Graph().parse(file)
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
             error_messages = []
-            result_types = [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]
             if subject_uri in subject_uris:
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
@@ -155,20 +154,20 @@ def get_specs(spec_path: Path, triple_stores):
                 error_messages += [f"Attempted update on inherited state found in {file.name}."]
 
             if MUST.SelectSparql in file_graph.objects(predicate=MUST.queryType):
-                for types in result_types:
+                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
                     for result_type in types:
                         if result_type in (MUST.EmptyGraphResult, MUST.StatementsDataSource):
                             log.warning(
                                 f"Incompatible result type for a select statement found: {file.name}. {subject_uri} will not be parsed.")
-                            error_messages += [f"Incompatible result type for a select statement found in {file.name}"]
+                            error_messages += [f"Incompatible result type for a select statement found in {file.name}."]
 
             if MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
-                for types in result_types:
+                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
                      for result_type in types:
                          if result_type in (MUST.EmptyTableResult, MUST.TableDataSource):
                             log.warning(
                                 f"Incompatible result type for an update statement found: {file.name}. {subject_uri} will not be parsed.")
-                            error_messages += [f"Incompatible result type for an update statement found in {file.name}"]
+                            error_messages += [f"Incompatible result type for an update statement found in {file.name}."]
 
         if len(error_messages) > 0:
             error_message = " ".join(msg for msg in error_messages)
