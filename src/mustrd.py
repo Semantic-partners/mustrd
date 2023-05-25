@@ -261,9 +261,11 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
 
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
-    except (ValueError, FileNotFoundError):
+    except (ValueError, FileNotFoundError) as e:
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(e).__name__, e.args)
+        log.error(message)
         raise
-
 
 
 def run_spec(spec: Specification) -> SpecResult:
@@ -273,7 +275,6 @@ def run_spec(spec: Specification) -> SpecResult:
     try:
         log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
         return run_when(spec)
-
     except ParseException as e:
         log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)

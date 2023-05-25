@@ -111,15 +111,15 @@ def main(argv):
     skipped_count = statuses.count(SpecSkipped)
     fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
 
-    if fail_count or skipped_count:
+    if fail_count:
         overview_colour = Fore.RED
-    elif warning_count:
+    elif warning_count or skipped_count:
         overview_colour = Fore.YELLOW
     else:
         overview_colour = Fore.GREEN
 
     logger_setup.flush()
-    print(f"{overview_colour}===== {fail_count} failures, {Fore.YELLOW}{skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
           f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
