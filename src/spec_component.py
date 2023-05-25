@@ -30,12 +30,15 @@ from pathlib import Path
 import pandas
 import requests
 from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
+from rdflib.exceptions import ParserError
 
+import logger_setup
 from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder
 from namespace import MUST
 from utils import get_project_root
 from multimethods import MultiMethod, Default
 
+log = logger_setup.setup_logger(__name__)
 
 @dataclass
 class SpecComponent:
@@ -202,7 +205,11 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
                                                              predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
-    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    try:
+        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    except ParserError as e:
+        log.error(f"Problem parsing {path}, error of type {type(e)}")
+        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
 
 
@@ -250,7 +257,11 @@ def get_then_from_file(path: Path, spec_component: ThenSpec):
 
         if file_format is not None:
             g = Graph()
-            g.parse(data=get_spec_component_from_file(path), format=file_format)
+            try:
+                g.parse(data=get_spec_component_from_file(path), format=file_format)
+            except ParserError as e:
+                log.error(f"Problem parsing {path}, error of type {type(e)}")
+                raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
             spec_component.value = g
             return spec_component
 
@@ -263,7 +274,11 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
                                                              predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
-    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    try:
+        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    except ParserError as e:
+        log.error(f"Problem parsing {path}, error of type {type(e)}")
+        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
 
 @get_spec_component.method((MUST.FileDataSource, MUST.when))

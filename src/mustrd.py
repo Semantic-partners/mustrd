@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import configparser
 import os
 
 import tomli
+from rdflib.plugins.parsers.notation3 import BadSyntax
 
 import logger_setup
 from dataclasses import dataclass
@@ -75,9 +75,6 @@ class GraphComparison:
 class SpecResult:
     spec_uri: URIRef
     triple_store: URIRef
-
-    def __hash__(self):
-        return hash(self.spec_uri, self.triple_store)
 
 
 @dataclass
@@ -154,13 +151,25 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
 
+    invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
     duplicates = []
+    results = []
+    specs = []
+
     for file in ttl_files:
         log.info(f"Parse: {file}")
         file_graph = Graph()
-        file_graph.parse(file)
+        try:
+            file_graph.parse(file)
+        except BadSyntax as e:
+            template = "An exception of type {0} occurred when trying to parse a spec file. Arguments:\n{1!r}"
+            message = template.format(type(e).__name__, e.args)
+            log.error(message)
+            invalid_files.append((file.name, f"Could not extract spec from {file} due to exception of type "
+                                             f"{type(e).__name__} when parsing file"))
+            continue
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
             if subject_uri in subject_uris:
                 duplicates.append((file, subject_uri))
@@ -168,11 +177,9 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
             else:
                 subject_uris.add(subject_uri)
                 spec_graph.parse(file)
+
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     log.info(f"Collected {len(spec_uris)} items")
-
-    specs = []
-    results = []
 
     if triplestore_spec_path is None:
         for spec_uri in spec_uris:
@@ -183,24 +190,34 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
 
         results += [SpecSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
                                                        f" skipped") for file, spec_uri in duplicates]
+        results += [SpecSkipped(file, MUST.RdfLib, error) for file, error in invalid_files]
     else:
-        triple_store_config = Graph().parse(triplestore_spec_path)
-        for triple_store in get_triple_stores(triple_store_config):
-            if "error" in triple_store:
-                log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
-                            spec_uris]
-                results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                        f" skipped") for file, spec_uri in duplicates]
-            else:
-                for spec_uri in spec_uris:
-                    try:
-                        specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
-                    except (ValueError, FileNotFoundError) as e:
-                        results += [SpecSkipped(spec_uri, triple_store['type'], e)]
+        try:
+            triple_store_config = Graph().parse(triplestore_spec_path)
+            for triple_store in get_triple_stores(triple_store_config):
+                if "error" in triple_store:
+                    log.error(f"{triple_store['error']}. No specs run for this triple store.")
+                    results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                                spec_uris]
+                    results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
+                                                                            f" skipped") for file, spec_uri in duplicates]
+                else:
+                    for spec_uri in spec_uris:
+                        try:
+                            specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                        except (ValueError, FileNotFoundError) as e:
+                            results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
                 results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
                                                                         f" skipped") for file, spec_uri in duplicates]
+                results += [SpecSkipped(file, triple_store['type'], error) for file, error in invalid_files]
+
+        except (BadSyntax, FileNotFoundError) as e:
+            template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
+                       "Arguments:\n{1!r}"
+            message = template.format(type(e).__name__, e.args)
+            log.error(message)
+            log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
     # https://github.com/Semantic-partners/mustrd/issues/115
@@ -245,10 +262,9 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
 
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
-    except ValueError:
+    except (ValueError, FileNotFoundError):
         raise
-    except FileNotFoundError:
-        raise
+
 
 
 def run_spec(spec: Specification) -> SpecResult:
@@ -320,10 +336,13 @@ def _multi_run_when_select(spec: Specification):
 @run_when.method(Default)
 def _multi_run_when_default(spec: Specification):
     if spec.when.queryType == MUST.AskSparql:
+        log.warning(f"Skipping {spec.spec_uri}, SPARQL ASK not implemented.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL ASK not implemented.")
     elif spec.when.queryType == MUST.DescribeSparql:
+        log.warning(f"Skipping {spec.spec_uri}, SPARQL DESCRIBE not implemented.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL DESCRIBE not implemented.")
     else:
+        log.warning(f"Skipping {spec.spec_uri},  {spec.when.queryType} is not a valid SPARQL query type.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'],
                            f"{spec.when.queryType} is not a valid SPARQL query type.")
 
