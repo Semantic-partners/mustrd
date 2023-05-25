@@ -144,7 +144,6 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
-# https://github.com/Semantic-partners/mustrd/issues/103
 def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
               when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
     # os.chdir(spec_path)
@@ -284,11 +283,7 @@ def run_spec(spec: Specification) -> SpecResult:
         message = template.format(type(e).__name__, e.args)
         log.error(message)
         return TripleStoreConnectionError(spec_uri, triple_store["type"], message)
-    except TypeError as e:
-        log.error(f"{type(e)} {e}")
-        # https://github.com/Semantic-partners/mustrd/issues/97
-        raise
-    except RequestException as e:
+    except (TypeError, RequestException) as e:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
 
