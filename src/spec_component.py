@@ -333,7 +333,6 @@ def _get_spec_component_StatementsDataSource(spec_component_details: SpecCompone
     return spec_component
 
 
-# https://github.com/Semantic-partners/mustrd/issues/38
 @get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.given))
 @get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.then))
 def _get_spec_component_AnzoGraphmartDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
