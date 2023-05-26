@@ -55,7 +55,6 @@ def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict =
 
 def post_update_query(triple_store: dict, query: str, params: dict = None):
     params = add_graph_to_params(params, triple_store["input_graph"])
-    query = insert_graph_into_query(query, triple_store["input_graph"] )
     try:
         return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
                                                     data = query, params=params, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
@@ -78,27 +77,14 @@ def add_graph_to_params(params, graph):
     graph = graph or "http://rdf4j.org/schema/rdf4j#nil" 
     if params:
         params['default-graph-uri'] = graph
+        params['using-graph-uri'] = graph
+        params['remove-graph-uri'] = graph
+        params['insert-graph-uri'] = graph
     else:
-        params = {'default-graph-uri': graph}
+        params = {
+            'default-graph-uri': graph,
+            'using-graph-uri': graph,
+            'remove-graph-uri': graph,
+            'insert-graph-uri': graph
+            }
     return params
-
-def insert_graph_into_query(query, input_graph):
-    if _contains_clause('insert', query):
-        query= insert_graph_into_clause('insert', query, input_graph)
-    if _contains_clause('insert data', query):
-        query= insert_graph_into_clause('insert data', query, input_graph)
-    if _contains_clause('where', query):
-        query = insert_graph_into_clause('where', query, input_graph)
-    return query
-
-def insert_graph_into_clause(clause_type, query, input_graph) -> str:
-    if clause_type == 'where':
-        regex=f"(?i)({clause_type}\s*{{)(.+}})"
-    else:
-        regex=f"(?i)({clause_type}\s*{{)(.+?}})"
-    start, end = re.search(regex, query).groups()
-    new_clause= start + 'GRAPH <' + input_graph + '> {' + end + '} '
-    return re.sub( regex, new_clause, query)
-
-def _contains_clause(clause_type, query):
-   return re.search(f"(?i){clause_type}\s*{{.+?}}",query)
