@@ -97,7 +97,7 @@ class TestSpecParserTest:
                                                spec_graph=spec_graph,
                                                folder_location=None,
                                                mustrd_triple_store=self.triple_store)
-                                               
+
         given = given_component.value
 
         expected_triples = """

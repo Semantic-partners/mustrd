@@ -34,6 +34,8 @@ class MUST(DefinedNamespace):
     SelectSparql: URIRef
     ConstructSparql: URIRef
     UpdateSparql: URIRef
+    AskSparql: URIRef
+    DescribeSparql: URIRef
 
     # Specification properties
     given: URIRef

@@ -164,3 +164,7 @@ cython_debug/
 # because it potentially contains credentials
 test/anzoConnectionConfig.ttl
 /test/triplestore_config/tripleStoreCredentials.ini
+/test/triplestore_config/tripleStoreCredentials.toml
+/test/triplestore_config/tripleStore-graphDB.ttl
+/test/triplestore_config/tripleStores.ttl
+

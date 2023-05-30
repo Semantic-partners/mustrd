@@ -25,7 +25,7 @@ SOFTWARE.
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph
-from requests import ConnectTimeout, Response, HTTPError
+from requests import ConnectTimeout, Response, HTTPError, RequestException
 from bs4 import BeautifulSoup
 
 
@@ -39,7 +39,7 @@ def manage_anzo_response(response: Response) -> str:
         title_tag = html.title.string
         raise HTTPError(f"Anzo authentication error, status code: {response.status_code}, content: {title_tag}")
     else:
-        raise Exception(f"Anzo error, status code: {response.status_code}, content: {content_string}")
+        raise RequestException(f"Anzo error, status code: {response.status_code}, content: {content_string}")
 
 
 def query_with_bindings(bindings: dict, when: str) -> str:
