@@ -30,12 +30,15 @@ from pathlib import Path
 import pandas
 import requests
 from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
+from rdflib.exceptions import ParserError
 
+import logger_setup
 from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder
 from namespace import MUST
 from utils import get_project_root
 from multimethods import MultiMethod, Default
 
+log = logger_setup.setup_logger(__name__)
 
 @dataclass
 class SpecComponent:
@@ -202,7 +205,11 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
                                                              predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
-    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    try:
+        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    except ParserError as e:
+        log.error(f"Problem parsing {path}, error of type {type(e)}")
+        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
 
 
@@ -250,9 +257,14 @@ def get_then_from_file(path: Path, spec_component: ThenSpec):
 
         if file_format is not None:
             g = Graph()
-            g.parse(data=get_spec_component_from_file(path), format=file_format)
+            try:
+                g.parse(data=get_spec_component_from_file(path), format=file_format)
+            except ParserError as e:
+                log.error(f"Problem parsing {path}, error of type {type(e)}")
+                raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
             spec_component.value = g
             return spec_component
+
 
 @get_spec_component.method((MUST.FileDataSource, MUST.given))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
@@ -262,9 +274,12 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
                                                              predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
-    spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    try:
+        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+    except ParserError as e:
+        log.error(f"Problem parsing {path}, error of type {type(e)}")
+        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
-
 
 @get_spec_component.method((MUST.FileDataSource, MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
@@ -397,10 +412,9 @@ def _get_spec_component_AnzoQueryBuilderDataSource(spec_component_details: SpecC
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    # spec_component_node = get_spec_component_nodes(spec_component_details.subject, spec_component_details.predicate, spec_component_details.spec_graph)
-    # data_source_type = get_data_source_types(spec_component_details.subject, spec_component_details.predicate, spec_component_details.spec_graph, spec_component_node)
     raise ValueError(
-        f"Invalid combination of data source type ({spec_component_details.data_source_type}) and predicate ({spec_component_details.predicate})")
+        f"Invalid combination of data source type ({spec_component_details.data_source_type}) and "
+        f"spec component ({spec_component_details.predicate})")
 
 
 # https://github.com/Semantic-partners/mustrd/issues/87
@@ -414,8 +428,6 @@ def init_spec_component(predicate):
     else:
         spec_component = SpecComponent()
 
-    # spec_component_node = get_spec_component_nodes(subject, predicate, spec_graph)
-
     return spec_component
 
 
@@ -428,7 +440,6 @@ def get_spec_component_nodes(subject, predicate, spec_graph):
     spec_component_nodes = []
     for spec_component_node in spec_graph.objects(subject=subject, predicate=predicate):
         spec_component_nodes.append(spec_component_node)
-    # spec_component_node = spec_graph.value(subject=subject, predicate=predicate)
     # It shouldn't even be possible to get this far as an empty node indicates an invalid RDF file
     if spec_component_nodes is None:
         raise ValueError(f"specComponent Node empty for {subject} {predicate}")
@@ -473,6 +484,7 @@ def get_spec_from_statements(subject: URIRef,
     return results.serialize(format="ttl")
 
 
+# https://github.com/Semantic-partners/mustrd/issues/50
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
@@ -496,7 +508,6 @@ def get_spec_from_table(subject: URIRef,
     }} ORDER BY ASC(?order)"""
 
     expected_results = spec_graph.query(then_query)
-    # return spec_graph.query(then_query).serialize(format="json").decode("utf-8")
 
     data_dict = {}
     columns = []

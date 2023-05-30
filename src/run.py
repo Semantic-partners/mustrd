@@ -27,7 +27,7 @@ import logger_setup
 import sys
 from mustrd import run_specs, SpecPassed, SelectSpecFailure, ConstructSpecFailure, UpdateSpecFailure, \
     SpecPassedWithWarning, TripleStoreConnectionError, SparqlExecutionError, SparqlParseFailure, \
-    TestSkipped, SpecificationError
+    SpecSkipped
 from pathlib import Path
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -36,7 +36,6 @@ from collections import defaultdict
 log = logger_setup.setup_logger(__name__)
 
 
-# https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
     triplestore_spec_path = None
     given_path = None
@@ -83,10 +82,10 @@ def main(argv):
 
     print("===== Result Overview =====")
     # Init dictionaries
-    status_dict= defaultdict(lambda: defaultdict(int))
+    status_dict = defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
-    colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, TestSkipped: Fore.YELLOW}
-    # Populate dictionaries from resutls
+    colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
+    # Populate dictionaries from results
     for result in results:
         status_counts[result.triple_store][type(result)] += 1
         status_dict[result.spec_uri][result.triple_store] = type(result)
@@ -98,9 +97,9 @@ def main(argv):
     # Convert dictionaries to list for tabulate
     table_rows = [[spec_uri] + [f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__ }{Style.RESET_ALL}"
                                 for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
-    
+
     status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
-                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}" 
+                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}"
                     for triple_store in triple_stores] for status in set(statuses)]
 
     # Display tables with tabulate
@@ -109,12 +108,12 @@ def main(argv):
 
     pass_count = statuses.count(SpecPassed)
     warning_count = statuses.count(SpecPassedWithWarning)
-    skipped_count = statuses.count(TestSkipped)
-    fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, TestSkipped], statuses)))
+    skipped_count = statuses.count(SpecSkipped)
+    fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
 
-    if fail_count or skipped_count :
+    if fail_count:
         overview_colour = Fore.RED
-    elif warning_count:
+    elif warning_count or skipped_count:
         overview_colour = Fore.YELLOW
     else:
         overview_colour = Fore.GREEN
@@ -135,12 +134,13 @@ def main(argv):
                 print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
                 print(res.warning)
             if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
-                    type(res) == SparqlParseFailure or type(res) == SpecificationError:
+                    type(res) == SparqlParseFailure:
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.exception)
-            if type(res) == TestSkipped:
+            if type(res) == SpecSkipped:
                 print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
                 print(res.message)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -30,10 +30,10 @@ from rdflib import Graph
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
+from mustrd import Specification, run_when, SpecSkipped, run_spec
 from namespace import MUST
 from spec_component import parse_spec_component, ThenSpec
 from utils import get_project_root
-
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -52,7 +52,6 @@ class TestRunSpec:
     triple_store = {"type": MUST.RdfLib}
 
     def test_no_rdf_type_error(self):
-
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -252,5 +251,83 @@ class TestRunSpec:
                                  spec_graph=spec_graph,
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
-        assert str(error_message.value) == f"Invalid combination of data source type ({MUST.TableDataSource}) and predicate ({MUST.given})"
+        assert str(
+            error_message.value) == f"Invalid combination of data source type ({MUST.TableDataSource}) and spec component ({MUST.given})"
 
+    def test_invalid_query_type_ask_error(self):
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
+
+        spec_graph = Graph()
+        spec = """
+                @prefix must: <https://mustrd.com/model/> .
+                @prefix test-data: <https://semanticpartners.com/data/test/> .
+                @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+                test-data:my_first_spec 
+                    a must:TestSpec ;
+                        must:when [ a must:TextDataSource ;
+                                    must:queryText  "ask { ?s ?p 25 }" ;
+                                    must:queryType must:AskSparql ; ] ;
+                        must:then  [ a must:EmptyGraphResult ] .
+                """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
+
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
+
+        specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
+
+        result = run_spec(specification)
+        assert type(result) == SpecSkipped
+        assert result.message == "SPARQL ASK not implemented."
+
+    def test_invalid_query_type_ask_error(self):
+        state = Graph()
+        state.parse(data=self.given_sub_pred_obj, format="ttl")
+
+        spec_graph = Graph()
+        spec = """
+                @prefix must: <https://mustrd.com/model/> .
+                @prefix test-data: <https://semanticpartners.com/data/test/> .
+                @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+                test-data:my_first_spec 
+                    a must:TestSpec ;
+                        must:when [ a must:TextDataSource ;
+                                    must:queryText  "delete { ?s ?p 25 }" ;
+                                    must:queryType must:DeleteSparql ; ] ;
+                        must:then  [ a must:EmptyGraphResult ] .
+                """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
+
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              folder_location=None,
+                                              mustrd_triple_store=self.triple_store)
+
+        specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
+
+        result = run_spec(specification)
+        assert type(result) == SpecSkipped
+        assert result.message == "https://mustrd.com/model/DeleteSparql is not a valid SPARQL query type."
