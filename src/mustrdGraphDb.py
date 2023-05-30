@@ -87,7 +87,7 @@ def post_update_query(triple_store: dict, query: str, params: dict = None):
     try:
         return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
                                                     data = query, params=params, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
-    except ConnectionError, OSError:
+    except (ConnectionError, OSError):
         raise
 
 def post_query(triple_store: dict, query: str, accept: str, params: dict = None):
@@ -99,7 +99,7 @@ def post_query(triple_store: dict, query: str, accept: str, params: dict = None)
     try:
         return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
                                                     data = query, params=params, auth=(triple_store['username'], triple_store['password']), headers=headers))
-    except ConnectionError, OSError:
+    except (ConnectionError, OSError):
         raise
 
 def add_graph_to_params(params, graph):
