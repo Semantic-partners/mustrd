@@ -91,7 +91,7 @@ def get_spec_component_from_graphmart(triple_store: dict, graphmart, layer=None)
                              triple_store['password'])
     return anzo_client.query_graphmart(graphmart=graphmart, data_layers=layer,
                                        query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
-                                       skip_cache=True).as_quad_store()
+                                       skip_cache=True).as_quad_store().as_rdflib_graph()
 
 
 def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
@@ -106,8 +106,11 @@ def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
     }}"""
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
-    return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()[0].get(
-        "query")
+    
+    result = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
+    if len(result) == 0:
+        raise Exception(f"Query {query_name} not found in folder {folder_name}")
+    return result[0].get("query")
 
 
 # https://github.com/Semantic-partners/mustrd/issues/102
