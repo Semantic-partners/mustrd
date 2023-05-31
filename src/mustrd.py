@@ -48,6 +48,9 @@ from pandas import DataFrame
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
+from colorama import Fore, Style
+from tabulate import tabulate
+from collections import defaultdict
 
 log = logger_setup.setup_logger(__name__)
 
@@ -144,79 +147,91 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
-def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: Path = None,
-              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
+# https://github.com/Semantic-partners/mustrd/issues/103
+def get_specs(spec_path: Path, triple_stores):
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
 
-    invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
-    duplicates = []
     results = []
-    specs = []
 
     for file in ttl_files:
         log.info(f"Parse: {file}")
-        file_graph = Graph()
         try:
-            file_graph.parse(file)
+            file_graph = Graph().parse(file)
         except BadSyntax as e:
             template = "An exception of type {0} occurred when trying to parse a spec file. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
             log.error(message)
-            invalid_files.append((file.name, f"Could not extract spec from {file} due to exception of type "
-                                             f"{type(e).__name__} when parsing file"))
+            results += [SpecSkipped(file, triple_store['type'], f"Could not extract spec from {file} due to exception of type "
+                                                             f"{type(e).__name__} when parsing file")  for triple_store in
+                        triple_stores]
             continue
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+            error_messages = []
             if subject_uri in subject_uris:
-                duplicates.append((file, subject_uri))
-                log.warning(f"Duplicate subject URI found: {file} {subject_uri}. File will not be parsed.")
-            else:
-                subject_uris.add(subject_uri)
-                spec_graph.parse(file)
+                log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
+                error_messages += [f"Duplicate subject URI found in {file.name}."]
+
+            if MUST.InheritedState in file_graph.objects(predicate=RDF.type) and \
+                    MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
+                log.warning(
+                    f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
+                error_messages += [f"Attempted update on inherited state found in {file.name}."]
+
+            if MUST.SelectSparql in file_graph.objects(predicate=MUST.queryType):
+                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
+                    for result_type in types:
+                        if result_type in (MUST.EmptyGraphResult, MUST.StatementsDataSource):
+                            log.warning(
+                                f"Incompatible result type for a select statement found: {file.name}. {subject_uri} will not be parsed.")
+                            error_messages += [f"Incompatible result type for a select statement found in {file.name}."]
+
+            if MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
+                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
+                     for result_type in types:
+                         if result_type in (MUST.EmptyTableResult, MUST.TableDataSource):
+                            log.warning(
+                                f"Incompatible result type for an update statement found: {file.name}. {subject_uri} will not be parsed.")
+                            error_messages += [f"Incompatible result type for an update statement found in {file.name}."]
+
+        if len(error_messages) > 0:
+            error_message = " ".join(msg for msg in error_messages)
+            results += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
+                        triple_stores]
+        else:
+            subject_uris.add(subject_uri)
+            spec_graph.parse(file)
 
     spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
     log.info(f"Collected {len(spec_uris)} items")
+    return spec_uris, spec_graph, results
 
-    if triplestore_spec_path is None:
-        for spec_uri in spec_uris:
-            try:
-                specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path)]
-            except (ValueError, FileNotFoundError) as e:
-                results += [SpecSkipped(spec_uri, MUST.RdfLib, e)]
 
-        results += [SpecSkipped(spec_uri, MUST.RdfLib, f"Duplicate subject URI found for {file},"
-                                                       f" skipped") for file, spec_uri in duplicates]
-        results += [SpecSkipped(file, MUST.RdfLib, error) for file, error in invalid_files]
-    else:
-        try:
-            triple_store_config = Graph().parse(triplestore_spec_path)
-            for triple_store in get_triple_stores(triple_store_config):
-                if "error" in triple_store:
-                    log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                    results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
-                                spec_uris]
-                    results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                            f" skipped") for file, spec_uri in duplicates]
-                else:
-                    for spec_uri in spec_uris:
-                        try:
-                            specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
-                        except (ValueError, FileNotFoundError) as e:
-                            results += [SpecSkipped(spec_uri, triple_store['type'], e)]
+def run_specs(spec_uris, spec_graph, results, triple_stores, given_path: Path = None,
+              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
+    specs = []
+    try:
+        for triple_store in triple_stores:
+            if "error" in triple_store:
+                log.error(f"{triple_store['error']}. No specs run for this triple store.")
+                results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                            spec_uris]
+            else:
+                for spec_uri in spec_uris:
+                    try:
+                        specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                    except (ValueError, FileNotFoundError) as e:
+                        results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
-                results += [SpecSkipped(spec_uri, triple_store['type'], f"Duplicate subject URI found for {file},"
-                                                                        f" skipped") for file, spec_uri in duplicates]
-                results += [SpecSkipped(file, triple_store['type'], error) for file, error in invalid_files]
-
-        except (BadSyntax, FileNotFoundError) as e:
-            template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
-                       "Arguments:\n{1!r}"
-            message = template.format(type(e).__name__, e.args)
-            log.error(message)
-            log.error("No specifications will be run.")
+    except (BadSyntax, FileNotFoundError) as e:
+        template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
+                   "Arguments:\n{1!r}"
+        message = template.format(type(e).__name__, e.args)
+        log.error(message)
+        log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
     # https://github.com/Semantic-partners/mustrd/issues/115
@@ -703,3 +718,66 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     for col in empty_copy.columns:
         empty_copy[col].values[:] = None
     return empty_copy
+
+
+def review_results(results, verbose):
+    print("===== Result Overview =====")
+# Init dictionaries
+    status_dict = defaultdict(lambda: defaultdict(int))
+    status_counts = defaultdict(lambda: defaultdict(int))
+    colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
+# Populate dictionaries from results
+    for result in results:
+        status_counts[result.triple_store][type(result)] += 1
+        status_dict[result.spec_uri][result.triple_store] = type(result)
+
+# Get the list of statuses and list of unique triple stores
+    statuses = list(status for inner_dict in status_dict.values() for status in inner_dict.values())
+    triple_stores = list(set(status for inner_dict in status_dict.values() for status in inner_dict.keys()))
+
+    # Convert dictionaries to list for tabulate
+    table_rows = [[spec_uri] + [f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__ }{Style.RESET_ALL}"
+                                for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
+
+    status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
+                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}"
+                    for triple_store in triple_stores] for status in set(statuses)]
+
+    # Display tables with tabulate
+    print(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
+    print(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
+
+    pass_count = statuses.count(SpecPassed)
+    warning_count = statuses.count(SpecPassedWithWarning)
+    skipped_count = statuses.count(SpecSkipped)
+    fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
+
+    if fail_count:
+        overview_colour = Fore.RED
+    elif warning_count or skipped_count:
+        overview_colour = Fore.YELLOW
+    else:
+        overview_colour = Fore.GREEN
+
+    logger_setup.flush()
+    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+          f"{overview_colour}{warning_count} passed with warnings =====")
+
+    if verbose and (fail_count or warning_count or skipped_count):
+        for res in results:
+            if type(res) == SelectSpecFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                print(res.message)
+                print(res.table_comparison.to_markdown())
+            if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            if type(res) == SpecPassedWithWarning:
+                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+                print(res.warning)
+            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
+                    type(res) == SparqlParseFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                print(res.exception)
+            if type(res) == SpecSkipped:
+                print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+                print(res.message)
