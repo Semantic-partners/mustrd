@@ -130,15 +130,16 @@ def get_query_from_step(triple_store: dict, query_step_uri):
 
 
 def upload_given(triple_store: dict, given: Graph):
-    try:
-        serialized_given = given.serialize(format="nt")
-        insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
-        data = {'datasourceURI': triple_store['gqe_uri'], 'update': insert_query}
-        response = requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
-                                 auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
-        manage_anzo_response(response)
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
-        raise
+    if given:
+        try:
+            serialized_given = given.serialize(format="nt")
+            insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
+            data = {'datasourceURI': triple_store['gqe_uri'], 'update': insert_query}
+            response = requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
+                                     auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
+            manage_anzo_response(response)
+        except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
+            raise
 
 
 def clear_graph(triple_store: dict):
