@@ -502,7 +502,8 @@ def run_select_spec(spec_uri: URIRef,
     log.info(f"Running select spec {spec_uri} on {triple_store['type']}")
 
     warning = None
-
+    if triple_store['type'] == MUST.RdfLib and given is None:
+        return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
     try:
         result = execute_select_spec(triple_store, given, when, bindings)
         if is_json(result):
