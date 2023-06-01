@@ -25,7 +25,7 @@ SOFTWARE.
 from rdflib import URIRef
 from rdflib.namespace import Namespace
 
-from mustrd import run_specs, SpecPassed
+from mustrd import run_specs, SpecPassed, SpecSkipped, get_specs,review_results
 from namespace import MUST
 from src.utils import get_project_root
 
@@ -37,7 +37,11 @@ class TestRunSpecs:
         project_root = get_project_root()
         test_spec_path = project_root / "test" / "test-specs"
         folder = project_root / "test" / "data"
-        results = run_specs(spec_path=test_spec_path, given_path=folder, when_path=folder, then_path=folder)
+        verbose = False
+        triple_stores = [{'type': MUST.RdfLib}]
+        spec_uris, spec_graph, results = get_specs(test_spec_path, triple_stores)
+        final_results = run_specs( spec_uris, spec_graph, results, triple_stores, folder, folder, folder)
+        review_results(final_results, verbose)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario), MUST.RdfLib),
@@ -48,18 +52,25 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario_with_variables), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_data_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_scenario), MUST.RdfLib),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_a_table_result_scenario), MUST.RdfLib, message="Incompatible result type for an update statement found in delete_insert_spec_with_table_result.ttl." ),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_inherited_given_and_empty_table_result_scenario), MUST.RdfLib, message="Attempted update on inherited state found in delete_insert_with_inherited_given_and_empty_table_result.ttl. Incompatible result type for an update statement found in delete_insert_with_inherited_given_and_empty_table_result.ttl." ),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_delete_insert_with_inherited_given_scenario), MUST.RdfLib, message="Attempted update on inherited state found in delete_insert_with_inherited_given_spec.ttl." ),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_optional_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_insert_with_subselect_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_delete_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_insert_data_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_insert_scenario), MUST.RdfLib),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_select_scenario), MUST.RdfLib, message="Duplicate subject URI found in select_spec2.ttl."),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file_then_file), MUST.RdfLib),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_select_scenario_inherited_state), MUST.RdfLib, message="Unable to run Inherited State tests on Rdflib"),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_multiline_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_optional_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_ordered), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes), MUST.RdfLib),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_select_scenario_with_empty_graph_result), MUST.RdfLib, message="Incompatible result type for a select statement found in select_spec_with_empty_graph_result.ttl."),
+            SpecSkipped(URIRef(TEST_DATA.a_complete_select_scenario_with_statement_data_source_result), MUST.RdfLib, message="Incompatible result type for a select statement found in select_spec_with_statement_data_source_result.ttl."),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables), MUST.RdfLib)
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
