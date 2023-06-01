@@ -3,7 +3,7 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-
+# A statements result is not valid for a select statement, it should be table.
 test-data:a_complete_select_scenario_with_statement_data_source_result
     a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
