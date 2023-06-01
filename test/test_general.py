@@ -2,7 +2,9 @@ import unittest
 import os
 from pathlib import Path
 
-from mustrd import run_specs
+from mustrd import run_specs, get_triple_stores,get_specs
+from rdflib import Graph
+from namespace import MUST
 
 
 class RunGeneralTests(unittest.TestCase):
@@ -49,20 +51,19 @@ test-data:a_complete_construct_scenario
 
     def test_run_specs_with_invalid_triplestore_config(self):
         # Call the function with the specified parameters
-
-        results = run_specs(self.spec_path, triplestore_spec_path=self.invalid_triple_store_configuration)
-
+        results = get_triple_stores(Graph())
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(results, list)
         self.assertEqual(len(results), 0)  # Assert that no results were returned
 
     def test_run_specs_with_invalid_spec_path(self):
         # Define an invalid spec_path
-
-        results = run_specs(self.invalid_spec_path)
+        triple_stores = [{'type': MUST.RdfLib}]
+        spec_uris, spec_graph, results = get_specs(self.invalid_spec_path, triple_stores)
+        final_results = run_specs( spec_uris, spec_graph, results, triple_stores)
         # Perform assertions or checks on the results if needed
-        self.assertIsInstance(results, list)
-        self.assertEqual(len(results), 0)  # Assert that no results were returned
+        self.assertIsInstance(final_results, list)
+        self.assertEqual(len(final_results), 0)  # Assert that no results were returned
 
 
 if __name__ == '__main__':
