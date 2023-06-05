@@ -60,7 +60,7 @@ class TestRunSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:then  [ must:statements [ a             rdf:Statement ;
+                must:then  [ must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
                                    rdf:object    test-data:pred1 ; ] ; ]  .
@@ -232,13 +232,13 @@ class TestRunSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                  must:given  [ a must:TableDataSource ;
-                                   must:rows [ must:row [
+                                   must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
-                                        must:binding  test-data:sub ; ],
+                                        must:boundValue  test-data:sub ; ],
                                       [ must:variable "p" ;
-                                        must:binding  test-data:pred ; ],
+                                        must:boundValue  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ;
+                                        must:boundValue  test-data:obj ; ] ;
                ] ; ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -266,10 +266,10 @@ class TestRunSpec:
 
                 test-data:my_first_spec 
                     a must:TestSpec ;
-                        must:when [ a must:TextDataSource ;
+                        must:when [ a must:TextSparqlSource ;
                                     must:queryText  "ask { ?s ?p 25 }" ;
                                     must:queryType must:AskSparql ; ] ;
-                        must:then  [ a must:EmptyGraphResult ] .
+                        must:then  [ a must:EmptyGraph ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -305,10 +305,10 @@ class TestRunSpec:
 
                 test-data:my_first_spec 
                     a must:TestSpec ;
-                        must:when [ a must:TextDataSource ;
+                        must:when [ a must:TextSparqlSource ;
                                     must:queryText  "delete { ?s ?p 25 }" ;
                                     must:queryType must:DeleteSparql ; ] ;
-                        must:then  [ a must:EmptyGraphResult ] .
+                        must:then  [ a must:EmptyGraph ] .
                 """
         spec_graph.parse(data=spec, format='ttl')
 

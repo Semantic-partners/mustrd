@@ -11,7 +11,7 @@ test-data:optional_filter
                 must:file "./test/triplestore_w3c_compliance/given/optional_filter.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/optional_filter.sparql";
                 must:queryType must:SelectSparql
     ];

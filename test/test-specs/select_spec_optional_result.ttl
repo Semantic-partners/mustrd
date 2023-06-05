@@ -7,7 +7,7 @@
 test-data:a_complete_select_scenario_optional_result
     a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a             rdf:Statement ;
+                                   must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:pred ;
                                    rdf:object    test-data:obj ; ] ,
@@ -19,18 +19,19 @@ test-data:a_complete_select_scenario_optional_result
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:predicate ;
                                    rdf:object    test-data:object ; ] ; ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ;
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
-                 must:rows [ must:row [ must:variable "s" ;
-                                        must:binding  test-data:sub1 ; ],
+                 must:hasRow [ must:hasBinding
+                                      [ must:variable "s" ;
+                                        must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ,
+                                        must:boundValue  test-data:obj ; ] ,
                                       [ must:variable "object" ;
-                                        must:binding  test-data:object ; ] ; ] ,
-                            [ must:row [ must:variable "s" ;
-                                        must:binding  test-data:sub2 ; ],
+                                        must:boundValue  test-data:object ; ] ; ] ,
+                            [ must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:sub2 ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ]; ] ;
+                                        must:boundValue  test-data:obj ; ]; ] ;
                ] .

@@ -281,7 +281,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
         raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
 
-@get_spec_component.method((MUST.FileDataSource, MUST.when))
+@get_spec_component.method((MUST.FileSparqlSource , MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -305,8 +305,8 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
     return get_then_from_file(path, spec_component)
 
 
-@get_spec_component.method((MUST.TextDataSource, MUST.when))
-def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.TextSparqlSource, MUST.when))
+def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get specComponent directly from config file (in text string)
@@ -348,13 +348,13 @@ def _get_spec_component_TableDataSource(spec_component_details: SpecComponentDet
     return table_then
 
 
-@get_spec_component.method((MUST.EmptyTableResult, MUST.then))
+@get_spec_component.method((MUST.EmptyTable, MUST.then))
 def _get_spec_component_EmptyTableResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = TableThenSpec()
     return spec_component
 
 
-@get_spec_component.method((MUST.EmptyGraphResult, MUST.then))
+@get_spec_component.method((MUST.EmptyGraph, MUST.then))
 def _get_spec_component_EmptyGraphResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -470,7 +470,7 @@ def get_spec_from_statements(subject: URIRef,
     {{
             <{subject}> <{predicate}> [
                 a <{MUST.StatementsDataSource}> ;
-                <{MUST.statements}> [
+                <{MUST.hasStatement}> [
                     a rdf:Statement ;
                     rdf:subject ?s ;
                     rdf:predicate ?p ;
@@ -493,17 +493,17 @@ def get_spec_from_table(subject: URIRef,
     WHERE {{ {{
          <{subject}> <{predicate}> [
                 a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ 
-                    <{MUST.row}> [
+                <{MUST.hasRow}> [ 
+                    <{MUST.hasBinding}> [
                         <{MUST.variable}> ?variable ;
-                        <{MUST.binding}> ?binding ; ] ; 
+                        <{MUST.boundValue}> ?binding ; ] ; 
                             ] ; ].}} 
     OPTIONAL {{ <{subject}> <{predicate}> [
                 a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [  sh:order ?order ;
-                                    <{MUST.row}> [
+                <{MUST.hasRow}> [  sh:order ?order ;
+                                    <{MUST.hasBinding}> [
                             <{MUST.variable}> ?variable ;
-                            <{MUST.binding}> ?binding ; ] ;
+                            <{MUST.boundValue}> ?binding ; ] ;
                         ] ; ].}}
     }} ORDER BY ASC(?order)"""
 
@@ -542,7 +542,7 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ]  ;}}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextSparqlSource}> ; <{MUST.hasBinding}> [ <{MUST.variable}> ?variable ; <{MUST.boundValue}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
@@ -560,9 +560,9 @@ def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph
     {{SELECT (count(?binding) as ?totalBindings) {{  
     <{subject}> <{predicate}> [
                 a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ <{MUST.row}> [
+                <{MUST.hasRow}> [ <{MUST.hasBinding}> [
                                     <{MUST.variable}> ?variable ;
-                                    <{MUST.binding}> ?binding ;
+                                    <{MUST.boundValue}> ?binding ;
                             ] ; 
               ]
             ]
@@ -570,10 +570,10 @@ def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph
     {{SELECT (count(?binding) as ?orderedBindings) {{    
     <{subject}> <{predicate}> [
                 a <{MUST.TableDataSource}> ;
-       <{MUST.rows}> [ sh:order ?order ;
-                    <{MUST.row}> [ 
+       <{MUST.hasRow}> [ sh:order ?order ;
+                    <{MUST.hasBinding}> [ 
                     <{MUST.variable}> ?variable ;
-                                    <{MUST.binding}> ?binding ;
+                                    <{MUST.boundValue}> ?binding ;
                             ] ; 
               ]
             ]

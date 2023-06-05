@@ -9,10 +9,10 @@ test-data:anzo_construct_graphmart
     must:given [ a must:FileDataSource ;
                 must:file "test/anzotest/data/given.ttl"
     ];
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                  must:queryText  "construct { ?s ?p ?o } where { ?s ?p ?o }" ;
-                 must:bindings [ must:variable "o" ;
-                                 must:binding  "hello world" ; ] ;
+                 must:boundValues [ must:variable "o" ;
+                                 must:boundValue  "hello world" ; ] ;
                  must:queryType must:ConstructSparql    ; ] ;
     must:then [ a must:AnzoGraphmartDataSource ;
                     must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";

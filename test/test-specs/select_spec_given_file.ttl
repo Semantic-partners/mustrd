@@ -8,14 +8,14 @@ test-data:a_complete_select_scenario_given_file
     a          must:TestSpec ;
     must:given [ a must:FileDataSource ;
                                    must:file "test/data/given.ttl" ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ;
                  must:queryType must:SelectSparql ; ] ;
     must:then  [ a must:TableDataSource ;
-                 must:rows [ must:row [ must:variable "s" ;
-                                        must:binding  test-data:sub ; ],
+                 must:hasRow [ must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:sub ; ],
                                       [ must:variable "p" ;
-                                        must:binding  test-data:pred ; ],
+                                        must:boundValue  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ;
+                                        must:boundValue  test-data:obj ; ] ;
                ] ; ] .

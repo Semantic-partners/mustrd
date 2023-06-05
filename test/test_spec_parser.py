@@ -47,21 +47,21 @@ class TestSpecParserTest:
             <{select_spec_uri}>
                  a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
+                                   must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataSource ;
-                                   must:rows [ must:row [
+                                   must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
-                                        must:binding  test-data:sub ; ],
+                                        must:boundValue  test-data:sub ; ],
                                       [ must:variable "p" ;
-                                        must:binding  test-data:pred ; ],
+                                        must:boundValue  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:binding  test-data:obj ; ] ;
+                                        must:boundValue  test-data:obj ; ] ;
                ] ; ] .
             """
 
@@ -75,15 +75,15 @@ class TestSpecParserTest:
             <{construct_spec_uri}>
                 a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
+                                   must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
                                    rdf:object    test-data:pred ; ] ; ] .

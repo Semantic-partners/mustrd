@@ -11,7 +11,7 @@ test-data:binds
                 must:file "./test/triplestore_w3c_compliance/given/placeholder.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/binds.sparql";
                 must:queryType must:SelectSparql
     ];

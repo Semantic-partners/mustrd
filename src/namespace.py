@@ -50,22 +50,22 @@ class MUST(DefinedNamespace):
     dataSourceUrl: URIRef
     queryText: URIRef
     queryType: URIRef
-    bindings: URIRef
-    statements: URIRef
-    rows: URIRef
-    row: URIRef
+    hasStatement: URIRef
+    hasRow: URIRef
+    hasBinding: URIRef
     variable: URIRef
-    binding: URIRef
+    boundValue: URIRef
 
     # Specification data sources
     TableDataSource: URIRef
     StatementsDataSource: URIRef
     FileDataSource: URIRef
     HttpDataSource: URIRef
-    TextDataSource: URIRef
+    TextSparqlSource: URIRef
+    FileSparqlSource: URIRef
     FolderDataSource: URIRef
-    EmptyGraphResult: URIRef
-    EmptyTableResult: URIRef
+    EmptyGraph: URIRef
+    EmptyTable: URIRef
 
     # runner uris
     fileSource: URIRef

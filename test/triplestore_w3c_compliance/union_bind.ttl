@@ -11,7 +11,7 @@ test-data:union_bind
                 must:file "./test/triplestore_w3c_compliance/given/union.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/union_bind.sparql";
                 must:queryType must:SelectSparql
     ];

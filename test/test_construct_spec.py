@@ -61,7 +61,7 @@ class TestRunConstructSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                 must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
                                    rdf:object    test-data:pred ; ] ; ] .
@@ -97,7 +97,7 @@ class TestRunConstructSpec:
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
             must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
                                    rdf:object    test-data:pred ; ] ;  ] .
@@ -157,7 +157,7 @@ class TestRunConstructSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then  [ a must:StatementsDataSource ;
-                        must:statements [
+                        must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
@@ -202,7 +202,7 @@ class TestRunConstructSpec:
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
             must:then  [ a must:StatementsDataSource ;
-                        must:statements [
+                        must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
@@ -259,7 +259,7 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                  must:then  [ a must:EmptyGraphResult ] .
+                  must:then  [ a must:EmptyGraph ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -292,7 +292,7 @@ class TestRunConstructSpec:
 
         test-data:my_failing_construct_spec
             a must:TestSpec ;
-                must:then  [ a must:EmptyGraphResult ] .
+                must:then  [ a must:EmptyGraph ] .
 
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -344,7 +344,7 @@ class TestRunConstructSpec:
         test-data:my_failing_construct_spec
             a must:TestSpec ;
                 must:then  [ a must:StatementsDataSource ;
-                        must:statements [
+                        must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:pred ;
@@ -406,7 +406,7 @@ class TestRunConstructSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then  [ a must:StatementsDataSource ;
-                        must:statements [
+                        must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
                             rdf:predicate test-data:pred ;
@@ -454,7 +454,7 @@ class TestRunConstructSpec:
         test-data:my_failing_construct_spec
             a must:TestSpec ;
             must:then  [ a must:StatementsDataSource ;
-                        must:statements [
+                        must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
                             rdf:predicate test-data:pred ;
@@ -507,10 +507,10 @@ class TestRunConstructSpec:
         test-data:my_failing_spec 
            a must:TestSpec ;
             must:then  [ a must:TableDataSource ;
-                        must:rows [ sh:order 1 ;
-                                    must:row [
+                        must:hasRow [ sh:order 1 ;
+                                    must:hasBinding[
                                        must:variable "s" ;
-                                       must:binding test-data:wrong-subject ; 
+                                       must:boundValue test-data:wrong-subject ; 
                                         ] ; ] ; ].
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -551,7 +551,7 @@ class TestRunConstructSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                 must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
                                    rdf:object    test-data:pred ; ] ; ] .
@@ -587,14 +587,14 @@ class TestRunConstructSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                 must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
+                                   must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub1 ;
                                                      rdf:predicate test-data:pred1 ;
                                                      rdf:object    test-data:obj1 ; ] ; ] ,
                             [ a must:FileDataSource ;
                             must:file "test/data/given.ttl"  ] ;
                 must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
                                    rdf:object    test-data:pred1 ; ] ; ] ; 
@@ -643,7 +643,7 @@ class TestRunConstructSpec:
                             must:fileName "construct.rq" ;
                             must:queryType must:ConstructSparql ; ] ;
                 must:then  [ a must:StatementsDataSource ;
-                             must:statements [ a             rdf:Statement ;
+                             must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;
                                    rdf:object    test-data:pred ; ] ; ] .

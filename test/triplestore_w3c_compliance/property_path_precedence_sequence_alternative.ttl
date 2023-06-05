@@ -10,7 +10,7 @@ test-data:property_path_precedence_sequence_alternative
                 must:file "./test/triplestore_w3c_compliance/given/property_path_precedence.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/property_path_precedence_sequence_alternative.sparql";
                 must:queryType must:SelectSparql
     ];

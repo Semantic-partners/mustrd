@@ -626,7 +626,7 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     {{
         <{spec_uri}> <{MUST.then}> 
             a <{MUST.StatementsDataSource}> ;
-            <{MUST.statements}> [
+            <{MUST.hasStatement}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;

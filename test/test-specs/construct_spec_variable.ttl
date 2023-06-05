@@ -5,7 +5,7 @@
 test-data:a_complete_construct_scenario_with_variables
     a          must:TestSpec ;
     must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
+                                   must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    "hello world" ; ],
@@ -13,16 +13,16 @@ test-data:a_complete_construct_scenario_with_variables
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj; ] ;  ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "construct { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }" ;
-                 must:bindings [ must:variable "o" ;
-                      must:binding  "hello world" ; ] ,
+                 must:hasBinding [ must:variable "o" ;
+                      must:boundValue  "hello world" ; ] ,
                        [ must:variable "s" ;
-                      must:binding  test-data:sub ; ]
+                      must:boundValue  test-data:sub ; ]
                         ;
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataSource ;
-                 must:statements [ a             rdf:Statement ;
+                 must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:predicate ;
                                    rdf:object    "hello world" ; ] ; ] .
