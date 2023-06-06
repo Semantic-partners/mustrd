@@ -6,7 +6,7 @@
 
 test-data:a_complete_select_scenario_expected_empty_result
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;

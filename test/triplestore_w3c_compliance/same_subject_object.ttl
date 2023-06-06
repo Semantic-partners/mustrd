@@ -7,7 +7,7 @@
 test-data:same_subject_object
     a          must:TestSpec ;
 
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/same_subject_object.ttl"
     ];
 
@@ -16,7 +16,7 @@ test-data:same_subject_object
         must:queryType must:SelectSparql
     ];
 
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/same_subject_object.csv"
     ].
 

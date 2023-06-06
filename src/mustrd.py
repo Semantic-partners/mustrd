@@ -48,6 +48,7 @@ from pandas import DataFrame
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
+from pyshacl import validate
 
 log = logger_setup.setup_logger(__name__)
 
@@ -158,6 +159,24 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     specs = []
 
     for file in ttl_files:
+
+        r = validate(file.__str__(),
+                     shacl_graph="model/mustrdShapes.ttl",
+                     ont_graph="model/ontology.ttl",
+                     inference='rdfs',
+                     abort_on_first=False,
+                     allow_infos=False,
+                     allow_warnings=False,
+                     meta_shacl=False,
+                     advanced=False,
+                     js=False,
+                     debug=False)
+        conforms, results_graph, results_text = r
+        if not conforms:
+            print(file)
+            print(results_text)
+
+
         log.info(f"Parse: {file}")
         file_graph = Graph()
         try:
@@ -625,7 +644,7 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> 
-            a <{MUST.StatementsDataSource}> ;
+            a <{MUST.StatementsDataset}> ;
             <{MUST.hasStatement}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;

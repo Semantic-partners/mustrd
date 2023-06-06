@@ -85,7 +85,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FileDataSource ;
+                must:then  [ a must:FileDataset ;
                                    must:file "test/data/missingFile.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -108,7 +108,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FileDataSource ;
+                must:then  [ a must:FileDataset ;
                                    must:file "test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -131,7 +131,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FileDataSource ;
+                must:then  [ a must:FileDataset ;
                                    must:file "test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -154,7 +154,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FileDataSource ;
+                must:then  [ a must:FileDataset ;
                                    must:file "test/test_spec.py" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -177,7 +177,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FolderDataSource ;
+                must:then  [ a must:FolderDataset ;
                                    must:file "thenSuccess.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -203,7 +203,7 @@ class TestRunSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-                must:then  [ a must:FolderDataSource ;
+                must:then  [ a must:FolderDataset ;
                                    must:fileName "thenSuccess.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -231,7 +231,7 @@ class TestRunSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                 must:given  [ a must:TableDataSource ;
+                 must:given  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
                                         must:boundValue  test-data:sub ; ],
@@ -252,7 +252,7 @@ class TestRunSpec:
                                  folder_location=None,
                                  mustrd_triple_store=self.triple_store)
         assert str(
-            error_message.value) == f"Invalid combination of data source type ({MUST.TableDataSource}) and spec component ({MUST.given})"
+            error_message.value) == f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
 
     def test_invalid_query_type_ask_error(self):
         state = Graph()

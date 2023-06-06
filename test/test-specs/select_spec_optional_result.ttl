@@ -6,7 +6,7 @@
 
 test-data:a_complete_select_scenario_optional_result
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub1 ;
                                    rdf:predicate test-data:pred ;
@@ -22,7 +22,7 @@ test-data:a_complete_select_scenario_optional_result
     must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?o ?object where { ?s <https://semanticpartners.com/data/test/pred> ?o . OPTIONAL {?s <https://semanticpartners.com/data/test/predicate> ?object} }" ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:TableDataSource ;
+    must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding
                                       [ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],

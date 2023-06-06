@@ -74,26 +74,27 @@
        rdfs:label "graph" .
 
 
-###  https://mustrd.com/model/hasspecs
-:hasspecs rdf:type owl:ObjectProperty ;
-          rdfs:domain :TestSuite ;
-          rdfs:range :TestSpec ;
-          rdfs:isDefinedBy : ;
-          rdfs:label "hasSpecs" .
+###  https://mustrd.com/model/hasRow
+:hasRow rdf:type owl:ObjectProperty ;
+        rdfs:label "has row" .
+
+
+###  https://mustrd.com/model/hasSpec
+:hasSpec rdf:type owl:ObjectProperty .
 
 
 ###  https://mustrd.com/model/label_link-6c3eeabf-5c6d-4ea6-b61e-144df1e6a223
 :label_link-6c3eeabf-5c6d-4ea6-b61e-144df1e6a223 rdf:type owl:ObjectProperty ;
                                                  rdfs:domain :When ;
-                                                 rdfs:range :Sparqlaction ;
+                                                 rdfs:range :SparqlAction ;
                                                  rdfs:isDefinedBy : ;
                                                  rdfs:label "label" .
 
 
 ###  https://mustrd.com/model/sparqlsource
 :sparqlsource rdf:type owl:ObjectProperty ;
-              rdfs:domain :Sparqlaction ;
-              rdfs:range :Sparqlsource ;
+              rdfs:domain :SparqlAction ;
+              rdfs:range :SparqlSource ;
               rdfs:isDefinedBy : ;
               rdfs:label "sparqlSource" .
 
@@ -143,7 +144,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/fileurl
 :fileurl rdf:type owl:DatatypeProperty ;
-         rdfs:domain :Filesparqlsource ;
+         rdfs:domain :FileSparqlSource ;
          rdfs:comment "a full or relatively qualified file:// url. Relative to what? We haven't thought that through, yet." ;
          rdfs:isDefinedBy : ;
          rdfs:label "fileUrl" .
@@ -165,7 +166,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/sparql
 :sparql rdf:type owl:DatatypeProperty ;
-        rdfs:domain :Sparqlaction ;
+        rdfs:domain :SparqlAction ;
         rdfs:isDefinedBy : ;
         rdfs:label "sparql" .
 
@@ -186,32 +187,6 @@ sh:order rdf:type owl:DatatypeProperty ;
 #    Classes
 #################################################################
 
-###  https://mustrd.com/model#EmptyGraph
-:EmptyGraph rdf:type owl:Class ;
-            rdfs:subClassOf :Dataset ;
-            rdfs:label "EmtpyGraph" .
-
-
-###  https://mustrd.com/model#EmptyTable
-:EmptyTable rdf:type owl:Class ;
-            rdfs:subClassOf :Dataset ;
-            rdfs:label "EmptyTable" .
-
-
-###  https://mustrd.com/model#FileDataSource
-:FileDataSource rdf:type owl:Class ;
-                rdfs:subClassOf :Dataset ;
-                rdfs:isDefinedBy "https://mustrd.com/model/" ;
-                rdfs:label "File data source" .
-
-
-###  https://mustrd.com/model#TextSparqlSource
-:TextSparqlSource rdf:type owl:Class ;
-                  rdfs:subClassOf :Sparqlsource ;
-                  rdfs:isDefinedBy : ;
-                  rdfs:label "TextSparqlSource" .
-
-
 ###  https://mustrd.com/model/Compositedataset
 :Compositedataset rdf:type owl:Class ;
                   rdfs:subClassOf :Dataset ;
@@ -221,7 +196,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/ConstructSparql
 :ConstructSparql rdf:type owl:Class ;
-                 rdfs:subClassOf :Sparqlaction ;
+                 rdfs:subClassOf :SparqlAction ;
                  rdfs:isDefinedBy : ;
                  rdfs:label "ConstructSparql" .
 
@@ -241,6 +216,24 @@ sh:order rdf:type owl:DatatypeProperty ;
                     rdfs:label "DatasetExpectation" .
 
 
+###  https://mustrd.com/model/EmptyDataset
+:EmptyDataset rdf:type owl:Class ;
+              rdfs:subClassOf :Dataset ;
+              rdfs:label "empty dataset" .
+
+
+###  https://mustrd.com/model/EmptyGraph
+:EmptyGraph rdf:type owl:Class ;
+            rdfs:subClassOf :EmptyDataset ;
+            rdfs:label "EmtpyGraph" .
+
+
+###  https://mustrd.com/model/EmptyTable
+:EmptyTable rdf:type owl:Class ;
+            rdfs:subClassOf :EmptyDataset ;
+            rdfs:label "EmptyTable" .
+
+
 ###  https://mustrd.com/model/Expectation
 :Expectation rdf:type owl:Class ;
              rdfs:comment "The expected result of the action performed in When, on the DataSet constructed, or composed in the Given. Expectations may be complete static datasets, results of ASKs, or a CONSTRUCT or SELECT and expected DataSet" ;
@@ -248,11 +241,30 @@ sh:order rdf:type owl:DatatypeProperty ;
              rdfs:label "Expectation" .
 
 
-###  https://mustrd.com/model/Filesparqlsource
-:Filesparqlsource rdf:type owl:Class ;
-                  rdfs:subClassOf :Sparqlsource ;
+###  https://mustrd.com/model/FileDataset
+:FileDataset rdf:type owl:Class ;
+             rdfs:subClassOf :Dataset ;
+             rdfs:isDefinedBy "https://mustrd.com/model/" ;
+             rdfs:label "File dataset" .
+
+
+###  https://mustrd.com/model/FileSparqlSource
+:FileSparqlSource rdf:type owl:Class ;
+                  rdfs:subClassOf :SparqlSource ;
                   rdfs:isDefinedBy : ;
                   rdfs:label "FileSparqlSource" .
+
+
+###  https://mustrd.com/model/FolderDataset
+:FolderDataset rdf:type owl:Class ;
+               rdfs:subClassOf :Dataset ;
+               rdfs:label "Folder dataset" .
+
+
+###  https://mustrd.com/model/FolderSparqlSource
+:FolderSparqlSource rdf:type owl:Class ;
+                    rdfs:subClassOf :SparqlSource ;
+                    rdfs:label "folder sparql source" .
 
 
 ###  https://mustrd.com/model/Given
@@ -276,29 +288,42 @@ sh:order rdf:type owl:DatatypeProperty ;
               rdfs:label "GraphDataset" .
 
 
-###  https://mustrd.com/model/S3sparqlsource
-:S3sparqlsource rdf:type owl:Class ;
-                rdfs:subClassOf :Sparqlsource ;
+###  https://mustrd.com/model/OrderedTableDataset
+:OrderedTableDataset rdf:type owl:Class ;
+                     rdfs:subClassOf :TableDataset ;
+                     rdfs:comment "" ;
+                     rdfs:label "OrderedTableDataset" .
+
+
+###  https://mustrd.com/model/Row
+:Row rdf:type owl:Class ;
+     rdfs:comment "A conceptual row of a table expressed as one or more bindings of  variables (column names) to  values" ;
+     rdfs:label "Row" .
+
+
+###  https://mustrd.com/model/S3SparqlSource
+:S3SparqlSource rdf:type owl:Class ;
+                rdfs:subClassOf :SparqlSource ;
                 rdfs:isDefinedBy : ;
                 rdfs:label "S3SparqlSource" .
 
 
 ###  https://mustrd.com/model/SelectSparql
 :SelectSparql rdf:type owl:Class ;
-              rdfs:subClassOf :Sparqlaction ;
+              rdfs:subClassOf :SparqlAction ;
               rdfs:isDefinedBy : ;
               rdfs:label "SelectSparql" .
 
 
-###  https://mustrd.com/model/Sparqlaction
-:Sparqlaction rdf:type owl:Class ;
+###  https://mustrd.com/model/SparqlAction
+:SparqlAction rdf:type owl:Class ;
               rdfs:comment "The sparql that is under-test. Either provided directly in the sparql property, or loaded courtesy a Sparql Loader from a disk source, db source, s3 source, etc." ;
               rdfs:isDefinedBy : ;
               rdfs:label "SparqlAction" .
 
 
-###  https://mustrd.com/model/Sparqlsource
-:Sparqlsource rdf:type owl:Class ;
+###  https://mustrd.com/model/SparqlSource
+:SparqlSource rdf:type owl:Class ;
               rdfs:comment "A source for the SPARQL action we want to execute in the When of a TestSpec." ;
               rdfs:isDefinedBy : ;
               rdfs:label "SparqlSource" .
@@ -338,6 +363,13 @@ sh:order rdf:type owl:DatatypeProperty ;
                  rdfs:label "TestSpecSection" .
 
 
+###  https://mustrd.com/model/TextSparqlSource
+:TextSparqlSource rdf:type owl:Class ;
+                  rdfs:subClassOf :SparqlSource ;
+                  rdfs:isDefinedBy : ;
+                  rdfs:label "TextSparqlSource" .
+
+
 ###  https://mustrd.com/model/Then
 :Then rdf:type owl:Class ;
       rdfs:subClassOf :Testspecsection ;
@@ -348,7 +380,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/UpdateSparql
 :UpdateSparql rdf:type owl:Class ;
-              rdfs:subClassOf :Sparqlaction ;
+              rdfs:subClassOf :SparqlAction ;
               rdfs:isDefinedBy : ;
               rdfs:label "UpdateSparql" .
 
@@ -358,23 +390,6 @@ sh:order rdf:type owl:DatatypeProperty ;
       rdfs:subClassOf :Testspecsection ;
       rdfs:isDefinedBy : ;
       rdfs:label "When" .
-
-
-#################################################################
-#    Individuals
-#################################################################
-
-###  https://mustrd.com/model#selectTestSpec
-:selectTestSpec rdf:type owl:NamedIndividual ,
-                         :TestSpec .
-
-
-###  https://mustrd.com/model/Emptydataset
-:Emptydataset rdf:type owl:NamedIndividual ,
-                       :Dataset ;
-              rdfs:comment "So we can explicitly refer to a blank slate, empty dataset" ;
-              rdfs:isDefinedBy : ;
-              rdfs:label "EmptyDataSet" .
 
 
 ###  Generated by the OWL API (version 4.5.25.2023-02-15T19:15:49Z) https://github.com/owlcs/owlapi

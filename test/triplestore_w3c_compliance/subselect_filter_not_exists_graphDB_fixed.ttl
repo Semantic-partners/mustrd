@@ -6,7 +6,7 @@
 test-data:subselect_filter_not_exists_graphDB_fixed
     a          must:TestSpec ;
 
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/subselect.ttl"
     ];
 
@@ -15,6 +15,6 @@ test-data:subselect_filter_not_exists_graphDB_fixed
                 must:queryType must:SelectSparql
     ];
 
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/subselect_filter_not_exists.csv"
     ].

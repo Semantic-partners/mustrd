@@ -24,7 +24,7 @@ class RunGeneralTests(unittest.TestCase):
 
 test-data:a_complete_construct_scenario
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -32,7 +32,7 @@ test-data:a_complete_construct_scenario
     must:when  [ a must:TextSparqlSource ;
                  must:queryText  "construct { ?o ?s ?p } where { ?s ?p ?o }" ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
+    must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;

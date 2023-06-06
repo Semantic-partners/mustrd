@@ -7,7 +7,7 @@
 test-data:union_bind
     a          must:TestSpec ;
 
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/union.ttl"
     ];
 
@@ -16,7 +16,7 @@ test-data:union_bind
                 must:queryType must:SelectSparql
     ];
 
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/union_results.csv"
     ].
 

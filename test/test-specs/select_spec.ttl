@@ -6,15 +6,15 @@
 
 test-data:a_complete_select_scenario
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
-                 must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:TableDataSource ;
+                                   must:queryType must:SelectSparql ] ;
+    must:then  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
                                         must:boundValue  test-data:sub ; ],

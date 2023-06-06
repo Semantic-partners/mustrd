@@ -61,7 +61,7 @@ class TestRunSelectSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
                                         must:boundValue  test-data:sub ; ],
@@ -101,7 +101,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:wrong-subject ; 
@@ -157,7 +157,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -213,7 +213,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -262,7 +262,7 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:wrong-subject ; 
@@ -309,7 +309,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -362,7 +362,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -485,7 +485,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -543,7 +543,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -595,7 +595,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding
                                         [
                                        must:variable "o" ;
@@ -646,7 +646,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -702,7 +702,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -752,7 +752,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -806,7 +806,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -862,7 +862,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -916,7 +916,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then [ a must:TableDataSource ;
+            must:then [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -989,7 +989,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub1 ; 
@@ -1063,7 +1063,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1112,7 +1112,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "o" ;
@@ -1162,7 +1162,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -1221,7 +1221,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ; 
@@ -1277,7 +1277,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:subject ; 
@@ -1334,7 +1334,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ sh:order 1 ;
                              must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
@@ -1387,7 +1387,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ sh:order 1 ;
                              must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
@@ -1441,7 +1441,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ sh:order 2 ;
                              must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
@@ -1504,7 +1504,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1565,7 +1565,7 @@ class TestRunSelectSpec:
 
         test-data:my_failing_spec
             a must:TestSpec ;
-            must:then  [ a must:TableDataSource ;
+            must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "p" ;
@@ -1627,7 +1627,7 @@ class TestRunSelectSpec:
 
             test-data:my_failing_spec
                     a must:TestSpec ;
-                    must:then  [ a must:TableDataSource ;
+                    must:then  [ a must:TableDataset ;
                             must:hasRow [ must:hasBinding[
                                            must:variable "s" ;
                                            must:boundValue test-data:sub ; 
@@ -1687,7 +1687,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:FileDataSource ;
+            must:then  [ a must:FileDataset ;
                                    must:file "test/data/thenSuccess.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
@@ -1725,7 +1725,7 @@ class TestRunSelectSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:FileDataSource ;
+            must:then  [ a must:FileDataset ;
                                    must:file "test/data/thenFail.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')

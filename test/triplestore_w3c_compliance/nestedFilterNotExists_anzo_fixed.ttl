@@ -7,7 +7,7 @@
 test-data:nestedFilterNotExists_anzo_fixed
     a          must:TestSpec ;
 
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/nestedFilterNotExists.ttl"
     ];
 
@@ -16,6 +16,6 @@ test-data:nestedFilterNotExists_anzo_fixed
                 must:queryType must:SelectSparql
     ];
 
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/nestedFilterNotExists_results.csv"
     ].

@@ -56,7 +56,7 @@ class TestRunUpdateSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -126,7 +126,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;
@@ -196,7 +196,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
@@ -231,7 +231,7 @@ class TestRunUpdateSpec:
         
         test-data:my_failing_insert_spec
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -336,7 +336,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_insert_data_spec
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:subject ;
                                            rdf:predicate test-data:predicate ;
@@ -388,7 +388,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_data_spec
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -440,7 +440,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_delete_insert_spec
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
                                            rdf:predicate test-data:pred ;
@@ -501,7 +501,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then [ a must:StatementsDataSource ;
+            must:then [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub1 ;
@@ -556,7 +556,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
@@ -597,7 +597,7 @@ class TestRunUpdateSpec:
 
         test-data:my_failing_spec 
            a must:TestSpec ;
-           must:then  [ a must:TableDataSource ;
+           must:then  [ a must:TableDataset ;
                         must:hasRow [ sh:order 1 ;
                                     must:hasBinding[
                                        must:variable "s" ;
@@ -643,7 +643,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:obj ;
@@ -686,7 +686,7 @@ class TestRunUpdateSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-            must:then  [ a must:StatementsDataSource ;
+            must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:pred ;

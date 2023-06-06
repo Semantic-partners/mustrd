@@ -4,7 +4,7 @@
 
 test-data:a_complete_construct_scenario_when_file_then_file
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -12,5 +12,5 @@ test-data:a_complete_construct_scenario_when_file_then_file
     must:when  [ a must:FileSparqlSource  ;
                                    must:file "test/data/construct.rq" ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:FileDataSource ;
+    must:then  [ a must:FileDataset ;
                                    must:file "test/data/thenSuccess.nt" ] .

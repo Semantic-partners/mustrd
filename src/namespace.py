@@ -57,13 +57,14 @@ class MUST(DefinedNamespace):
     boundValue: URIRef
 
     # Specification data sources
-    TableDataSource: URIRef
-    StatementsDataSource: URIRef
-    FileDataSource: URIRef
-    HttpDataSource: URIRef
+    TableDataset: URIRef
+    StatementsDataset: URIRef
+    FileDataset: URIRef
+    HttpDataset: URIRef
     TextSparqlSource: URIRef
     FileSparqlSource: URIRef
-    FolderDataSource: URIRef
+    FolderSparqlSource: URIRef
+    FolderDataset: URIRef
     EmptyGraph: URIRef
     EmptyTable: URIRef
 
@@ -86,8 +87,8 @@ class MUST(DefinedNamespace):
     # Anzo
     Anzo: URIRef
     AnzoConfig: URIRef
-    AnzoGraphmartDataSource: URIRef
-    AnzoQueryBuilderDataSource: URIRef
+    AnzoGraphmartDataset: URIRef
+    AnzoQueryBuilderDataset: URIRef
     graphmart: URIRef
     layer: URIRef
     gqeURI: URIRef

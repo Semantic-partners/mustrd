@@ -4,7 +4,7 @@
 
 test-data:a_complete_construct_scenario_with_variables
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -21,7 +21,7 @@ test-data:a_complete_construct_scenario_with_variables
                       must:boundValue  test-data:sub ; ]
                         ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
+    must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
                                    rdf:predicate test-data:predicate ;

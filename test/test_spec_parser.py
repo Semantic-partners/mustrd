@@ -46,7 +46,7 @@ class TestSpecParserTest:
             
             <{select_spec_uri}>
                  a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -54,7 +54,7 @@ class TestSpecParserTest:
     must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:TableDataSource ;
+    must:then  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
                                         must:boundValue  test-data:sub ; ],
@@ -74,7 +74,7 @@ class TestSpecParserTest:
 
             <{construct_spec_uri}>
                 a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -82,7 +82,7 @@ class TestSpecParserTest:
     must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
+    must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:sub ;

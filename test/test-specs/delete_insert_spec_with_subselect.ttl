@@ -4,7 +4,7 @@
 
 test-data:a_complete_delete_insert_with_subselect_scenario
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
+    must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
@@ -12,7 +12,7 @@ test-data:a_complete_delete_insert_with_subselect_scenario
     must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s } where { select ?s ?p ?o {select ?s ?p ?o where {?s ?p ?o}}}" ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a must:StatementsDataSource ;
+    must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
                                    rdf:predicate test-data:pred ;
