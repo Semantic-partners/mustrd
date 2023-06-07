@@ -52,7 +52,7 @@
 
 ###  https://mustrd.com/model/graph
 :graph rdf:type owl:ObjectProperty ;
-       rdfs:domain :Graphdataset ;
+       rdfs:domain :GraphDataset ;
        rdfs:range :Graph ;
        rdfs:isDefinedBy : ;
        rdfs:label "graph" .
@@ -124,6 +124,12 @@ sh:order rdf:type owl:DatatypeProperty ;
          rdfs:label "order" .
 
 
+###  https://mustrd.com/model/boundValue
+:boundValue rdf:type owl:DatatypeProperty ;
+            rdfs:comment "the value bound to a variable" ;
+            rdfs:label "bound value" .
+
+
 ###  https://mustrd.com/model/file
 :file rdf:type owl:DatatypeProperty ;
       rdfs:comment "Relative or absolute path to local file" ;
@@ -151,6 +157,20 @@ sh:order rdf:type owl:DatatypeProperty ;
                              rdfs:label "flattenDataSetToTargetGraph" .
 
 
+###  https://mustrd.com/model/graphmart
+:graphmart rdf:type owl:DatatypeProperty ;
+           rdfs:domain :AnzoGraphmartDataset ;
+           rdfs:comment "the graphmart url of an Anzo graphmart dataset" ;
+           rdfs:label "graphmart" .
+
+
+###  https://mustrd.com/model/layer
+:layer rdf:type owl:DatatypeProperty ;
+       rdfs:domain :AnzoGraphmartDataset ;
+       rdfs:comment "the url of the layer within an Anzo graphmart dataset" ;
+       rdfs:label "layer" .
+
+
 ###  https://mustrd.com/model/queryText
 :queryText rdf:type owl:DatatypeProperty ;
            rdfs:domain :TextSparqlSource ;
@@ -159,7 +179,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/shouldflattengraph
 :shouldflattengraph rdf:type owl:DatatypeProperty ;
-                    rdfs:domain :Graphdataset ;
+                    rdfs:domain :GraphDataset ;
                     rdfs:isDefinedBy : ;
                     rdfs:label "shouldFlattenGraph" .
 
@@ -174,7 +194,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 ###  https://mustrd.com/model/targetgraph
 :targetgraph rdf:type owl:DatatypeProperty ;
              rdfs:domain [ rdf:type owl:Class ;
-                           owl:unionOf ( :Graphdataset
+                           owl:unionOf ( :GraphDataset
                                          :TestSpec
                                        )
                          ] ;
@@ -183,9 +203,26 @@ sh:order rdf:type owl:DatatypeProperty ;
              rdfs:label "targetGraph" .
 
 
+###  https://mustrd.com/model/variable
+:variable rdf:type owl:DatatypeProperty ;
+          rdfs:comment "variable name in a binding" ;
+          rdfs:label "variable" .
+
+
 #################################################################
 #    Classes
 #################################################################
+
+###  https://mustrd.com/model/AnzoGraphmartDataset
+:AnzoGraphmartDataset rdf:type owl:Class ;
+                      rdfs:subClassOf :Dataset ;
+                      rdfs:label "Anzo graphmart dataset" .
+
+
+###  https://mustrd.com/model/Binding
+:Binding rdf:type owl:Class ;
+         rdfs:label "variable binding" .
+
 
 ###  https://mustrd.com/model/Compositedataset
 :Compositedataset rdf:type owl:Class ;
@@ -219,7 +256,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 ###  https://mustrd.com/model/EmptyDataset
 :EmptyDataset rdf:type owl:Class ;
               rdfs:subClassOf :Dataset ;
-              rdfs:label "empty dataset" .
+              rdfs:label "Empty dataset" .
 
 
 ###  https://mustrd.com/model/EmptyGraph
@@ -281,8 +318,8 @@ sh:order rdf:type owl:DatatypeProperty ;
        rdfs:label "Graph" .
 
 
-###  https://mustrd.com/model/Graphdataset
-:Graphdataset rdf:type owl:Class ;
+###  https://mustrd.com/model/GraphDataset
+:GraphDataset rdf:type owl:Class ;
               rdfs:subClassOf :Dataset ;
               rdfs:isDefinedBy : ;
               rdfs:label "GraphDataset" .

@@ -6,21 +6,23 @@
 
 test-data:a_complete_select_scenario_variables_datatypes
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataset ;
-                                   must:hasStatement [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    true ; ] ; ] ;
-    must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
-                 must:boundValues [ must:variable "o" ;
-                                 must:boundValue  true ; ] ;
-                 must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:TableDataset ;
-                 must:hasRow [ must:hasBinding[ must:variable "s" ;
-                                        must:boundValue  test-data:sub ; ],
-                                      [ must:variable "p" ;
-                                        must:boundValue  test-data:pred ; ],
-                                      [ must:variable "o" ;
-                                        must:boundValue  true ; ] ;
-               ] ; ] .
+    must:given [ a                 must:StatementsDataset ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    false ; ] ,
+                                   [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    true ; ] ; ] ;
+    must:when  [ a               must:TextSparqlSource ;
+                 must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
+                 must:hasBinding [ must:variable   "o" ;
+                                   must:boundValue true ; ] ;
+                 must:queryType  must:SelectSparql ; ] ;
+    must:then  [ a           must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable   "s" ;
+                                                 must:boundValue test-data:sub ; ], [ must:variable   "p" ;
+                                                                                      must:boundValue test-data:pred ; ],
+                 [ must:variable   "o" ;
+                   must:boundValue true ; ] ; ] ; ] .

@@ -3,7 +3,7 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-
+#TODO: Fix this test so that the sparql binding makes a difference to the result
 test-data:anzo_construct_graphmart
     a          must:TestSpec ;
     must:given [ a must:FileDataset ;
@@ -11,7 +11,7 @@ test-data:anzo_construct_graphmart
     ];
     must:when  [ a must:TextSparqlSource ;
                  must:queryText  "construct { ?s ?p ?o } where { ?s ?p ?o }" ;
-                 must:boundValues [ must:variable "o" ;
+                 must:hasBinding [ must:variable "o" ;
                                  must:boundValue  "hello world" ; ] ;
                  must:queryType must:ConstructSparql    ; ] ;
     must:then [ a must:AnzoGraphmartDataset ;
