@@ -639,7 +639,7 @@ class TestRunConstructSpec:
 
         test-data:my_first_spec 
             a must:TestSpec ;
-                must:when [ a must:FolderDataset ;
+                must:when [ a must:FolderSparqlSource ;
                             must:fileName "construct.rq" ;
                             must:queryType must:ConstructSparql ; ] ;
                 must:then  [ a must:StatementsDataset ;
