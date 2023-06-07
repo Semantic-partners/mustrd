@@ -14,10 +14,10 @@ test-data:a_complete_insert_data_scenario
                  must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
-                                   rdf:subject   test-data:sub ;
-                                   rdf:predicate test-data:pred ;
-                                   rdf:object    test-data:obj ; ] ,
-                                 [ a             rdf:Statement ;
-                                   rdf:subject   test-data:subject ;
-                                   rdf:predicate test-data:predicate ;
-                                   rdf:object    test-data:object ; ] ; ] .
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ,
+                                   [ a             rdf:Statement ;
+                                     rdf:subject   test-data:subject ;
+                                     rdf:predicate test-data:predicate ;
+                                     rdf:object    test-data:object ; ] ; ] .

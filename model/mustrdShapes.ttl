@@ -69,7 +69,7 @@ must:UpdateTestSpecGivenValidationShape
     sh:not     [ sh:path  must:given ;
                  sh:class must:InheritedDataset ; ] .
 
-must:SelectTestSpecShape
+must:SelectTestSpecValidationShape
     a         sh:NodeShape ;
     sh:target [ a           sh:SPARQLTarget ;
                 sh:prefixes must: ;

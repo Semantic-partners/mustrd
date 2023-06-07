@@ -58,9 +58,3 @@ test-data:pred2
 test-data:obj2
     a          owl:NamedIndividual ;
     rdfs:label "test object 2" .
-
-
-
-
-
-
