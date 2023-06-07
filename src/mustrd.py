@@ -150,7 +150,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
-
+    project_root = get_project_root()
+    model_path = Path(os.path.join(project_root, "model"))
     invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
@@ -161,8 +162,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     for file in ttl_files:
 
         r = validate(file.__str__(),
-                     shacl_graph="model/mustrdShapes.ttl",
-                     ont_graph="model/ontology.ttl",
+                     shacl_graph=f"{model_path}/mustrdShapes.ttl",
+                     ont_graph=f"{model_path}/ontology.ttl",
                      inference='rdfs',
                      abort_on_first=False,
                      allow_infos=False,
