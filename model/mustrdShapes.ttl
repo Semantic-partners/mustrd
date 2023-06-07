@@ -65,11 +65,11 @@ must:UpdateTestSpecGivenValidationShape
 				?this must:when/must:queryType must:UpdateSparql .
 			}
 			""" ; ] ;
-    # no updates allowed on inherited datasets
+        ;
+    sh:message "An invalid given clause with an inherited dataset has be specified for a SPARQL update test." ;
     sh:not    [ sh:path     must:given ;
                      sh:class    must:InheritedDataset ;
-                      ] ;
-    sh:message "An invalid given clause with an inherited dataset has be specified for a SPARQL update test." .
+                      ]  .
 
 must:SelectTestSpecShape
     a         sh:NodeShape ;
