@@ -6,6 +6,11 @@
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
 @prefix must:      <https://mustrd.com/model/> .
 
+must:
+    sh:declare [ sh:prefix    "must" ;
+                 sh:namespace "https://mustrd.com/model/"^^xsd:anyURI ; ] .
+
+
 must:TestSpecShape
     a              sh:NodeShape ;
     sh:targetClass must:TestSpec ;
@@ -18,6 +23,57 @@ must:TestSpecShape
     sh:property    [ sh:path     must:then ;
                      sh:class    must:Dataset ;
                      sh:minCount 1 ; ] .
+
+must:UpdateTestSpecShape
+    a         sh:NodeShape ;
+    sh:target [ a           sh:SPARQLTarget ;
+                sh:prefixes must: ;
+                sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:UpdateSparql .
+			}
+			""" ; ] ;
+    sh:or   ( [ sh:path     must:then ;
+                  sh:class    must:StatementsDataset ;
+                  sh:minCount 1 ; ]
+                [ sh:path     must:then ;
+                  sh:class    must:EmptyGraph ;
+                  sh:minCount 1 ; ]
+                [ sh:path     must:then ;
+                  sh:class    must:FileDataset ;
+                  sh:minCount 1 ; ]
+              [ sh:path     must:then ;
+                sh:class    must:FolderDataset ;
+                sh:minCount 1 ; ]
+                [ sh:path     must:then ;
+                  sh:class    must:GraphDataset ;
+                  sh:minCount 1 ; ] ) .
+
+must:SelectTestSpecShape
+    a         sh:NodeShape ;
+    sh:target [ a           sh:SPARQLTarget ;
+                sh:prefixes must: ;
+                sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:SelectSparql .
+			}
+			""" ; ] ;
+    sh:or   ( [ sh:path     must:then ;
+                  sh:class    must:TableDataset ;
+                  sh:minCount 1 ; ]
+                [ sh:path     must:then ;
+                  sh:class    must:EmptyTable ;
+                  sh:minCount 1 ; ]
+               [ sh:path     must:then ;
+                  sh:class    must:FolderDataset ;
+                  sh:minCount 1 ; ]
+                [ sh:path     must:then ;
+                  sh:class    must:FileDataset ;
+                  sh:minCount 1 ; ] ) .
 
 must:StatementsDatasetShape
     a              sh:NodeShape ;
@@ -64,6 +120,30 @@ must:SparqlSourceShape
     sh:property    [ sh:path     must:queryType ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ; ] .
+
+must:UpdateSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:UpdateSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
+
+must:SelectSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:SelectSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
+
+must:ConstructSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:ConstructSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
 
 must:TextSparqlSourceShape
     a              sh:NodeShape ;

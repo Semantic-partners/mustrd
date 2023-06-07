@@ -20,22 +20,6 @@
 #    Object Properties
 #################################################################
 
-###  https://mustrd.com/model#hasBinding
-:hasBinding rdf:type owl:ObjectProperty ;
-            rdfs:label "hasBinding" .
-
-
-###  https://mustrd.com/model#hasStatement
-:hasStatement rdf:type owl:ObjectProperty ;
-              rdfs:domain :StatementsDataset ;
-              rdfs:range rdf:Statement .
-
-
-###  https://mustrd.com/model#queryType
-:queryType rdf:type owl:ObjectProperty ;
-           rdfs:label "queryType" .
-
-
 ###  https://mustrd.com/model/dataset
 :dataset rdf:type owl:ObjectProperty ;
          rdfs:domain [ rdf:type owl:Class ;
@@ -74,6 +58,11 @@
        rdfs:label "graph" .
 
 
+###  https://mustrd.com/model/hasBinding
+:hasBinding rdf:type owl:ObjectProperty ;
+            rdfs:label "hasBinding" .
+
+
 ###  https://mustrd.com/model/hasRow
 :hasRow rdf:type owl:ObjectProperty ;
         rdfs:label "has row" .
@@ -83,12 +72,23 @@
 :hasSpec rdf:type owl:ObjectProperty .
 
 
+###  https://mustrd.com/model/hasStatement
+:hasStatement rdf:type owl:ObjectProperty ;
+              rdfs:domain :StatementsDataset ;
+              rdfs:range rdf:Statement .
+
+
 ###  https://mustrd.com/model/label_link-6c3eeabf-5c6d-4ea6-b61e-144df1e6a223
 :label_link-6c3eeabf-5c6d-4ea6-b61e-144df1e6a223 rdf:type owl:ObjectProperty ;
                                                  rdfs:domain :When ;
                                                  rdfs:range :SparqlAction ;
                                                  rdfs:isDefinedBy : ;
                                                  rdfs:label "label" .
+
+
+###  https://mustrd.com/model/queryType
+:queryType rdf:type owl:ObjectProperty ;
+           rdfs:label "queryType" .
 
 
 ###  https://mustrd.com/model/sparqlsource
@@ -124,22 +124,16 @@ sh:order rdf:type owl:DatatypeProperty ;
          rdfs:label "order" .
 
 
-###  https://mustrd.com/model#file
+###  https://mustrd.com/model/file
 :file rdf:type owl:DatatypeProperty ;
       rdfs:comment "Relative or absolute path to local file" ;
       rdfs:label "file" .
 
 
-###  https://mustrd.com/model#fileName
+###  https://mustrd.com/model/fileName
 :fileName rdf:type owl:DatatypeProperty ;
           rdfs:comment "Name of a file excluding its path" ;
           rdfs:label "fileName" .
-
-
-###  https://mustrd.com/model#queryText
-:queryText rdf:type owl:DatatypeProperty ;
-           rdfs:domain :TextSparqlSource ;
-           rdfs:label "QueryText" .
 
 
 ###  https://mustrd.com/model/fileurl
@@ -155,6 +149,12 @@ sh:order rdf:type owl:DatatypeProperty ;
                              rdfs:domain :Given ;
                              rdfs:isDefinedBy : ;
                              rdfs:label "flattenDataSetToTargetGraph" .
+
+
+###  https://mustrd.com/model/queryText
+:queryText rdf:type owl:DatatypeProperty ;
+           rdfs:domain :TextSparqlSource ;
+           rdfs:label "QueryText" .
 
 
 ###  https://mustrd.com/model/shouldflattengraph
@@ -225,7 +225,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 ###  https://mustrd.com/model/EmptyGraph
 :EmptyGraph rdf:type owl:Class ;
             rdfs:subClassOf :EmptyDataset ;
-            rdfs:label "EmtpyGraph" .
+            rdfs:label "EmptyGraph" .
 
 
 ###  https://mustrd.com/model/EmptyTable
