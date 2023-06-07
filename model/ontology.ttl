@@ -288,6 +288,13 @@ sh:order rdf:type owl:DatatypeProperty ;
               rdfs:label "GraphDataset" .
 
 
+###  https://mustrd.com/model/InheritedDataset
+:InheritedDataset rdf:type owl:Class ;
+                  rdfs:subClassOf :Dataset ;
+                  rdfs:comment "A dataset inherited from another process e.g. another test where no further action is required before running the when step of a test spec." ;
+                  rdfs:label "Inherited Dataset" .
+
+
 ###  https://mustrd.com/model/OrderedTableDataset
 :OrderedTableDataset rdf:type owl:Class ;
                      rdfs:subClassOf :TableDataset ;
