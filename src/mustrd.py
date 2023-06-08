@@ -194,6 +194,7 @@ def validate_specs(spec_path: Path, triple_stores, shacl_graph, ont_graph):
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
 
         if len(error_messages) > 0:
+            error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
             invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
                               triple_stores]

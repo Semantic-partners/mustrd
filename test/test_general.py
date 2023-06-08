@@ -2,7 +2,7 @@ import unittest
 import os
 from pathlib import Path
 
-from mustrd import run_specs, get_triple_stores,get_specs
+from mustrd import run_specs, get_triple_stores, validate_specs
 from rdflib import Graph
 from namespace import MUST
 
@@ -59,8 +59,11 @@ test-data:a_complete_construct_scenario
     def test_run_specs_with_invalid_spec_path(self):
         # Define an invalid spec_path
         triple_stores = [{'type': MUST.RdfLib}]
-        spec_uris, spec_graph, results = get_specs(self.invalid_spec_path, triple_stores)
-        final_results = run_specs( spec_uris, spec_graph, results, triple_stores)
+        project_root = Path(__file__).resolve().parent.parent
+        shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
+        ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
+        valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(self.invalid_spec_path, triple_stores, shacl_graph, ont_graph )
+        final_results = run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores)
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(final_results, list)
         self.assertEqual(len(final_results), 0)  # Assert that no results were returned

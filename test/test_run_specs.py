@@ -21,11 +21,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
-from rdflib import URIRef
+from pathlib import Path
+from rdflib import URIRef, Graph
 from rdflib.namespace import Namespace
+import os
 
-from mustrd import run_specs, SpecPassed, SpecSkipped, get_specs,review_results
+from mustrd import run_specs, SpecPassed, SpecSkipped, validate_specs, review_results
 from namespace import MUST
 from src.utils import get_project_root
 
@@ -37,11 +38,15 @@ class TestRunSpecs:
         project_root = get_project_root()
         test_spec_path = project_root / "test" / "test-specs"
         folder = project_root / "test" / "data"
+        shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
+        ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
         verbose = False
         triple_stores = [{'type': MUST.RdfLib}]
-        spec_uris, spec_graph, results = get_specs(test_spec_path, triple_stores)
-        final_results = run_specs( spec_uris, spec_graph, results, triple_stores, folder, folder, folder)
-        review_results(final_results, verbose)
+        valid_spec_uris, spec_graph, invalid_spec_results = \
+            validate_specs(test_spec_path, triple_stores, shacl_graph, ont_graph)
+        results = \
+            run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, folder, folder, folder)
+        review_results(results, verbose)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
             SpecPassed(URIRef(TEST_DATA.a_complete_construct_scenario), MUST.RdfLib),
@@ -71,13 +76,13 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables), MUST.RdfLib),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_a_table_result_scenario), MUST.RdfLib,
-                        message="Incompatible result type for an update statement found in invalid_delete_insert_spec_with_table_result.ttl." ),
+                        message="Invalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_spec_with_table_result.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_inherited_given_and_empty_table_result_scenario),
-                        MUST.RdfLib, message="Attempted update on inherited state found in invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl. Incompatible result type for an update statement found in invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl." ),
+                        MUST.RdfLib, message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl\nInvalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_inherited_given_scenario), MUST.RdfLib,
-                        message="Attempted update on inherited state found in invalid_delete_insert_with_inherited_given_spec.ttl." ),
+                        message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_spec.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_empty_graph_result), MUST.RdfLib,
-                        message="Incompatible result type for a select statement found in invalid_select_spec_with_empty_graph_result.ttl."),
+                        message="Invalid where clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_empty_graph_result.ttl"),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_statement_dataset_result), MUST.RdfLib,
-                        message="Incompatible result type for a select statement found in invalid_select_spec_with_statement_dataset_result.ttl.")
+                        message="Invalid where clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl")
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
