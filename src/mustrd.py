@@ -192,6 +192,7 @@ def validate_specs(spec_path: Path, triple_stores, shacl_graph, ont_graph):
             if subject_uri in subject_uris:
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
+                subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
 
         if len(error_messages) > 0:
             error_messages.sort()
