@@ -155,6 +155,7 @@ def validate_specs(spec_path: Path, triple_stores, shacl_graph, ont_graph):
     subject_uris = set()
     invalid_specs = []
     ttl_files = list(spec_path.glob('*.ttl'))
+    ttl_files.sort()
     log.info(f"Found {len(ttl_files)} ttl files")
 
     for file in ttl_files:
