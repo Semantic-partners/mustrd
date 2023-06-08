@@ -90,10 +90,10 @@ def parse_spec_component(subject: URIRef,
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
         for data_source_type in data_source_types:
-            if data_source_type == MUST.FolderDataSource and folder_location is None:
+            if data_source_type == MUST.FolderDataset and folder_location is None:
                 raise ValueError(
                     f"Cannot load data for {predicate}. "
-                    f"{MUST.FolderDataSource} needs to be used with parameter for folder path.")
+                    f"{MUST.FolderDataset} needs to be used with parameter for folder path.")
             spec_component_details = SpecComponentDetails(
                 subject=subject,
                 predicate=predicate,
@@ -196,13 +196,13 @@ def get_data_source_types(subject, predicate, spec_graph, source_node):
 
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
-@get_spec_component.method((MUST.InheritedState, MUST.given))
+@get_spec_component.method((MUST.InheritedDataset, MUST.given))
 def _get_spec_component_inheritedstate_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
     return spec_component
 
 
-@get_spec_component.method((MUST.FolderDataSource, MUST.given))
+@get_spec_component.method((MUST.FolderDataset, MUST.given))
 def _get_spec_component_folderdatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -218,8 +218,8 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     return spec_component
 
 
-@get_spec_component.method((MUST.FolderDataSource, MUST.when))
-def _get_spec_component_folderdatasource_when(spec_component_details: SpecComponentDetails) -> GivenSpec:
+@get_spec_component.method((MUST.FolderSparqlSource, MUST.when))
+def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
@@ -233,7 +233,7 @@ def _get_spec_component_folderdatasource_when(spec_component_details: SpecCompon
     return spec_component
 
 
-@get_spec_component.method((MUST.FolderDataSource, MUST.then))
+@get_spec_component.method((MUST.FolderDataset, MUST.then))
 def _get_spec_component_folderdatasource_then(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -271,7 +271,7 @@ def get_then_from_file(path: Path, spec_component: ThenSpec):
             return spec_component
 
 
-@get_spec_component.method((MUST.FileDataSource, MUST.given))
+@get_spec_component.method((MUST.FileDataset, MUST.given))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -286,7 +286,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
         raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
     return spec_component
 
-@get_spec_component.method((MUST.FileDataSource, MUST.when))
+@get_spec_component.method((MUST.FileSparqlSource , MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -300,7 +300,7 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     return spec_component
 
 
-@get_spec_component.method((MUST.FileDataSource, MUST.then))
+@get_spec_component.method((MUST.FileDataset, MUST.then))
 def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
@@ -310,8 +310,8 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
     return get_then_from_file(path, spec_component)
 
 
-@get_spec_component.method((MUST.TextDataSource, MUST.when))
-def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.TextSparqlSource, MUST.when))
+def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get specComponent directly from config file (in text string)
@@ -326,11 +326,11 @@ def _get_spec_component_TextDataSource(spec_component_details: SpecComponentDeta
 
 
 # https://github.com/Semantic-partners/mustrd/issues/98
-@get_spec_component.method((MUST.HttpDataSource, MUST.given))
-@get_spec_component.method((MUST.HttpDataSource, MUST.when))
-@get_spec_component.method((MUST.HttpDataSource, MUST.then))
+@get_spec_component.method((MUST.HttpDataset, MUST.given))
+@get_spec_component.method((MUST.HttpDataset, MUST.when))
+@get_spec_component.method((MUST.HttpDataset, MUST.then))
 
-def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get specComponent with http GET protocol
@@ -341,9 +341,9 @@ def _get_spec_component_HttpDataSource(spec_component_details: SpecComponentDeta
     return spec_component
 
 
-@get_spec_component.method((MUST.TableDataSource, MUST.then))
+@get_spec_component.method((MUST.TableDataset, MUST.then))
 
-def _get_spec_component_TableDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+def _get_spec_component_TableDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     table_then = TableThenSpec()
     # get specComponent from ttl table
     table_then.value = get_spec_from_table(spec_component_details.subject, spec_component_details.predicate,
@@ -353,22 +353,22 @@ def _get_spec_component_TableDataSource(spec_component_details: SpecComponentDet
     return table_then
 
 
-@get_spec_component.method((MUST.EmptyTableResult, MUST.then))
-def _get_spec_component_EmptyTableResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.EmptyTable, MUST.then))
+def _get_spec_component_EmptyTable(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = TableThenSpec()
     return spec_component
 
 
-@get_spec_component.method((MUST.EmptyGraphResult, MUST.then))
-def _get_spec_component_EmptyGraphResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.EmptyGraph, MUST.then))
+def _get_spec_component_EmptyGraph(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     return spec_component
 
 
-@get_spec_component.method((MUST.StatementsDataSource, MUST.given))
-@get_spec_component.method((MUST.StatementsDataSource, MUST.then))
-def _get_spec_component_StatementsDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.StatementsDataset, MUST.given))
+@get_spec_component.method((MUST.StatementsDataset, MUST.then))
+def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     spec_component.value = Graph().parse(
@@ -377,9 +377,9 @@ def _get_spec_component_StatementsDataSource(spec_component_details: SpecCompone
     return spec_component
 
 
-@get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.given))
-@get_spec_component.method((MUST.AnzoGraphmartDataSource, MUST.then))
-def _get_spec_component_AnzoGraphmartDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.AnzoGraphmartDataset, MUST.given))
+@get_spec_component.method((MUST.AnzoGraphmartDataset, MUST.then))
+def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
@@ -390,13 +390,13 @@ def _get_spec_component_AnzoGraphmartDataSource(spec_component_details: SpecComp
             triple_store=spec_component_details.mustrd_triple_store, graphmart=graphmart,
             layer=layer)
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartDataSource}")
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartDataset}")
 
     return spec_component
 
 
-@get_spec_component.method((MUST.AnzoQueryBuilderDataSource, MUST.when))
-def _get_spec_component_AnzoQueryBuilderDataSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.AnzoQueryBuilderDataset, MUST.when))
+def _get_spec_component_AnzoQueryBuilderDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get WHEN specComponent from query builder
@@ -408,7 +408,7 @@ def _get_spec_component_AnzoQueryBuilderDataSource(spec_component_details: SpecC
                                                            query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderDataSource}")
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderDataset}")
 
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
@@ -474,8 +474,8 @@ def get_spec_from_statements(subject: URIRef,
     CONSTRUCT {{ ?s ?p ?o }}
     {{
             <{subject}> <{predicate}> [
-                a <{MUST.StatementsDataSource}> ;
-                <{MUST.statements}> [
+                a <{MUST.StatementsDataset}> ;
+                <{MUST.hasStatement}> [
                     a rdf:Statement ;
                     rdf:subject ?s ;
                     rdf:predicate ?p ;
@@ -497,18 +497,18 @@ def get_spec_from_table(subject: URIRef,
     SELECT ?then ?order ?variable ?binding
     WHERE {{ {{
          <{subject}> <{predicate}> [
-                a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ 
-                    <{MUST.row}> [
+                a <{MUST.TableDataset}> ;
+                <{MUST.hasRow}> [ 
+                    <{MUST.hasBinding}> [
                         <{MUST.variable}> ?variable ;
-                        <{MUST.binding}> ?binding ; ] ; 
+                        <{MUST.boundValue}> ?binding ; ] ; 
                             ] ; ].}} 
     OPTIONAL {{ <{subject}> <{predicate}> [
-                a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [  sh:order ?order ;
-                                    <{MUST.row}> [
+                a <{MUST.TableDataset}> ;
+                <{MUST.hasRow}> [  sh:order ?order ;
+                                    <{MUST.hasBinding}> [
                             <{MUST.variable}> ?variable ;
-                            <{MUST.binding}> ?binding ; ] ;
+                            <{MUST.boundValue}> ?binding ; ] ;
                         ] ; ].}}
     }} ORDER BY ASC(?order)"""
 
@@ -547,7 +547,7 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextDataSource}> ; <{MUST.bindings}> [ <{MUST.variable}> ?variable ; <{MUST.binding}> ?binding ; ] ; ]  ;}}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextSparqlSource}> ; <{MUST.hasBinding}> [ <{MUST.variable}> ?variable ; <{MUST.boundValue}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
@@ -564,21 +564,21 @@ def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph
     ASK {{
     {{SELECT (count(?binding) as ?totalBindings) {{  
     <{subject}> <{predicate}> [
-                a <{MUST.TableDataSource}> ;
-                <{MUST.rows}> [ <{MUST.row}> [
+                a <{MUST.TableDataset}> ;
+                <{MUST.hasRow}> [ <{MUST.hasBinding}> [
                                     <{MUST.variable}> ?variable ;
-                                    <{MUST.binding}> ?binding ;
+                                    <{MUST.boundValue}> ?binding ;
                             ] ; 
               ]
             ]
 }} }}
     {{SELECT (count(?binding) as ?orderedBindings) {{    
     <{subject}> <{predicate}> [
-                a <{MUST.TableDataSource}> ;
-       <{MUST.rows}> [ sh:order ?order ;
-                    <{MUST.row}> [ 
+                a <{MUST.TableDataset}> ;
+       <{MUST.hasRow}> [ sh:order ?order ;
+                    <{MUST.hasBinding}> [ 
                     <{MUST.variable}> ?variable ;
-                                    <{MUST.binding}> ?binding ;
+                                    <{MUST.boundValue}> ?binding ;
                             ] ; 
               ]
             ]

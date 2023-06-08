@@ -50,23 +50,24 @@ class MUST(DefinedNamespace):
     dataSourceUrl: URIRef
     queryText: URIRef
     queryType: URIRef
-    bindings: URIRef
-    statements: URIRef
-    rows: URIRef
-    row: URIRef
+    hasStatement: URIRef
+    hasRow: URIRef
+    hasBinding: URIRef
     variable: URIRef
-    binding: URIRef
+    boundValue: URIRef
 
     # Specification data sources
-    TableDataSource: URIRef
-    StatementsDataSource: URIRef
-    FileDataSource: URIRef
-    HttpDataSource: URIRef
-    TextDataSource: URIRef
-    FolderDataSource: URIRef
-    EmptyGraphResult: URIRef
-    EmptyTableResult: URIRef
-    InheritedState: URIRef
+    TableDataset: URIRef
+    StatementsDataset: URIRef
+    FileDataset: URIRef
+    HttpDataset: URIRef
+    TextSparqlSource: URIRef
+    FileSparqlSource: URIRef
+    FolderSparqlSource: URIRef
+    FolderDataset: URIRef
+    EmptyGraph: URIRef
+    EmptyTable: URIRef
+    InheritedDataset: URIRef
 
     # runner uris
     fileSource: URIRef
@@ -87,8 +88,8 @@ class MUST(DefinedNamespace):
     # Anzo
     Anzo: URIRef
     AnzoConfig: URIRef
-    AnzoGraphmartDataSource: URIRef
-    AnzoQueryBuilderDataSource: URIRef
+    AnzoGraphmartDataset: URIRef
+    AnzoQueryBuilderDataset: URIRef
     graphmart: URIRef
     layer: URIRef
     gqeURI: URIRef

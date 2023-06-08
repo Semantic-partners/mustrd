@@ -4,10 +4,10 @@
 
 test-data:a_complete_construct_scenario_from_folders
     a          must:TestSpec ;
-    must:given [ a must:FolderDataSource ;
+    must:given [ a must:FolderDataset ;
                  must:fileName "given.ttl" ] ;
-    must:when  [ a must:FolderDataSource ;
+    must:when  [ a must:FolderSparqlSource ;
                  must:fileName "construct.rq" ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:FolderDataSource ;
+    must:then  [ a must:FolderDataset ;
                  must:fileName "thenSuccess.nt" ]  .

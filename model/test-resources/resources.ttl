@@ -1,0 +1,60 @@
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xs:        <http://www.w3.org/2001/XMLSchema#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:
+    rdf:type     owl:Ontology ;
+    owl:imports  rdf:, rdfs: ;
+    rdfs:comment "" ;
+    rdfs:label   "Test Data" .
+
+test-data:sub
+    a          owl:NamedIndividual ;
+    rdfs:label "test subject" .
+
+test-data:pred
+    a          rdf:Property ;
+    rdfs:label "test predicate" .
+
+test-data:obj
+    a          owl:NamedIndividual ;
+    rdfs:label "test object" .
+
+test-data:subject
+    a          owl:NamedIndividual ;
+    rdfs:label "test subject" .
+
+test-data:predicate
+    a          rdf:Property ;
+    rdfs:label "test predicate" .
+
+test-data:object
+    a          owl:NamedIndividual ;
+    rdfs:label "test object 1" .
+
+test-data:sub1
+    a          owl:NamedIndividual ;
+    rdfs:label "test subject 1" .
+
+test-data:pred1
+    a          rdf:Property ;
+    rdfs:label "test predicate 1" .
+
+test-data:obj1
+    a          owl:NamedIndividual ;
+    rdfs:label "test object 1" .
+
+test-data:sub2
+    a          owl:NamedIndividual ;
+    rdfs:label "test subject 2" .
+
+test-data:pred2
+    a         rdf:Property ;
+    rdfs:label "test predicate 2" .
+
+test-data:obj2
+    a          owl:NamedIndividual ;
+    rdfs:label "test object 2" .

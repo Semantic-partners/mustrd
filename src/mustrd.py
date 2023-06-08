@@ -51,6 +51,7 @@ from utils import get_project_root
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
+from pyshacl import validate
 
 log = logger_setup.setup_logger(__name__)
 
@@ -152,12 +153,32 @@ def get_specs(spec_path: Path, triple_stores):
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
-
+    project_root = get_project_root()
+    model_path = Path(os.path.join(project_root, "model"))
+    invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
     results = []
 
     for file in ttl_files:
+
+        r = validate(file.__str__(),
+                     shacl_graph=f"{model_path}/mustrdShapes.ttl",
+                     ont_graph=f"{model_path}/ontology.ttl",
+                     inference='rdfs',
+                     abort_on_first=False,
+                     allow_infos=False,
+                     allow_warnings=False,
+                     meta_shacl=False,
+                     advanced=True,
+                     js=False,
+                     debug=False)
+        conforms, results_graph, results_text = r
+        if not conforms:
+            print(file)
+            print(results_text)
+
+
         log.info(f"Parse: {file}")
         try:
             file_graph = Graph().parse(file)
@@ -175,7 +196,7 @@ def get_specs(spec_path: Path, triple_stores):
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
 
-            if MUST.InheritedState in file_graph.objects(predicate=RDF.type) and \
+            if MUST.InheritedDataset in file_graph.objects(predicate=RDF.type) and \
                     MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
                 log.warning(
                     f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
@@ -184,7 +205,7 @@ def get_specs(spec_path: Path, triple_stores):
             if MUST.SelectSparql in file_graph.objects(predicate=MUST.queryType):
                 for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
                     for result_type in types:
-                        if result_type in (MUST.EmptyGraphResult, MUST.StatementsDataSource):
+                        if result_type in (MUST.EmptyGraph, MUST.StatementsDataset):
                             log.warning(
                                 f"Incompatible result type for a select statement found: {file.name}. {subject_uri} will not be parsed.")
                             error_messages += [f"Incompatible result type for a select statement found in {file.name}."]
@@ -192,7 +213,7 @@ def get_specs(spec_path: Path, triple_stores):
             if MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
                 for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
                      for result_type in types:
-                         if result_type in (MUST.EmptyTableResult, MUST.TableDataSource):
+                         if result_type in (MUST.EmptyTable, MUST.TableDataset):
                             log.warning(
                                 f"Incompatible result type for an update statement found: {file.name}. {subject_uri} will not be parsed.")
                             error_messages += [f"Incompatible result type for an update statement found in {file.name}."]
@@ -641,8 +662,8 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> 
-            a <{MUST.StatementsDataSource}> ;
-            <{MUST.statements}> [
+            a <{MUST.StatementsDataset}> ;
+            <{MUST.hasStatement}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;

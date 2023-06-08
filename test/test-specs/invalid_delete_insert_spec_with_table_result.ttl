@@ -2,7 +2,7 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_delete_data_scenario
+test-data:an_invalid_delete_insert_with_a_table_result_scenario
     a          must:TestSpec ;
     must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
@@ -10,7 +10,13 @@ test-data:a_complete_delete_data_scenario
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }" ;
+                                   must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}" ;
                  must:queryType must:UpdateSparql  ; ] ;
-    must:then  [ a must:EmptyGraph ] .
-
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding  [ must:variable "s" ;
+                                        must:boundValue  test-data:obj ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:sub ; ] ;
+                   ] ; ] .

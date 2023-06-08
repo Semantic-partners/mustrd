@@ -6,12 +6,12 @@
 
 test-data:a_complete_select_scenario_expected_empty_result
     a          must:TestSpec ;
-    must:given [ a must:StatementsDataSource ;
-                                   must:statements [ a rdf:Statement ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:TextDataSource ;
+    must:when  [ a must:TextSparqlSource ;
                                    must:queryText  "select ?s ?p where { ?s ?p 25 }" ;
                  must:queryType must:SelectSparql   ; ] ;
-    must:then  [ a must:EmptyTableResult ] .
+    must:then  [ a must:EmptyTable ] .
