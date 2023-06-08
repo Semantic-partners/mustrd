@@ -34,7 +34,7 @@ from pyparsing import ParseException
 from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
-from rdflib import Graph, URIRef, RDF, XSD
+from rdflib import Graph, URIRef, RDF, XSD, SH
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -149,35 +149,16 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # https://github.com/Semantic-partners/mustrd/issues/103
-def get_specs(spec_path: Path, triple_stores):
+def validate_specs(spec_path: Path, triple_stores, shacl_graph, ont_graph):
     # os.chdir(spec_path)
-    ttl_files = list(spec_path.glob('*.ttl'))
-    log.info(f"Found {len(ttl_files)} ttl files")
-    project_root = get_project_root()
-    model_path = Path(os.path.join(project_root, "model"))
-    invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
-    results = []
+    invalid_specs = []
+    ttl_files = list(spec_path.glob('*.ttl'))
+    log.info(f"Found {len(ttl_files)} ttl files")
 
     for file in ttl_files:
-
-        r = validate(file.__str__(),
-                     shacl_graph=f"{model_path}/mustrdShapes.ttl",
-                     ont_graph=f"{model_path}/ontology.ttl",
-                     inference='rdfs',
-                     abort_on_first=False,
-                     allow_infos=False,
-                     allow_warnings=False,
-                     meta_shacl=False,
-                     advanced=True,
-                     js=False,
-                     debug=False)
-        conforms, results_graph, results_text = r
-        if not conforms:
-            print(file)
-            print(results_text)
-
+        error_messages = []
 
         log.info(f"Parse: {file}")
         try:
@@ -186,49 +167,43 @@ def get_specs(spec_path: Path, triple_stores):
             template = "An exception of type {0} occurred when trying to parse a spec file. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
             log.error(message)
-            results += [SpecSkipped(file, triple_store['type'], f"Could not extract spec from {file} due to exception of type "
-                                                             f"{type(e).__name__} when parsing file")  for triple_store in
-                        triple_stores]
+            error_messages += [f"Could not extract spec from {file} due to exception of type "
+                               f"{type(e).__name__} when parsing file"]
             continue
+        # run shacl validation
+        conforms, results_graph, results_text = validate(file_graph,
+                                                         shacl_graph=shacl_graph,
+                                                         ont_graph=ont_graph,
+                                                         inference='none',
+                                                         abort_on_first=False,
+                                                         allow_infos=False,
+                                                         allow_warnings=False,
+                                                         meta_shacl=False,
+                                                         advanced=True,
+                                                         js=False,
+                                                         debug=False)
+        if not conforms:
+            for msg in results_graph.objects(predicate=SH.resultMessage):
+                log.warning(f"{msg} File: {file.name}")
+                error_messages += [f"{msg} File: {file.name}"]
+
+        # make sure there are no duplicate test IRIs in the files
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
-            error_messages = []
             if subject_uri in subject_uris:
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
 
-            if MUST.InheritedDataset in file_graph.objects(predicate=RDF.type) and \
-                    MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
-                log.warning(
-                    f"An attempted update on an inherited state was found: {file.name}. {subject_uri} will not be parsed.")
-                error_messages += [f"Attempted update on inherited state found in {file.name}."]
-
-            if MUST.SelectSparql in file_graph.objects(predicate=MUST.queryType):
-                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
-                    for result_type in types:
-                        if result_type in (MUST.EmptyGraph, MUST.StatementsDataset):
-                            log.warning(
-                                f"Incompatible result type for a select statement found: {file.name}. {subject_uri} will not be parsed.")
-                            error_messages += [f"Incompatible result type for a select statement found in {file.name}."]
-
-            if MUST.UpdateSparql in file_graph.objects(predicate=MUST.queryType):
-                for types in [file_graph.objects(subject=then, predicate=RDF.type) for then in file_graph.objects(subject_uri, MUST.then)]:
-                     for result_type in types:
-                         if result_type in (MUST.EmptyTable, MUST.TableDataset):
-                            log.warning(
-                                f"Incompatible result type for an update statement found: {file.name}. {subject_uri} will not be parsed.")
-                            error_messages += [f"Incompatible result type for an update statement found in {file.name}."]
-
         if len(error_messages) > 0:
-            error_message = " ".join(msg for msg in error_messages)
-            results += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
-                        triple_stores]
+            error_message = "\n".join(msg for msg in error_messages)
+            invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
+                              triple_stores]
         else:
             subject_uris.add(subject_uri)
             spec_graph.parse(file)
 
-    spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
-    log.info(f"Collected {len(spec_uris)} items")
-    return spec_uris, spec_graph, results
+    valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
+    log.info(f"Collected {len(valid_spec_uris)} items")
+    return valid_spec_uris, spec_graph, invalid_specs
 
 
 def run_specs(spec_uris, spec_graph, results, triple_stores, given_path: Path = None,
@@ -341,7 +316,6 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 
 @run_when.method(MUST.UpdateSparql)
 def _multi_run_when_update(spec: Specification):
-
     then = spec.then.value
 
     result = run_update_spec(spec.spec_uri, spec.given, spec.when.value, then,
@@ -744,25 +718,26 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
 
 def review_results(results, verbose):
     print("===== Result Overview =====")
-# Init dictionaries
+    # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
     colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
-# Populate dictionaries from results
+    # Populate dictionaries from results
     for result in results:
         status_counts[result.triple_store][type(result)] += 1
         status_dict[result.spec_uri][result.triple_store] = type(result)
 
-# Get the list of statuses and list of unique triple stores
+    # Get the list of statuses and list of unique triple stores
     statuses = list(status for inner_dict in status_dict.values() for status in inner_dict.values())
     triple_stores = list(set(status for inner_dict in status_dict.values() for status in inner_dict.keys()))
 
     # Convert dictionaries to list for tabulate
-    table_rows = [[spec_uri] + [f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__ }{Style.RESET_ALL}"
-                                for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
+    table_rows = [[spec_uri] + [
+        f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__}{Style.RESET_ALL}"
+        for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
 
     status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
-                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status] }{Style.RESET_ALL}"
+                   [f"{colours.get(status, Fore.RED)}{status_counts[triple_store][status]}{Style.RESET_ALL}"
                     for triple_store in triple_stores] for status in set(statuses)]
 
     # Display tables with tabulate
@@ -772,7 +747,8 @@ def review_results(results, verbose):
     pass_count = statuses.count(SpecPassed)
     warning_count = statuses.count(SpecPassedWithWarning)
     skipped_count = statuses.count(SpecSkipped)
-    fail_count = len(list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
+    fail_count = len(
+        list(filter(lambda status: status not in [SpecPassed, SpecPassedWithWarning, SpecSkipped], statuses)))
 
     if fail_count:
         overview_colour = Fore.RED
