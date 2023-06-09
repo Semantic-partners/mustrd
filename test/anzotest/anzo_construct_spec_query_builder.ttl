@@ -6,15 +6,15 @@
 
 test-data:anzo_construct_query_builder
     a          must:TestSpec ;
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "test/anzotest/data/given.ttl"
     ];
 
-    must:when  [ a must:AnzoQueryBuilderDataSource ;
+    must:when  [ a must:AnzoQueryBuilderDataset ;
                     must:queryFolder "Mustrd";
                     must:queryName "mustrd-construct" ;
                     must:queryType must:ConstructSparql
     ];
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "test/anzotest/data/given.ttl"
     ] .

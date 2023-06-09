@@ -48,6 +48,7 @@ from pandas import DataFrame
 from spec_component import SpecComponent, parse_spec_component
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
+from pyshacl import validate
 
 log = logger_setup.setup_logger(__name__)
 
@@ -149,7 +150,8 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     # os.chdir(spec_path)
     ttl_files = list(spec_path.glob('*.ttl'))
     log.info(f"Found {len(ttl_files)} ttl files")
-
+    project_root = get_project_root()
+    model_path = Path(os.path.join(project_root, "model"))
     invalid_files = []
     spec_graph = Graph()
     subject_uris = set()
@@ -158,6 +160,24 @@ def run_specs(spec_path: Path, triplestore_spec_path: Path = None, given_path: P
     specs = []
 
     for file in ttl_files:
+
+        r = validate(file.__str__(),
+                     shacl_graph=f"{model_path}/mustrdShapes.ttl",
+                     ont_graph=f"{model_path}/ontology.ttl",
+                     inference='rdfs',
+                     abort_on_first=False,
+                     allow_infos=False,
+                     allow_warnings=False,
+                     meta_shacl=False,
+                     advanced=True,
+                     js=False,
+                     debug=False)
+        conforms, results_graph, results_text = r
+        if not conforms:
+            print(file)
+            print(results_text)
+
+
         log.info(f"Parse: {file}")
         file_graph = Graph()
         try:
@@ -625,8 +645,8 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     CONSTRUCT {{ ?s ?p ?o }}
     {{
         <{spec_uri}> <{MUST.then}> 
-            a <{MUST.StatementsDataSource}> ;
-            <{MUST.statements}> [
+            a <{MUST.StatementsDataset}> ;
+            <{MUST.hasStatement}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;

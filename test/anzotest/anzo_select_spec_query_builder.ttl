@@ -5,15 +5,15 @@
 
 test-data:anzo_select_query_builder
     a          must:TestSpec ;
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "test/anzotest/data/given.ttl"
     ];
 
-    must:when  [ a must:AnzoQueryBuilderDataSource ;
+    must:when  [ a must:AnzoQueryBuilderDataset ;
                     must:queryFolder "Mustrd";
                     must:queryName "mustrd-select" ;
                     must:queryType must:SelectSparql
     ];
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "test/anzotest/data/thenSuccess.csv"
     ] .
