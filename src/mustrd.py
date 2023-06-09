@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 import os
+from typing import Tuple
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -147,9 +148,10 @@ class UpdateSparqlQuery(SparqlAction):
     pass
 
 
-# https://github.com/Semantic-partners/mustrd/issues/19
-# https://github.com/Semantic-partners/mustrd/issues/103
-def validate_specs(spec_path: Path, triple_stores, shacl_graph, ont_graph):
+#https://github.com/Semantic-partners/mustrd/issues/19
+
+def validate_specs(spec_path: Path, triple_stores: list, shacl_graph: Graph, ont_graph: Graph) -> Tuple[
+                                                                                                    list, Graph, list]:
     # os.chdir(spec_path)
     spec_graph = Graph()
     subject_uris = set()
@@ -719,7 +721,7 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     return empty_copy
 
 
-def review_results(results, verbose):
+def review_results(results: list[SpecResult], verbose: bool) -> None:
     print("===== Result Overview =====")
     # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))

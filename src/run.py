@@ -55,8 +55,8 @@ def main(argv):
     path_under_test = Path(args.put)
     log.info(f"Path under test is {path_under_test}")
 
-    if args.verbose:
-        verbose = args.verbose
+    verbose = args.verbose
+    if verbose:
         log.info(f"Verbose set")
 
     if args.config:
