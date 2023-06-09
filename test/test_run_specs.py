@@ -82,7 +82,7 @@ class TestRunSpecs:
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_inherited_given_scenario), MUST.RdfLib,
                         message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_spec.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_empty_graph_result), MUST.RdfLib,
-                        message="Invalid where clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_empty_graph_result.ttl"),
+                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_empty_graph_result.ttl"),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_statement_dataset_result), MUST.RdfLib,
-                        message="Invalid where clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl")
+                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl")
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
