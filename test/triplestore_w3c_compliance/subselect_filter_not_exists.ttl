@@ -6,15 +6,15 @@
 test-data:subselect_filter_not_exists
     a          must:TestSpec ;
 
-    must:given [ a must:FileDataSource ;
+    must:given [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/subselect.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/subselect_filter_not_exists.sparql";
                 must:queryType must:SelectSparql
     ];
 
-    must:then [ a must:FileDataSource ;
+    must:then [ a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/subselect_filter_not_exists.csv"
     ].

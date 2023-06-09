@@ -7,16 +7,16 @@
 test-data:binds
     a          must:TestSpec ;
 
-    must:given [a must:FileDataSource ;
+    must:given [a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/given/placeholder.ttl"
     ];
 
-    must:when [ a must:FileDataSource ;
+    must:when [ a must:FileSparqlSource  ;
                 must:file "./test/triplestore_w3c_compliance/when/binds.sparql";
                 must:queryType must:SelectSparql
     ];
 
-    must:then [a must:FileDataSource ;
+    must:then [a must:FileDataset ;
                 must:file "./test/triplestore_w3c_compliance/then/binds.csv"
     ].
 
