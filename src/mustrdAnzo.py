@@ -52,7 +52,6 @@ def query_with_bindings(bindings: dict, when: str) -> str:
 
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     try:
-        clear_graph(triple_store)
         upload_given(triple_store, given)
         if bindings:
             when = query_with_bindings(bindings, when)
@@ -132,6 +131,7 @@ def get_query_from_step(triple_store: dict, query_step_uri):
 def upload_given(triple_store: dict, given: Graph):
     if given:
         try:
+            clear_graph(triple_store)
             serialized_given = given.serialize(format="nt")
             insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
             data = {'datasourceURI': triple_store['gqe_uri'], 'update': insert_query}
