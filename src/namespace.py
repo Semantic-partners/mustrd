@@ -67,6 +67,7 @@ class MUST(DefinedNamespace):
     FolderDataset: URIRef
     EmptyGraph: URIRef
     EmptyTable: URIRef
+    InheritedDataset: URIRef
 
     # runner uris
     fileSource: URIRef

@@ -196,6 +196,11 @@ def get_data_source_types(subject, predicate, spec_graph, source_node):
 
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
+@get_spec_component.method((MUST.InheritedDataset, MUST.given))
+def _get_spec_component_inheritedstate_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+    return spec_component
+
 
 @get_spec_component.method((MUST.FolderDataset, MUST.given))
 def _get_spec_component_folderdatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
@@ -349,13 +354,13 @@ def _get_spec_component_TableDataset(spec_component_details: SpecComponentDetail
 
 
 @get_spec_component.method((MUST.EmptyTable, MUST.then))
-def _get_spec_component_EmptyTableResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
+def _get_spec_component_EmptyTable(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = TableThenSpec()
     return spec_component
 
 
 @get_spec_component.method((MUST.EmptyGraph, MUST.then))
-def _get_spec_component_EmptyGraphResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
+def _get_spec_component_EmptyGraph(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     return spec_component
