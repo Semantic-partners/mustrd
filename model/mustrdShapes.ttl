@@ -24,35 +24,60 @@ must:TestSpecShape
                      sh:class    must:Dataset ;
                      sh:minCount 1 ; ] .
 
+must:TestSpecWithInheritedDatasetShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:given/rdf:type must:InheritedDataset .
+			}
+			""" ; ] ;
+    sh:property [ sh:message "Invalid given clause: Tests using an inherited state can only have a single given clause.";
+                  sh:path     must:given ;
+                  sh:minCount 1 ;
+                  sh:maxCount 1 ; ] .
+
 
 must:UpdateTestSpecThenValidationShape
-    a          sh:NodeShape ;
-    sh:target  [ a           sh:SPARQLTarget ;
-                 sh:prefixes must: ;
-                 sh:select   """
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
 			SELECT ?this
 			WHERE {
 				?this a must:TestSpec .
 				?this must:when/must:queryType must:UpdateSparql .
 			}
 			""" ; ] ;
-    sh:message "An invalid then clause with a tabular data format has been specified for a SPARQL update test." ;
-    sh:or      ( [ sh:path     must:then ;
-                   sh:class    must:StatementsDataset ;
-                   sh:minCount 1 ; ]
-                 [ sh:path     must:then ;
-                   sh:class    must:EmptyGraph ;
-                   sh:minCount 1 ; ]
-                 [ sh:path     must:then ;
-                   sh:class    must:FileDataset ;
-                   sh:minCount 1 ; ]
-                 [ sh:path     must:then ;
-                   sh:class    must:FolderDataset ;
-                   sh:minCount 1 ; ]
-                 [ sh:path     must:then ;
-                   sh:class    must:GraphDataset ;
-                   sh:minCount 1 ; ] )
-.
+    sh:property [ sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL update test." ;
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:StatementsDataset ]
+                                [ sh:class must:EmptyGraph ]
+                                [ sh:class must:FileDataset ]
+                                [ sh:class must:FolderDataset ]
+                                [ sh:class must:GraphDataset ] ) ] .
+
+must:ConstructTestSpecThenValidationShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:ConstructSparql .
+			}
+			""" ; ] ;
+    sh:property [ sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL construct test." ;
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:StatementsDataset ]
+                                [ sh:class must:EmptyGraph ]
+                                [ sh:class must:FileDataset ]
+                                [ sh:class must:FolderDataset ]
+                                [ sh:class must:GraphDataset ] ) ] .
 
 must:UpdateTestSpecGivenValidationShape
     a          sh:NodeShape ;
@@ -65,36 +90,27 @@ must:UpdateTestSpecGivenValidationShape
 				?this must:when/must:queryType must:UpdateSparql .
 			}
 			""" ; ] ; ;
-    sh:message "An invalid given clause with an inherited dataset has be specified for a SPARQL update test." ;
+    sh:message "Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test." ;
     sh:not     [ sh:path  must:given ;
                  sh:class must:InheritedDataset ; ] .
 
 must:SelectTestSpecValidationShape
-    a         sh:NodeShape ;
-    sh:target [ a           sh:SPARQLTarget ;
-                sh:prefixes must: ;
-                sh:select   """
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
 			SELECT ?this
 			WHERE {
 				?this a must:TestSpec .
 				?this must:when/must:queryType must:SelectSparql .
 			}
 			""" ; ] ;
-    sh:message
-              "An incompatible where clause has be specified for a SPARQL select test. The format of the result should be tabular " ;
-    sh:or     ( [ sh:path     must:then ;
-                  sh:class    must:TableDataset ;
-                  sh:minCount 1 ; ]
-                [ sh:path     must:then ;
-                  sh:class    must:EmptyTable ;
-                  sh:minCount 1 ; ]
-                [ sh:path     must:then ;
-                  sh:class    must:FolderDataset ;
-                  sh:minCount 1 ; ]
-                [ sh:path     must:then ;
-                  sh:class    must:FileDataset ;
-                  sh:minCount 1 ; ] )
-.
+    sh:property [ sh:message  "Invalid then clause: The result format should be tabular for a SPARQL select test." ;
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ]
+                                [ sh:class must:FolderDataset ]
+                                [ sh:class must:FileDataset ] ) ] .
 
 must:StatementsDatasetShape
     a              sh:NodeShape ;
