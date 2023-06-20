@@ -24,6 +24,14 @@ must:TestSpecShape
                      sh:class    must:Dataset ;
                      sh:minCount 1 ; ] .
 
+must:TestSpecGivenShape
+    a              sh:NodeShape ;
+    sh:targetClass must:TestSpec ;
+    sh:message "Invalid given clause: Table datasets for givens are not currently supported." ;
+    sh:not         [ sh:path     must:given ;
+                     sh:class    must:TableDataset ;
+                     sh:minCount 1 ; ] .
+
 
 must:UpdateTestSpecThenValidationShape
     a           sh:NodeShape ;
