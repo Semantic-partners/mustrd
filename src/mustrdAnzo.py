@@ -68,7 +68,6 @@ def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict =
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     try:
-        clear_graph(triple_store)
         upload_given(triple_store, given)
         if bindings:
             when = query_with_bindings(bindings, when)
