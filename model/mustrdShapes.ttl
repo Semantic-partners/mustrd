@@ -32,6 +32,22 @@ must:TestSpecGivenShape
                      sh:class    must:TableDataset ;
                      sh:minCount 1 ; ] .
 
+must:TestSpecWithInheritedDatasetShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:given/rdf:type must:InheritedDataset .
+			}
+			""" ; ] ;
+    sh:property [ sh:message "Invalid given clause: Tests using an inherited state can only have a single given clause.";
+                  sh:path     must:given ;
+                  sh:minCount 1 ;
+                  sh:maxCount 1 ; ] .
+
 
 must:UpdateTestSpecThenValidationShape
     a           sh:NodeShape ;
