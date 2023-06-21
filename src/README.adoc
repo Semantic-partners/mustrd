@@ -40,12 +40,12 @@ Multiple given statements can be supplied and data is combined into a single dat
     must:given [ a must:FileDataset ;
                  must:file "test/data/given.ttl" . ] ;
 ----
-* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as a argument from the caller. i.e. the -g option on the command line.
+* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -g option on the command line.
 ----
     must:given [ a must:FolderDataset ;
                  must:fileName "given.ttl" ] ;
 ----
-* *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements e.g.
+* *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements. e.g.
 ----
     must:given [ a must:StatementsDataset ;
                  must:hasStatement [ a rdf:Statement ;
@@ -61,8 +61,8 @@ Multiple given statements can be supplied and data is combined into a single dat
     ] .
 ----
 === Whens
-These are the actual SPARQL query that you wish to test. It can be supplied as a string directly in the test or as a file containing the query. Only single When statements are currently supported.
-Currently, mustrd does not derive the query type from the actual query, so it is necessary to provide this in the specification. Currently supported query types are SelectSparql, ConstructSparql and UpdateSparql.
+These are the actual SPARQL queries that you wish to test. Queries can be supplied as a string directly in the test or as a file containing the query. Only single When statements are currently supported.
+Mustrd does not derive the query type from the actual query, so it is necessary to provide this in the specification. Supported query types are SelectSparql, ConstructSparql and UpdateSparql.
 
 * *TextSparqlSource* - The SPARQL query is included in the test as a (multiline) string value for the property queryText.
 e.g.
@@ -72,14 +72,14 @@ e.g.
                  must:queryType must:SelectSparql ] ;
 ----
 
-* *FileSparqlSource* - The SPARQL query is contain in a local file.
+* *FileSparqlSource* - The SPARQL query is contained in a local file.
 e.g.
 ----
     must:when  [ a must:FileSparqlSource  ;
                  must:file "test/data/construct.rq" ;
                  must:queryType must:ConstructSparql  ; ] ;
 ----
-* *FolderSparqlSource* - Similar to the file SPARQL source except that the location of the file is passed to the test specification as a argument from the caller. i.e. the -w option on the command line.
+* *FolderSparqlSource* - Similar to the file SPARQL source except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -w option on the command line.
 ----
     must:when  [ a must:FolderSparqlSource ;
                  must:fileName "construct.rq" ;
@@ -94,7 +94,7 @@ e.g.
     ];
 ----
 === Thens
-Then clauses are used to specify the expected result dataset for the test. These datasets can be specified in the same way as <<Givens>> except that an extended set of dataset types is supported. For the tabular results of SELECT queries TabularDatasets are required and again can be in file format such as CSV, or an inline table  within the specification.
+Then clauses are used to specify the expected result dataset for the test. These datasets can be specified in the same way as <<Givens>> except that an extended set of dataset types is supported. For the tabular results of SELECT queries TabularDatasets are required and again can be in file format such as CSV, or an inline table within the specification.
 * *FileDataset* - The dataset is a local file containing serialised RDF or tabular data. The formats supported are the same as those for the RDFLib Graph().parse function i.e. Turtle (.ttl), NTriples (.nt), N3 (.n3), RDF/XML (.xml) and TriX, as well as tabular formats (.csv, .xls, .xlsx).
 ----
     must:then  [ a must:FileDataset ;
@@ -104,14 +104,14 @@ Then clauses are used to specify the expected result dataset for the test. These
     must:then  [ a must:FileDataset ;
                  must:file "test/data/thenSuccess.nt" ] .
 ----
-* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -g option on the command line.
+* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -t option on the command line.
 ----
-    must:given [ a must:FolderDataset ;
-                 must:fileName "given.ttl" ] ;
+    must:then [ a must:FolderDataset ;
+                 must:fileName "then.ttl" ] ;
 ----
 * *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements e.g.
 ----
-    must:given [ a must:StatementsDataset ;
+    must:then [ a must:StatementsDataset ;
                  must:hasStatement [ a rdf:Statement ;
                                      rdf:subject   test-data:sub ;
                                      rdf:predicate test-data:pred ;
@@ -183,7 +183,7 @@ must:GraphDbConfig1  a must:GraphDbConfig ;
         must:inputGraph "http://localhost:7200/test-graph" ;
         must:repository "mustrd" .
 ----
-The triplestore credentials are held in a separate TOML file so that configurations can be shared  without sharing credentials.
+The triplestore credentials are held in a separate TOML file so that configurations can be shared without sharing credentials.
 ----
 ["https://mustrd.com/model/GraphDbConfig1"]
 "username"="<username>"
