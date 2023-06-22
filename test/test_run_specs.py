@@ -86,5 +86,7 @@ class TestRunSpecs:
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_multiple_givens_for_inherited_state),  MUST.RdfLib,
                         message='Invalid given clause: Tests using an inherited state can only have a single given clause. File: invalid_select_spec_multiple_givens_for_inherited_state.ttl'),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_statement_dataset_result), MUST.RdfLib,
-                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl")
+                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl"),
+            SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_table_dataset_given), MUST.RdfLib,
+                        message='Invalid given clause: Table datasets for givens are not currently supported. File: invalid_select_spec_with_table_dataset_given.ttl')
         ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"

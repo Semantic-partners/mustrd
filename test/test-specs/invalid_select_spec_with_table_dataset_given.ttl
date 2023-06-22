@@ -1,0 +1,31 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# Table datasets for givens are not currently supported
+test-data:an_invalid_select_scenario_with_table_dataset_given
+    a          must:TestSpec ;
+    must:given  [ a must:TableDataset ;
+                 must:hasRow [
+                     must:hasBinding  [ must:variable "s" ;
+                                        must:boundValue  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj ; ] ;
+                             ] ;
+                ] ;
+    must:when  [ a must:TextSparqlSource ;
+                                   must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
+                 must:queryType must:SelectSparql   ; ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [
+                     must:hasBinding  [ must:variable "s" ;
+                                        must:boundValue  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj ; ] ;
+                             ] ;
+               ] .
