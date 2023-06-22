@@ -3,14 +3,199 @@
 
 == Try it out
 
-Run these commands from the project root. Ensure you have python3 installed.
+Ensure you have python3 installed, before you begin.
+To install the necessary dependencies, run the following command from the project root.
 
 `pip3 install  -r requirements.txt`
 
-`python3 src/run.py -v -p "test/test-specs"`
+Run the following command to execute the accompanying tests specifications.
+
+`python3 src/run.py -v -p "test/test-specs" -g "test/data" -w "test/data" -t "test/data"`
+
+You will see some warnings. Do not worry, some tests specifications are invalid and intentionally skipped.
+
+For a brief explanation of the meaning of these options use the help option.
+
+`python3 src/run.py --help`
 
 == Run the tests
 
 Run `pytest` from the project root.
+
+== Creating your own Test Specifications
+
+If you have got this far then you are probably ready to create your own specifications to test your application SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure one or more alternatives. The instructions for this are included in <<Configuring external Triplestores>> below.
+
+=== Givens
+These are used to specify the dataset against which the SPARQL statement will be run.
+They can be generated from external sources such as an existing graph, or a file or folder containing serialised RDF. It is also possible to specify the dataset as reified RDF directly in the test step. Currently tabular data sources such as csv files or TableDatasets are not supported.
+Multiple given statements can be supplied and data is combined into a single dataset for the test.
+
+* *InheritedDataset* - This is where no data is specified but the existing data in the target graph is retained rather than being replaced with a defined set. This can be used to chain tests together or to perform checks on application data.
+----
+    must:given [ a must:InheritedDataset ] ;
+----
+* *FileDataset* - The dataset is a local file containing serialised RDF. The formats supported are the same as those for the RDFLib Graph().parse function i.e. Turtle (.ttl), NTriples (.nt), N3 (.n3), RDF/XML (.xml) and TriX. The data is used to replace any existing content in the target graph for the test.
+----
+    must:given [ a must:FileDataset ;
+                 must:file "test/data/given.ttl" . ] ;
+----
+* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -g option on the command line.
+----
+    must:given [ a must:FolderDataset ;
+                 must:fileName "given.ttl" ] ;
+----
+* *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements. e.g.
+----
+    must:given [ a must:StatementsDataset ;
+                 must:hasStatement [ a rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ; ] ;
+----
+* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external Triplestores>>.
+----
+    must:given [ a must:AnzoGraphmartDataset ;
+                 must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
+                 must:layer "http://cambridgesemantics.com/Layer/33b97531d7e148748b75e4e3c6bbf164";
+    ] .
+----
+=== Whens
+These are the actual SPARQL queries that you wish to test. Queries can be supplied as a string directly in the test or as a file containing the query. Only single When statements are currently supported.
+Mustrd does not derive the query type from the actual query, so it is necessary to provide this in the specification. Supported query types are SelectSparql, ConstructSparql and UpdateSparql.
+
+* *TextSparqlSource* - The SPARQL query is included in the test as a (multiline) string value for the property queryText.
+e.g.
+----
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText "SELECT ?s ?p ?o WHERE { ?s ?p ?o }" ;
+                 must:queryType must:SelectSparql ] ;
+----
+
+* *FileSparqlSource* - The SPARQL query is contained in a local file.
+e.g.
+----
+    must:when  [ a must:FileSparqlSource  ;
+                 must:file "test/data/construct.rq" ;
+                 must:queryType must:ConstructSparql  ; ] ;
+----
+* *FolderSparqlSource* - Similar to the file SPARQL source except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -w option on the command line.
+----
+    must:when  [ a must:FolderSparqlSource ;
+                 must:fileName "construct.rq" ;
+                 must:queryType must:ConstructSparql  ; ] ;
+----
+* *AnzoQueryBuilderDataset* - The query is saved in the Query Builder of an Anzo instance and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external Triplestores>>.
+----
+   must:when  [ a must:AnzoQueryBuilderDataset ;
+                must:queryFolder "Mustrd";
+                must:queryName "mustrd-construct" ;
+                must:queryType must:ConstructSparql
+    ];
+----
+=== Thens
+Then clauses are used to specify the expected result dataset for the test. These datasets can be specified in the same way as <<Givens>> except that an extended set of dataset types is supported. For the tabular results of SELECT queries TabularDatasets are required and again can be in file format such as CSV, or an inline table within the specification.
+* *FileDataset* - The dataset is a local file containing serialised RDF or tabular data. The formats supported are the same as those for the RDFLib Graph().parse function i.e. Turtle (.ttl), NTriples (.nt), N3 (.n3), RDF/XML (.xml) and TriX, as well as tabular formats (.csv, .xls, .xlsx).
+----
+    must:then  [ a must:FileDataset ;
+                 must:file "test/data/thenSuccess.xlsx" ] .
+----
+----
+    must:then  [ a must:FileDataset ;
+                 must:file "test/data/thenSuccess.nt" ] .
+----
+* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -t option on the command line.
+----
+    must:then [ a must:FolderDataset ;
+                 must:fileName "then.ttl" ] ;
+----
+* *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements e.g.
+----
+    must:then [ a must:StatementsDataset ;
+                 must:hasStatement [ a rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ; ] ;
+----
+* *TableDataset* - The contents of the table defined in RDF syntax within the specification.
+E.g. a table dataset consisting of a single row and three columns.
+----
+    must:then  [ a must:TableDataset ;
+                   must:hasRow [ must:hasBinding[
+                        must:variable "s" ;
+                        must:boundValue  test-data:sub ; ],
+                      [ must:variable "p" ;
+                        must:boundValue  test-data:pred ; ],
+                      [ must:variable "o" ;
+                        must:boundValue  test-data:obj ; ] ;
+               ] ; ] .
+----
+* *Ordered TableDataset* -  This is an extension of the TableDataset which allows the row order of the dataset to be specified using the SHACL order property to support the ORDER BY clause in SPARQL SELECT queries
+E.g. A table dataset consisting of two ordered rows and three columns.
+----
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ sh:order 1 ;
+                             must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj1 ; ] ; ] ,
+                            [ sh:order 2 ;
+                             must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:sub2 ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred2 ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj2 ; ] ; ] ;
+               ] .
+----
+* *EmptyTable* - This is used to indicate that we are expecting an empty result from a SPARQL SELECT query.
+----
+    must:then  [ a must:EmptyTable ] .
+----
+* *EmptyGraph* - Similar to EmptyTable but used to indicate that we are expecting an empty graph as a result from a SPARQL query.
+----
+    must:then  [ a must:EmptyGraph ] .
+----
+* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external Triplestores>>.
+----
+    must:then [ a must:AnzoGraphmartDataset ;
+                must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
+                must:layer "http://cambridgesemantics.com/Layer/33b97531d7e148748b75e4e3c6bbf164";
+        ] .
+----
+== Configuring external triplestores
+The configuration file for external triplestores can be located outside of the project root as it is specified as an argument to the mustard module or as the -c option on the commandline when running run.py.
+
+It is anticipated that the external triplestore is running as mustrd is not configured to start them.
+
+Currently, the supported external triplestores are GraphDB and Anzo.
+
+The configuration file should be serialised RDF. An example in Turtle format is included below for GraphDB. For Anzo the *must:repository* value is replaced with a *must:gqeURI*.
+----
+@prefix must:      <https://mustrd.com/model/> .
+must:GraphDbConfig1  a must:GraphDbConfig ;
+        must:url "http://localhost";
+        must:port "7200";
+        must:username "test/triplestore_config/tripleStoreCredentials.toml" ;
+        must:password "test/triplestore_config/tripleStoreCredentials.toml" ;
+        must:inputGraph "http://localhost:7200/test-graph" ;
+        must:repository "mustrd" .
+----
+The triplestore credentials are held in a separate TOML file so that configurations can be shared without sharing credentials.
+----
+["https://mustrd.com/model/GraphDbConfig1"]
+"username"="<username>"
+"password"="<password>"
+----
+
+== Additional Notes for Developers
+Mustrd remains very much under development. It is anticipated that additional functionality and triplestore support will be added over time. The project uses https://python-poetry.org/docs/[Poetry] to manage dependencies so it will be necessary to have this installed to contribute towards the project. The link contains instructions on how to install and use this.
+As the project is actually built from the requirements.txt file at the project root, it is necessary to export dependencies from poetry to this file before committing and pushing changes to the repository, using the following command.
+
+`poetry export -f requirements.txt --without-hashes > requirements.txt`
+
+
 
 // end::body[]
