@@ -211,8 +211,8 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
     return valid_spec_uris, spec_graph, invalid_specs
 
 
-def run_specs(spec_uris: list[URIRef], spec_graph: Graph, results: list[SpecResult], triple_stores: list[URIRef],
-              given_path: Path = None, when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
+def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[URIRef],
+              given_path: Path = None, when_path: Path = None, then_path: Path = None) -> List[SpecResult]:
     specs = []
     try:
         for triple_store in triple_stores:
@@ -429,7 +429,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     return triple_stores
 
 
-def check_triple_store_params(triple_store: dict, required_params: list[str]):
+def check_triple_store_params(triple_store: dict, required_params: List[str]):
     missing_params = [param for param in required_params if triple_store.get(param) is None]
     if missing_params:
         raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
@@ -721,7 +721,7 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     return empty_copy
 
 
-def review_results(results: list[SpecResult], verbose: bool) -> None:
+def review_results(results: List[SpecResult], verbose: bool) -> None:
     print("===== Result Overview =====")
     # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))
