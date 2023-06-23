@@ -46,7 +46,7 @@ import requests
 import json
 from pandas import DataFrame
 
-from spec_component import SpecComponent, parse_spec_component
+from spec_component import SpecComponent, parse_spec_component, WhenSpec, ThenSpec
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
 from colorama import Fore, Style
@@ -65,8 +65,8 @@ class Specification:
     spec_uri: URIRef
     triple_store: dict
     given: Graph
-    when: SpecComponent
-    then: SpecComponent
+    when: WhenSpec
+    then: ThenSpec
 
 
 @dataclass

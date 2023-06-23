@@ -86,7 +86,7 @@ def parse_spec_component(subject: URIRef,
                          predicate: URIRef,
                          spec_graph: Graph,
                          folder_location: Path,
-                         mustrd_triple_store: dict) -> SpecComponent:
+                         mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
     # all_data_source_types = []
     spec_components = []
@@ -211,7 +211,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = Path(os.path.join(spec_component_details.folder_location, file_name))
+    path = Path(os.path.join(str(spec_component_details.folder_location), str(file_name)))
     try:
         spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     except ParserError as e:
@@ -227,7 +227,7 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = Path(os.path.join(spec_component_details.folder_location, file_name))
+    path = Path(os.path.join(str(spec_component_details.folder_location), str(file_name)))
     spec_component.value = get_spec_component_from_file(path)
 
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
@@ -241,8 +241,8 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
+    path = Path(os.path.join(str(spec_component_details.folder_location), str(file_name)))
 
-    path = Path(os.path.join(spec_component_details.folder_location, file_name))
     return get_then_from_file(path, spec_component)
 
 
@@ -277,8 +277,8 @@ def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.file))
+    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                 predicate=MUST.file)))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
     try:
@@ -293,8 +293,8 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.file))
+    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                 predicate=MUST.file)))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
     spec_component.value = get_spec_component_from_file(path)
@@ -308,8 +308,8 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
 def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.file))
+    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                 predicate=MUST.file)))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
     return get_then_from_file(path, spec_component)
@@ -339,9 +339,9 @@ def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get specComponent with http GET protocol
-    spec_component.value = requests.get(
+    spec_component.value = requests.get(str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                predicate=MUST.dataSourceUrl)).content
+                                                predicate=MUST.dataSourceUrl)).content)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
@@ -432,7 +432,7 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-def init_spec_component(predicate: URIRef) -> SpecComponent:
+def init_spec_component(predicate: URIRef) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
