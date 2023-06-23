@@ -23,16 +23,13 @@ SOFTWARE.
 """
 
 import urllib.parse
-import re
-
 import requests
-from pyparsing import ParseException
-from rdflib import Graph
-from requests import ConnectionError, HTTPError, RequestException
+from rdflib import Graph, Literal
+from requests import ConnectionError, HTTPError, RequestException, Response
 
 
 # https://github.com/Semantic-partners/mustrd/issues/72
-def manage_graphdb_response(response) -> str:
+def manage_graphdb_response(response: Response) -> str:
     content_string = response.content.decode("utf-8")
     if response.status_code == 200:
         return content_string
@@ -45,14 +42,15 @@ def manage_graphdb_response(response) -> str:
     else:
         raise RequestException(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
 
-        
+
 def upload_given(triple_store: dict, given: Graph):
     if given:
         try:
             graph = "default"
             if triple_store['input_graph']:
                 graph = urllib.parse.urlencode({'graph': triple_store['input_graph']})
-            url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/rdf-graphs/service?{graph}"
+            url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}" \
+                  f"/rdf-graphs/service?{graph}"
             # graph store PUT drop silently the graph or default and upload the payload
             # https://www.w3.org/TR/sparql11-http-rdf-update/#http-put
             manage_graphdb_response(requests.put(url=url,
@@ -63,10 +61,10 @@ def upload_given(triple_store: dict, given: Graph):
             raise
 
 
-def parse_bindings(bindings: dict = None):
-    return None if not bindings else {f"${k}" : str(v.n3()) for k, v in bindings.items()}
+def parse_bindings(bindings: dict = None) -> dict:
+    return None if not bindings else {f"${k}": str(v.n3()) for k, v in bindings.items()}
 
-  
+
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     upload_given(triple_store, given)
     return post_query(triple_store, when, "application/sparql-results+json", parse_bindings(bindings))
@@ -76,35 +74,45 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
     upload_given(triple_store, given)
     return Graph().parse(data=post_query(triple_store, when, "text/turtle", parse_bindings(bindings)))
 
-  
+
 def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     upload_given(triple_store, given)
     post_update_query(triple_store, when, parse_bindings(bindings))
-    return  Graph().parse(data=post_query(triple_store, "CONSTRUCT {?s ?p ?o} where { ?s ?p ?o }", 'text/turtle'))
+    return Graph().parse(data=post_query(triple_store, "CONSTRUCT {?s ?p ?o} where { ?s ?p ?o }", 'text/turtle'))
 
-  
-def post_update_query(triple_store: dict, query: str, params: dict = None):
+
+def post_update_query(triple_store: dict, query: str, params: dict = None) -> str:
     params = add_graph_to_params(params, triple_store["input_graph"])
     try:
-        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
-                                                    data = query, params=params, auth=(triple_store['username'], triple_store['password']), headers={'Content-Type': 'application/sparql-update'}))
+        return manage_graphdb_response(requests.post(
+            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
+            data=query,
+            params=params,
+            auth=(triple_store['username'], triple_store['password']),
+            headers={'Content-Type': 'application/sparql-update'}))
     except (ConnectionError, OSError):
         raise
 
-def post_query(triple_store: dict, query: str, accept: str, params: dict = None):
+
+def post_query(triple_store: dict, query: str, accept: str, params: dict = None) -> str:
     headers = {
         'Content-Type': 'application/sparql-query',
         'Accept': accept
     }
     params = add_graph_to_params(params, triple_store["input_graph"])
     try:
-        return manage_graphdb_response(requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
-                                                    data = query, params=params, auth=(triple_store['username'], triple_store['password']), headers=headers))
+        return manage_graphdb_response(
+            requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+                          data=query,
+                          params=params,
+                          auth=(triple_store['username'], triple_store['password']),
+                          headers=headers))
     except (ConnectionError, OSError):
         raise
 
-def add_graph_to_params(params, graph):
-    graph = graph or "http://rdf4j.org/schema/rdf4j#nil" 
+
+def add_graph_to_params(params: dict, graph: Literal) -> dict:
+    graph = graph or "http://rdf4j.org/schema/rdf4j#nil"
     if params:
         params['default-graph-uri'] = graph
         params['using-graph-uri'] = graph
@@ -116,5 +124,5 @@ def add_graph_to_params(params, graph):
             'using-graph-uri': graph,
             'remove-graph-uri': graph,
             'insert-graph-uri': graph
-            }
+        }
     return params

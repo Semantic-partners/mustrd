@@ -77,7 +77,8 @@ must:ConstructTestSpecThenValidationShape
                                 [ sh:class must:EmptyGraph ]
                                 [ sh:class must:FileDataset ]
                                 [ sh:class must:FolderDataset ]
-                                [ sh:class must:GraphDataset ] ) ] .
+                                [ sh:class must:GraphDataset ]
+                                [ sh:class must:AnzoGraphmartDataset ]) ] .
 
 must:UpdateTestSpecGivenValidationShape
     a          sh:NodeShape ;

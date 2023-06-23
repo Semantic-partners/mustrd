@@ -3,9 +3,13 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-#TODO: Fix this test so that the sparql binding makes a difference to the result
 test-data:anzo_construct_graphmart
     a          must:TestSpec ;
+    must:given [ a must:StatementsDataset ;
+                   must:hasStatement [ a rdf:Statement ;
+                                       rdf:subject   test-data:sub ;
+                                       rdf:predicate test-data:pred ;
+                                       rdf:object    "hello world" ; ] ; ] ;
     must:given [ a must:FileDataset ;
                 must:file "test/anzotest/data/given.ttl"
     ];
@@ -15,6 +19,6 @@ test-data:anzo_construct_graphmart
                                  must:boundValue  "hello world" ; ] ;
                  must:queryType must:ConstructSparql    ; ] ;
     must:then [ a must:AnzoGraphmartDataset ;
-                    must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
-                    must:layer "http://cambridgesemantics.com/Layer/33b97531d7e148748b75e4e3c6bbf164";
+                    must:graphmart <http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a>;
+                    must:layer <http://cambridgesemantics.com/Layer/33b97531d7e148748b75e4e3c6bbf164>;
     ] .
