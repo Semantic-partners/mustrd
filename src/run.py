@@ -86,7 +86,7 @@ def main(argv):
         validate_specs(path_under_test, triple_stores, shacl_graph, ont_graph)
 
     results = \
-        run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, given_path, when_path, then_path)
+        run_specs(valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, given_path, when_path, then_path)
 
     review_results(results, verbose)
 

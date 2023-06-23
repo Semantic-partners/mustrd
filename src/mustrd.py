@@ -211,7 +211,7 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
     return valid_spec_uris, spec_graph, invalid_specs
 
 
-def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[URIRef],
+def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[dict],
               given_path: Path = None, when_path: Path = None, then_path: Path = None) -> List[SpecResult]:
     specs = []
     try:

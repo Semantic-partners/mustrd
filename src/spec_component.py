@@ -26,12 +26,13 @@ import os
 from dataclasses import dataclass
 from itertools import groupby
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Type
 
 import pandas
 import requests
-from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util, BNode
+from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
 from rdflib.exceptions import ParserError
+from rdflib.term import Node
 
 import logger_setup
 from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder
@@ -40,6 +41,7 @@ from utils import get_project_root
 from multimethods import MultiMethod, Default
 
 log = logger_setup.setup_logger(__name__)
+
 
 @dataclass
 class SpecComponent:
@@ -75,8 +77,8 @@ class SpecComponentDetails:
     predicate: URIRef
     spec_graph: Graph
     mustrd_triple_store: dict
-    spec_component_node: URIRef
-    data_source_type: URIRef
+    spec_component_node: Node
+    data_source_type: Node
     folder_location: Path
 
 
@@ -110,7 +112,7 @@ def parse_spec_component(subject: URIRef,
     return combine_specs(spec_components)
 
 
-def get_spec_component_type(spec_components: List[SpecComponent]) -> SpecComponent:
+def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
     # Get the type of the first object in the list
     spec_type = type(spec_components[0])
 
@@ -124,7 +126,7 @@ def get_spec_component_type(spec_components: List[SpecComponent]) -> SpecCompone
     return spec_type
 
 
-def combine_specs_dispatch(spec_components: List[SpecComponent]) -> SpecComponent:
+def combine_specs_dispatch(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
     spec_type = get_spec_component_type(spec_components)
     return spec_type
 
@@ -133,7 +135,7 @@ combine_specs = MultiMethod("combine_specs", combine_specs_dispatch)
 
 
 @combine_specs.method(GivenSpec)
-def _combine_given_specs(spec_components: List[SpecComponent]) -> GivenSpec:
+def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
     if len(spec_components) == 1:
         return spec_components[0]
     else:
@@ -146,7 +148,7 @@ def _combine_given_specs(spec_components: List[SpecComponent]) -> GivenSpec:
 
 
 @combine_specs.method(WhenSpec)
-def _combine_when_specs(spec_components: List[SpecComponent]) -> WhenSpec:
+def _combine_when_specs(spec_components: List[WhenSpec]) -> WhenSpec:
     if len(spec_components) != 1:
         raise ValueError(f"Parsing of multiple components of {MUST.when} not implemented")
     spec_component = spec_components[0]
@@ -154,7 +156,7 @@ def _combine_when_specs(spec_components: List[SpecComponent]) -> WhenSpec:
 
 
 @combine_specs.method(ThenSpec)
-def _combine_then_specs(spec_components: List[SpecComponent]) -> ThenSpec:
+def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
     if len(spec_components) == 1:
         return spec_components[0]
     else:
@@ -167,7 +169,7 @@ def _combine_then_specs(spec_components: List[SpecComponent]) -> ThenSpec:
 
 
 @combine_specs.method(TableThenSpec)
-def _combine_table_then_specs(spec_components: List[SpecComponent]) -> TableThenSpec:
+def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThenSpec:
     if len(spec_components) != 1:
         raise ValueError(f"Parsing of multiple components of MUST.then for tables not implemented")
     return spec_components[0]
@@ -179,11 +181,11 @@ def _combine_specs_default(spec_components: List[SpecComponent]):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/99
-def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) -> Tuple[URIRef, URIRef]:
+def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) -> Tuple[Node, URIRef]:
     return spec_component_details.data_source_type, spec_component_details.predicate
 
 
-def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: BNode) -> List[URIRef]:
+def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: Node) -> List[Node]:
     data_source_types = []
     for data_source_type in spec_graph.objects(subject=source_node, predicate=RDF.type):
         data_source_types.append(data_source_type)
@@ -194,6 +196,7 @@ def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph,
 
 
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
+
 
 @get_spec_component.method((MUST.InheritedDataset, MUST.given))
 def _get_spec_component_inheritedstate_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
@@ -206,7 +209,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.fileName)
+                                                        predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     try:
@@ -222,7 +225,7 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.fileName)
+                                                        predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     spec_component.value = get_spec_component_from_file(path)
@@ -233,11 +236,11 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
 
 
 @get_spec_component.method((MUST.FolderDataset, MUST.then))
-def _get_spec_component_folderdatasource_then(spec_component_details: SpecComponentDetails) -> GivenSpec:
+def _get_spec_component_folderdatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.fileName)
+                                                        predicate=MUST.fileName)
 
     path = Path(os.path.join(spec_component_details.folder_location, file_name))
     return get_then_from_file(path, spec_component)
@@ -255,7 +258,7 @@ def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         return then_spec
     else:
         try:
-            file_format = util.guess_format(path)
+            file_format = util.guess_format(str(path))
         except AttributeError:
             raise ValueError(f"Unsupported file format: {path.suffix}")
 
@@ -290,7 +293,8 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.file))
+    file_path = Path(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.file))
     project_root = get_project_root()
     path = Path(os.path.join(project_root, file_path))
     spec_component.value = get_spec_component_from_file(path)
@@ -317,7 +321,8 @@ def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDe
 
     # Get specComponent directly from config file (in text string)
     spec_component.value = str(
-        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.queryText))
+        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                predicate=MUST.queryText))
 
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
@@ -335,7 +340,8 @@ def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails
 
     # Get specComponent with http GET protocol
     spec_component.value = requests.get(
-        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.dataSourceUrl)).content
+        spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                predicate=MUST.dataSourceUrl)).content
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
@@ -383,10 +389,13 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
 
     if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
         # Get GIVEN or THEN from anzo graphmart
-        graphmart = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.graphmart)
-        layer = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node, predicate=MUST.layer)
+        graphmart = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                            predicate=MUST.graphmart)
+        layer = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                        predicate=MUST.layer)
         spec_component.value = get_spec_component_from_graphmart(
-            triple_store=spec_component_details.mustrd_triple_store, graphmart=graphmart,
+            triple_store=spec_component_details.mustrd_triple_store,
+            graphmart=graphmart,
             layer=layer)
     else:
         raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartDataset}")
@@ -436,12 +445,12 @@ def init_spec_component(predicate: URIRef) -> SpecComponent:
     return spec_component
 
 
-def get_query_type(predicate: URIRef, spec_graph: Graph, spec_component: SpecComponent, spec_component_node: BNode):
+def get_query_type(predicate: URIRef, spec_graph: Graph, spec_component: SpecComponent, spec_component_node: Node):
     if predicate == URIRef('https://mustrd.com/model/when'):
         spec_component.queryType = spec_graph.value(subject=spec_component_node, predicate=MUST.queryType)
 
 
-def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> List[BNode]:
+def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> List[Node]:
     spec_component_nodes = []
     for spec_component_node in spec_graph.objects(subject=subject, predicate=predicate):
         spec_component_nodes.append(spec_component_node)
