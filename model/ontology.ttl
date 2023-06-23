@@ -414,6 +414,13 @@ sh:order rdf:type owl:DatatypeProperty ;
                   rdfs:label "TextSparqlSource" .
 
 
+### https://mustrd.com/model/AnzoQueryBuilderSparqlSource
+:AnzoQueryBuilderSparqlSource rdf:type owl:Class ;
+                         rdfs:subClassOf :SparqlSource ;
+                         rdfs:isDefinedBy : ;
+                         rdfs:label "AnzoQueryBuilderSparqlSource" .
+
+
 ###  https://mustrd.com/model/Then
 :Then rdf:type owl:Class ;
       rdfs:subClassOf :Testspecsection ;

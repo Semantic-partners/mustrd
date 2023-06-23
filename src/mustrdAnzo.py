@@ -24,7 +24,7 @@ SOFTWARE.
 
 import requests
 from pyanzo import AnzoClient
-from rdflib import Graph
+from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException
 from bs4 import BeautifulSoup
 
@@ -84,15 +84,16 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
 
 
 # Get Given or then from the content of a graphmart
-def get_spec_component_from_graphmart(triple_store: dict, graphmart, layer=None):
+def get_spec_component_from_graphmart(triple_store: dict, graphmart: URIRef, layer: URIRef = None) -> ConjunctiveGraph:
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
-    return anzo_client.query_graphmart(graphmart=graphmart, data_layers=layer,
+    return anzo_client.query_graphmart(graphmart=graphmart,
+                                       data_layers=layer,
                                        query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
                                        skip_cache=True).as_quad_store().as_rdflib_graph()
 
 
-def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
+def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_name: Literal) -> str:
     query = f"""SELECT ?query WHERE {{
         graph ?queryFolder {{
             ?bookmark a <http://www.cambridgesemantics.com/ontologies/QueryPlayground#QueryBookmark>;
@@ -112,7 +113,7 @@ def get_query_from_querybuilder(triple_store: dict, folder_name, query_name):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/102
-def get_query_from_step(triple_store: dict, query_step_uri):
+def get_query_from_step(triple_store: dict, query_step_uri: URIRef):
     query = f"""SELECT ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
         graph ?stepUri {{

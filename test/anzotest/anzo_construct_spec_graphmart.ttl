@@ -9,10 +9,7 @@ test-data:anzo_construct_graphmart
                    must:hasStatement [ a rdf:Statement ;
                                        rdf:subject   test-data:sub ;
                                        rdf:predicate test-data:pred ;
-                                       rdf:object    "hello world" ; ] ; ] ;
-    must:given [ a must:FileDataset ;
-                must:file "test/anzotest/data/given.ttl"
-    ];
+                                       rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryText  "construct { ?s ?p ?o } where { ?s ?p ?o }" ;
                  must:hasBinding [ must:variable "o" ;

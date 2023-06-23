@@ -394,8 +394,8 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
     return spec_component
 
 
-@get_spec_component.method((MUST.AnzoQueryBuilderDataset, MUST.when))
-def _get_spec_component_AnzoQueryBuilderDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
+@get_spec_component.method((MUST.AnzoQueryBuilderSparqlSource, MUST.when))
+def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get WHEN specComponent from query builder
@@ -409,7 +409,7 @@ def _get_spec_component_AnzoQueryBuilderDataset(spec_component_details: SpecComp
                                                            query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderDataset}")
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderSparqlSource}")
 
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
