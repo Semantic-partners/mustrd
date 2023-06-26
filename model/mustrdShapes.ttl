@@ -60,13 +60,11 @@ must:UpdateTestSpecThenValidationShape
 				?this must:when/must:queryType must:UpdateSparql .
 			}
 			""" ; ] ;
-    sh:property [ sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL update test." ;
+    sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL update test." ;
+    sh:not [
                   sh:path     must:then ;
-                  sh:or       ( [ sh:class must:StatementsDataset ]
-                                [ sh:class must:EmptyGraph ]
-                                [ sh:class must:FileDataset ]
-                                [ sh:class must:FolderDataset ]
-                                [ sh:class must:GraphDataset ] ) ] .
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ] ) ] .
 
 must:ConstructTestSpecThenValidationShape
     a           sh:NodeShape ;
@@ -79,13 +77,11 @@ must:ConstructTestSpecThenValidationShape
 				?this must:when/must:queryType must:ConstructSparql .
 			}
 			""" ; ] ;
-    sh:property [ sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL construct test." ;
+    sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL construct test." ;
+    sh:not [
                   sh:path     must:then ;
-                  sh:or       ( [ sh:class must:StatementsDataset ]
-                                [ sh:class must:EmptyGraph ]
-                                [ sh:class must:FileDataset ]
-                                [ sh:class must:FolderDataset ]
-                                [ sh:class must:GraphDataset ] ) ] .
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ] ) ] .
 
 must:UpdateTestSpecGivenValidationShape
     a          sh:NodeShape ;

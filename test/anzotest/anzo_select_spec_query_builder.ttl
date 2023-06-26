@@ -9,7 +9,7 @@ test-data:anzo_select_query_builder
                 must:file "test/anzotest/data/given.ttl"
     ];
 
-    must:when  [ a must:AnzoQueryBuilderDataset ;
+    must:when  [ a must:AnzoQueryBuilderSparqlSource ;
                     must:queryFolder "Mustrd";
                     must:queryName "mustrd-select" ;
                     must:queryType must:SelectSparql
