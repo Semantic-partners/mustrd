@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import os
-from typing import Tuple
+from typing import Tuple, List
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -35,7 +35,7 @@ from pyparsing import ParseException
 from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
-from rdflib import Graph, URIRef, RDF, XSD, SH
+from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -46,7 +46,7 @@ import requests
 import json
 from pandas import DataFrame
 
-from spec_component import SpecComponent, parse_spec_component
+from spec_component import parse_spec_component, WhenSpec, ThenSpec
 from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
 from utils import get_project_root
 from colorama import Fore, Style
@@ -65,8 +65,8 @@ class Specification:
     spec_uri: URIRef
     triple_store: dict
     given: Graph
-    when: SpecComponent
-    then: SpecComponent
+    when: WhenSpec
+    then: ThenSpec
 
 
 @dataclass
@@ -148,10 +148,10 @@ class UpdateSparqlQuery(SparqlAction):
     pass
 
 
-#https://github.com/Semantic-partners/mustrd/issues/19
+# https://github.com/Semantic-partners/mustrd/issues/19
 
-def validate_specs(spec_path: Path, triple_stores: list, shacl_graph: Graph, ont_graph: Graph) -> Tuple[
-                                                                                                    list, Graph, list]:
+def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont_graph: Graph)\
+        -> Tuple[List, Graph, List]:
     # os.chdir(spec_path)
     spec_graph = Graph()
     subject_uris = set()
@@ -211,8 +211,8 @@ def validate_specs(spec_path: Path, triple_stores: list, shacl_graph: Graph, ont
     return valid_spec_uris, spec_graph, invalid_specs
 
 
-def run_specs(spec_uris, spec_graph, results, triple_stores, given_path: Path = None,
-              when_path: Path = None, then_path: Path = None) -> list[SpecResult]:
+def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[dict],
+              given_path: Path = None, when_path: Path = None, then_path: Path = None) -> List[SpecResult]:
     specs = []
     try:
         for triple_store in triple_stores:
@@ -366,7 +366,7 @@ def is_json(myjson: str) -> bool:
     return True
 
 
-def get_triple_stores(triple_store_graph: Graph) -> list:
+def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
@@ -429,14 +429,14 @@ def get_triple_stores(triple_store_graph: Graph) -> list:
     return triple_stores
 
 
-def check_triple_store_params(triple_store, required_params):
+def check_triple_store_params(triple_store: dict, required_params: List[str]):
     missing_params = [param for param in required_params if triple_store.get(param) is None]
     if missing_params:
         raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
                          f"Missing required parameter(s): {', '.join(missing_params)}.")
 
 
-def get_credential_from_file(triple_store_name, credential, config_path: str) -> str:
+def get_credential_from_file(triple_store_name: URIRef, credential: str, config_path: Literal) -> str:
     if config_path is None:
         raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
                          f"Missing required parameter: {credential}.")
@@ -624,7 +624,7 @@ def run_update_spec(spec_uri: URIRef,
         return SpecSkipped(spec_uri, triple_store["type"], ex)
 
 
-def graph_comparison(expected_graph, actual_graph) -> GraphComparison:
+def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
     diff = graph_diff(expected_graph, actual_graph)
     in_both = diff[0]
     in_expected = diff[1]
@@ -721,7 +721,7 @@ def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.Da
     return empty_copy
 
 
-def review_results(results: list[SpecResult], verbose: bool) -> None:
+def review_results(results: List[SpecResult], verbose: bool) -> None:
     print("===== Result Overview =====")
     # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))

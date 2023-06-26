@@ -21,9 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
 from multimethods import MultiMethod, Default
-from rdflib import Graph
+from rdflib import Graph, URIRef
 
 import logger_setup
 from namespace import MUST
@@ -40,7 +39,7 @@ from mustrdRdfLib import execute_update as execute_rdflib_update
 log = logger_setup.setup_logger(__name__)
 
 
-def dispatch_construct(triple_store: dict, given: Graph, when: str, bindings: dict):
+def dispatch_construct(triple_store: dict, given: Graph, when: str, bindings: dict) -> URIRef:
     to = triple_store["type"]
     log.info(f"dispatch_construct to triple store {to}")
     return to
@@ -69,7 +68,7 @@ def execute_construct_default(triple_store: dict, given: Graph, when: str, bindi
     raise NotImplementedError(f"SPARQL CONSTRUCT not implemented for {triple_store['type']}")
 
 
-def dispatch_select(triple_store: dict, given: Graph, when: str, bindings: dict):
+def dispatch_select(triple_store: dict, given: Graph, when: str, bindings: dict) -> URIRef:
     to = triple_store["type"]
     log.info(f"dispatch_select to triple store {to}")
     return to
@@ -98,7 +97,7 @@ def execute_select_default(triple_store: dict, given: Graph, when: str, bindings
     raise NotImplementedError(f"SPARQL SELECT not implemented for {triple_store['type']}")
 
 
-def dispatch_update(triple_store: dict, given: Graph, when: str, bindings: dict):
+def dispatch_update(triple_store: dict, given: Graph, when: str, bindings: dict) -> URIRef:
     to = triple_store["type"]
     log.info(f"dispatch_update to triple store {to}")
     return to
@@ -111,9 +110,11 @@ execute_update_spec = MultiMethod('execute_update_spec', dispatch_update)
 def execute_update_rdflib(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_rdflib_update(triple_store, given, when, bindings)
 
+
 @execute_update_spec.method(MUST.GraphDb)
 def execute_update_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     return execute_graphdb_update(triple_store, given, when, bindings)
+
 
 @execute_update_spec.method(Default)
 def execute_update_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):

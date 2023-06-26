@@ -35,7 +35,7 @@ from utils import get_project_root
 log = logger_setup.setup_logger(__name__)
 
 
-def parse_args(argv):
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--put", help="Path under test - required", required=True)
     parser.add_argument("-v", "--verbose", help="verbose logging", action='store_true')
@@ -51,7 +51,7 @@ def parse_args(argv):
 def main(argv):
     given_path = when_path = then_path = None
     project_root = get_project_root()
-    args = parse_args(argv)
+    args = parse_args()
     path_under_test = Path(args.put)
     log.info(f"Path under test is {path_under_test}")
 
@@ -86,7 +86,7 @@ def main(argv):
         validate_specs(path_under_test, triple_stores, shacl_graph, ont_graph)
 
     results = \
-        run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, given_path, when_path, then_path)
+        run_specs(valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, given_path, when_path, then_path)
 
     review_results(results, verbose)
 
