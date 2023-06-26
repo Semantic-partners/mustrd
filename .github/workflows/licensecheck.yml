@@ -1,0 +1,16 @@
+name: Python license check action
+
+on: [push]
+
+env:
+  DEP_PATH: requirements.txt
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master
+        uses: actions/checkout@master
+
+      - name: Python License Check
+        uses: aufdenpunkt/python-license-check-action@main
