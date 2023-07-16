@@ -54,5 +54,5 @@ We invite you to try it, see where it doesn't fit, and raise an issue, or even b
 == Support
 We're a specialist consultancy in Semantic Tech, we're putting this out in case it's useful, but if you need more support, kindly contact our business team on info@semanticpartners.com
 
-include::src/README.adoc[body]
 // tag::body[]
+include::src/README.adoc[tags=body]
