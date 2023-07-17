@@ -1,7 +1,6 @@
-= mustrd
+== Mustrd
 
 // tag::body[]
-
 
 image::https://github.com/Semantic-partners/mustrd/raw/python-coverage-comment-action-data/badge.svg[Coverage badge,link="https://github.com/Semantic-partners/mustrd/tree/python-coverage-comment-action-data"]
 
@@ -13,11 +12,11 @@ As much as we love RDF and SPARQL and Semantic Tech in general, we found a small
 
 We missed the powerful testing frameworks that have evolved in imperative languages that help ensure you've written code that does what you think it should. 
 
-We wanted to be able to
+We wanted to be able to:
 
 * setup data scenarios and ensure queries worked as expected
 * setup edge cases for queries and ensure they still work
-* isolate small sparql enrichment / transformation steps and know we're only INSERTing what we intend
+* isolate small sparql enrichment / transformation steps and to know we're only INSERTing what we intend
 
 Enter MustRD. 
 
@@ -55,7 +54,5 @@ We invite you to try it, see where it doesn't fit, and raise an issue, or even b
 == Support
 We're a specialist consultancy in Semantic Tech, we're putting this out in case it's useful, but if you need more support, kindly contact our business team on info@semanticpartners.com
 
-
 // tag::body[]
-
-include::src/README.adoc[]
+include::src/README.adoc[tags=body]
