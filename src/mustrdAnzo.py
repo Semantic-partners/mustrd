@@ -25,7 +25,7 @@ SOFTWARE.
 import requests
 from pyanzo import AnzoClient
 from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
-from requests import ConnectTimeout, Response, HTTPError, RequestException
+from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 
 
@@ -85,12 +85,15 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
 
 # Get Given or then from the content of a graphmart
 def get_spec_component_from_graphmart(triple_store: dict, graphmart: URIRef, layer: URIRef = None) -> ConjunctiveGraph:
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                             triple_store['password'])
-    return anzo_client.query_graphmart(graphmart=graphmart,
-                                       data_layers=layer,
-                                       query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
-                                       skip_cache=True).as_quad_store().as_rdflib_graph()
+    try:
+        anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
+                                 triple_store['password'])
+        return anzo_client.query_graphmart(graphmart=graphmart,
+                                           data_layers=layer,
+                                           query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
+                                           skip_cache=True).as_quad_store().as_rdflib_graph()
+    except RuntimeError as e:
+        raise ConnectionError(f"Anzo connection error, {e}")
 
 
 def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_name: Literal) -> str:
@@ -108,7 +111,7 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
     
     result = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
     if len(result) == 0:
-        raise Exception(f"Query {query_name} not found in folder {folder_name}")
+        raise FileNotFoundError(f"Query {query_name} not found in folder {folder_name}")
     return result[0].get("query")
 
 
