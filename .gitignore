@@ -169,3 +169,7 @@ test/anzoConnectionConfig.ttl
 /test/triplestore_config/tripleStore-graphDB.ttl
 /test/triplestore_config/tripleStores.ttl
 
+/test/triplestore_config/anzo-wisdom-credentials.toml
+/test/triplestore_config/tripleStores-wisdom.gsk.com-secrets.ttl
+/test/triplestore_config/tripleStores-wisdom.gsk.com.ttl
+/test/triplestore_config/tripleStores-secrets.ttl

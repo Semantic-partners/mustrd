@@ -27,7 +27,7 @@ from pyanzo import AnzoClient
 from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
-
+import logging
 
 # https://github.com/Semantic-partners/mustrd/issues/73
 def manage_anzo_response(response: Response) -> str:
@@ -74,12 +74,15 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
                 'default-graph-uri': triple_store['input_graph'], 'skipCache': 'true'}
         url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
-        return Graph().parse(data=manage_anzo_response(requests.post(url=url,
-                                                                     auth=(triple_store['username'],
-                                                                           triple_store['password']),
-                                                                     data=data,
-                                                                     verify=False)))
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
+        response = requests.post(url=url,
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=data,
+            verify=False)
+        logging.info(f'response {response}')
+        return Graph().parse(data=manage_anzo_response(response))
+    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
+        logging.error(f'response {e}')
         raise
 
 

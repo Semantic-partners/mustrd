@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import groupby
 from pathlib import Path
 from typing import Tuple, List, Type
@@ -68,7 +68,7 @@ class ThenSpec(SpecComponent):
 
 @dataclass
 class TableThenSpec(ThenSpec):
-    value: pandas.DataFrame = pandas.DataFrame()
+    value: pandas.DataFrame = field(default_factory=pandas.DataFrame)
 
 
 @dataclass
