@@ -414,6 +414,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
                                                                         subject=triple_store_config,
                                                                         predicate=MUST.password))
             except (FileNotFoundError, ValueError) as e:
+                log.error(f"Credential retrieval failed {e}")
                 triple_store["error"] = e
             triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
                                                                   predicate=MUST.repository)
@@ -440,17 +441,24 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
 
 
 def get_credential_from_file(triple_store_name: URIRef, credential: str, config_path: Literal) -> str:
+    log.info(f"get_credential_from_file {triple_store_name}, {credential}, {config_path}")
     if config_path is None:
         raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
                          f"Missing required parameter: {credential}.")
     project_root = get_project_root()
     path = Path(os.path.join(project_root, config_path))
+    log.info(f"get_credential_from_file {path}")
+
     if not os.path.isfile(path):
+        log.error(f"couldn't find {path}")
         raise FileNotFoundError(f"Credentials config file not found: {path}")
     try:
         with open(path, "rb") as f:
             config = tomli.load(f)
+            log.error(f"config {config}")
     except tomli.TOMLDecodeError as e:
+        log.error(f"config error {path} {e}")
+
         raise ValueError(f"Error reading credentials config file: {e}")
     return config[str(triple_store_name)][credential]
 
