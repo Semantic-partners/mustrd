@@ -133,7 +133,7 @@ E.g. a table dataset consisting of a single row and three columns.
 * *OrderedTableDataset* -  This is an extension of the TableDataset which allows the row order of the dataset to be specified using the SHACL order property to support the ORDER BY clause in SPARQL SELECT queries
 E.g. A table dataset consisting of two ordered rows and three columns.
 ----
-    must:then  [ a must:TableDataset ;
+    must:then  [ a must:OrderedTableDataset ;
                  must:hasRow [ sh:order 1 ;
                              must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],

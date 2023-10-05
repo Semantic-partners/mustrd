@@ -224,7 +224,7 @@ def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResu
                 for spec_uri in spec_uris:
                     try:
                         specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
-                    except (ValueError, FileNotFoundError) as e:
+                    except (ValueError, FileNotFoundError, ConnectionError) as e:
                         results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
     except (BadSyntax, FileNotFoundError) as e:
@@ -281,6 +281,9 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
         log.error(message)
+        raise
+    except ConnectionError as e:
+        log.error(e)
         raise
 
 
