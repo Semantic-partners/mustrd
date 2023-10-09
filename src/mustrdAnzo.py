@@ -28,6 +28,9 @@ from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 import logging
+from execute_update_spec import execute_update_spec 
+from namespace import MUST
+
 
 # https://github.com/Semantic-partners/mustrd/issues/73
 def manage_anzo_response(response: Response) -> str:
@@ -50,7 +53,7 @@ def query_with_bindings(bindings: dict, when: str) -> str:
     return f"{split_query[0].strip()} WHERE {{ {values} {split_query[1].strip()}"
 
 
-def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
+def execute_select_mustrd_spec_stage(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     try:
         upload_given(triple_store, given)
         if bindings:
@@ -58,6 +61,7 @@ def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict =
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
                 'default-graph-uri': triple_store['input_graph'], 'skipCache': 'true'}
         url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=application/sparql-results+json"
+        input("Press enter to continue")
         return manage_anzo_response(requests.post(url=url,
                                                   auth=(triple_store['username'], triple_store['password']),
                                                   data=data,
@@ -65,8 +69,41 @@ def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict =
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         raise
 
+@execute_update_spec.method(MUST.Anzo)
+def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+    logging.info(f"updating in anzo! {triple_store=} {given=} {when=}")
+    upload_given(triple_store, given)
+    # input("have uploaded given")
 
-def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+    input_graph = triple_store['input_graph']
+    output_graph = triple_store['output_graph']
+
+    substituted_query = when.replace("${usingSources}", f"USING <{input_graph}>").replace(
+        "${targetGraph}", f"<{output_graph}>")
+   
+    data = {'datasourceURI': triple_store['gqe_uri'], 'update': substituted_query,
+                'default-graph-uri': input_graph, 'skipCache': 'true'}
+    url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
+    response = manage_anzo_response(requests.post(url=url,
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=data,
+            verify=False))
+    logging.info(f'response {response}')
+    check_data = {'datasourceURI': triple_store['gqe_uri'], 'query': "construct {?s ?p ?o} { ?s ?p ?o }",
+                'default-graph-uri': output_graph, 'skipCache': 'true'}
+    everything_response = manage_anzo_response(requests.post(url=url,
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=check_data,
+            verify=False))
+    # todo deal with error responses
+    new_graph = Graph().parse(data=everything_response)
+    logging.info(f"new_graph={new_graph.serialize(format='ttl')}")
+    return new_graph
+
+
+def execute_construct_mustrd_spec_stage(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     try:
         upload_given(triple_store, given)
         if bindings:
@@ -120,23 +157,30 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
 
 # https://github.com/Semantic-partners/mustrd/issues/102
 def get_query_from_step(triple_store: dict, query_step_uri: URIRef):
-    query = f"""SELECT ?query WHERE {{
+    query = f"""SELECT ?stepUri ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
-        graph ?stepUri {{
+         graph ?g {{
             ?stepUri a <http://cambridgesemantics.com/ontologies/Graphmarts#Step>;
-            <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
-        }}
+                     <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
+         }}
     }}
-    """
+    # """
+    # query="""
+    #     select ?g ?s ?p ?o { graph ?g {  ?s ?p ?o }} limit 10
+    # """
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
-    return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()[0].get(
+    record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
+
+    return record_dictionaries[0].get(
         "query")
 
 
 def upload_given(triple_store: dict, given: Graph):
+    logging.info(f"upload_given {triple_store} {given}")
     if given:
         try:
+
             clear_graph(triple_store)
             serialized_given = given.serialize(format="nt")
             insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
@@ -152,7 +196,8 @@ def clear_graph(triple_store: dict):
     try:
         clear_query = f"CLEAR GRAPH <{triple_store['input_graph']}>"
         data = {'datasourceURI': triple_store['gqe_uri'], 'update': clear_query}
-        response = requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
+        url = f"https://{triple_store['url']}:{triple_store['port']}/sparql"
+        response = requests.post(url=url,
                                  auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
         manage_anzo_response(response)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
