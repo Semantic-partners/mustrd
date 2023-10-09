@@ -33,9 +33,10 @@ import requests
 from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
+import logging 
 
 import logger_setup
-from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder
+from mustrdAnzo import get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
 from namespace import MUST
 from utils import get_project_root
 from multimethods import MultiMethod, Default
@@ -97,6 +98,7 @@ def parse_spec_component(subject: URIRef,
                 raise ValueError(
                     f"Cannot load data for {predicate}. "
                     f"{MUST.FolderDataset} needs to be used with parameter for folder path.")
+            logging.info(f"{folder_location=}")
             spec_component_details = SpecComponentDetails(
                 subject=subject,
                 predicate=predicate,
@@ -279,7 +281,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    project_root = get_project_root()
+    project_root = spec_component_details.folder_location
     path = Path(os.path.join(project_root, file_path))
     try:
         spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
@@ -310,8 +312,9 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    project_root = get_project_root()
-    path = Path(os.path.join(project_root, file_path))
+    # project_root = get_project_root()
+    # path = Path(os.path.join(project_root, file_path))
+    path = Path(os.path.join(spec_component_details.folder_location, file_path))
     return get_then_from_file(path, spec_component)
 
 
@@ -424,6 +427,23 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
                    spec_component_details.spec_component_node)
     return spec_component
 
+@get_spec_component.method((MUST.AnzoGraphmartStepSparqlSource, MUST.when))
+def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    # Get WHEN specComponent from query builder
+    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+        query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.queryStepUri)
+        spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
+                                                    query_step_uri=query_step_uri)
+    # If anzo specific function is called but no anzo defined
+    else:
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartStepSparqlSource}")
+
+    get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
+                   spec_component_details.spec_component_node)
+    return spec_component
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:

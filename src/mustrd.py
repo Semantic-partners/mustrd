@@ -24,6 +24,7 @@ SOFTWARE.
 
 import os
 from typing import Tuple, List
+from execute_update_spec import execute_update_spec
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -47,18 +48,46 @@ import json
 from pandas import DataFrame
 
 from spec_component import parse_spec_component, WhenSpec, ThenSpec
-from triple_store_dispatch import execute_select_spec, execute_construct_spec, execute_update_spec
+from triple_store_dispatch import execute_select_spec, execute_construct_spec
 from utils import get_project_root
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
 from pyshacl import validate
+import logging 
+from http.client import HTTPConnection
+import mustrdAnzo
 
 log = logger_setup.setup_logger(__name__)
 
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
+
+
+def debug_requests_on():
+    '''Switches on logging of the requests module.'''
+    HTTPConnection.debuglevel = 1
+
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
+def debug_requests_off():
+    '''Switches off logging of the requests module, might be some side-effects'''
+    HTTPConnection.debuglevel = 0
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.WARNING)
+    root_logger.handlers = []
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.WARNING)
+    requests_log.propagate = False
+
+debug_requests_on()
 
 @dataclass
 class Specification:
@@ -156,9 +185,9 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
     spec_graph = Graph()
     subject_uris = set()
     invalid_specs = []
-    ttl_files = list(spec_path.glob('*.ttl'))
+    ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
     ttl_files.sort()
-    log.info(f"Found {len(ttl_files)} ttl files")
+    log.info(f"Found {len(ttl_files)} ttl files in {spec_path}")
 
     for file in ttl_files:
         error_messages = []
@@ -187,6 +216,7 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
                                                          debug=False)
         if not conforms:
             for msg in results_graph.objects(predicate=SH.resultMessage):
+                log.warning(f"{file_graph}")
                 log.warning(f"{msg} File: {file.name}")
                 error_messages += [f"{msg} File: {file.name}"]
 
@@ -203,7 +233,8 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
             invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
                               triple_stores]
         else:
-            subject_uris.add(subject_uri)
+            # logging.info(f"{subject_uri=}")
+            # subject_uris.add(subject_uri)
             spec_graph.parse(file)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
@@ -292,7 +323,10 @@ def run_spec(spec: Specification) -> SpecResult:
     triple_store = spec.triple_store
     # close_connection = True
     try:
-        log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        log.info(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        if spec.given is not None:
+            given_as_turtle = spec.given.serialize(format="turtle")
+            log.info(f"{given_as_turtle}")
         return run_when(spec)
     except ParseException as e:
         log.error(f"{type(e)} {e}")
@@ -395,6 +429,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=MUST.inputGraph)
+            triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                                   predicate=MUST.outputGraph)
             try:
                 check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
             except ValueError as e:
@@ -445,8 +481,9 @@ def get_credential_from_file(triple_store_name: URIRef, credential: str, config_
     if config_path is None:
         raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
                          f"Missing required parameter: {credential}.")
-    project_root = get_project_root()
-    path = Path(os.path.join(project_root, config_path))
+    # if os.path.isrelative(config_path)
+    # project_root = get_project_root()
+    path = Path(config_path)
     log.info(f"get_credential_from_file {path}")
 
     if not os.path.isfile(path):
@@ -455,10 +492,8 @@ def get_credential_from_file(triple_store_name: URIRef, credential: str, config_
     try:
         with open(path, "rb") as f:
             config = tomli.load(f)
-            log.error(f"config {config}")
     except tomli.TOMLDecodeError as e:
         log.error(f"config error {path} {e}")
-
         raise ValueError(f"Error reading credentials config file: {e}")
     return config[str(triple_store_name)][credential]
 
@@ -779,6 +814,16 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
+            if type(res) == UpdateSpecFailure:
+                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                print(f"{Fore.BLUE} In Expected Not In Actual:")
+                print(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+                print()
+                print(f"{Fore.RED} in_actual_not_in_expected")
+                print(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+                print(f"{Fore.GREEN} in_both")
+                print(res.graph_comparison.in_both.serialize(format="ttl"))
+
             if type(res) == SelectSpecFailure:
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.message)
