@@ -1,4 +1,5 @@
 src/__pycache__/__init__.cpython-311.pyc
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
