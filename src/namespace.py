@@ -92,6 +92,7 @@ class MUST(DefinedNamespace):
     AnzoGraphmartDataset: URIRef
     AnzoQueryBuilderSparqlSource: URIRef
     AnzoGraphmartStepSparqlSource: URIRef
+    AnzoGraphmartLayerSparqlSource: URIRef
     queryStepUri: URIRef
 
     

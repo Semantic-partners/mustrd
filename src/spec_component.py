@@ -427,6 +427,7 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
                    spec_component_details.spec_component_node)
     return spec_component
 
+
 @get_spec_component.method((MUST.AnzoGraphmartStepSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -444,6 +445,26 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
     get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
                    spec_component_details.spec_component_node)
     return spec_component
+
+
+@get_spec_component.method((MUST.AnzoGraphmartLayerSparqlSource, MUST.when))
+def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    # Get WHEN specComponent from query builder
+    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+        graphmart_layer_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.graphmartLayerUri)
+        spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
+                                                    query_step_uri=query_step_uri)
+    # If anzo specific function is called but no anzo defined
+    else:
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartStepSparqlSource}")
+
+    get_query_type(spec_component_details.predicate, spec_component_details.spec_graph, spec_component,
+                   spec_component_details.spec_component_node)
+    return spec_component
+
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:
