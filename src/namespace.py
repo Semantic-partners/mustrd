@@ -56,6 +56,7 @@ class MUST(DefinedNamespace):
     hasBinding: URIRef
     variable: URIRef
     boundValue: URIRef
+    focus:URIRef
 
     # Specification data sources
     TableDataset: URIRef

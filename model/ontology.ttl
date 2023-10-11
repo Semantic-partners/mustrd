@@ -208,6 +208,13 @@ sh:order rdf:type owl:DatatypeProperty ;
           rdfs:comment "variable name in a binding" ;
           rdfs:label "variable" .
 
+###  https://mustrd.com/model/focus
+:variable rdf:type owl:DatatypeProperty ;
+          rdfs:comment "Shows whether a test specification is set to be the focus of a test run" ;
+          rdfs:label "focus" ;
+          rdfs:domain :TestSpec ;
+          rdfs:range xsd:boolean ;
+          .
 
 #################################################################
 #    Classes

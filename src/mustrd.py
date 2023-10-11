@@ -238,8 +238,14 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
             spec_graph.parse(file)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
-    log.info(f"Collected {len(valid_spec_uris)} items")
-    return valid_spec_uris, spec_graph, invalid_specs
+    focus_spec_uris = list(spec_graph.subjects(predicate=MUST.focus, object=Literal("true", datatype=XSD.boolean)))
+
+    if focus_spec_uris:
+        log.info(f"Collected {len(focus_spec_uris)} focus test spec(s)")
+        return focus_spec_uris, spec_graph, invalid_specs
+    else:
+        log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")   
+        return valid_spec_uris, spec_graph, invalid_specs
 
 
 def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[dict],
