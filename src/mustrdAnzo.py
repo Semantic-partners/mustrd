@@ -156,7 +156,7 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
 
 
 # https://github.com/Semantic-partners/mustrd/issues/102
-def get_query_from_step(triple_store: dict, query_step_uri: URIRef):
+def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
     query = f"""SELECT ?stepUri ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
          graph ?g {{
@@ -174,6 +174,22 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef):
 
     return record_dictionaries[0].get(
         "query")
+
+
+def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):
+    query = f"""PREFIX graphmarts: <http://cambridgesemantics.com/ontologies/Graphmarts#>
+PREFIX anzo: <http://openanzo.org/ontologies/2008/07/Anzo#>
+SELECT ?index ?query 
+  {{ <{graphmart_layer_uri}> graphmarts:step ?step .
+  ?step anzo:index ?index ;
+    anzo:orderedValue ?query_step .
+  ?query_step graphmarts:transformQuery ?query .
+  }}
+ORDER BY ?index
+    """
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
+                             triple_store['password'])
+    return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
 
 
 def upload_given(triple_store: dict, given: Graph):
