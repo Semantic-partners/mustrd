@@ -114,6 +114,19 @@
       rdfs:isDefinedBy : ;
       rdfs:label "when" .
 
+      ###  https://mustrd.com/model/anzoQueryStep
+:anzoQueryStep    rdf:type owl:ObjectProperty ;
+                  rdfs:domain :AnzoGraphmartStepSparqlSource ;
+                  rdfs:isDefinedBy : ;
+                  rdfs:label "anzoQueryStep" .
+
+      ###  https://mustrd.com/model/anzoGraphmartLayer
+:anzoGraphmartLayer     rdf:type owl:ObjectProperty ;
+                        rdfs:domain :AnzoGraphmartLayerSparqlSource ;
+                        rdfs:range :When ;
+                        rdfs:isDefinedBy : ;
+                        rdfs:label "anzoGraphmartLayer" .
+
 
 #################################################################
 #    Data properties

@@ -72,7 +72,8 @@ def execute_select_mustrd_spec_stage(triple_store: dict, given: Graph, when: str
 @execute_update_spec.method(MUST.Anzo)
 def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     logging.info(f"updating in anzo! {triple_store=} {given=} {when=}")
-    upload_given(triple_store, given)
+    if given:
+        upload_given(triple_store, given)
     # input("have uploaded given")
 
     input_graph = triple_store['input_graph']
@@ -179,17 +180,19 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
 def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):
     query = f"""PREFIX graphmarts: <http://cambridgesemantics.com/ontologies/Graphmarts#>
 PREFIX anzo: <http://openanzo.org/ontologies/2008/07/Anzo#>
-SELECT ?index ?query 
+SELECT ?query 
   {{ <{graphmart_layer_uri}> graphmarts:step ?step .
-  ?step anzo:index ?index ;
-    anzo:orderedValue ?query_step .
-  ?query_step graphmarts:transformQuery ?query .
+  ?step         anzo:index ?index ;
+                anzo:orderedValue ?query_step .
+  ?query_step   graphmarts:enabled true ;
+                graphmarts:transformQuery ?query .
   }}
 ORDER BY ?index
     """
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
     return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
+
 
 
 def upload_given(triple_store: dict, given: Graph):
