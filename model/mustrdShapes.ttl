@@ -220,5 +220,21 @@ must:OrderedRowShape
                      sh:node     must:VariableBindingShape ;
                      sh:minCount 2 ; ] .
 
+must:AnzoGraphmartStepSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartStepSparqlSource ;
+    sh:property    [ sh:path     must:anzoQueryStep ;
+                     sh:message "An Anzo graphmart step sparql source must have one query step." ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ; ] .
+
+must:AnzoGraphmartLayerSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartLayerSparqlSource ;
+    sh:property    [ sh:path     must:anzoGraphmartLayer ;
+                     sh:message "An Anzo graphmart layer sparql source must have one graphmart layer." ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ; ] .
+
 
 
