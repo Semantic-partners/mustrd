@@ -107,7 +107,12 @@ def parse_spec_component(subject: URIRef,
                 spec_component_node=spec_component_node,
                 data_source_type=data_source_type,
                 folder_location=folder_location)
-            spec_components.append(get_spec_component(spec_component_details))
+            spec_component = get_spec_component(spec_component_details)
+            if type(spec_component) == list:
+                spec_components += spec_component 
+            else:
+                spec_components += [spec_component]
+
         # all_data_source_types.extend(data_source_types)
     # return all_data_source_types
     # merge multiple graphs into one, give error if spec is When or TableThen
@@ -117,7 +122,6 @@ def parse_spec_component(subject: URIRef,
 def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
     # Get the type of the first object in the list
     spec_type = type(spec_components[0])
-
     # Loop through the remaining objects in the list and check their types
     for spec_component in spec_components[1:]:
         if type(spec_component) != spec_type:
@@ -151,10 +155,10 @@ def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
 
 @combine_specs.method(WhenSpec)
 def _combine_when_specs(spec_components: List[WhenSpec]) -> WhenSpec:
-    if len(spec_components) != 1:
-        raise ValueError(f"Parsing of multiple components of {MUST.when} not implemented")
-    spec_component = spec_components[0]
-    return spec_component
+    # if len(spec_components) != 1:
+    #     raise ValueError(f"Parsing of multiple components of {MUST.when} not implemented")
+    # spec_component = spec_components[0]
+    return spec_components
 
 
 @combine_specs.method(ThenSpec)
@@ -280,8 +284,12 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    project_root = spec_component_details.folder_location
-    path = Path(os.path.join(project_root, file_path))
+    if str(spec_component_details.folder_location).startswith("\/"): 
+        root = spec_component_details.folder_location
+        print(f"XXXXXXXXXXXX {root}")
+    else:
+        root = get_project_root()
+    path = Path(os.path.join(root, file_path))
     try:
         spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     except ParserError as e:
@@ -296,8 +304,11 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    project_root = get_project_root()
-    path = Path(os.path.join(project_root, file_path))
+    if str(spec_component_details.folder_location).startswith("\/"):  
+        root = spec_component_details.folder_location
+    else:
+        root = get_project_root()
+    path = Path(os.path.join(root, file_path))
     spec_component.value = get_spec_component_from_file(path)
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
@@ -312,9 +323,11 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    # project_root = get_project_root()
-    # path = Path(os.path.join(project_root, file_path))
-    path = Path(os.path.join(spec_component_details.folder_location, file_path))
+    if str(spec_component_details.folder_location).startswith("\/"):  
+        root = spec_component_details.folder_location
+    else:
+        root = get_project_root()
+    path = Path(os.path.join(root, file_path))
     return get_then_from_file(path, spec_component)
 
 
@@ -447,21 +460,25 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
 
 
 @get_spec_component.method((MUST.AnzoGraphmartLayerSparqlSource, MUST.when))
-def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails):
     spec_components = []
-
-    # Get WHEN specComponent from query builder
+    # Get the ordered  WHEN specComponents which is the transform queries for the Layer
     if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
         graphmart_layer_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                              predicate=MUST.graphmartLayerUri)
-        spec_components = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
+        queries = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
                                                     graphmart_layer_uri=graphmart_layer_uri)
     # If anzo specific function is called but no anzo defined
     else:
         raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartStepSparqlSource}")
-
+    #print(queries)
+    for query in queries:
+        spec_component = init_spec_component(spec_component_details.predicate)
+        spec_component.value = query.get("query")
+        spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                       predicate=MUST.queryType)
+        spec_components += [spec_component]
     return spec_components
-
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:

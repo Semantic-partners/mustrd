@@ -184,8 +184,10 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
     # os.chdir(spec_path)
     spec_graph = Graph()
     subject_uris = set()
+    focus_uris = set()
     invalid_specs = []
-    ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
+  #  ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
+    ttl_files = list(spec_path.glob('**/*.ttl'))
     ttl_files.sort()
     log.info(f"Found {len(ttl_files)} ttl files in {spec_path}")
 
@@ -220,29 +222,37 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
                 log.warning(f"{msg} File: {file.name}")
                 error_messages += [f"{msg} File: {file.name}"]
 
+        # collect a list of uris of the tests in focus
+        for focus_uri in file_graph.subjects(predicate=MUST.focus, object=Literal("true", datatype=XSD.boolean)):
+            if focus_uri in focus_uris:
+                focus_uri = URIRef(str(focus_uri) + "_DUPLICATE")
+            focus_uris.add(focus_uri)
+
         # make sure there are no duplicate test IRIs in the files
         for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
             if subject_uri in subject_uris:
                 log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
                 error_messages += [f"Duplicate subject URI found in {file.name}."]
                 subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
-
-        if len(error_messages) > 0:
-            error_messages.sort()
-            error_message = "\n".join(msg for msg in error_messages)
-            invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
-                              triple_stores]
-        else:
-            # logging.info(f"{subject_uri=}")
-            # subject_uris.add(subject_uri)
-            spec_graph.parse(file)
+            if len(error_messages) > 0:
+                error_messages.sort()
+                error_message = "\n".join(msg for msg in error_messages)
+                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
+                                triple_stores]
+            else:
+                subject_uris.add(subject_uri)
+                spec_graph.parse(file)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
-    focus_spec_uris = list(spec_graph.subjects(predicate=MUST.focus, object=Literal("true", datatype=XSD.boolean)))
 
-    if focus_spec_uris:
-        log.info(f"Collected {len(focus_spec_uris)} focus test spec(s)")
-        return focus_spec_uris, spec_graph, invalid_specs
+    if focus_uris:
+        invalid_focus_specs = []
+        for spec in invalid_specs:
+            if spec.spec_uri in focus_uris:
+                invalid_focus_specs += [spec]
+                focus_uris.remove(spec.spec_uri)
+        log.info(f"Collected {len(focus_uris)} focus test spec(s)")
+        return focus_uris, spec_graph, invalid_focus_specs
     else:
         log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")   
         return valid_spec_uris, spec_graph, invalid_specs
@@ -302,7 +312,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
                                               folder_location=when_path,
                                               mustrd_triple_store=mustrd_triple_store)
 
-        log.debug(f"when: {when_component.value}")
+        log.debug(f"when: {when_component[0]}")
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
@@ -314,6 +324,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
 
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
+    
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
@@ -354,7 +365,7 @@ def run_spec(spec: Specification) -> SpecResult:
 
 
 def dispatch_run_when(spec: Specification):
-    to = spec.when.queryType
+    to = spec.when[0].queryType
     log.info(f"dispatch_run_when to SPARQL type {to}")
     return to
 
@@ -366,8 +377,8 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 def _multi_run_when_update(spec: Specification):
     then = spec.then.value
 
-    result = run_update_spec(spec.spec_uri, spec.given, spec.when.value, then,
-                             spec.triple_store, spec.when.bindings)
+    result = run_update_spec(spec.spec_uri, spec.given, spec.when, then,
+                             spec.triple_store)
 
     return result
 
@@ -375,15 +386,15 @@ def _multi_run_when_update(spec: Specification):
 @run_when.method(MUST.ConstructSparql)
 def _multi_run_when_construct(spec: Specification):
     then = spec.then.value
-    result = run_construct_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.when.bindings)
+    result = run_construct_spec(spec.spec_uri, spec.given, spec.when[0].value, then, spec.triple_store, spec.when[0].bindings)
     return result
 
 
 @run_when.method(MUST.SelectSparql)
 def _multi_run_when_select(spec: Specification):
     then = spec.then.value
-    result = run_select_spec(spec.spec_uri, spec.given, spec.when.value, then, spec.triple_store, spec.then.ordered,
-                             spec.when.bindings)
+    result = run_select_spec(spec.spec_uri, spec.given, spec.when[0].value, then, spec.triple_store, spec.then.ordered,
+                             spec.when[0].bindings)
     return result
 
 
@@ -654,15 +665,16 @@ def run_construct_spec(spec_uri: URIRef,
 
 def run_update_spec(spec_uri: URIRef,
                     given: Graph,
-                    when: str,
+                    when: list,
                     then: Graph,
-                    triple_store: dict,
-                    bindings: dict = None) -> SpecResult:
+                    triple_store: dict) -> SpecResult:
     log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-
+    print(f"when spec: {when}")
     try:
-        result = execute_update_spec(triple_store, given, when, bindings)
-
+        for query in when:
+            result = execute_update_spec(triple_store, given, query.value, query.bindings)
+            # We only whant to run the given before the first query
+            given = None
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
         if equal:
