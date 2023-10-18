@@ -179,17 +179,16 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 
-def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont_graph: Graph)\
+def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph)\
         -> Tuple[List, Graph, List]:
-    # os.chdir(spec_path)
     spec_graph = Graph()
     subject_uris = set()
     focus_uris = set()
     invalid_specs = []
   #  ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
-    ttl_files = list(spec_path.glob('**/*.ttl'))
+    ttl_files = list(run_config['spec_path'].glob('**/*.mustrd.ttl'))
     ttl_files.sort()
-    log.info(f"Found {len(ttl_files)} ttl files in {spec_path}")
+    log.info(f"Found {len(ttl_files)} ttl files in {run_config['spec_path']}")
 
     for file in ttl_files:
         error_messages = []
@@ -259,7 +258,7 @@ def validate_specs(spec_path: Path, triple_stores: List, shacl_graph: Graph, ont
 
 
 def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[dict],
-              given_path: Path = None, when_path: Path = None, then_path: Path = None) -> List[SpecResult]:
+              run_config: dict) -> List[SpecResult]:
     specs = []
     try:
         for triple_store in triple_stores:
@@ -270,7 +269,7 @@ def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResu
             else:
                 for spec_uri in spec_uris:
                     try:
-                        specs += [get_spec(spec_uri, spec_graph, given_path, when_path, then_path, triple_store)]
+                        specs += [get_spec(spec_uri, spec_graph, run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
                         results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
@@ -290,8 +289,8 @@ def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResu
     return results
 
 
-def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_path: Path = None,
-             then_path: Path = None, mustrd_triple_store: dict = None) -> Specification:
+
+def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.RdfLib}
@@ -301,7 +300,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
-                                               folder_location=given_path,
+                                               run_config=run_config,
                                                mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"Given: {given_component.value}")
@@ -309,7 +308,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=when_path,
+                                              run_config=run_config,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"when: {when_component[0]}")
@@ -317,7 +316,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, given_path: Path = None, when_
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=then_path,
+                                              run_config=run_config,
                                               mustrd_triple_store=mustrd_triple_store)
 
         log.debug(f"then: {then_component.value}")

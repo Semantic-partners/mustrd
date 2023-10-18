@@ -260,7 +260,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/Dataset
 :Dataset rdf:type owl:Class ;
-         rdfs:comment "Some source of triples for comparison in either a Given or When clause" ;
+         rdfs:comment "Some source of triples for comparison in either a Given or Then clause" ;
          rdfs:isDefinedBy : ;
          rdfs:label "DataSet" .
 

@@ -538,7 +538,7 @@ class TestRunConstructSpec:
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
-        when_path = "test/data/construct.rq"
+        when_path = "../../test/data/construct.rq"
         file_path = Path(os.path.join(project_root, when_path))
         construct_query = get_spec_component_from_file(file_path)
 
@@ -574,7 +574,7 @@ class TestRunConstructSpec:
 
     def test_construct_given_then_files_spec_passes(self):
         project_root = get_project_root()
-        given_path = "test/data/construct.rq"
+        given_path = "../../test/data/construct.rq"
         file_path = Path(os.path.join(project_root, given_path))
         construct_query = get_spec_component_from_file(file_path)
 
@@ -592,14 +592,14 @@ class TestRunConstructSpec:
                                                      rdf:predicate test-data:pred1 ;
                                                      rdf:object    test-data:obj1 ; ] ; ] ,
                             [ a must:FileDataset ;
-                            must:file "test/data/given.ttl"  ] ;
+                            must:file "../../test/data/given.ttl"  ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
                                    rdf:object    test-data:pred1 ; ] ; ] ; 
                  must:then  [ a must:FileDataset ;
-                                   must:file "test/data/thenSuccess.nt" ] .
+                                   must:file "../../test/data/thenSuccess.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -629,7 +629,7 @@ class TestRunConstructSpec:
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
-        folder_path = Path(os.path.join(project_root, "test/data"))
+        folder_path = Path(os.path.join(project_root, "../../test/data"))
 
         spec_graph = Graph()
         spec = """
