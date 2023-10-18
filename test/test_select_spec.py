@@ -1670,7 +1670,7 @@ class TestRunSelectSpec:
 
     def test_select_given_file_then_file_spec_passes(self):
         project_root = get_project_root()
-        given_path = "test/data/given.ttl"
+        given_path = "../../test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
         triples = get_spec_component_from_file(file_path)
         state = Graph()
@@ -1688,7 +1688,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then  [ a must:FileDataset ;
-                                   must:file "test/data/thenSuccess.csv" ] .
+                                   must:file "../../test/data/thenSuccess.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -1708,7 +1708,7 @@ class TestRunSelectSpec:
 
     def test_select_given_file_then_file_spec_fails(self):
         project_root = get_project_root()
-        given_path = "test/data/given.ttl"
+        given_path = "../../test/data/given.ttl"
         file_path = Path(os.path.join(project_root, given_path))
         triples = get_spec_component_from_file(file_path)
         state = Graph()
@@ -1726,7 +1726,7 @@ class TestRunSelectSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:then  [ a must:FileDataset ;
-                                   must:file "test/data/thenFail.csv" ] .
+                                   must:file "../../test/data/thenFail.csv" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 

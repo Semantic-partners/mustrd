@@ -86,7 +86,7 @@ class TestRunSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data/missingFile.nt" ] .
+                                   must:file "../../test/data/missingFile.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -109,7 +109,7 @@ class TestRunSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data" ] .
+                                   must:file "../../test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -132,7 +132,7 @@ class TestRunSpec:
         test-data:my_failing_spec 
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data" ] .
+                                   must:file "../../test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -193,7 +193,7 @@ class TestRunSpec:
 
     def test_spec_file_from_folder_passes(self):
         project_root = get_project_root()
-        folder_path = Path(os.path.join(project_root, "test/data"))
+        folder_path = Path(os.path.join(project_root, "../../test/data"))
 
         spec_graph = Graph()
         spec = """
