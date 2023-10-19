@@ -2,6 +2,7 @@ from multimethods import MultiMethod
 import logging 
 from rdflib import Graph, URIRef
 from namespace import MUST
+from mustrdGraphDb import execute_update as execute_graphdb_update
 
 
 def dispatch_update(triple_store: dict, given: Graph, when: str, bindings: dict) -> URIRef:
