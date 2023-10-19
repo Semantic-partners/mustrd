@@ -47,6 +47,7 @@ class TestRunConstructSpec:
     triple_store = {"type": MUST.RdfLib}
 
     def test_construct_spec_passes(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
@@ -73,7 +74,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -83,6 +84,7 @@ class TestRunConstructSpec:
         assert type(then_component) == ThenSpec
 
     def test_construct_spec_fails_with_graph_comparison(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
@@ -109,7 +111,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -137,6 +139,7 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_with_variables_spec_passes(self):
+        run_config = {}
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" , test-data:obj .
@@ -171,7 +174,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -182,6 +185,7 @@ class TestRunConstructSpec:
         assert type(then_component) == ThenSpec
 
     def test_construct_spec_with_variable_fails_with_graph_comparison(self):
+        run_config = {}
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred "hello world" .
@@ -216,7 +220,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -245,6 +249,7 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_expect_empty_result_spec_passes(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
@@ -268,7 +273,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -279,6 +284,7 @@ class TestRunConstructSpec:
         assert type(then_component) == ThenSpec
 
     def test_construct_unexpected_result_spec_fails(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
@@ -302,7 +308,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -329,6 +335,7 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_unexpected_empty_result_spec_fails(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """
@@ -358,7 +365,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store,
@@ -386,6 +393,7 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_multiline_result_spec_passes(self):
+        run_config = {}
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -424,7 +432,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -434,6 +442,7 @@ class TestRunConstructSpec:
         assert type(then_component) == ThenSpec
 
     def test_construct_spec_result_mismatch_fails_with_graph_comparison(self):
+        run_config = {}
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred test-data:obj .
@@ -468,7 +477,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -495,6 +504,7 @@ class TestRunConstructSpec:
             raise Exception(f"Unexpected result type {result_type}")
 
     def test_construct_statement_spec_fails(self):
+        run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = """construct ?s ?p ?o where { typo }"""
@@ -520,7 +530,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         spec_result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -534,11 +544,12 @@ class TestRunConstructSpec:
             raise Exception(f"wrong spec result type {spec_result}")
 
     def test_construct_when_file_spec_passes(self):
+
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-
         project_root = get_project_root()
-        when_path = "../../test/data/construct.rq"
+        when_path = "test/data/construct.rq"
+        run_config = {'when_path': "test/data/construct.rq"}
         file_path = Path(os.path.join(project_root, when_path))
         construct_query = get_spec_component_from_file(file_path)
 
@@ -563,7 +574,7 @@ class TestRunConstructSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
@@ -574,9 +585,11 @@ class TestRunConstructSpec:
 
     def test_construct_given_then_files_spec_passes(self):
         project_root = get_project_root()
-        given_path = "../../test/data/construct.rq"
-        file_path = Path(os.path.join(project_root, given_path))
+        when_path = "test/data/construct.rq"
+        file_path = Path(os.path.join(project_root, when_path))
         construct_query = get_spec_component_from_file(file_path)
+        run_config = {'given_path': Path(os.path.join(project_root, "test/data/construct.rq")),
+                      'spec_path': Path(os.path.join(project_root, "test"))}
 
         spec_graph = Graph()
         spec = """
@@ -592,14 +605,14 @@ class TestRunConstructSpec:
                                                      rdf:predicate test-data:pred1 ;
                                                      rdf:object    test-data:obj1 ; ] ; ] ,
                             [ a must:FileDataset ;
-                            must:file "../../test/data/given.ttl"  ] ;
+                            must:file "data/given.ttl"  ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
                                    rdf:object    test-data:pred1 ; ] ; ] ; 
                  must:then  [ a must:FileDataset ;
-                                   must:file "../../test/data/thenSuccess.nt" ] .
+                                   must:file "data/thenSuccess.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
@@ -608,13 +621,13 @@ class TestRunConstructSpec:
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
-                                               folder_location=None,
+                                               run_config=run_config,
                                                mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         t = run_construct_spec(spec_uri, given_component.value, construct_query, then_component.value,
@@ -629,8 +642,7 @@ class TestRunConstructSpec:
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
-        folder_path = Path(os.path.join(project_root, "../../test/data"))
-
+        run_config = {'when_path': Path(os.path.join(project_root, "test/data"))}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -655,16 +667,16 @@ class TestRunConstructSpec:
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=folder_path,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_construct_spec(spec_uri, state, when_component.value, then_component.value, self.triple_store)
+        t = run_construct_spec(spec_uri, state, when_component[0].value, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result

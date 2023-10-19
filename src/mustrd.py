@@ -399,16 +399,16 @@ def _multi_run_when_select(spec: Specification):
 
 @run_when.method(Default)
 def _multi_run_when_default(spec: Specification):
-    if spec.when.queryType == MUST.AskSparql:
+    if spec.when[0].queryType == MUST.AskSparql:
         log.warning(f"Skipping {spec.spec_uri}, SPARQL ASK not implemented.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL ASK not implemented.")
-    elif spec.when.queryType == MUST.DescribeSparql:
+    elif spec.when[0].queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec.spec_uri}, SPARQL DESCRIBE not implemented.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL DESCRIBE not implemented.")
     else:
-        log.warning(f"Skipping {spec.spec_uri},  {spec.when.queryType} is not a valid SPARQL query type.")
+        log.warning(f"Skipping {spec.spec_uri},  {spec.when[0].queryType} is not a valid SPARQL query type.")
         return SpecSkipped(spec.spec_uri, spec.triple_store['type'],
-                           f"{spec.when.queryType} is not a valid SPARQL query type.")
+                           f"{spec.when[0].queryType} is not a valid SPARQL query type.")
 
 
 def is_json(myjson: str) -> bool:
