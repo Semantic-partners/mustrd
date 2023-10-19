@@ -60,10 +60,11 @@ test-data:a_complete_construct_scenario
         # Define an invalid spec_path
         triple_stores = [{'type': MUST.RdfLib}]
         project_root = Path(__file__).resolve().parent.parent
+        run_config = {'spec_path': Path("not_exists")}
         shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
-        valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(self.invalid_spec_path, triple_stores, shacl_graph, ont_graph )
-        final_results = run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores)
+        valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(run_config, triple_stores, shacl_graph, ont_graph )
+        final_results = run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, run_config)
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(final_results, list)
         self.assertEqual(len(final_results), 0)  # Assert that no results were returned

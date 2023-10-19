@@ -26,7 +26,7 @@ from rdflib import Graph, Variable, Literal, URIRef
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure, SpecSkipped
+from mustrd import SpecPassed, run_update_spec, UpdateSpecFailure, SparqlParseFailure, SpecSkipped, WhenSpec
 from graph_util import graph_comparison_message
 from namespace import MUST
 from spec_component import parse_spec_component
@@ -45,9 +45,11 @@ class TestRunUpdateSpec:
     def test_insert_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_query = """
+        query = WhenSpec()
+        query.value = """
         insert { ?o ?p ?s } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -73,10 +75,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -84,9 +86,11 @@ class TestRunUpdateSpec:
     def test_delete_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_query = """
+        query = WhenSpec()
+        query.value = """
         delete { ?s ?p ?o } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -104,10 +108,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -115,9 +119,11 @@ class TestRunUpdateSpec:
     def test_insert_data_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_data_query = """
+        query = WhenSpec()
+        query.value =   """
         insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -143,10 +149,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -154,9 +160,11 @@ class TestRunUpdateSpec:
     def test_delete_data_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_data_query = """
+        query = WhenSpec()
+        query.value =   """
         delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -174,10 +182,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -185,9 +193,11 @@ class TestRunUpdateSpec:
     def test_delete_insert_spec_passes(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_insert_query = """
+        query = WhenSpec()
+        query.value =   """
         delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -209,10 +219,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -220,9 +230,11 @@ class TestRunUpdateSpec:
     def test_insert_spec_fails_with_graph_comparison(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_query = """
+        query = WhenSpec()
+        query.value = """
         insert { ?o ?p ?s } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -248,10 +260,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
+        result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -277,9 +289,11 @@ class TestRunUpdateSpec:
     def test_delete_spec_fails_with_graph_comparison(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_query = """
+        query = WhenSpec()
+        query.value = """      
         delete { ?s ?p ?obj } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -297,10 +311,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_query, then_component.value, self.triple_store)
+        result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -325,9 +339,11 @@ class TestRunUpdateSpec:
     def test_insert_data_spec_fails_with_graph_comparison(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_data_query = """
+        query = WhenSpec()
+        query.value = """
         insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -349,10 +365,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, insert_data_query, then_component.value, self.triple_store)
+        result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -377,9 +393,11 @@ class TestRunUpdateSpec:
     def test_delete_data_spec_fails_with_graph_comparison(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_data_query = """
+        query = WhenSpec()
+        query.value = """
         delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -401,10 +419,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_data_query, then_component.value, self.triple_store)
+        result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -429,9 +447,11 @@ class TestRunUpdateSpec:
     def test_delete_insert_data_spec_fails_with_graph_comparison(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        delete_insert_query = """
+        query = WhenSpec()
+        query.value = """
         delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -453,10 +473,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
+        result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         assert result.spec_uri == spec_uri
 
@@ -487,12 +507,13 @@ class TestRunUpdateSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
-
-        insert_query = """
+        query = WhenSpec()
+        query.value = """
         insert { ?s ?p ?o ; ?pred ?obj . } where { ?s ?p ?o OPTIONAL { ?s ?pred ?obj } }
         """
-        binding = {Variable('p'): URIRef("https://semanticpartners.com/data/test/pred"),
-                   Variable('pred'): URIRef("https://semanticpartners.com/data/test/predicate")}
+        query.bindings = {Variable('p'): URIRef("https://semanticpartners.com/data/test/pred"),
+                          Variable('pred'): URIRef("https://semanticpartners.com/data/test/predicate")}
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -528,10 +549,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store, binding)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -543,11 +564,12 @@ class TestRunUpdateSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
-
-        delete_insert_query = """
+        query = WhenSpec()
+        query.value = """
         delete { ?s ?p ?o } insert { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }
         """
-        binding = {Variable('o'): Literal('hello world')}
+        query.bindings = {Variable('o'): Literal('hello world')}
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -577,10 +599,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store, binding)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
@@ -588,7 +610,9 @@ class TestRunUpdateSpec:
     def test_insert_statement_spec_fails(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_query = """insert ?s ?p ?o where { typo }"""
+        query = WhenSpec()
+        query.value = """insert ?s ?p ?o where { typo }"""
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -611,10 +635,10 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        spec_result = run_update_spec(spec_uri, state, insert_query, then_component.value, self.triple_store)
+        spec_result = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         if type(spec_result) == SparqlParseFailure:
             assert spec_result.spec_uri == spec_uri
@@ -631,10 +655,11 @@ class TestRunUpdateSpec:
         """
         state = Graph()
         state.parse(data=triples, format="ttl")
-
-        delete_insert_query = """
+        query = WhenSpec()
+        query.value = """      
         delete { ?s ?p ?o } insert { ?o ?p ?s } where { ?s ?p ?o }
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -663,21 +688,23 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_update_spec(spec_uri, state, delete_insert_query, then_component.value, self.triple_store)
+        t = run_update_spec(spec_uri, state, when, then_component.value, self.triple_store)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert t == expected_result
 
     def test_insert_spec_not_implemented_skipped(self):
-        triple_store = {"type": MUST.Anzo}
+        triple_store = {"type": MUST.NotImplemented}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        insert_query = """
+        query = WhenSpec()
+        query.value = """      
         insert { ?o ?p ?s } where {?s ?p ?o}
         """
+        when = [query]
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -703,11 +730,11 @@ class TestRunUpdateSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=triple_store)
 
-        t = run_update_spec(spec_uri, state, insert_query, then_component.value, triple_store)
-        message = NotImplementedError(f"SPARQL UPDATE not implemented for {MUST.Anzo}")
+        t = run_update_spec(spec_uri, state, when, then_component.value, triple_store)
+        message = NotImplementedError(f"SPARQL UPDATE not implemented for {MUST.NotImplemented}")
         assert type(t) == SpecSkipped
         assert type(message) == NotImplementedError
         assert str(t.message) == str(message)

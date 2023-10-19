@@ -73,10 +73,12 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=None,
                                  mustrd_triple_store=self.triple_store)
 
     def test_file_not_found_error(self):
+        project_root = get_project_root()
+        run_config = {'spec_path': project_root}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -96,10 +98,12 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_then_from_file_error(self):
+        project_root = get_project_root()
+        run_config = {'spec_path': project_root}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -119,10 +123,12 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_given_from_file_error(self):
+        project_root = get_project_root()
+        run_config = {'spec_path': project_root}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -142,10 +148,12 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_wrong_file_format_error(self):
+        project_root = get_project_root()
+        run_config = {'spec_path': project_root}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -165,10 +173,12 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_folder_path_missing_error(self):
+        project_root = get_project_root()
+        run_config = {'spec_path': project_root}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -184,16 +194,16 @@ class TestRunSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
 
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_file_from_folder_passes(self):
         project_root = get_project_root()
-        folder_path = Path(os.path.join(project_root, "../../test/data"))
+        run_config = {'then_path': Path(os.path.join(project_root, "test/data"))}
 
         spec_graph = Graph()
         spec = """
@@ -213,7 +223,7 @@ class TestRunSpec:
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=folder_path,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         then = Graph()
@@ -249,7 +259,7 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.given,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=None,
                                  mustrd_triple_store=self.triple_store)
         assert str(
             error_message.value) == f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
@@ -278,13 +288,13 @@ class TestRunSpec:
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
@@ -317,13 +327,13 @@ class TestRunSpec:
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)

@@ -84,13 +84,13 @@ class SpecComponentDetails:
 
 def get_path(path_type: str, run_config: dict) -> Path:
     try:
-        if str(run_config[path_type]).startswith("\/"): 
+        if str(run_config[path_type]).startswith("/"):
             return run_config[path_type]
         else: 
             return Path(os.path.join(run_config['spec_path'], run_config[path_type]))
     except(KeyError):
-        if str(run_config['data_path']).startswith("\/"): 
-            return run_config['test_data_path']
+        if str(run_config['data_path']).startswith("/"):
+            return run_config['data_path']
         else: 
             return Path(os.path.join(run_config['spec_path'], run_config['data_path']))
     
@@ -237,7 +237,7 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = Path(os.path.join(str(get_path('given_path',spec_component_details.run_config)), str(file_name)))
+    path = Path(os.path.join(str(get_path('when_path',spec_component_details.run_config)), str(file_name)))
     spec_component.value = get_spec_component_from_file(path)
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -250,7 +250,7 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
-    path = Path(os.path.join(str(get_path('given_path',spec_component_details.run_config)), str(file_name)))
+    path = Path(os.path.join(str(get_path('then_path',spec_component_details.run_config)), str(file_name)))
 
     return get_then_from_file(path, spec_component)
 
@@ -288,7 +288,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    if str(file_path).startswith("\/"): # absolute path
+    if str(file_path).startswith("/"): # absolute path
         path = file_path
     else: #relative path
         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
@@ -306,7 +306,7 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    if str(file_path).startswith("\/"): # absolute path
+    if str(file_path).startswith("/"): # absolute path
         path = file_path
     else: #relative path
         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
@@ -324,7 +324,7 @@ def _get_spec_component_filedatasource_then(spec_component_details: SpecComponen
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    if str(file_path).startswith("\/"): # absolute path
+    if str(file_path).startswith("/"): # absolute path
         path = file_path
     else: #relative path
         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
