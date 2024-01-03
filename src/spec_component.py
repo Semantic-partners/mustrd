@@ -36,7 +36,7 @@ from rdflib.term import Node
 import logging 
 
 import logger_setup
-from mustrdAnzo import get_queries_for_layer, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
+from mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
 from namespace import MUST
 from utils import get_project_root
 from multimethods import MultiMethod, Default
@@ -57,6 +57,8 @@ class GivenSpec(SpecComponent):
 @dataclass
 class WhenSpec(SpecComponent):
     value: str = None
+    paramQuery: str = None
+    queryTemplate: str = None
     queryType: URIRef = None
     bindings: dict = None
 
@@ -453,6 +455,26 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
     # If anzo specific function is called but no anzo defined
     else:
         raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartStepSparqlSource}")
+
+    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                       predicate=MUST.queryType)
+    return spec_component
+
+@get_spec_component.method((MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource, MUST.when))
+def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    # Get WHEN specComponent from query builder
+    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+        query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.anzoQueryStep)
+        queries = get_queries_from_templated_step(triple_store=spec_component_details.mustrd_triple_store,
+                                                    query_step_uri=query_step_uri)
+        spec_component.paramQuery= queries["param_query"]
+        spec_component.queryTemplate = queries["query_template"]
+    # If anzo specific function is called but no anzo defined
+    else:
+        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)

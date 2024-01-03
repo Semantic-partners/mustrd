@@ -58,10 +58,11 @@ def execute_select_mustrd_spec_stage(triple_store: dict, given: Graph, when: str
         upload_given(triple_store, given)
         if bindings:
             when = query_with_bindings(bindings, when)
+        when = when.replace("${fromSources}", f"FROM <{triple_store['input_graph']}>").replace(
+        "${targetGraph}", f"<{triple_store['output_graph']}>")
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
                 'default-graph-uri': triple_store['input_graph'], 'skipCache': 'true'}
         url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=application/sparql-results+json"
-        input("Press enter to continue")
         return manage_anzo_response(requests.post(url=url,
                                                   auth=(triple_store['username'], triple_store['password']),
                                                   data=data,
@@ -160,14 +161,9 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
 def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
     query = f"""SELECT ?stepUri ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
-         graph ?g {{
             ?stepUri a <http://cambridgesemantics.com/ontologies/Graphmarts#Step>;
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
-         }}
     }}
-    # """
-    # query="""
-    #     select ?g ?s ?p ?o { graph ?g {  ?s ?p ?o }} limit 10
     # """
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
@@ -175,6 +171,20 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
 
     return record_dictionaries[0].get(
         "query")
+
+def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
+
+    query = f"""SELECT ?stepUri ?param_query ?query_template WHERE {{
+        BIND(<{query_step_uri}> as ?stepUri)
+            ?stepUri    a <http://cambridgesemantics.com/ontologies/Graphmarts#Step> ;
+   					    <http://cambridgesemantics.com/ontologies/Graphmarts#parametersTemplate> ?param_query ;
+					    <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
+    }}
+    """
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
+                             triple_store['password'])
+    record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
+    return record_dictionaries[0]
 
 
 def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):
