@@ -454,6 +454,12 @@ sh:order rdf:type owl:DatatypeProperty ;
                          rdfs:isDefinedBy : ;
                          rdfs:label "AnzoGraphmartLayerSparqlSource" .
 
+### https://mustrd.com/model/AnzoGraphmartQueryDrivenTemplatedStepSparqlSource
+:AnzoGraphmartQueryDrivenTemplatedStepSparqlSource rdf:type owl:Class ;
+                         rdfs:subClassOf :SparqlSource ;
+                         rdfs:isDefinedBy : ;
+                         rdfs:label "AnzoGraphmartQueryDrivenTemplatedStepSparqlSource" .
+
 
 ###  https://mustrd.com/model/Then
 :Then rdf:type owl:Class ;
@@ -468,6 +474,13 @@ sh:order rdf:type owl:DatatypeProperty ;
               rdfs:subClassOf :SparqlAction ;
               rdfs:isDefinedBy : ;
               rdfs:label "UpdateSparql" .
+
+###  https://mustrd.com/model/AnzoQueryDrivenUpdateSparql
+:AnzoQueryDrivenUpdateSparql rdf:type owl:Class ;
+              rdfs:subClassOf :UpdateSparql ;
+              rdfs:isDefinedBy : ;
+              rdfs:label "UpdateSparql" .
+
 
 
 ###  https://mustrd.com/model/When

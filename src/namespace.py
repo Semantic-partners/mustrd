@@ -34,6 +34,7 @@ class MUST(DefinedNamespace):
     SelectSparql: URIRef
     ConstructSparql: URIRef
     UpdateSparql: URIRef
+    AnzoQueryDrivenUpdateSparql: URIRef
     AskSparql: URIRef
     DescribeSparql: URIRef
 
@@ -94,6 +95,7 @@ class MUST(DefinedNamespace):
     AnzoQueryBuilderSparqlSource: URIRef
     AnzoGraphmartStepSparqlSource: URIRef
     AnzoGraphmartLayerSparqlSource: URIRef
+    AnzoGraphmartQueryDrivenTemplatedStepSparqlSource: URIRef
     anzoQueryStep: URIRef
     anzoGraphmartLayer: URIRef
 

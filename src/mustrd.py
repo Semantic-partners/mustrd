@@ -372,6 +372,14 @@ def dispatch_run_when(spec: Specification):
 run_when = MultiMethod('run_when', dispatch_run_when)
 
 
+@run_when.method(MUST.AnzoQueryDrivenUpdateSparql)
+def _multi_run_when_anzo_query_driven_update(spec: Specification):
+    then = spec.then.value
+    result = run_anzo_query_driven_update_spec(spec.spec_uri, spec.given, spec.when, then,
+                             spec.triple_store)
+
+    return result
+
 @run_when.method(MUST.UpdateSparql)
 def _multi_run_when_update(spec: Specification):
     then = spec.then.value
@@ -674,6 +682,43 @@ def run_update_spec(spec_uri: URIRef,
             result = execute_update_spec(triple_store, given, query.value, query.bindings)
             # We only whant to run the given before the first query
             given = None
+        graph_compare = graph_comparison(then, result)
+        equal = isomorphic(result, then)
+        if equal:
+            return SpecPassed(spec_uri, triple_store["type"])
+        else:
+            return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
+
+    except ParseException as e:
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
+    except NotImplementedError as ex:
+        return SpecSkipped(spec_uri, triple_store["type"], ex)
+    
+def run_anzo_query_driven_update_spec(spec_uri: URIRef,
+                    given: Graph,
+                    when: list,
+                    then: Graph,
+                    triple_store: dict) -> SpecResult:
+    log.info(f"Running anzo query driven update spec {spec_uri} on {triple_store['type']}")
+    print(f"when spec: {when}")
+    
+    try:
+        #run the parameters query to obtain the values for the template step and put them into a dictionary
+        query_parameters = json.loads(execute_select_spec(triple_store, given, when[0].paramQuery, None))
+
+        # given is only used in the select to set up the data once and so is then set to None for subsequent update queries
+        given = None
+
+        #replace the anzo query placeholders with the input and output graphs
+        when_template = when[0].queryTemplate.replace("${usingSources}", f"USING <{triple_store['input_graph']}>").replace(
+        "${targetGraph}", f"<{triple_store['output_graph']}>")
+        
+        #for each set of parameters insert their values into the template an run it
+        for params in query_parameters['results'] ['bindings']:
+            for param in params:
+                when = when_template.replace("${" + param + "}", '"' + params[param]['value'] + '"')
+            print(when)
+            result = execute_update_spec(triple_store, given, when, None )
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
         if equal:
