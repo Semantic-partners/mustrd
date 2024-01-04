@@ -188,7 +188,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
   #  ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
     ttl_files = list(run_config['spec_path'].glob('**/*.mustrd.ttl'))
     ttl_files.sort()
-    log.info(f"Found {len(ttl_files)} ttl files in {run_config['spec_path']}")
+    log.info(f"Found {len(ttl_files)} mustrd.ttl files in {run_config['spec_path']}")
 
     for file in ttl_files:
         error_messages = []
@@ -705,18 +705,26 @@ def run_anzo_query_driven_update_spec(spec_uri: URIRef,
     try:
         #run the parameters query to obtain the values for the template step and put them into a dictionary
         query_parameters = json.loads(execute_select_spec(triple_store, given, when[0].paramQuery, None))
-
+        print("XXXXXXXXXXXXX",  query_parameters)
         # given is only used in the select to set up the data once and so is then set to None for subsequent update queries
         given = None
 
         #replace the anzo query placeholders with the input and output graphs
         when_template = when[0].queryTemplate.replace("${usingSources}", f"USING <{triple_store['input_graph']}>").replace(
         "${targetGraph}", f"<{triple_store['output_graph']}>")
-        
+
         #for each set of parameters insert their values into the template an run it
         for params in query_parameters['results'] ['bindings']:
-            for param in params:
-                when = when_template.replace("${" + param + "}", '"' + params[param]['value'] + '"')
+            when = when_template
+            for param in params:                
+                if params[param]['type'] == 'literal':
+                    delim1 = delim2 = '"' 
+                elif params[param]['type'] == 'uri':
+                    delim1 = '<' 
+                    delim2 = '>'
+                else:
+                    delim1 = delim2 = ''
+                when = when.replace("${" + param + "}", delim1 + params[param]['value'] + delim2)
             print(when)
             result = execute_update_spec(triple_store, given, when, None )
         graph_compare = graph_comparison(then, result)
