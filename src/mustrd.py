@@ -717,15 +717,14 @@ def run_anzo_query_driven_update_spec(spec_uri: URIRef,
         for params in query_parameters['results'] ['bindings']:
             when = when_template
             for param in params:                
-                if params[param]['type'] == 'literal':
-                    delim1 = delim2 = '"' 
-                elif params[param]['type'] == 'uri':
-                    delim1 = '<' 
-                    delim2 = '>'
+                if params[param].get('datatype'):
+                        value =  params[param]['value']
                 else:
-                    delim1 = delim2 = ''
-                when = when.replace("${" + param + "}", delim1 + params[param]['value'] + delim2)
-            print(when)
+                    if params[param]['type'] == 'uri':
+                        value =  '<' + params[param]['value'] + '>'
+                    else:
+                        value =  '"' + params[param]['value'] + '"'
+                when = when.replace("${" + param + "}", value)
             result = execute_update_spec(triple_store, given, when, None )
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
