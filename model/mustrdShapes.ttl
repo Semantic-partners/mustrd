@@ -236,5 +236,18 @@ must:AnzoGraphmartLayerSparqlSourceShape
                      sh:minCount 1 ; 
                      sh:maxCount 1 ; ] .
 
+must:AnzoGraphmartQueryDrivenTemplatedStepSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartQueryDrivenTemplatedStepSparqlSource ;
+    sh:property    
+                   [ sh:path        must:anzoQueryStep ;
+                     sh:message     "An Anzo query driven templated step sparql source must have one query step." ;
+                     sh:minCount    1 ; 
+                     sh:maxCount    1 ; ] ,
+                   [ sh:path        must:queryType ;
+                     sh:message     "An Anzo query driven templated step sparql source must have a query type of AnzoQueryDrivenUpdateSparql ." ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ]  .
+
 
 

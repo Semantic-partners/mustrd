@@ -479,7 +479,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 :AnzoQueryDrivenUpdateSparql rdf:type owl:Class ;
               rdfs:subClassOf :UpdateSparql ;
               rdfs:isDefinedBy : ;
-              rdfs:label "UpdateSparql" .
+              rdfs:label "AnzoQueryDrivenUpdateSparql" .
 
 
 

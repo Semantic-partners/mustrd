@@ -63,7 +63,7 @@ log = logger_setup.setup_logger(__name__)
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 def debug_requests_on():
@@ -87,7 +87,7 @@ def debug_requests_off():
     requests_log.setLevel(logging.WARNING)
     requests_log.propagate = False
 
-debug_requests_on()
+debug_requests_off()
 
 @dataclass
 class Specification:
@@ -339,10 +339,10 @@ def run_spec(spec: Specification) -> SpecResult:
     triple_store = spec.triple_store
     # close_connection = True
     try:
-        log.info(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+        log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
         if spec.given is not None:
             given_as_turtle = spec.given.serialize(format="turtle")
-            log.info(f"{given_as_turtle}")
+            log.debug(f"{given_as_turtle}")
         return run_when(spec)
     except ParseException as e:
         log.error(f"{type(e)} {e}")
@@ -676,7 +676,6 @@ def run_update_spec(spec_uri: URIRef,
                     then: Graph,
                     triple_store: dict) -> SpecResult:
     log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    print(f"when spec: {when}")
     try:
         for query in when:
             result = execute_update_spec(triple_store, given, query.value, query.bindings)
@@ -700,12 +699,12 @@ def run_anzo_query_driven_update_spec(spec_uri: URIRef,
                     then: Graph,
                     triple_store: dict) -> SpecResult:
     log.info(f"Running anzo query driven update spec {spec_uri} on {triple_store['type']}")
-    print(f"when spec: {when}")
+    log.debug(f"when spec: {when}")
     
     try:
         #run the parameters query to obtain the values for the template step and put them into a dictionary
         query_parameters = json.loads(execute_select_spec(triple_store, given, when[0].paramQuery, None))
-        print("XXXXXXXXXXXXX",  query_parameters)
+
         # given is only used in the select to set up the data once and so is then set to None for subsequent update queries
         given = None
 

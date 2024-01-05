@@ -72,11 +72,9 @@ def execute_select_mustrd_spec_stage(triple_store: dict, given: Graph, when: str
 
 @execute_update_spec.method(MUST.Anzo)
 def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
-    logging.info(f"updating in anzo! {triple_store=} {given=} {when=}")
+    logging.debug(f"updating in anzo! {triple_store=} {given=} {when=}")
     if given:
         upload_given(triple_store, given)
-    # input("have uploaded given")
-
     input_graph = triple_store['input_graph']
     output_graph = triple_store['output_graph']
 
@@ -91,7 +89,7 @@ def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, 
                 triple_store['password']),
             data=data,
             verify=False))
-    logging.info(f'response {response}')
+    logging.debug(f'response {response}')
     check_data = {'datasourceURI': triple_store['gqe_uri'], 'query': "construct {?s ?p ?o} { ?s ?p ?o }",
                 'default-graph-uri': output_graph, 'skipCache': 'true'}
     everything_response = manage_anzo_response(requests.post(url=url,
@@ -101,7 +99,7 @@ def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, 
             verify=False))
     # todo deal with error responses
     new_graph = Graph().parse(data=everything_response)
-    logging.info(f"new_graph={new_graph.serialize(format='ttl')}")
+    logging.debug(f"new_graph={new_graph.serialize(format='ttl')}")
     return new_graph
 
 
@@ -118,7 +116,7 @@ def execute_construct_mustrd_spec_stage(triple_store: dict, given: Graph, when: 
                 triple_store['password']),
             data=data,
             verify=False)
-        logging.info(f'response {response}')
+        logging.debug(f'response {response}')
         return Graph().parse(data=manage_anzo_response(response))
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
         logging.error(f'response {e}')
@@ -206,7 +204,7 @@ ORDER BY ?index
 
 
 def upload_given(triple_store: dict, given: Graph):
-    logging.info(f"upload_given {triple_store} {given}")
+    logging.debug(f"upload_given {triple_store} {given}")
     if given:
         try:
             input_graph = triple_store['input_graph']
