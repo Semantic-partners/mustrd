@@ -480,11 +480,10 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
                                                                        predicate=MUST.queryType)
     return spec_component
 
-
 @get_spec_component.method((MUST.AnzoGraphmartLayerSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> list:
     spec_components = []
-    # Get the ordered  WHEN specComponents which is the transform queries for the Layer
+    # Get the ordered  WHEN specComponents which is the transform and query driven template queries for the Layer
     if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
         graphmart_layer_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                              predicate=MUST.anzoGraphmartLayer)
@@ -495,9 +494,14 @@ def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: S
         raise ValueError(f"This test specification is specific to Anzo and can only be run against that platform.")
     for query in queries:
         spec_component = init_spec_component(spec_component_details.predicate)
-        spec_component.value = query.get("query")
-        spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+        spec_component.value = query.get("query") 
+        spec_component.paramQuery = query.get("param_query")
+        spec_component.queryTemplate = query.get("query_template")
+        if spec_component.value:
+            spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
+        else:
+            spec_component.queryType  = MUST.AnzoQueryDrivenUpdateSparql   
         spec_components += [spec_component]
     return spec_components
 

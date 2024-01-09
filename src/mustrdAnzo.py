@@ -78,8 +78,9 @@ def execute_update_spec_stage_anzo(triple_store: dict, given: Graph, when: str, 
     input_graph = triple_store['input_graph']
     output_graph = triple_store['output_graph']
 
-    substituted_query = when.replace("${usingSources}", f"USING <{input_graph}>").replace(
+    substituted_query = when.replace("${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
         "${targetGraph}", f"<{output_graph}>")
+    print(substituted_query)
    
     data = {'datasourceURI': triple_store['gqe_uri'], 'update': substituted_query,
                 'default-graph-uri': input_graph, 'skipCache': 'true'}
@@ -187,16 +188,21 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
 
 def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):
     query = f"""PREFIX graphmarts: <http://cambridgesemantics.com/ontologies/Graphmarts#>
-PREFIX anzo: <http://openanzo.org/ontologies/2008/07/Anzo#>
-SELECT ?query 
+    PREFIX anzo: <http://openanzo.org/ontologies/2008/07/Anzo#>
+SELECT ?query ?param_query ?query_template
   {{ <{graphmart_layer_uri}> graphmarts:step ?step .
   ?step         anzo:index ?index ;
                 anzo:orderedValue ?query_step .
-  ?query_step   graphmarts:enabled true ;
-                graphmarts:transformQuery ?query .
+  ?query_step graphmarts:enabled true ; 
+  OPTIONAL {{  ?query_step
+   				graphmarts:parametersTemplate ?param_query ;
+           		graphmarts:template ?query_template ;
+      . }}
+  OPTIONAL {{  ?query_step
+   				graphmarts:transformQuery ?query ;
+      . }}
   }}
-ORDER BY ?index
-    """
+  ORDER BY ?index"""
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
                              triple_store['password'])
     return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
