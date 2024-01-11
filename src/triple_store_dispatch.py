@@ -30,11 +30,12 @@ from namespace import MUST
 from mustrdGraphDb import execute_select as execute_graphdb_select
 from mustrdGraphDb import execute_construct as execute_graphdb_construct
 from mustrdGraphDb import execute_update as execute_graphdb_update
-from mustrdAnzo import execute_select_mustrd_spec_stage as execute_anzo_select
+from mustrdAnzo import execute_anzo_select
 from mustrdAnzo import execute_construct_mustrd_spec_stage as execute_anzo_construct
 from mustrdRdfLib import execute_select as execute_rdflib_select
 from mustrdRdfLib import execute_construct as execute_rdflib_construct
 from mustrdRdfLib import execute_update as execute_rdflib_update
+from mustrd import WhenSpec
 
 
 log = logger_setup.setup_logger(__name__)
@@ -69,10 +70,9 @@ def execute_construct_default(triple_store: dict, given: Graph, when: str, bindi
     raise NotImplementedError(f"SPARQL CONSTRUCT not implemented for {triple_store['type']}")
 
 
-def dispatch_select(triple_store: dict, given: Graph, when: str, bindings: dict) -> URIRef:
-    to = triple_store["type"]
-    log.info(f"dispatch_select to triple store {to}")
-    return to
+def dispatch_select(triple_store: dict,  when: str , bindings: dict) -> URIRef:
+    log.info(f"dispatch_select to triple store {triple_store['type']}")
+    return triple_store['type']
 
 
 execute_select_spec = MultiMethod('execute_select_spec', dispatch_select)
@@ -87,11 +87,9 @@ def execute_select_rdflib(triple_store: dict, given: Graph, when: str, bindings:
 def execute_select_graphdb(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     return execute_graphdb_select(triple_store, given, when, bindings)
 
-
 @execute_select_spec.method(MUST.Anzo)
-def execute_select_anzo(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
-    return execute_anzo_select(triple_store, given, when, bindings)
-
+def execute_select_anzo(triple_store: dict, when: str, bindings: dict = None) -> str:
+    return execute_anzo_select(triple_store, when, bindings)
 
 @execute_select_spec.method(Default)
 def execute_select_default(triple_store: dict, given: Graph, when: str, bindings: dict = None):
