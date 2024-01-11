@@ -56,7 +56,7 @@ from collections import defaultdict
 from pyshacl import validate
 import logging 
 from http.client import HTTPConnection
-import mustrdAnzo
+from mustrdAnzo import upload_given as upload_given_anzo
 
 log = logger_setup.setup_logger(__name__)
 
@@ -294,35 +294,17 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
     try:
         if mustrd_triple_store is None:
             mustrd_triple_store = {"type": MUST.RdfLib}
+        components = []
+        for predicate in MUST.given, MUST.when, MUST.then:
+            components.append(parse_spec_component(subject=spec_uri,
+                                                predicate=predicate,
+                                                spec_graph=spec_graph,
+                                                run_config=run_config,
+                                                mustrd_triple_store=mustrd_triple_store))
 
-        spec_uri = URIRef(str(spec_uri))
-
-        given_component = parse_spec_component(subject=spec_uri,
-                                               predicate=MUST.given,
-                                               spec_graph=spec_graph,
-                                               run_config=run_config,
-                                               mustrd_triple_store=mustrd_triple_store)
-
-        log.debug(f"Given: {given_component.value}")
-
-        when_component = parse_spec_component(subject=spec_uri,
-                                              predicate=MUST.when,
-                                              spec_graph=spec_graph,
-                                              run_config=run_config,
-                                              mustrd_triple_store=mustrd_triple_store)
-
-        log.debug(f"when: {when_component[0]}")
-
-        then_component = parse_spec_component(subject=spec_uri,
-                                              predicate=MUST.then,
-                                              spec_graph=spec_graph,
-                                              run_config=run_config,
-                                              mustrd_triple_store=mustrd_triple_store)
-
-        log.debug(f"then: {then_component.value}")
 
         # https://github.com/Semantic-partners/mustrd/issues/92
-        return Specification(spec_uri, mustrd_triple_store, given_component.value, when_component, then_component)
+        return Specification(spec_uri, mustrd_triple_store, components[0].value, components[1], components[2])
     
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -340,10 +322,19 @@ def run_spec(spec: Specification) -> SpecResult:
     # close_connection = True
     try:
         log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
-        if spec.given is not None:
+        if spec.given:
             given_as_turtle = spec.given.serialize(format="turtle")
             log.debug(f"{given_as_turtle}")
-        return run_when(spec)
+            upload_given(triple_store, spec.given)
+        for when in spec.when: 
+            result = run_when(spec_uri, triple_store, when)
+        graph_compare = graph_comparison(spec.then.value, result)
+        equal = isomorphic(result, spec.then.value)
+        if equal:
+             return SpecPassed(spec_uri, triple_store["type"])
+        else:
+             return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
+        
     except ParseException as e:
         log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
@@ -363,42 +354,40 @@ def run_spec(spec: Specification) -> SpecResult:
     #         mustrd_triple_store.clear_graph()
 
 #TODO: Need to look at the type for each when in the spec 
-def dispatch_run_when(spec: Specification):
-    to = spec.when[0].queryType
-    log.info(f"dispatch_run_when to SPARQL type {to}")
-    return to
+def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    ts = triple_store['type']
+    query_type = when.queryType
+    log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
+    return ts, query_type
 
 
 run_when = MultiMethod('run_when', dispatch_run_when)
 
+def dispatch_upload_given(triple_store: dict, given: Graph):
+    ts = triple_store['type']
+    log.info(f"dispatch_upload_given to {ts}")
+    return ts
 
-@run_when.method(MUST.AnzoQueryDrivenUpdateSparql)
-def _multi_run_when_anzo_query_driven_update(spec: Specification):
-    then = spec.then.value
-    result = run_anzo_query_driven_update_spec(spec.spec_uri, spec.given, spec.when, then,
-                             spec.triple_store)
+upload_given = MultiMethod('upload_given', dispatch_upload_given)
 
-    return result
+@upload_given.method(MUST.Anzo)                   
+def _upload_given_anzo(triple_store: dict, given: Graph):
+    upload_given_anzo(triple_store, given)
 
-@run_when.method(MUST.UpdateSparql)
-def _multi_run_when_update(spec: Specification):
-    then = spec.then.value
 
-    result = run_update_spec(spec.spec_uri, spec.given, spec.when, then,
-                             spec.triple_store)
-
-    return result
-
+@run_when.method((MUST.Anzo, MUST.UpdateSparql))
+def _multi_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    return run_update_spec(spec_uri, when, triple_store)
 
 @run_when.method(MUST.ConstructSparql)
-def _multi_run_when_construct(spec: Specification):
+def _multi_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     then = spec.then.value
     result = run_construct_spec(spec.spec_uri, spec.given, spec.when[0].value, then, spec.triple_store, spec.when[0].bindings)
     return result
 
 
 @run_when.method(MUST.SelectSparql)
-def _multi_run_when_select(spec: Specification):
+def _multi_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     then = spec.then.value
     result = run_select_spec(spec.spec_uri, spec.given, spec.when[0].value, then, spec.triple_store, spec.then.ordered,
                              spec.when[0].bindings)
@@ -406,18 +395,18 @@ def _multi_run_when_select(spec: Specification):
 
 
 @run_when.method(Default)
-def _multi_run_when_default(spec: Specification):
-    if spec.when[0].queryType == MUST.AskSparql:
-        log.warning(f"Skipping {spec.spec_uri}, SPARQL ASK not implemented.")
-        return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL ASK not implemented.")
-    elif spec.when[0].queryType == MUST.DescribeSparql:
-        log.warning(f"Skipping {spec.spec_uri}, SPARQL DESCRIBE not implemented.")
-        return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL DESCRIBE not implemented.")
-    else:
-        log.warning(f"Skipping {spec.spec_uri},  {spec.when[0].queryType} is not a valid SPARQL query type.")
-        return SpecSkipped(spec.spec_uri, spec.triple_store['type'],
-                           f"{spec.when[0].queryType} is not a valid SPARQL query type.")
-
+def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    # if when.queryType == MUST.AskSparql:
+    #     log.warning(f"Skipping {spec.spec_uri}, SPARQL ASK not implemented.")
+    #     return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL ASK not implemented.")
+    # elif spec.when[0].queryType == MUST.DescribeSparql:
+    #     log.warning(f"Skipping {spec.spec_uri}, SPARQL DESCRIBE not implemented.")
+    #     return SpecSkipped(spec.spec_uri, spec.triple_store['type'], "SPARQL DESCRIBE not implemented.")
+    # else:
+    #     log.warning(f"Skipping {spec.spec_uri},  {spec.when[0].queryType} is not a valid SPARQL query type.")
+    #     return SpecSkipped(spec.spec_uri, spec.triple_store['type'],
+    #                        f"{spec.when[0].queryType} is not a valid SPARQL query type.")
+    pass
 
 def is_json(myjson: str) -> bool:
     try:
@@ -656,7 +645,6 @@ def run_construct_spec(spec_uri: URIRef,
 
     try:
         result = execute_construct_spec(triple_store, given, when, bindings)
-        # result = mustrd_triple_store.execute_construct(given, when, bindings)
 
         graph_compare = graph_comparison(then, result)
         equal = isomorphic(result, then)
@@ -669,79 +657,47 @@ def run_construct_spec(spec_uri: URIRef,
     except NotImplementedError as ex:
         return SpecSkipped(spec_uri, triple_store["type"], ex)
 
-def run_update_spec(spec_uri: URIRef,
-                    given: Graph,
-                    when: list,
-                    then: Graph,
-                    triple_store: dict) -> SpecResult:
+def run_update_spec(spec_uri: URIRef, when: WhenSpec, triple_store: dict) -> SpecResult:
     log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
     try:
-        for query in when:
-            result = execute_update_spec(triple_store, given, query.value, query.bindings)
-            # We only whant to run the given before the first query
-            given = None
-        graph_compare = graph_comparison(then, result)
-        equal = isomorphic(result, then)
-        if equal:
-            return SpecPassed(spec_uri, triple_store["type"])
-        else:
-            return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
-
+        return execute_update_spec(triple_store, when.value, when.bindings)
     except ParseException as e:
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
     except NotImplementedError as ex:
         return SpecSkipped(spec_uri, triple_store["type"], ex)
   
-def run_anzo_query_driven_update_spec(spec_uri: URIRef,
-                    given: Graph,
-                    when: list,
-                    then: Graph,
-                    triple_store: dict) -> SpecResult:
+@run_when.method((MUST.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
+def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+
     log.info(f"Running anzo query driven update spec {spec_uri} on {triple_store['type']}")
     log.debug(f"when spec: {when}")
+    try:
+        #run the parameters query to obtain the values for the template step and put them into a dictionary
+        query_parameters = json.loads(execute_select_spec(triple_store, when.paramQuery, None))
 
-    for step in when:
-        if step.value:
-            print("YYYYY", step)
-            result = execute_update_spec(triple_store, given, step.value, step.bindings) 
-            # given is only used in the select to set up the data once and so is then set to None for subsequent update queries
-            given = None 
-        else:
-            print("XXXXX", step)
-            try:
-                #run the parameters query to obtain the values for the template step and put them into a dictionary
-                query_parameters = json.loads(execute_select_spec(triple_store, given, step.paramQuery, None))
-                # given is only used in the select to set up the data once and so is then set to None for subsequent update queries
-                given = None
+        #replace the anzo query placeholders with the input and output graphs    
+        when_template = when.queryTemplate.replace(
+            "${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
+            "${targetGraph}", f"<{triple_store['output_graph']}>")
 
-                #replace the anzo query placeholders with the input and output graphs
-                    
-                when_template = step.queryTemplate.replace("${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
-                "${targetGraph}", f"<{triple_store['output_graph']}>")
-
-                #for each set of parameters insert their values into the template an run it
-                for params in query_parameters['results'] ['bindings']:
-                    when = when_template
-                    for param in params:                
-                        if params[param].get('datatype'):
-                                value =  params[param]['value']
-                        else:
-                            if params[param]['type'] == 'uri':
-                                value =  '<' + params[param]['value'] + '>'
-                            else:
-                                value =  '"' + params[param]['value'] + '"'
-                        when = when.replace("${" + param + "}", value)
-                    result = execute_update_spec(triple_store, given, when,  step.bindings )
-            except ParseException as e:
-                return SparqlParseFailure(spec_uri, triple_store["type"], e)
-            except NotImplementedError as ex:
-                return SpecSkipped(spec_uri, triple_store["type"], ex)
-    graph_compare = graph_comparison(then, result)
-    equal = isomorphic(result, then)
-    if equal:
-        return SpecPassed(spec_uri, triple_store["type"])
-    else:
-        return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
+        #for each set of parameters insert their values into the template an run it
+        for params in query_parameters['results'] ['bindings']:
+            when_query = when_template
+            for param in params:                
+                if params[param].get('datatype'):
+                        value =  params[param]['value']
+                else:
+                    if params[param]['type'] == 'uri':
+                        value =  '<' + params[param]['value'] + '>'
+                    else:
+                        value =  '"' + params[param]['value'] + '"'
+                when_query = when_query.replace("${" + param + "}", value)
+            result = execute_update_spec(triple_store, when_query, None)
+        return result
+    except ParseException as e:
+        return SparqlParseFailure(spec_uri, triple_store["type"], e)
+    except NotImplementedError as ex:
+        return SpecSkipped(spec_uri, triple_store["type"], ex)
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
