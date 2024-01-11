@@ -28,7 +28,6 @@ from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 import logging
-from execute_update_spec import execute_update_spec
 from namespace import MUST
 
 
@@ -68,7 +67,6 @@ def execute_select (triple_store: dict,  when: str, bindings: dict = None) -> st
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         raise
 
-@execute_update_spec.method(MUST.Anzo)
 def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Graph:
     logging.debug(f"updating in anzo! {triple_store=} {when=}")
     input_graph = triple_store['input_graph']

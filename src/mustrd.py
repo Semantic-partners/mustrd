@@ -24,7 +24,6 @@ SOFTWARE.
 
 import os
 from typing import Tuple, List
-from execute_update_spec import execute_update_spec
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -48,7 +47,7 @@ import json
 from pandas import DataFrame
 
 from spec_component import AnzoWhenSpec, TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from utils import get_project_root
+from utils import get_project_root, is_json
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -66,7 +65,7 @@ from mustrdAnzo import execute_select as execute_select_anzo
 from mustrdGraphDb import upload_given as upload_given_graphdb
 from mustrdGraphDb import execute_update as execute_update_graphdb
 from mustrdGraphDb import execute_construct as execute_construct_graphdb
-from mustrdGraphDb import execute_select as execute_graphdb_select
+from mustrdGraphDb import execute_select as execute_select_graphdb
 
 
 log = logger_setup.setup_logger(__name__)
@@ -342,8 +341,8 @@ def run_spec(spec: Specification) -> SpecResult:
     try: 
         for when in spec.when: 
             result = run_when(spec_uri, triple_store, when)
-        if type(result) == str:
-            return table_compare(result, spec) 
+        if type(spec.then) == TableThenSpec:
+            return table_comparison(result, spec) 
         else:
             graph_compare = graph_comparison(spec.then.value, result)
             equal = isomorphic(result, spec.then.value)
@@ -371,13 +370,6 @@ def run_spec(spec: Specification) -> SpecResult:
     #         mustrd_triple_store.clear_graph()
 
 
-
-def is_json(myjson: str) -> bool:
-    try:
-        json.loads(myjson)
-    except ValueError:
-        return False
-    return True
 
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
@@ -515,8 +507,9 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 
 # https://github.com/Semantic-partners/mustrd/issues/110
 # https://github.com/Semantic-partners/mustrd/issues/52
-def table_compare(result: str, spec: Specification) -> SpecResult:
+def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
+    then = spec.then.value
     try:
         if is_json(result):
             df = json_results_to_panda_dataframe(result)
@@ -540,38 +533,38 @@ def table_compare(result: str, spec: Specification) -> SpecResult:
                     log.warning(warning)
 
             # Scenario 1: expected no result but got a result
-            if spec.then.value.empty:
+            if then.empty:
                 message = f"Expected 0 row(s) and 0 column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                then = create_empty_dataframe_with_columns(df)
-                df_diff = then.compare(df, result_names=("expected", "actual"))
+                empty_then = create_empty_dataframe_with_columns(df)
+                df_diff = empty_then.compare(df, result_names=("expected", "actual"))
             else:
                 # Scenario 2: expected a result and got a result
-                message = f"Expected {spec.then.value.shape[0]} row(s) and {round(spec.then.value.shape[1] / 2)} column(s), " \
+                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
                           f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 if when_ordered is True and not spec.then.ordered:
                     message += ". Actual result is ordered, must:then must contain sh:order on every row."
-                    if df.shape == spec.then.value.shape and (df.columns == spec.then.value.columns).all():
-                        df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
+                    if df.shape == then.shape and (df.columns == then.columns).all():
+                        df_diff = then.compare(df, result_names=("expected", "actual"))
                         if df_diff.empty:
                             df_diff = df
                     else:
-                        df_diff = construct_df_diff(df, spec.then.value)
+                        df_diff = construct_df_diff(df, then)
                 else:
-                    if df.shape == spec.then.value.shape and (df.columns == spec.then.value.columns).all():
-                        df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
+                    if df.shape == then.shape and (df.columns == then.columns).all():
+                        df_diff = then.compare(df, result_names=("expected", "actual"))
                     else:
-                        df_diff = construct_df_diff(df, spec.then.value)
+                        df_diff = construct_df_diff(df, then)
         else:
 
-            if spec.then.value.empty:
+            if then.empty:
                 # Scenario 3: expected no result, got no result
                 message = f"Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
                 df = pandas.DataFrame()
             else:
                 # Scenario 4: expected a result, but got an empty result
-                message = f"Expected {spec.then.value.shape[0]} row(s) and {round(spec.then.value.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
-                df = create_empty_dataframe_with_columns(spec.then.value)
-            df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
+                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
+                df = create_empty_dataframe_with_columns(then)
+            df_diff = then.compare(df, result_names=("expected", "actual"))
 
         if df_diff.empty:
             if warning:
@@ -909,7 +902,7 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
                     else:
                         value =  '"' + params[param]['value'] + '"'
                 when_query = when_query.replace("${" + param + "}", value)
-            result = execute_update_spec(triple_store, when_query, None)
+            result = execute_update_anzo(triple_store, when_query, None)
         return result
     except ParseException as e:
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
