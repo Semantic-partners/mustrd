@@ -57,11 +57,13 @@ class GivenSpec(SpecComponent):
 @dataclass
 class WhenSpec(SpecComponent):
     value: str = None
-    paramQuery: str = None
-    queryTemplate: str = None
     queryType: URIRef = None
     bindings: dict = None
 
+@dataclass
+class AnzoWhenSpec(WhenSpec):
+    paramQuery: str = None
+    queryTemplate: str = None
 
 @dataclass
 class ThenSpec(SpecComponent):
@@ -191,12 +193,6 @@ def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThen
 def _combine_specs_default(spec_components: List[SpecComponent]):
     raise ValueError(f"Parsing of multiple components of this type not implemented")
 
-
-# https://github.com/Semantic-partners/mustrd/issues/99
-def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) -> Tuple[Node, URIRef]:
-    return spec_component_details.data_source_type, spec_component_details.predicate
-
-
 def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: Node) -> List[Node]:
     data_source_types = []
     for data_source_type in spec_graph.objects(subject=source_node, predicate=RDF.type):
@@ -205,6 +201,10 @@ def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph,
     if len(data_source_types) == 0:
         raise ValueError(f"Node has no rdf type {subject} {predicate}")
     return data_source_types
+
+# https://github.com/Semantic-partners/mustrd/issues/99
+def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) -> Tuple[Node, URIRef]:
+    return spec_component_details.data_source_type, spec_component_details.predicate
 
 
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
@@ -462,7 +462,7 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
 
 @get_spec_component.method((MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate)
+    spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"] )
 
     # Get WHEN specComponent from query builder
     if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
@@ -493,7 +493,7 @@ def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: S
     else:
         raise ValueError(f"This test specification is specific to Anzo and can only be run against that platform.")
     for query in queries:
-        spec_component = init_spec_component(spec_component_details.predicate)
+        spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
         spec_component.value = query.get("query") 
         spec_component.paramQuery = query.get("param_query")
         spec_component.queryTemplate = query.get("query_template")
@@ -512,16 +512,18 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-def init_spec_component(predicate: URIRef) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
+def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None ) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
-        spec_component = WhenSpec()
+        if triple_store_type == MUST.Anzo:
+            spec_component = AnzoWhenSpec()
+        else:
+            spec_component = WhenSpec()
     elif predicate == MUST.then:
         spec_component = ThenSpec()
     else:
         spec_component = SpecComponent()
-
     return spec_component
 
 

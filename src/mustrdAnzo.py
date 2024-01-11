@@ -52,7 +52,7 @@ def query_with_bindings(bindings: dict, when: str) -> str:
     split_query = when.lower().split("where {", 1)
     return f"{split_query[0].strip()} WHERE {{ {values} {split_query[1].strip()}"
 
-def execute_anzo_select(triple_store: dict,  when: str, bindings: dict = None) -> str:
+def execute_select (triple_store: dict,  when: str, bindings: dict = None) -> str:
     try:
         if bindings:
             when = query_with_bindings(bindings, when)
@@ -69,7 +69,7 @@ def execute_anzo_select(triple_store: dict,  when: str, bindings: dict = None) -
         raise
 
 @execute_update_spec.method(MUST.Anzo)
-def execute_update_spec_stage_anzo(triple_store: dict, when: str, bindings: dict = None) -> Graph:
+def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Graph:
     logging.debug(f"updating in anzo! {triple_store=} {when=}")
     input_graph = triple_store['input_graph']
     output_graph = triple_store['output_graph']
@@ -99,9 +99,8 @@ def execute_update_spec_stage_anzo(triple_store: dict, when: str, bindings: dict
     return new_graph
 
 
-def execute_construct_mustrd_spec_stage(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
+def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Graph:
     try:
-        upload_given(triple_store, given)
         if bindings:
             when = query_with_bindings(bindings, when)
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
