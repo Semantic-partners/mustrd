@@ -54,6 +54,7 @@ from collections import defaultdict
 from pyshacl import validate
 import logging 
 from http.client import HTTPConnection
+from steprunner import upload_given, run_when
 
 from mustrdRdfLib import execute_select as execute_select_rdflib
 from mustrdRdfLib import execute_construct as execute_construct_rdflib
@@ -339,8 +340,14 @@ def run_spec(spec: Specification) -> SpecResult:
         if triple_store['type'] == MUST.Rdflib:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
     try: 
-        for when in spec.when: 
-            result = run_when(spec_uri, triple_store, when)
+        for when in spec.when:
+            log.info(f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}") 
+            try:
+                result = run_when(spec_uri, triple_store, when)
+            except ParseException as e:
+                return SparqlParseFailure(spec_uri, triple_store["type"], e)
+            except NotImplementedError as ex:
+                return SpecSkipped(spec_uri, triple_store["type"], ex)
         if type(spec.then) == TableThenSpec:
             return table_comparison(result, spec) 
         else:
@@ -753,174 +760,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
                 print(res.message)
 
 
-def dispatch_upload_given(triple_store: dict, given: Graph):
-    ts = triple_store['type']
-    log.info(f"dispatch_upload_given to {ts}")
-    return ts
 
-upload_given = MultiMethod('upload_given', dispatch_upload_given)
-
-@upload_given.method(MUST.RdfLib)                   
-def _upload_given_rdflib(triple_store: dict, given: Graph):
-    triple_store["given"] = given
-
-@upload_given.method(MUST.GraphDb)                   
-def _upload_given_graphdb(triple_store: dict, given: Graph):
-    upload_given_graphdb(triple_store, given)
-
-@upload_given.method(MUST.Anzo)                   
-def _upload_given_anzo(triple_store: dict, given: Graph):
-    upload_given_anzo(triple_store, given)
-
-def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    ts = triple_store['type']
-    query_type = when.queryType
-    log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
-    return ts, query_type
-
-run_when = MultiMethod('run_when', dispatch_run_when)
-
-@run_when.method((MUST.Anzo, MUST.UpdateSparql))
-def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_update_anzo(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-
-@run_when.method((MUST.Anzo, MUST.ConstructSparql))
-def _anzo_run_when_construct(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_construct_anzo(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-@run_when.method((MUST.Anzo, MUST.SelectSparql))
-def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_select_anzo(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-    
-
-@run_when.method((MUST.GraphDb, MUST.UpdateSparql))
-def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_update_graphdb(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-
-@run_when.method((MUST.GraphDb, MUST.ConstructSparql))
-def _graphdb_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_construct_graphdb(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-@run_when.method((MUST.GraphDb, MUST.SelectSparql))
-def _graphdb_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_select_graphdb(triple_store, when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-
-@run_when.method((MUST.RdfLib, MUST.UpdateSparql))
-def _rdflib_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_update_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-
-@run_when.method((MUST.RdfLib, MUST.ConstructSparql))
-def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_construct_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-@run_when.method((MUST.RdfLib, MUST.SelectSparql))
-def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    log.info(f"Running update spec {spec_uri} on {triple_store['type']}")
-    try:
-        return execute_select_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-    
-
-@run_when.method((MUST.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
-def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-
-    log.info(f"Running anzo query driven update spec {spec_uri} on {triple_store['type']}")
-    log.debug(f"when spec: {when}")
-    try:
-        #run the parameters query to obtain the values for the template step and put them into a dictionary
-        query_parameters = json.loads(execute_select_anzo(triple_store, when.paramQuery, None))
-
-        #replace the anzo query placeholders with the input and output graphs    
-        when_template = when.queryTemplate.replace(
-            "${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
-            "${targetGraph}", f"<{triple_store['output_graph']}>")
-
-        #for each set of parameters insert their values into the template an run it
-        for params in query_parameters['results'] ['bindings']:
-            when_query = when_template
-            for param in params:                
-                if params[param].get('datatype'):
-                        value =  params[param]['value']
-                else:
-                    if params[param]['type'] == 'uri':
-                        value =  '<' + params[param]['value'] + '>'
-                    else:
-                        value =  '"' + params[param]['value'] + '"'
-                when_query = when_query.replace("${" + param + "}", value)
-            result = execute_update_anzo(triple_store, when_query, None)
-        return result
-    except ParseException as e:
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec_uri, triple_store["type"], ex)
-
-@run_when.method(Default)
-def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    if when.queryType == MUST.AskSparql:
-        log.warning(f"Skipping {spec_uri}, SPARQL ASK not implemented.")
-        return SpecSkipped(spec_uri, triple_store['type'], "SPARQL ASK not implemented.")
-    elif when.queryType == MUST.DescribeSparql:
-        log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
-        return SpecSkipped(spec_uri, triple_store['type'], "SPARQL DESCRIBE not implemented.")
-    else:
-        log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
-        return SpecSkipped(spec_uri, triple_store['type'],
-                           f"{when.queryType} is not a valid SPARQL query type.")
     
 
 
