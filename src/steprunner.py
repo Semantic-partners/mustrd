@@ -47,26 +47,34 @@ log = logger_setup.setup_logger(__name__)
 
 @dataclass
 class SpecSkipped:
+    spec_uri: URIRef
+    triple_store: URIRef
     message: str
+
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
     ts = triple_store['type']
     log.info(f"dispatch_upload_given to {ts}")
     return ts
 
+
 upload_given = MultiMethod('upload_given', dispatch_upload_given)
+
 
 @upload_given.method(MUST.RdfLib)                   
 def _upload_given_rdflib(triple_store: dict, given: Graph):
     triple_store["given"] = given
 
+
 @upload_given.method(MUST.GraphDb)                   
 def _upload_given_graphdb(triple_store: dict, given: Graph):
     upload_given_graphdb(triple_store, given)
 
+
 @upload_given.method(MUST.Anzo)                   
 def _upload_given_anzo(triple_store: dict, given: Graph):
     upload_given_anzo(triple_store, given)
+
 
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
@@ -74,7 +82,9 @@ def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
     return ts, query_type
 
+
 run_when = MultiMethod('run_when', dispatch_run_when)
+
 
 @run_when.method((MUST.Anzo, MUST.UpdateSparql))
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
@@ -124,25 +134,25 @@ def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec
 @run_when.method((MUST.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
 def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
         
-    #run the parameters query to obtain the values for the template step and put them into a dictionary
+    # run the parameters query to obtain the values for the template step and put them into a dictionary
     query_parameters = json.loads(execute_select_anzo(triple_store, when.paramQuery, None))
     if len(query_parameters['results'] ['bindings']) > 0:
-    #replace the anzo query placeholders with the input and output graphs    
+        # replace the anzo query placeholders with the input and output graphs
         when_template = when.queryTemplate.replace(
             "${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
             "${targetGraph}", f"<{triple_store['output_graph']}>")
 
-        #for each set of parameters insert their values into the template an run it
+        # for each set of parameters insert their values into the template an run it
         for params in query_parameters['results'] ['bindings']:
             when_query = when_template
             for param in params:                
                 if params[param].get('datatype'):
-                        value =  params[param]['value']
+                    value = params[param]['value']
                 else:
                     if params[param]['type'] == 'uri':
-                        value =  '<' + params[param]['value'] + '>'
+                        value = '<' + params[param]['value'] + '>'
                     else:
-                        value =  '"' + params[param]['value'] + '"'
+                        value = '"' + params[param]['value'] + '"'
                 when_query = when_query.replace("${" + param + "}", value)
             result = execute_update_anzo(triple_store, when_query, None)
         return result
@@ -160,4 +170,3 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
         return SpecSkipped(spec_uri, triple_store['type'],
                            f"{when.queryType} is not a valid SPARQL query type.")
-    
