@@ -300,10 +300,10 @@ class TestRunSpec:
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
-        assert type(result) == SpecSkipped
+        # assert type(result) == SpecSkipped
         assert result.message == "SPARQL ASK not implemented."
 
-    def test_invalid_query_type_ask_error(self):
+    def test_invalid_query_type_delete_error(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 

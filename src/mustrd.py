@@ -56,17 +56,17 @@ import logging
 from http.client import HTTPConnection
 from steprunner import upload_given, run_when
 
-from mustrdRdfLib import execute_select as execute_select_rdflib
-from mustrdRdfLib import execute_construct as execute_construct_rdflib
-from mustrdRdfLib import execute_update as execute_update_rdflib
-from mustrdAnzo import upload_given as upload_given_anzo
-from mustrdAnzo import execute_update as execute_update_anzo
-from mustrdAnzo import execute_construct as execute_construct_anzo
-from mustrdAnzo import execute_select as execute_select_anzo
-from mustrdGraphDb import upload_given as upload_given_graphdb
-from mustrdGraphDb import execute_update as execute_update_graphdb
-from mustrdGraphDb import execute_construct as execute_construct_graphdb
-from mustrdGraphDb import execute_select as execute_select_graphdb
+# from mustrdRdfLib import execute_select as execute_select_rdflib
+# from mustrdRdfLib import execute_construct as execute_construct_rdflib
+# from mustrdRdfLib import execute_update as execute_update_rdflib
+# from mustrdAnzo import upload_given as upload_given_anzo
+# from mustrdAnzo import execute_update as execute_update_anzo
+# from mustrdAnzo import execute_construct as execute_construct_anzo
+# from mustrdAnzo import execute_select as execute_select_anzo
+# from mustrdGraphDb import upload_given as upload_given_graphdb
+# from mustrdGraphDb import execute_update as execute_update_graphdb
+# from mustrdGraphDb import execute_construct as execute_construct_graphdb
+# from mustrdGraphDb import execute_select as execute_select_graphdb
 
 
 log = logger_setup.setup_logger(__name__)
@@ -327,6 +327,20 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
         raise
 
 
+def check_result(spec, result):
+    if type(spec.then) == TableThenSpec:
+        return table_comparison(result, spec)
+    else:
+        graph_compare = graph_comparison(spec.then.value, result)
+        if isomorphic(result, spec.then.value):
+            return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+        else:
+            if spec.when[0].queryType == MUST.ConstructSparql:
+                return ConstructSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
+            else:
+                return UpdateSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
+
+
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
@@ -337,7 +351,7 @@ def run_spec(spec: Specification) -> SpecResult:
         log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
     else:
-        if triple_store['type'] == MUST.Rdflib:
+        if triple_store['type'] == MUST.RdfLib:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
     try: 
         for when in spec.when:
@@ -348,16 +362,7 @@ def run_spec(spec: Specification) -> SpecResult:
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
                 return SpecSkipped(spec_uri, triple_store["type"], ex)
-        if type(spec.then) == TableThenSpec:
-            return table_comparison(result, spec) 
-        else:
-            graph_compare = graph_comparison(spec.then.value, result)
-            equal = isomorphic(result, spec.then.value)
-            if equal:
-                return SpecPassed(spec_uri, triple_store["type"])
-            else:
-                return UpdateSpecFailure(spec_uri, triple_store["type"], graph_compare)
-        
+        check_result(spec, result)
     except ParseException as e:
         log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)

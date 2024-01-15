@@ -29,7 +29,9 @@ from rdflib import Graph, Variable, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, run_construct_spec, ConstructSpecFailure, SparqlParseFailure
+from mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, graph_comparison as mustrd_graph_comparison, \
+    UpdateSpecFailure, check_result, Specification
+from steprunner import run_when
 from graph_util import graph_comparison_message
 from namespace import MUST
 from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
@@ -50,17 +52,17 @@ class TestRunConstructSpec:
         run_config = {}
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
-        construct_query = """
-        construct { ?o ?s ?p } { ?s ?p ?o }
-        """
         spec_graph = Graph()
-        spec = """
+        spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         
         test-data:my_first_spec 
             a must:TestSpec ;
+                    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "construct {{ ?o ?s ?p }} where {{ ?s ?p ?o }}" ;
+                 must:queryType must:ConstructSparql  ; ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
@@ -71,25 +73,27 @@ class TestRunConstructSpec:
 
         spec_uri = TEST_DATA.my_first_spec
 
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              run_config=run_config,
+                                              mustrd_triple_store=self.triple_store)
+
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
                                               run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
-        t = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
-
-        expected_result = SpecPassed(spec_uri, self.triple_store["type"])
-        assert t == expected_result
+        self.triple_store["given"] = state
+        result = run_when(spec_uri, self.triple_store, when_component[0])
+        assert isomorphic(result, then_component.value)
         assert type(then_component) == ThenSpec
 
     def test_construct_spec_fails_with_graph_comparison(self):
         run_config = {}
-        state = Graph()
-        state.parse(data=self.given_sub_pred_obj, format="ttl")
-        construct_query = """
-        construct { ?p ?o ?s } { ?s ?p ?o }
-        """
+        given = Graph()
+        given.parse(data=self.given_sub_pred_obj, format="ttl")
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -98,6 +102,9 @@ class TestRunConstructSpec:
         
         test-data:my_failing_construct_spec 
             a must:TestSpec ;
+                                must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "construct { ?p ?o ?s } where { ?s ?p ?o }" ;
+                                  must:queryType must:ConstructSparql  ; ] ;
             must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
@@ -107,6 +114,11 @@ class TestRunConstructSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_construct_spec
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              run_config=run_config,
+                                              mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
@@ -114,9 +126,12 @@ class TestRunConstructSpec:
                                               run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
-        result = run_construct_spec(spec_uri, state, construct_query, then_component.value, self.triple_store)
+        self.triple_store["given"] = given
+        spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
+        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        then_result = check_result(spec, when_result)
 
-        assert result.spec_uri == spec_uri
+        assert then_result.spec_uri == spec_uri
         assert type(then_component) == ThenSpec
 
         expected_in_expected_not_in_actual = Graph()
@@ -125,9 +140,9 @@ class TestRunConstructSpec:
         expected_in_actual_not_in_expected = Graph()
         expected_in_actual_not_in_expected.add((TEST_DATA.pred, TEST_DATA.obj, TEST_DATA.sub))
 
-        result_type = type(result)
+        result_type = type(then_result)
         if result_type == ConstructSpecFailure:
-            graph_comparison = result.graph_comparison
+            graph_comparison = then_result.graph_comparison
             assert isomorphic(graph_comparison.in_expected_not_in_actual,
                               expected_in_expected_not_in_actual), graph_comparison_message(
                 expected_in_expected_not_in_actual, graph_comparison.in_expected_not_in_actual)

@@ -30,8 +30,8 @@ from rdflib.term import Literal, Variable, URIRef
 
 from pathlib import Path
 
-from mustrd import run_select_spec, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning
+from mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
+    SpecPassedWithWarning, check_result, Specification
 from namespace import MUST
 from spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from src.utils import get_project_root
@@ -48,13 +48,8 @@ class TestRunSelectSpec:
     triple_store = {"type": MUST.RdfLib}
 
     def test_select_spec_passes(self):
-        
-        state = Graph()
-        state.parse(data=self.given_sub_pred_obj, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
+
+        given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://mustrd.com/model/> .
@@ -62,6 +57,9 @@ class TestRunSelectSpec:
         
         test-data:my_first_spec 
             a must:TestSpec ;
+            must:when  [ a must:TextSparqlSource ;
+                                   must:queryText  "select ?s ?p ?o { ?s ?p ?o }" ;
+                                   must:queryType must:SelectSparql ] ;
             must:then  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
                                         must:variable "s" ;
@@ -72,30 +70,34 @@ class TestRunSelectSpec:
                                         must:boundValue  test-data:obj ; ] ; ] ;
                ] .
         """
-        spec_graph.parse(data=spec, format='ttl')
+        spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              run_config=None,
+                                              mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
                                               run_config=None,
                                               mustrd_triple_store=self.triple_store)
-
-        t = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
+        self.triple_store["given"] = given
+        spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
+        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
-        assert t == expected_result
+        assert then_result == expected_result
         assert type(then_component) == TableThenSpec
 
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
         
         state = Graph()
-        state.parse(data=self.given_sub_pred_obj, format="ttl")
-        select_query = """
-        select ?s ?p ?o { ?s ?p ?o }
-        """
-        spec_graph = Graph()
+        given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
         @prefix must: <https://mustrd.com/model/> .
@@ -103,6 +105,9 @@ class TestRunSelectSpec:
         
         test-data:my_failing_spec 
             a must:TestSpec ;
+            must:when  [ a must:TextSparqlSource ;
+                       must:queryText  "select ?s ?p ?o { ?s ?p ?o }" ;
+                       must:queryType must:SelectSparql ] ;
             must:then  [ a must:TableDataset ;
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
@@ -118,27 +123,33 @@ class TestRunSelectSpec:
                                         ]; ] ;
                 ].
         """
-        spec_graph.parse(data=spec, format='ttl')
-
+        spec_graph= Graph().parse(data=spec, format='ttl')
         spec_uri = TEST_DATA.my_failing_spec
-
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              run_config=None,
+                                              mustrd_triple_store=self.triple_store)
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
                                               run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        spec_result = run_select_spec(spec_uri, state, select_query, then_component.value, self.triple_store)
+        self.triple_store["given"] = given
+        spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
+        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        then_result = check_result(spec, when_result)
 
-        if type(spec_result) == SelectSpecFailure:
-            table_diff = spec_result.table_comparison.to_markdown()
+        if type(then_result) == SelectSpecFailure:
+            table_diff = then_result.table_comparison.to_markdown()
             assert type(then_component) == TableThenSpec
-            assert spec_result.spec_uri == spec_uri
+            assert then_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
         else:
-            raise Exception(f"wrong spec result type {spec_result}")
+            raise Exception(f"wrong spec result type {then_result}")
 
     def test_select_spec_fails_for_different_types(self):
         
