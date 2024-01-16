@@ -362,7 +362,7 @@ def run_spec(spec: Specification) -> SpecResult:
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
                 return SpecSkipped(spec_uri, triple_store["type"], ex)
-        check_result(spec, result)
+        return check_result(spec, result)
     except ParseException as e:
         log.error(f"{type(e)} {e}")
         return SparqlParseFailure(spec_uri, triple_store["type"], e)
