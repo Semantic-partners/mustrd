@@ -39,15 +39,14 @@ from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
-from multimethods import MultiMethod, Default
 
 from namespace import MUST
 import requests
 import json
 from pandas import DataFrame
 
-from spec_component import AnzoWhenSpec, TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from utils import get_project_root, is_json
+from spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
+from utils import  is_json
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -55,19 +54,6 @@ from pyshacl import validate
 import logging 
 from http.client import HTTPConnection
 from steprunner import upload_given, run_when
-
-# from mustrdRdfLib import execute_select as execute_select_rdflib
-# from mustrdRdfLib import execute_construct as execute_construct_rdflib
-# from mustrdRdfLib import execute_update as execute_update_rdflib
-# from mustrdAnzo import upload_given as upload_given_anzo
-# from mustrdAnzo import execute_update as execute_update_anzo
-# from mustrdAnzo import execute_construct as execute_construct_anzo
-# from mustrdAnzo import execute_select as execute_select_anzo
-# from mustrdGraphDb import upload_given as upload_given_graphdb
-# from mustrdGraphDb import execute_update as execute_update_graphdb
-# from mustrdGraphDb import execute_construct as execute_construct_graphdb
-# from mustrdGraphDb import execute_select as execute_select_graphdb
-
 
 log = logger_setup.setup_logger(__name__)
 
@@ -353,19 +339,16 @@ def run_spec(spec: Specification) -> SpecResult:
     else:
         if triple_store['type'] == MUST.RdfLib:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
-    try: 
+    try:
         for when in spec.when:
-            log.info(f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}") 
+            log.info(f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}")
             try:
                 result = run_when(spec_uri, triple_store, when)
             except ParseException as e:
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
-                return SpecSkipped(spec_uri, triple_store["type"], ex)
+                return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
         return check_result(spec, result)
-    except ParseException as e:
-        log.error(f"{type(e)} {e}")
-        return SparqlParseFailure(spec_uri, triple_store["type"], e)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"

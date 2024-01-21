@@ -22,14 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from dataclasses import dataclass
 import json
 
-from pyparsing import ParseException
 import logger_setup
 from multimethods import MultiMethod, Default
 from namespace import MUST
-from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib import Graph, URIRef
 from mustrdRdfLib import execute_select as execute_select_rdflib
 from mustrdRdfLib import execute_construct as execute_construct_rdflib
 from mustrdRdfLib import execute_update as execute_update_rdflib
@@ -41,15 +39,9 @@ from mustrdGraphDb import upload_given as upload_given_graphdb
 from mustrdGraphDb import execute_update as execute_update_graphdb
 from mustrdGraphDb import execute_construct as execute_construct_graphdb
 from mustrdGraphDb import execute_select as execute_select_graphdb
-from spec_component import AnzoWhenSpec, TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
+from spec_component import AnzoWhenSpec, WhenSpec
 
 log = logger_setup.setup_logger(__name__)
-
-@dataclass
-class SpecSkipped:
-    spec_uri: URIRef
-    triple_store: URIRef
-    message: str
 
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
@@ -61,17 +53,17 @@ def dispatch_upload_given(triple_store: dict, given: Graph):
 upload_given = MultiMethod('upload_given', dispatch_upload_given)
 
 
-@upload_given.method(MUST.RdfLib)                   
+@upload_given.method(MUST.RdfLib)
 def _upload_given_rdflib(triple_store: dict, given: Graph):
     triple_store["given"] = given
 
 
-@upload_given.method(MUST.GraphDb)                   
+@upload_given.method(MUST.GraphDb)
 def _upload_given_graphdb(triple_store: dict, given: Graph):
     upload_given_graphdb(triple_store, given)
 
 
-@upload_given.method(MUST.Anzo)                   
+@upload_given.method(MUST.Anzo)
 def _upload_given_anzo(triple_store: dict, given: Graph):
     upload_given_anzo(triple_store, given)
 
@@ -100,7 +92,7 @@ def _anzo_run_when_construct(spec_uri: URIRef, triple_store: dict, when: AnzoWhe
 def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_select_anzo(triple_store, when.value, when.bindings)
 
-    
+
 @run_when.method((MUST.GraphDb, MUST.UpdateSparql))
 def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_update_graphdb(triple_store, when.value, when.bindings)
@@ -130,22 +122,22 @@ def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenS
 def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
-    
+
 @run_when.method((MUST.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
-def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-        
+def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     # run the parameters query to obtain the values for the template step and put them into a dictionary
     query_parameters = json.loads(execute_select_anzo(triple_store, when.paramQuery, None))
-    if len(query_parameters['results'] ['bindings']) > 0:
+    if len(query_parameters['results']['bindings']) > 0:
         # replace the anzo query placeholders with the input and output graphs
         when_template = when.queryTemplate.replace(
-            "${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
+            "${usingSources}",
+            f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
             "${targetGraph}", f"<{triple_store['output_graph']}>")
 
         # for each set of parameters insert their values into the template an run it
-        for params in query_parameters['results'] ['bindings']:
+        for params in query_parameters['results']['bindings']:
             when_query = when_template
-            for param in params:                
+            for param in params:
                 if params[param].get('datatype'):
                     value = params[param]['value']
                 else:
@@ -162,11 +154,13 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     if when.queryType == MUST.AskSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL ASK not implemented.")
-        return SpecSkipped(spec_uri, triple_store['type'], "SPARQL ASK not implemented.")
+        msg = "SPARQL ASK not implemented."
     elif when.queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
-        return SpecSkipped(spec_uri, triple_store['type'], "SPARQL DESCRIBE not implemented.")
+        msg = "SPARQL DESCRIBE not implemented."
+    elif triple_store['type'] not in [MUST.Anzo, MUST.GraphDb, MUST.RdfLib]:
+        msg = f"{when.queryType} not implemented for {triple_store['type']}"
     else:
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
-        return SpecSkipped(spec_uri, triple_store['type'],
-                           f"{when.queryType} is not a valid SPARQL query type.")
+        msg = f"{when.queryType} is not a valid SPARQL query type."
+    raise NotImplementedError(msg)
