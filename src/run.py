@@ -31,7 +31,7 @@ from mustrd import run_specs, get_triple_stores, review_results, validate_specs
 from pathlib import Path
 from namespace import MUST
 from utils import get_project_root
-
+import logging 
 log = logger_setup.setup_logger(__name__)
 
 
@@ -69,7 +69,7 @@ def main(argv):
     else:
         log.info(f"No triple store configuration added, running default configuration")
         triple_stores = [{'type': MUST.RdfLib}]
-
+    log.info("Triple Stores: " + str(triple_stores))
     if args.data:
         run_config["data_path"] = Path(args.data)
     else:

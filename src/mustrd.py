@@ -237,7 +237,21 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                                 triple_stores]
             else:
                 subject_uris.add(subject_uri)
-                spec_graph.parse(file)
+                this_spec_graph = Graph()
+                this_spec_graph.parse(file)
+                spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
+                for spec in spec_uris_in_this_file:
+                    tripleToAdd = [spec, MUST.specSourceFile, Literal(file)]
+                    print(f"adding {tripleToAdd}") 
+                    this_spec_graph.add(tripleToAdd)
+                print(f"beforeadd: {spec_graph}" )
+                print(f"beforeadd: {str(this_spec_graph.serialize())}" )
+                spec_graph += this_spec_graph
+                print(f"afteradd: {str(spec_graph.serialize())}" )
+
+
+    sourceFiles = list(spec_graph.subject_objects(MUST.specSourceFile))
+    print(f"sourceFiles: {sourceFiles}")
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
@@ -306,7 +320,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
-        log.error(message)
+        log.exception(message)
         raise
     except ConnectionError as e:
         log.error(e)
@@ -388,6 +402,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
                                                                     triple_store_graph.value(
                                                                         subject=triple_store_config,
                                                                         predicate=MUST.password))
+                log.info("triple_store_creds" + triple_store["username"])
+                log.info("triple_store_creds" + triple_store["password"])
             except (FileNotFoundError, ValueError) as e:
                 triple_store["error"] = e
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
