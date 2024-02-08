@@ -119,8 +119,9 @@ def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> G
 # Get Given or then from the content of a graphmart
 def get_spec_component_from_graphmart(triple_store: dict, graphmart: URIRef, layer: URIRef = None) -> ConjunctiveGraph:
     try:
-        anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                                 triple_store['password'])
+        anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+                                 username=triple_store['username'],
+                                 password=triple_store['password'])
         return anzo_client.query_graphmart(graphmart=graphmart,
                                            data_layers=layer,
                                            query_string="CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}",
@@ -139,8 +140,9 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
             ?queryFolder a <http://www.cambridgesemantics.com/ontologies/QueryPlayground#QueryFolder>;
                         <http://purl.org/dc/elements/1.1/title> "{folder_name}"
     }}"""
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                             triple_store['password'])
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+                             username=triple_store['username'],
+                             password=triple_store['password'])
     
     result = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
     if len(result) == 0:
@@ -156,8 +158,9 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
     }}
     # """
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                             triple_store['password'])
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+                             username=triple_store['username'],
+                             password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
 
     return record_dictionaries[0].get(
@@ -172,8 +175,9 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
 					    <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                             triple_store['password'])
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+                             username=triple_store['username'],
+                             password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
     return record_dictionaries[0]
 
@@ -195,8 +199,11 @@ SELECT ?query ?param_query ?query_template
       . }}
   }}
   ORDER BY ?index"""
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], triple_store['username'],
-                             triple_store['password'])
+    print("blah_blah" )
+    print(str(triple_store))
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+                             username=triple_store['username'],
+                             password=triple_store['password'])
     return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
 
 

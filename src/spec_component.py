@@ -104,6 +104,7 @@ def parse_spec_component(subject: URIRef,
                          spec_graph: Graph,
                          run_config: dict,
                          mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
+    print(f"parse_spec_component {subject=} {predicate=} ")
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
     # all_data_source_types = []
     spec_components = []
@@ -118,6 +119,8 @@ def parse_spec_component(subject: URIRef,
                 spec_component_node=spec_component_node,
                 data_source_type=data_source_type,
                 run_config=run_config)
+            log.info(f"made {spec_component_details}")
+            log.info(f"madesg {spec_component_details.spec_graph}")
             spec_component = get_spec_component(spec_component_details)
             if type(spec_component) == list:
                 spec_components += spec_component 
@@ -191,7 +194,7 @@ def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThen
 
 @combine_specs.method(Default)
 def _combine_specs_default(spec_components: List[SpecComponent]):
-    raise ValueError(f"Parsing of multiple components of this type not implemented")
+    raise ValueError(f"Parsing of multiple components of this type not implemented {spec_components}")
 
 def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: Node) -> List[Node]:
     data_source_types = []
@@ -285,21 +288,46 @@ def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
 
 
 @get_spec_component.method((MUST.FileDataset, MUST.given))
+@get_spec_component.method((MUST.FileDataset, MUST.then))
 def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = init_spec_component(spec_component_details.predicate)
+    return load_spec_component(spec_component_details, spec_component)
 
+def load_spec_component(spec_component_details, spec_component):
+    log.info(f"""looking for {spec_component_details.subject}
+                                                                 predicate={MUST.specSourceFile}""")
+    where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
+                                                                 predicate=MUST.specSourceFile)
+    log.info(f"spec path: {where_did_i_load_this_spec_from=}")
+    if (where_did_i_load_this_spec_from == None):
+        log.error(f"spec_graph={spec_component_details.spec_graph}")
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    if str(file_path).startswith("/"): # absolute path
-        path = file_path
-    else: #relative path
-        path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    try:
-        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
-    except ParserError as e:
-        log.error(f"Problem parsing {path}, error of type {type(e)}")
-        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-    return spec_component
+    
+    # if str(file_path).startswith("/"): # absolute path
+    #     path = file_path
+    # else: #relative path
+    test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
+    print(f"look here {test_spec_file_path}")
+
+    paths = [
+        Path(test_spec_file_path, file_path),
+        Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
+    ]
+    
+    for path in paths:
+        if (os.path.exists(path)):
+            try:
+                log.info(f"Attempting to load spec_component from {path}")
+                spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
+            except ParserError as e:
+                log.error(f"Problem parsing {path}, error of type {type(e)} {spec_component=}")
+                raise ValueError(f"Problem parsing {path}, error of type {type(e)} {spec_component=}")
+            return spec_component
+
+    
+
+    
 
 
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
@@ -320,17 +348,17 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     return spec_component
 
 
-@get_spec_component.method((MUST.FileDataset, MUST.then))
-def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate)
+# @get_spec_component.method((MUST.FileDataset, MUST.then))
+# def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
+#     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
-    if str(file_path).startswith("/"): # absolute path
-        path = file_path
-    else: #relative path
-        path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    return get_then_from_file(path, spec_component)
+#     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+#                                                                  predicate=MUST.file)))
+#     if str(file_path).startswith("/"): # absolute path
+#         path = file_path
+#     else: #relative path
+#         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
+#     return get_then_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.TextSparqlSource, MUST.when))
