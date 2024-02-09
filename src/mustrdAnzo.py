@@ -199,8 +199,6 @@ SELECT ?query ?param_query ?query_template
       . }}
   }}
   ORDER BY ?index"""
-    print("blah_blah" )
-    print(str(triple_store))
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
                              username=triple_store['username'],
                              password=triple_store['password'])
