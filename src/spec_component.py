@@ -294,22 +294,17 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
     return load_spec_component(spec_component_details, spec_component)
 
 def load_spec_component(spec_component_details, spec_component):
-    log.info(f"""looking for {spec_component_details.subject}
-                                                                 predicate={MUST.specSourceFile}""")
     where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
                                                                  predicate=MUST.specSourceFile)
-    log.info(f"spec path: {where_did_i_load_this_spec_from=}")
     if (where_did_i_load_this_spec_from == None):
-        log.error(f"spec_graph={spec_component_details.spec_graph}")
+        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={spec_component_details.subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_component_details.spec_graph}")
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
     
-    # if str(file_path).startswith("/"): # absolute path
-    #     path = file_path
-    # else: #relative path
     test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
-    print(f"look here {test_spec_file_path}")
 
+    # first we try local relative to the test_spec_file_path, then we try relative to the path under test
+    # we intentionally don't try for absolute files, but you should feel free to argue that we should do.
     paths = [
         Path(test_spec_file_path, file_path),
         Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
@@ -318,7 +313,7 @@ def load_spec_component(spec_component_details, spec_component):
     for path in paths:
         if (os.path.exists(path)):
             try:
-                log.info(f"Attempting to load spec_component from {path}")
+                log.debug(f"Attempting to load spec_component from {path}")
                 spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
             except ParserError as e:
                 log.error(f"Problem parsing {path}, error of type {type(e)} {spec_component=}")
