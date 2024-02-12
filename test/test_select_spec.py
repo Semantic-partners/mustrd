@@ -36,6 +36,7 @@ from mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, 
 from namespace import MUST
 from spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from src.utils import get_project_root
+from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -74,6 +75,7 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
@@ -125,6 +127,8 @@ class TestRunSelectSpec:
         """
         spec_graph= Graph().parse(data=spec, format='ttl')
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -187,6 +191,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -249,6 +256,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -305,6 +315,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -327,7 +340,7 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+                when_result.exception) == "Expected SelectQuery, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
@@ -368,6 +381,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -426,6 +442,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -472,6 +491,9 @@ class TestRunSelectSpec:
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -1860,9 +1882,10 @@ class TestRunSelectSpec:
             must:then  [ a must:FileDataset ;
                                    must:file "test/data/thenSuccess.csv" ] .
             """
-        spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
@@ -1884,6 +1907,7 @@ class TestRunSelectSpec:
         assert then_result == expected_result
         assert type(then_component) == TableThenSpec
 
+    
     def test_select_given_file_then_file_spec_fails(self):
         project_root = get_project_root()
         run_config = {'spec_path': project_root}
@@ -1904,9 +1928,11 @@ class TestRunSelectSpec:
             must:then  [ a must:FileDataset ;
                                    must:file "test/data/thenFail.csv" ] .
         """
-        spec_graph = Graph().parse(data=spec, format='ttl')
+        
 
         spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec, spec_uri, __name__)
+
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
