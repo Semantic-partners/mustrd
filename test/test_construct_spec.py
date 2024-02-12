@@ -619,7 +619,7 @@ class TestRunConstructSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected ConstructQuery, found '?'  (at char 10), (line:1, col:11)"
+                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
