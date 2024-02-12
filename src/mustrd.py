@@ -550,6 +550,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 df_diff = empty_then.compare(df, result_names=("expected", "actual"))
             else:
                 # Scenario 2: expected a result and got a result
+                # pandas.set_option('display.max_columns', None)
                 message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
                           f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 if when_ordered is True and not spec.then.ordered:
@@ -583,7 +584,13 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 return SpecPassed(spec.spec_uri, spec.triple_store["type"])
         else:
+            # message += f"\nexpected:\n{then}\nactual:{df}"
             log.error(message)
+            print(spec.spec_uri)
+            print("actual:")
+            print(then)
+            print("expected:")
+            print(df)
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
     except ParseException as e:
