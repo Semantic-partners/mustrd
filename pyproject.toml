@@ -10,7 +10,7 @@ authors = ["John Placek <john.placek@semanticpartners.com>",
 
 [tool.poetry.dependencies]
 python = "3.11.7"
-rdflib = "^6.2.0"
+rdflib = "^6.3.2"
 pytest = "^7.2.0"
 pandas = "^1.5.2"
 multimethods-py = "^0.5.3"
