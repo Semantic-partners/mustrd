@@ -562,6 +562,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                     else:
                         df_diff = construct_df_diff(df, then)
                 else:
+                    then.sort_values(by=columns[::2], inplace=True)
                     if df.shape == then.shape and (df.columns == then.columns).all():
                         df_diff = then.compare(df, result_names=("expected", "actual"))
                     else:
