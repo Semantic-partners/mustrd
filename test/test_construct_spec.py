@@ -38,6 +38,8 @@ from namespace import MUST
 from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
 from utils import get_project_root
 
+from test.addspec_source_file_to_spec_graph import parse_spec
+
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
@@ -617,7 +619,7 @@ class TestRunConstructSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
+                when_result.exception) == "Expected ConstructQuery, found '?'  (at char 10), (line:1, col:11)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
@@ -703,9 +705,8 @@ class TestRunConstructSpec:
                  must:then  [ a must:FileDataset ;
                                    must:file "data/thenSuccess.nt" ] .
         """
-        spec_graph = Graph().parse(data=spec, format='ttl')
-
         spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec=spec, spec_uri=spec_uri, filename=__name__)
 
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,

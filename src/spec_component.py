@@ -119,8 +119,6 @@ def parse_spec_component(subject: URIRef,
                 spec_component_node=spec_component_node,
                 data_source_type=data_source_type,
                 run_config=run_config)
-            log.info(f"made {spec_component_details}")
-            log.info(f"madesg {spec_component_details.spec_graph}")
             spec_component = get_spec_component(spec_component_details)
             if type(spec_component) == list:
                 spec_components += spec_component 
@@ -130,6 +128,7 @@ def parse_spec_component(subject: URIRef,
         # all_data_source_types.extend(data_source_types)
     # return all_data_source_types
     # merge multiple graphs into one, give error if spec config is a TableThen
+    print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
 
 
@@ -257,10 +256,39 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
                                                         predicate=MUST.fileName)
     path = Path(os.path.join(str(get_path('then_path',spec_component_details.run_config)), str(file_name)))
 
-    return get_then_from_file(path, spec_component)
+    return load_dataset_from_file(path, spec_component)
 
+@get_spec_component.method((MUST.FileDataset, MUST.given))
+@get_spec_component.method((MUST.FileDataset, MUST.then))
+def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+    return load_spec_component(spec_component_details, spec_component)
 
-def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
+def load_spec_component(spec_component_details, spec_component):
+    where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
+                                                                 predicate=MUST.specSourceFile)
+    if (where_did_i_load_this_spec_from == None):
+        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={spec_component_details.subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_component_details.spec_graph}")
+    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                 predicate=MUST.file)))
+    
+    test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
+
+    # first we try local relative to the test_spec_file_path, then we try relative to the path under test
+    # we intentionally don't try for absolute files, but you should feel free to argue that we should do.
+    paths = [
+        Path(test_spec_file_path, file_path),
+        Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
+    ]
+    
+    for path in paths:
+        if (os.path.exists(path)):
+            return load_dataset_from_file(path, spec_component)
+
+    raise FileNotFoundError(f"Could not find file {file_path=} in any of the {paths=}")
+    
+
+def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
     if path.is_dir():
         raise ValueError(f"Path {path} is a directory, expected a file")
 
@@ -286,43 +314,6 @@ def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
             spec_component.value = g
             return spec_component
 
-
-@get_spec_component.method((MUST.FileDataset, MUST.given))
-@get_spec_component.method((MUST.FileDataset, MUST.then))
-def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
-    spec_component = init_spec_component(spec_component_details.predicate)
-    return load_spec_component(spec_component_details, spec_component)
-
-def load_spec_component(spec_component_details, spec_component):
-    where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
-                                                                 predicate=MUST.specSourceFile)
-    if (where_did_i_load_this_spec_from == None):
-        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={spec_component_details.subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_component_details.spec_graph}")
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
-    
-    test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
-
-    # first we try local relative to the test_spec_file_path, then we try relative to the path under test
-    # we intentionally don't try for absolute files, but you should feel free to argue that we should do.
-    paths = [
-        Path(test_spec_file_path, file_path),
-        Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    ]
-    
-    for path in paths:
-        if (os.path.exists(path)):
-            try:
-                log.debug(f"Attempting to load spec_component from {path}")
-                spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
-            except ParserError as e:
-                log.error(f"Problem parsing {path}, error of type {type(e)} {spec_component=}")
-                raise ValueError(f"Problem parsing {path}, error of type {type(e)} {spec_component=}")
-            return spec_component
-
-    
-
-    
 
 
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
