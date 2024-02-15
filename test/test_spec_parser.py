@@ -138,8 +138,8 @@ class TestSpecParserTest:
             [[str(TEST_DATA.sub), str(XSD.anyURI), str(TEST_DATA.pred), str(XSD.anyURI), str(TEST_DATA.obj),
               str(XSD.anyURI)]],
             columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
-
-        df_diff = expected_df.compare(then_component.value, result_names=("expected", "actual"))
+        actual_result = then_component.value[["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"]]
+        df_diff = expected_df.compare(actual_result, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
         assert type(then_component) == TableThenSpec
 
