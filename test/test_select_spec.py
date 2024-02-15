@@ -32,7 +32,7 @@ from rdflib.term import Literal, Variable, URIRef
 from pathlib import Path
 
 from mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning, check_result, Specification
+    SpecPassedWithWarning, check_result, Specification, SpecSkipped
 from namespace import MUST
 from spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from src.utils import get_project_root
@@ -614,9 +614,9 @@ class TestRunSelectSpec:
             table_diff = then_result.table_comparison.to_markdown()
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
+            assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('s', 'expected')                          | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   |
 |---:|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:--------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
-|  0 | https://semanticpartners.com/data/test/sub |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/sub |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -852,9 +852,9 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                            | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+            assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')                            | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
 |---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj | https://semanticpartners.com/data/test/obj | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 | https://semanticpartners.com/data/test/obj | https://semanticpartners.com/data/test/obj | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -911,9 +911,9 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 2 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
-|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
-|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+            assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                |
+|---:|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -966,9 +966,9 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('obj', 'expected')                           | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
-|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:----------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/object |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+            assert table_diff == """|    | ('obj', 'expected')                           | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:----------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/object |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1357,9 +1357,9 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
-|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+            assert table_diff == """|    | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
+|---:|:-------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1416,11 +1416,11 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
-|---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  1 |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  2 | https://semanticpartners.com/data/test/sub |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+            assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/sub |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1477,19 +1477,20 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert then_result.spec_uri == spec_uri
             assert message == "Expected 1 row(s) and 2 column(s), got 2 row(s) and 3 column(s)"
-            assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
-|---:|:-----------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  1 |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  2 | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+            assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')                               | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('s', 'expected')                              | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
+|---:|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:-----------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
+|  0 |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  1 |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
+|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
     def test_select_spec_ordered_passes(self):
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub1 test-data:pred1 test-data:obj1 .
         test-data:sub2 test-data:pred2 test-data:obj2 .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        
         """
         given = Graph().parse(data=triples, format="ttl")
         spec = """
@@ -1684,18 +1685,20 @@ class TestRunSelectSpec:
                         must:queryText  "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p" ;
                         must:queryType must:SelectSparql ] ;
             must:then  [ a must:TableDataset ;
-                 must:hasRow [ must:hasBinding[ must:variable "s" ;
-                                        must:boundValue  test-data:sub1 ; ],
-                                      [ must:variable "p" ;
-                                        must:boundValue  test-data:pred1 ; ],
-                                      [ must:variable "o" ;
-                                        must:boundValue  test-data:obj1 ; ] ; ] ,
-                            [ must:hasBinding[ must:variable "s" ;
+                 must:hasRow  [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub2 ; ],
                                       [ must:variable "p" ;
                                         must:boundValue  test-data:pred2 ; ],
                                       [ must:variable "o" ;
-                                        must:boundValue  test-data:obj2 ; ] ; ] ; ] .
+                                        must:boundValue  test-data:obj2 ; ] ; ] ,
+                 
+                 [ must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:sub1 ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred1 ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj1 ; ] ; ] ;
+ ] .
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
 
@@ -1716,19 +1719,11 @@ class TestRunSelectSpec:
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
         when_result = run_when(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
+        assert type(then_result) == SelectSpecFailure
+        assert type(then_component) == TableThenSpec
+        assert then_result.spec_uri == spec_uri
+        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
 
-        if type(then_result) == SelectSpecFailure:
-            table_diff = then_result.table_comparison.to_markdown()
-            message = then_result.message
-            assert type(then_component) == TableThenSpec
-            assert then_result.spec_uri == spec_uri
-            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
-            assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
-|---:|:--------------------------------------------|:----------------------------------------|:---------------------------------------------|:----------------------------------------|:--------------------------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/sub1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj1 | http://www.w3.org/2001/XMLSchema#anyURI |
-|  1 | https://semanticpartners.com/data/test/sub2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj2 | http://www.w3.org/2001/XMLSchema#anyURI |"""
-        else:
-            raise Exception(f"wrong spec result type {then_result}")
 
     def test_select_spec_not_all_ordered_fails(self):
 
@@ -1783,18 +1778,10 @@ class TestRunSelectSpec:
         when_result = run_when(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
-        if type(then_result) == SelectSpecFailure:
-            table_diff = then_result.table_comparison.to_markdown()
-            message = then_result.message
-            assert type(then_component) == TableThenSpec
-            assert then_result.spec_uri == spec_uri
-            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
-            assert table_diff == """|    | s                                           | s_datatype                              | p                                            | p_datatype                              | o                                           | o_datatype                              |
-|---:|:--------------------------------------------|:----------------------------------------|:---------------------------------------------|:----------------------------------------|:--------------------------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/sub1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred1 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj1 | http://www.w3.org/2001/XMLSchema#anyURI |
-|  1 | https://semanticpartners.com/data/test/sub2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/pred2 | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/obj2 | http://www.w3.org/2001/XMLSchema#anyURI |"""
-        else:
-            raise Exception(f"wrong spec result type {then_result}")
+        assert type(then_result) == SelectSpecFailure
+        assert type(then_component) == TableThenSpec
+        assert then_result.spec_uri == spec_uri
+        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
 
     def test_select_spec_expected_fewer_rows_fails_ordered(self):
 
@@ -1849,17 +1836,11 @@ class TestRunSelectSpec:
         when_result = run_when(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
-        if type(then_result) == SelectSpecFailure:
-            table_diff = then_result.table_comparison.to_markdown()
-            message = then_result.message
-            assert type(then_component) == TableThenSpec
-            assert then_result.spec_uri == spec_uri
-            assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
-            assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
-|---:|:--------------------|:-----------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:----------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
-        else:
-            raise Exception(f"wrong spec result type {then_result}")
+        assert type(then_result) == SelectSpecFailure
+        assert type(then_component) == TableThenSpec
+        assert then_result.spec_uri == spec_uri
+        assert then_result.message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+
 
     def test_select_given_file_then_file_spec_passes(self):
 
