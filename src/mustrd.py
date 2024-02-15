@@ -242,16 +242,16 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
                 for spec in spec_uris_in_this_file:
                     tripleToAdd = [spec, MUST.specSourceFile, Literal(file)]
-                    print(f"adding {tripleToAdd}") 
+                    # print(f"adding {tripleToAdd}")
                     this_spec_graph.add(tripleToAdd)
-                print(f"beforeadd: {spec_graph}" )
-                print(f"beforeadd: {str(this_spec_graph.serialize())}" )
+                # print(f"beforeadd: {spec_graph}" )
+                # print(f"beforeadd: {str(this_spec_graph.serialize())}" )
                 spec_graph += this_spec_graph
-                print(f"afteradd: {str(spec_graph.serialize())}" )
+                # print(f"afteradd: {str(spec_graph.serialize())}" )
 
 
     sourceFiles = list(spec_graph.subject_objects(MUST.specSourceFile))
-    print(f"sourceFiles: {sourceFiles}")
+    # print(f"sourceFiles: {sourceFiles}")
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
@@ -491,7 +491,11 @@ def json_results_order(result: str) -> list[str]:
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
 def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     json_result = json.loads(result)
+    df = pandas.json_normalize(json_result["results"]["bindings"])
+    print(df.to_string())
+    # df2 = df.transpose()
     frames = DataFrame()
+    # print(df2.to_string())
     for binding in json_result["results"]["bindings"]:
         columns = []
         values = []
@@ -520,6 +524,10 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 # https://github.com/Semantic-partners/mustrd/issues/52
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
+    when_ordered = False
+    order_list = ["order by ?", "order by desc", "order by asc"]
+    if any(pattern in spec.when[0].value.lower() for pattern in order_list):
+        when_ordered = True
     then = spec.then.value
     try:
         if is_json(result):
@@ -529,15 +537,9 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             raise ParseException
 
         if df.empty is False:
-            when_ordered = False
-
-            order_list = ["order by ?", "order by desc", "order by asc"]
-            if any(pattern in spec.when[0].value.lower() for pattern in order_list):
-                when_ordered = True
-            else:
-                df = df[columns]
+            df = df[columns]
+            if not when_ordered:
                 df.sort_values(by=columns[::2], inplace=True)
-
                 df.reset_index(inplace=True, drop=True)
                 if spec.then.ordered:
                     warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
@@ -548,6 +550,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 message = f"Expected 0 row(s) and 0 column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 empty_then = create_empty_dataframe_with_columns(df)
                 df_diff = empty_then.compare(df, result_names=("expected", "actual"))
+                print(df_diff.to_markdown())
             else:
                 # Scenario 2: expected a result and got a result
                 # pandas.set_option('display.max_columns', None)
@@ -555,18 +558,52 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                           f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 if when_ordered is True and not spec.then.ordered:
                     message += ". Actual result is ordered, must:then must contain sh:order on every row."
-                    if df.shape == then.shape and (df.columns == then.columns).all():
-                        df_diff = then.compare(df, result_names=("expected", "actual"))
-                        if df_diff.empty:
-                            df_diff = df
-                    else:
-                        df_diff = construct_df_diff(df, then)
+                    return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
+                    # if df.shape == then.shape and (df.columns == then.columns).all():
+                    #     df_diff = then.compare(df, result_names=("expected", "actual"))
+                    #     if df_diff.empty:
+                    #         df_diff = df
+                    #         print(df_diff.to_markdown())
+                    # else:
+                    #     df_diff = construct_df_diff(df, then)
+                    #     print(df_diff.to_markdown())
                 else:
-                    then.sort_values(by=columns[::2], inplace=True)
-                    if df.shape == then.shape and (df.columns == then.columns).all():
-                        df_diff = then.compare(df, result_names=("expected", "actual"))
+                    if len(df.columns) == len(then.columns):
+                        df_cols = list(df)
+                        df_cols.sort()
+                        then_cols = list(then)
+                        then_cols.sort()
+                        if df_cols == then_cols:
+                            then = then[columns]
+                            if not when_ordered:
+                                then.sort_values(by=columns[::2], inplace=True)
+                                then.reset_index(drop=True, inplace=True)
+                            if df.shape == then.shape and (df.columns == then.columns).all():
+                                df_diff = then.compare(df, result_names=("expected", "actual"))
+                            else:
+                                df_diff = construct_df_diff(df, then)
+                                print("XXXXX")
+                                print(df_diff.to_markdown())
+                        else:
+                            then_cols = list(then)
+                            then_cols.sort()
+                            then = then[then_cols]
+                            df_cols = list(df)
+                            df_cols.sort()
+                            df = df[df_cols]
+                            df_diff = construct_df_diff(df, then)
+                            print("YYYYY")
+                            print(df_diff.to_markdown())
                     else:
+                        then_cols = list(then)
+                        then_cols.sort()
+                        then = then[then_cols]
+                        df_cols = list(df)
+                        df_cols.sort()
+                        df = df[df_cols]
                         df_diff = construct_df_diff(df, then)
+                        print("ZZZZZ")
+                        print(df_diff.to_markdown())
         else:
 
             if then.empty:
@@ -576,8 +613,12 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 # Scenario 4: expected a result, but got an empty result
                 message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
+                then_cols = list(then)
+                then_cols.sort()
+                then = then[then_cols]
                 df = create_empty_dataframe_with_columns(then)
             df_diff = then.compare(df, result_names=("expected", "actual"))
+            print(df_diff.to_markdown())
 
         if df_diff.empty:
             if warning:
@@ -587,11 +628,11 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         else:
             # message += f"\nexpected:\n{then}\nactual:{df}"
             log.error(message)
-            print(spec.spec_uri)
-            print("actual:")
-            print(then)
-            print("expected:")
-            print(df)
+            # print(spec.spec_uri)
+            # print("actual:")
+            # print(then)
+            # print("expected:")
+            # print(df)
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
     except ParseException as e:

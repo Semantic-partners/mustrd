@@ -104,7 +104,7 @@ def parse_spec_component(subject: URIRef,
                          spec_graph: Graph,
                          run_config: dict,
                          mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
-    print(f"parse_spec_component {subject=} {predicate=} ")
+    # print(f"parse_spec_component {subject=} {predicate=} ")
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
     # all_data_source_types = []
     spec_components = []
@@ -128,7 +128,7 @@ def parse_spec_component(subject: URIRef,
         # all_data_source_types.extend(data_source_types)
     # return all_data_source_types
     # merge multiple graphs into one, give error if spec config is a TableThen
-    print(f"calling multimethod with {spec_components}")
+    # print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
 
 
@@ -592,55 +592,90 @@ def get_spec_from_statements(subject: URIRef,
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
+    # then_query = f"""
+    # SELECT ?then ?order ?variable ?binding
+    # WHERE {{ {{
+    #      <{subject}> <{predicate}> [
+    #             a <{MUST.TableDataset}> ;
+    #             <{MUST.hasRow}> [
+    #                 <{MUST.hasBinding}> [
+    #                     <{MUST.variable}> ?variable ;
+    #                     <{MUST.boundValue}> ?binding ; ] ;
+    #                         ] ; ].}}
+    # OPTIONAL {{ <{subject}> <{predicate}> [
+    #             a <{MUST.TableDataset}> ;
+    #             <{MUST.hasRow}> [  sh:order ?order ;
+    #                                 <{MUST.hasBinding}> [
+    #                         <{MUST.variable}> ?variable ;
+    #                         <{MUST.boundValue}> ?binding ; ] ;
+    #                     ] ; ].}}
+    # }} ORDER BY ASC(?order)"""
+    #
+    # expected_results = spec_graph.query(then_query)
+    # data_dict = {}
+    # columns = []
+    # series_list = []
+    #
+    # for then, items in groupby(expected_results, lambda er: er.then):
+    #     for i in list(items):
+    #         if i.variable.value not in columns:
+    #             data_dict[i.variable.value] = []
+    #             data_dict[i.variable.value + "_datatype"] = []
+    #
+    # for then, items in groupby(expected_results, lambda er: er.then):
+    #     for i in list(items):
+    #         data_dict[i.variable.value].append(str(i.binding))
+    #         if type(i.binding) == Literal:
+    #             literal_type = str(XSD.string)
+    #             if hasattr(i.binding, "datatype") and i.binding.datatype:
+    #                 literal_type = str(i.binding.datatype)
+    #             data_dict[i.variable.value + "_datatype"].append(literal_type)
+    #         else:
+    #             data_dict[i.variable.value + "_datatype"].append(str(XSD.anyURI))
+    #
+    # # convert dict to Series to avoid problem with array length
+    # for key, value in data_dict.items():
+    #     series_list.append(pandas.Series(value, name=key))
+    #
+    # df = pandas.concat(series_list, axis=1)
+    # df.fillna('', inplace=True)
+
     then_query = f"""
-    SELECT ?then ?order ?variable ?binding
-    WHERE {{ {{
-         <{subject}> <{predicate}> [
-                a <{MUST.TableDataset}> ;
-                <{MUST.hasRow}> [ 
-                    <{MUST.hasBinding}> [
-                        <{MUST.variable}> ?variable ;
-                        <{MUST.boundValue}> ?binding ; ] ; 
-                            ] ; ].}} 
-    OPTIONAL {{ <{subject}> <{predicate}> [
-                a <{MUST.TableDataset}> ;
-                <{MUST.hasRow}> [  sh:order ?order ;
-                                    <{MUST.hasBinding}> [
-                            <{MUST.variable}> ?variable ;
-                            <{MUST.boundValue}> ?binding ; ] ;
-                        ] ; ].}}
-    }} ORDER BY ASC(?order)"""
+        prefix sh:        <http://www.w3.org/ns/shacl#> 
+            SELECT ?row ?variable ?binding ?order
+            WHERE {{ 
+                 <{subject}> <{predicate}> [
+                        a <{MUST.TableDataset}> ;
+                        <{MUST.hasRow}> ?row ].
+                          ?row  <{MUST.hasBinding}> [
+                                <{MUST.variable}> ?variable ;
+                                <{MUST.boundValue}> ?binding ; ] .
+                          OPTIONAL {{ ?row sh:order ?order . }}        
+                                     .}} 
+             ORDER BY ?order"""
 
     expected_results = spec_graph.query(then_query)
-
-    data_dict = {}
-    columns = []
-    series_list = []
-
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            if i.variable.value not in columns:
-                data_dict[i.variable.value] = []
-                data_dict[i.variable.value + "_datatype"] = []
-
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            data_dict[i.variable.value].append(str(i.binding))
-            if type(i.binding) == Literal:
-                literal_type = str(XSD.string)
-                if hasattr(i.binding, "datatype") and i.binding.datatype:
-                    literal_type = str(i.binding.datatype)
-                data_dict[i.variable.value + "_datatype"].append(literal_type)
-            else:
-                data_dict[i.variable.value + "_datatype"].append(str(XSD.anyURI))
-
-    # convert dict to Series to avoid problem with array length
-    for key, value in data_dict.items():
-        series_list.append(pandas.Series(value, name=key))
-
-    df = pandas.concat(series_list, axis=1)
+    index = {str(row.row) for row in expected_results}
+    columns = set()
+    for row in expected_results:
+        columns.add(row.variable.value)
+        columns.add(row.variable.value + "_datatype")
+    columns.add("order")
+    df = pandas.DataFrame(index=list(index), columns=list(columns))
+    for row in expected_results:
+        df.loc[str(row.row), row.variable.value] = str(row.binding)
+        df.loc[str(row.row), "order"] = row.order
+        if type(row.binding) == Literal:
+            literal_type = str(XSD.string)
+            if hasattr(row.binding, "datatype") and row.binding.datatype:
+                literal_type = str(row.binding.datatype)
+            df.loc[str(row.row), row.variable.value + "_datatype"] = literal_type
+        else:
+            df.loc[str(row.row), row.variable.value + "_datatype"] = str(XSD.anyURI)
+    df.sort_values(by="order", inplace=True)
+    df.drop(columns="order", inplace=True)
+    df.reset_index(drop=True, inplace=True)
     df.fillna('', inplace=True)
-
     return df
 
 
