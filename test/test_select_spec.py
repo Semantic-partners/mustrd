@@ -159,7 +159,8 @@ class TestRunSelectSpec:
         
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
-        test-data:sub test-data:pred 1 .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        test-data:sub test-data:pred "1"^^xsd:integer .
         """
 
         given = Graph().parse(data=triples, format="ttl")
