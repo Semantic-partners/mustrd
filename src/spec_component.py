@@ -592,54 +592,7 @@ def get_spec_from_statements(subject: URIRef,
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
-    # then_query = f"""
-    # SELECT ?then ?order ?variable ?binding
-    # WHERE {{ {{
-    #      <{subject}> <{predicate}> [
-    #             a <{MUST.TableDataset}> ;
-    #             <{MUST.hasRow}> [
-    #                 <{MUST.hasBinding}> [
-    #                     <{MUST.variable}> ?variable ;
-    #                     <{MUST.boundValue}> ?binding ; ] ;
-    #                         ] ; ].}}
-    # OPTIONAL {{ <{subject}> <{predicate}> [
-    #             a <{MUST.TableDataset}> ;
-    #             <{MUST.hasRow}> [  sh:order ?order ;
-    #                                 <{MUST.hasBinding}> [
-    #                         <{MUST.variable}> ?variable ;
-    #                         <{MUST.boundValue}> ?binding ; ] ;
-    #                     ] ; ].}}
-    # }} ORDER BY ASC(?order)"""
-    #
-    # expected_results = spec_graph.query(then_query)
-    # data_dict = {}
-    # columns = []
-    # series_list = []
-    #
-    # for then, items in groupby(expected_results, lambda er: er.then):
-    #     for i in list(items):
-    #         if i.variable.value not in columns:
-    #             data_dict[i.variable.value] = []
-    #             data_dict[i.variable.value + "_datatype"] = []
-    #
-    # for then, items in groupby(expected_results, lambda er: er.then):
-    #     for i in list(items):
-    #         data_dict[i.variable.value].append(str(i.binding))
-    #         if type(i.binding) == Literal:
-    #             literal_type = str(XSD.string)
-    #             if hasattr(i.binding, "datatype") and i.binding.datatype:
-    #                 literal_type = str(i.binding.datatype)
-    #             data_dict[i.variable.value + "_datatype"].append(literal_type)
-    #         else:
-    #             data_dict[i.variable.value + "_datatype"].append(str(XSD.anyURI))
-    #
-    # # convert dict to Series to avoid problem with array length
-    # for key, value in data_dict.items():
-    #     series_list.append(pandas.Series(value, name=key))
-    #
-    # df = pandas.concat(series_list, axis=1)
-    # df.fillna('', inplace=True)
-
+    # query the spec to get the expected result to convert to dataframe for comparison
     then_query = f"""
         prefix sh:        <http://www.w3.org/ns/shacl#> 
             SELECT ?row ?variable ?binding ?order
@@ -655,13 +608,18 @@ def get_spec_from_table(subject: URIRef,
              ORDER BY ?order"""
 
     expected_results = spec_graph.query(then_query)
+    # get the unique row ids form the result to form the index of the results dataframe
     index = {str(row.row) for row in expected_results}
+    # get the unique variables to form the columns of the results dataframe
     columns = set()
     for row in expected_results:
         columns.add(row.variable.value)
         columns.add(row.variable.value + "_datatype")
+    # add an additional column for the sort order (if any) of the results
     columns.add("order")
+    # create an empty dataframe to populate with the results
     df = pandas.DataFrame(index=list(index), columns=list(columns))
+    # fill the dataframe with the results data
     for row in expected_results:
         df.loc[str(row.row), row.variable.value] = str(row.binding)
         df.loc[str(row.row), "order"] = row.order
@@ -672,7 +630,9 @@ def get_spec_from_table(subject: URIRef,
             df.loc[str(row.row), row.variable.value + "_datatype"] = literal_type
         else:
             df.loc[str(row.row), row.variable.value + "_datatype"] = str(XSD.anyURI)
+    # use the sort order sort the results
     df.sort_values(by="order", inplace=True)
+    # drop the order column and replace the rowid index with a numeric one and replace empty values with spaces
     df.drop(columns="order", inplace=True)
     df.reset_index(drop=True, inplace=True)
     df.fillna('', inplace=True)
