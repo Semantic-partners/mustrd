@@ -2,15 +2,18 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:a_complete_construct_scenario_when_file_then_file
+test-data:a_complete_construct_scenario_with_inline_graph
     a          must:TestSpec ;
     must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
-    must:when  [ a must:FileSparqlSource  ;
-                                   must:file "test/data/construct.rq" ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "CONSTRUCT { ?o ?s ?p } WHERE { GRAPH ?g {?s ?p ?o }}" ;
                  must:queryType must:ConstructSparql  ; ] ;
-    must:then  [ a must:FileDataset ;
-                                   must:file "test/data/thenSuccess.nt" ] .
+    must:then  [ a must:StatementsDataset ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                   rdf:subject   test-data:obj ;
+                                   rdf:predicate test-data:sub ;
+                                   rdf:object    test-data:pred ; ] ; ]  .

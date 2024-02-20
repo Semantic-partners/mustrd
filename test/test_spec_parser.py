@@ -95,7 +95,7 @@ class TestSpecParserTest:
         given_component = parse_spec_component(subject=self.select_spec_uri,
                                                predicate=MUST.given,
                                                spec_graph=spec_graph,
-                                               folder_location=None,
+                                               run_config=None,
                                                mustrd_triple_store=self.triple_store)
 
         given = given_component.value
@@ -117,13 +117,13 @@ class TestSpecParserTest:
         when_component = parse_spec_component(subject=self.select_spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         expected_query = "select ?s ?p ?o { ?s ?p ?o }"
 
-        assert type(when_component) == WhenSpec
-        assert when_component.value == expected_query
+        assert type(when_component) == list
+        assert when_component[0].value == expected_query
 
     def test_then_select(self):
         spec_graph = Graph()
@@ -131,15 +131,15 @@ class TestSpecParserTest:
         then_component = parse_spec_component(subject=self.select_spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         expected_df = pandas.DataFrame(
             [[str(TEST_DATA.sub), str(XSD.anyURI), str(TEST_DATA.pred), str(XSD.anyURI), str(TEST_DATA.obj),
               str(XSD.anyURI)]],
             columns=["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"])
-
-        df_diff = expected_df.compare(then_component.value, result_names=("expected", "actual"))
+        actual_result = then_component.value[["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"]]
+        df_diff = expected_df.compare(actual_result, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
         assert type(then_component) == TableThenSpec
 
@@ -149,13 +149,13 @@ class TestSpecParserTest:
         when_component = parse_spec_component(subject=self.construct_spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         expected_query = "construct { ?o ?s ?p } { ?s ?p ?o }"
 
-        assert when_component.value == expected_query
-        assert type(when_component) == WhenSpec
+        assert when_component[0].value == expected_query
+        assert type(when_component) == list
 
     def test_then_construct(self):
         spec_graph = Graph()
@@ -164,7 +164,7 @@ class TestSpecParserTest:
         then_component = parse_spec_component(subject=self.construct_spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         then = then_component.value
