@@ -162,7 +162,9 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
                              username=triple_store['username'],
                              password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
-
+    # if the query results are empty return an error
+    if len(record_dictionaries) == 0:
+        raise ValueError(f"Query for Anzo query step URI {query_step_uri} not found.")
     return record_dictionaries[0].get(
         "query")
 
@@ -179,6 +181,9 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
                              username=triple_store['username'],
                              password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
+    # if the query results are empty return an error
+    if len(record_dictionaries) == 0:
+        raise ValueError(f"Queries for Anzo templated query step URI {query_step_uri} not found.")
     return record_dictionaries[0]
 
 
