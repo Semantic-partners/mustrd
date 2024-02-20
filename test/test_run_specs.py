@@ -36,16 +36,16 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 class TestRunSpecs:
     def test_find_specs_in_path_and_run_them(self):
         project_root = get_project_root()
-        test_spec_path = project_root / "test" / "test-specs"
-        folder = project_root / "test" / "data"
+        run_config = {"spec_path": project_root / "test" / "test-specs",
+                      "data_path": project_root / "test" / "data"}
         shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
         verbose = False
         triple_stores = [{'type': MUST.RdfLib}]
         valid_spec_uris, spec_graph, invalid_spec_results = \
-            validate_specs(test_spec_path, triple_stores, shacl_graph, ont_graph)
+            validate_specs(run_config, triple_stores, shacl_graph, ont_graph)
         results = \
-            run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, folder, folder, folder)
+            run_specs(valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, run_config)
         review_results(results, verbose)
         results.sort(key=lambda sr: sr.spec_uri)
         assert results == [
@@ -64,7 +64,7 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_insert_scenario), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario), MUST.RdfLib),
             SpecSkipped(URIRef(TEST_DATA.a_complete_select_scenario_DUPLICATE), MUST.RdfLib,
-                        message="Duplicate subject URI found in select_spec2.ttl."),
+                        message="Duplicate subject URI found in select_spec2.mustrd.ttl."),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_expected_empty_result), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_given_file_then_file), MUST.RdfLib),
@@ -76,17 +76,17 @@ class TestRunSpecs:
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_variables_datatypes), MUST.RdfLib),
             SpecPassed(URIRef(TEST_DATA.a_complete_select_scenario_with_variables), MUST.RdfLib),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_a_table_result_scenario), MUST.RdfLib,
-                        message="Invalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_spec_with_table_result.ttl" ),
+                        message="Invalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_spec_with_table_result.mustrd.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_inherited_given_and_empty_table_result_scenario),
-                        MUST.RdfLib, message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl\nInvalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.ttl" ),
+                        MUST.RdfLib, message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl\nInvalid then clause: A tabular data format has been specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_delete_insert_with_inherited_given_scenario), MUST.RdfLib,
-                        message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_spec.ttl" ),
+                        message="Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test. File: invalid_delete_insert_with_inherited_given_spec.mustrd.ttl" ),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_empty_graph_result), MUST.RdfLib,
-                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_empty_graph_result.ttl"),
+                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_empty_graph_result.mustrd.ttl"),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_multiple_givens_for_inherited_state),  MUST.RdfLib,
-                        message='Invalid given clause: Tests using an inherited state can only have a single given clause. File: invalid_select_spec_multiple_givens_for_inherited_state.ttl'),
+                        message='Invalid given clause: Tests using an inherited state can only have a single given clause. File: invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl'),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_statement_dataset_result), MUST.RdfLib,
-                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.ttl"),
+                        message="Invalid then clause: The result format should be tabular for a SPARQL select test. File: invalid_select_spec_with_statement_dataset_result.mustrd.ttl"),
             SpecSkipped(URIRef(TEST_DATA.an_invalid_select_scenario_with_table_dataset_given), MUST.RdfLib,
-                        message='Invalid given clause: Table datasets for givens are not currently supported. File: invalid_select_spec_with_table_dataset_given.ttl')
-        ], f"TTL files in path: {list(test_spec_path.glob('**/*.ttl'))}"
+                        message='Invalid given clause: Table datasets for givens are not currently supported. File: invalid_select_spec_with_table_dataset_given.mustrd.ttl')
+        ], f"TTL files in path: {list(run_config['spec_path'].glob('**/*.mustrd.ttl'))}"

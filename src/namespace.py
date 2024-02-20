@@ -34,6 +34,7 @@ class MUST(DefinedNamespace):
     SelectSparql: URIRef
     ConstructSparql: URIRef
     UpdateSparql: URIRef
+    AnzoQueryDrivenUpdateSparql: URIRef
     AskSparql: URIRef
     DescribeSparql: URIRef
 
@@ -41,7 +42,8 @@ class MUST(DefinedNamespace):
     given: URIRef
     when: URIRef
     then: URIRef
-    inputGraph: URIRef
+    inputGraph: URIRef 
+    outputGraph: URIRef # anzo specials? 
     dataSource: URIRef
     file: URIRef
     fileName: URIRef
@@ -55,6 +57,7 @@ class MUST(DefinedNamespace):
     hasBinding: URIRef
     variable: URIRef
     boundValue: URIRef
+    focus:URIRef
 
     # Specification data sources
     TableDataset: URIRef
@@ -72,6 +75,7 @@ class MUST(DefinedNamespace):
     # runner uris
     fileSource: URIRef
     loadedFromFile: URIRef
+    specSourceFile: URIRef
 
     # Triple store config parameters
     url: URIRef
@@ -90,6 +94,13 @@ class MUST(DefinedNamespace):
     AnzoConfig: URIRef
     AnzoGraphmartDataset: URIRef
     AnzoQueryBuilderSparqlSource: URIRef
+    AnzoGraphmartStepSparqlSource: URIRef
+    AnzoGraphmartLayerSparqlSource: URIRef
+    AnzoGraphmartQueryDrivenTemplatedStepSparqlSource: URIRef
+    anzoQueryStep: URIRef
+    anzoGraphmartLayer: URIRef
+
+    
     graphmart: URIRef
     layer: URIRef
     gqeURI: URIRef

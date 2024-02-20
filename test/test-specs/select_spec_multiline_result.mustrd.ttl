@@ -6,6 +6,7 @@
 
 test-data:a_complete_select_scenario_multiline_result
     a          must:TestSpec ;
+    must:focus false ;
     must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;

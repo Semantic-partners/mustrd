@@ -114,6 +114,19 @@
       rdfs:isDefinedBy : ;
       rdfs:label "when" .
 
+      ###  https://mustrd.com/model/anzoQueryStep
+:anzoQueryStep    rdf:type owl:ObjectProperty ;
+                  rdfs:domain :AnzoGraphmartStepSparqlSource ;
+                  rdfs:isDefinedBy : ;
+                  rdfs:label "anzoQueryStep" .
+
+      ###  https://mustrd.com/model/anzoGraphmartLayer
+:anzoGraphmartLayer     rdf:type owl:ObjectProperty ;
+                        rdfs:domain :AnzoGraphmartLayerSparqlSource ;
+                        rdfs:range :When ;
+                        rdfs:isDefinedBy : ;
+                        rdfs:label "anzoGraphmartLayer" .
+
 
 #################################################################
 #    Data properties
@@ -208,6 +221,13 @@ sh:order rdf:type owl:DatatypeProperty ;
           rdfs:comment "variable name in a binding" ;
           rdfs:label "variable" .
 
+###  https://mustrd.com/model/focus
+:variable rdf:type owl:DatatypeProperty ;
+          rdfs:comment "Shows whether a test specification is set to be the focus of a test run" ;
+          rdfs:label "focus" ;
+          rdfs:domain :TestSpec ;
+          rdfs:range xsd:boolean ;
+          .
 
 #################################################################
 #    Classes
@@ -240,7 +260,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/Dataset
 :Dataset rdf:type owl:Class ;
-         rdfs:comment "Some source of triples for comparison in either a Given or When clause" ;
+         rdfs:comment "Some source of triples for comparison in either a Given or Then clause" ;
          rdfs:isDefinedBy : ;
          rdfs:label "DataSet" .
 
@@ -421,6 +441,26 @@ sh:order rdf:type owl:DatatypeProperty ;
                          rdfs:label "AnzoQueryBuilderSparqlSource" .
 
 
+### https://mustrd.com/model/AnzoGraphmartStepSparqlSource
+:AnzoGraphmartStepSparqlSource rdf:type owl:Class ;
+                         rdfs:subClassOf :SparqlSource ;
+                         rdfs:isDefinedBy : ;
+                         rdfs:label "AnzoGraphmartStepSparqlSource" .
+                        
+
+### https://mustrd.com/model/AnzoGraphmartLayerSparqlSource
+:AnzoGraphmartLayerSparqlSource rdf:type owl:Class ;
+                         rdfs:subClassOf :SparqlSource ;
+                         rdfs:isDefinedBy : ;
+                         rdfs:label "AnzoGraphmartLayerSparqlSource" .
+
+### https://mustrd.com/model/AnzoGraphmartQueryDrivenTemplatedStepSparqlSource
+:AnzoGraphmartQueryDrivenTemplatedStepSparqlSource rdf:type owl:Class ;
+                         rdfs:subClassOf :SparqlSource ;
+                         rdfs:isDefinedBy : ;
+                         rdfs:label "AnzoGraphmartQueryDrivenTemplatedStepSparqlSource" .
+
+
 ###  https://mustrd.com/model/Then
 :Then rdf:type owl:Class ;
       rdfs:subClassOf :Testspecsection ;
@@ -434,6 +474,13 @@ sh:order rdf:type owl:DatatypeProperty ;
               rdfs:subClassOf :SparqlAction ;
               rdfs:isDefinedBy : ;
               rdfs:label "UpdateSparql" .
+
+###  https://mustrd.com/model/AnzoQueryDrivenUpdateSparql
+:AnzoQueryDrivenUpdateSparql rdf:type owl:Class ;
+              rdfs:subClassOf :UpdateSparql ;
+              rdfs:isDefinedBy : ;
+              rdfs:label "AnzoQueryDrivenUpdateSparql" .
+
 
 
 ###  https://mustrd.com/model/When

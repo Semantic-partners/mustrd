@@ -1,0 +1,16 @@
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+test-data:a_complete_delete_scenario_with_inline_graph
+    a          must:TestSpec ;
+    must:given [ a                 must:StatementsDataset ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a              must:TextSparqlSource ;
+                 must:queryText "DELETE { ?s ?p ?o } WHERE {GRAPH ?g {?s ?p ?o}}" ;
+                 must:queryType must:UpdateSparql ; ] ;
+    must:then  [ a must:EmptyGraph ] .
+
