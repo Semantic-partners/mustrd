@@ -38,6 +38,8 @@ from namespace import MUST
 from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
 from utils import get_project_root
 
+from test.addspec_source_file_to_spec_graph import parse_spec
+
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
@@ -703,9 +705,8 @@ class TestRunConstructSpec:
                  must:then  [ a must:FileDataset ;
                                    must:file "data/thenSuccess.nt" ] .
         """
-        spec_graph = Graph().parse(data=spec, format='ttl')
-
         spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec=spec, spec_uri=spec_uri, filename=__name__)
 
         given_component = parse_spec_component(subject=spec_uri,
                                                predicate=MUST.given,

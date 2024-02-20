@@ -75,6 +75,7 @@ class MUST(DefinedNamespace):
     # runner uris
     fileSource: URIRef
     loadedFromFile: URIRef
+    specSourceFile: URIRef
 
     # Triple store config parameters
     url: URIRef
