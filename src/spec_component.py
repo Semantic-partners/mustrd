@@ -104,6 +104,7 @@ def parse_spec_component(subject: URIRef,
                          spec_graph: Graph,
                          run_config: dict,
                          mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
+    # print(f"parse_spec_component {subject=} {predicate=} ")
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
     # all_data_source_types = []
     spec_components = []
@@ -127,6 +128,7 @@ def parse_spec_component(subject: URIRef,
         # all_data_source_types.extend(data_source_types)
     # return all_data_source_types
     # merge multiple graphs into one, give error if spec config is a TableThen
+    # print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
 
 
@@ -191,7 +193,7 @@ def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThen
 
 @combine_specs.method(Default)
 def _combine_specs_default(spec_components: List[SpecComponent]):
-    raise ValueError(f"Parsing of multiple components of this type not implemented")
+    raise ValueError(f"Parsing of multiple components of this type not implemented {spec_components}")
 
 def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: Node) -> List[Node]:
     data_source_types = []
@@ -254,10 +256,39 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
                                                         predicate=MUST.fileName)
     path = Path(os.path.join(str(get_path('then_path',spec_component_details.run_config)), str(file_name)))
 
-    return get_then_from_file(path, spec_component)
+    return load_dataset_from_file(path, spec_component)
 
+@get_spec_component.method((MUST.FileDataset, MUST.given))
+@get_spec_component.method((MUST.FileDataset, MUST.then))
+def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> GivenSpec:
+    spec_component = init_spec_component(spec_component_details.predicate)
+    return load_spec_component(spec_component_details, spec_component)
 
-def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
+def load_spec_component(spec_component_details, spec_component):
+    where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
+                                                                 predicate=MUST.specSourceFile)
+    if (where_did_i_load_this_spec_from == None):
+        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={spec_component_details.subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_component_details.spec_graph}")
+    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                                 predicate=MUST.file)))
+    
+    test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
+
+    # first we try local relative to the test_spec_file_path, then we try relative to the path under test
+    # we intentionally don't try for absolute files, but you should feel free to argue that we should do.
+    paths = [
+        Path(test_spec_file_path, file_path),
+        Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
+    ]
+    
+    for path in paths:
+        if (os.path.exists(path)):
+            return load_dataset_from_file(path, spec_component)
+
+    raise FileNotFoundError(f"Could not find file {file_path=} in any of the {paths=}")
+    
+
+def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
     if path.is_dir():
         raise ValueError(f"Path {path} is a directory, expected a file")
 
@@ -284,23 +315,6 @@ def get_then_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
             return spec_component
 
 
-@get_spec_component.method((MUST.FileDataset, MUST.given))
-def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
-    spec_component = init_spec_component(spec_component_details.predicate)
-
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
-    if str(file_path).startswith("/"): # absolute path
-        path = file_path
-    else: #relative path
-        path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    try:
-        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
-    except ParserError as e:
-        log.error(f"Problem parsing {path}, error of type {type(e)}")
-        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-    return spec_component
-
 
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
@@ -320,17 +334,17 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     return spec_component
 
 
-@get_spec_component.method((MUST.FileDataset, MUST.then))
-def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate)
+# @get_spec_component.method((MUST.FileDataset, MUST.then))
+# def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
+#     spec_component = init_spec_component(spec_component_details.predicate)
 
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
-    if str(file_path).startswith("/"): # absolute path
-        path = file_path
-    else: #relative path
-        path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    return get_then_from_file(path, spec_component)
+#     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+#                                                                  predicate=MUST.file)))
+#     if str(file_path).startswith("/"): # absolute path
+#         path = file_path
+#     else: #relative path
+#         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
+#     return get_then_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.TextSparqlSource, MUST.when))
@@ -578,55 +592,50 @@ def get_spec_from_statements(subject: URIRef,
 def get_spec_from_table(subject: URIRef,
                         predicate: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
+    # query the spec to get the expected result to convert to dataframe for comparison
     then_query = f"""
-    SELECT ?then ?order ?variable ?binding
-    WHERE {{ {{
-         <{subject}> <{predicate}> [
-                a <{MUST.TableDataset}> ;
-                <{MUST.hasRow}> [ 
-                    <{MUST.hasBinding}> [
-                        <{MUST.variable}> ?variable ;
-                        <{MUST.boundValue}> ?binding ; ] ; 
-                            ] ; ].}} 
-    OPTIONAL {{ <{subject}> <{predicate}> [
-                a <{MUST.TableDataset}> ;
-                <{MUST.hasRow}> [  sh:order ?order ;
-                                    <{MUST.hasBinding}> [
-                            <{MUST.variable}> ?variable ;
-                            <{MUST.boundValue}> ?binding ; ] ;
-                        ] ; ].}}
-    }} ORDER BY ASC(?order)"""
+        prefix sh:        <http://www.w3.org/ns/shacl#> 
+            SELECT ?row ?variable ?binding ?order
+            WHERE {{ 
+                 <{subject}> <{predicate}> [
+                        a <{MUST.TableDataset}> ;
+                        <{MUST.hasRow}> ?row ].
+                          ?row  <{MUST.hasBinding}> [
+                                <{MUST.variable}> ?variable ;
+                                <{MUST.boundValue}> ?binding ; ] .
+                          OPTIONAL {{ ?row sh:order ?order . }}        
+                                     .}} 
+             ORDER BY ?order"""
 
     expected_results = spec_graph.query(then_query)
-
-    data_dict = {}
-    columns = []
-    series_list = []
-
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            if i.variable.value not in columns:
-                data_dict[i.variable.value] = []
-                data_dict[i.variable.value + "_datatype"] = []
-
-    for then, items in groupby(expected_results, lambda er: er.then):
-        for i in list(items):
-            data_dict[i.variable.value].append(str(i.binding))
-            if type(i.binding) == Literal:
-                literal_type = str(XSD.string)
-                if hasattr(i.binding, "datatype") and i.binding.datatype:
-                    literal_type = str(i.binding.datatype)
-                data_dict[i.variable.value + "_datatype"].append(literal_type)
-            else:
-                data_dict[i.variable.value + "_datatype"].append(str(XSD.anyURI))
-
-    # convert dict to Series to avoid problem with array length
-    for key, value in data_dict.items():
-        series_list.append(pandas.Series(value, name=key))
-
-    df = pandas.concat(series_list, axis=1)
+    # get the unique row ids form the result to form the index of the results dataframe
+    index = {str(row.row) for row in expected_results}
+    # get the unique variables to form the columns of the results dataframe
+    columns = set()
+    for row in expected_results:
+        columns.add(row.variable.value)
+        columns.add(row.variable.value + "_datatype")
+    # add an additional column for the sort order (if any) of the results
+    columns.add("order")
+    # create an empty dataframe to populate with the results
+    df = pandas.DataFrame(index=list(index), columns=list(columns))
+    # fill the dataframe with the results data
+    for row in expected_results:
+        df.loc[str(row.row), row.variable.value] = str(row.binding)
+        df.loc[str(row.row), "order"] = row.order
+        if type(row.binding) == Literal:
+            literal_type = str(XSD.string)
+            if hasattr(row.binding, "datatype") and row.binding.datatype:
+                literal_type = str(row.binding.datatype)
+            df.loc[str(row.row), row.variable.value + "_datatype"] = literal_type
+        else:
+            df.loc[str(row.row), row.variable.value + "_datatype"] = str(XSD.anyURI)
+    # use the sort order sort the results
+    df.sort_values(by="order", inplace=True)
+    # drop the order column and replace the rowid index with a numeric one and replace empty values with spaces
+    df.drop(columns="order", inplace=True)
+    df.reset_index(drop=True, inplace=True)
     df.fillna('', inplace=True)
-
     return df
 
 

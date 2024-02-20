@@ -26,7 +26,7 @@ import os
 from pathlib import Path
 
 import pytest
-from rdflib import Graph
+from rdflib import Graph, URIRef, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
@@ -35,8 +35,9 @@ from namespace import MUST
 from spec_component import parse_spec_component, ThenSpec
 from utils import get_project_root
 
-TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 
+TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 class TestRunSpec:
     given_sub_pred_obj = """
@@ -93,6 +94,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
@@ -101,6 +103,7 @@ class TestRunSpec:
                                  run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
+    
     def test_spec_then_from_file_error(self):
         project_root = get_project_root()
         run_config = {'spec_path': project_root}
@@ -118,8 +121,9 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        spec_graph.add([spec_uri, MUST.specSourceFile, Literal(__name__)])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
@@ -143,8 +147,9 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
-
-        with pytest.raises(ValueError):
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+        
+        with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
@@ -166,8 +171,8 @@ class TestRunSpec:
                                    must:file "test/test_spec.py" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
-
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(ValueError):
             parse_spec_component(subject=spec_uri,
@@ -193,6 +198,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(KeyError):
             parse_spec_component(subject=spec_uri,
@@ -219,6 +225,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
@@ -254,6 +261,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(ValueError) as error_message:
             parse_spec_component(subject=spec_uri,
@@ -284,6 +292,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
@@ -323,6 +332,7 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,

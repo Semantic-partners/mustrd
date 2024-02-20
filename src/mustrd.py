@@ -237,7 +237,21 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                                 triple_stores]
             else:
                 subject_uris.add(subject_uri)
-                spec_graph.parse(file)
+                this_spec_graph = Graph()
+                this_spec_graph.parse(file)
+                spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
+                for spec in spec_uris_in_this_file:
+                    tripleToAdd = [spec, MUST.specSourceFile, Literal(file)]
+                    # print(f"adding {tripleToAdd}")
+                    this_spec_graph.add(tripleToAdd)
+                # print(f"beforeadd: {spec_graph}" )
+                # print(f"beforeadd: {str(this_spec_graph.serialize())}" )
+                spec_graph += this_spec_graph
+                # print(f"afteradd: {str(spec_graph.serialize())}" )
+
+
+    sourceFiles = list(spec_graph.subject_objects(MUST.specSourceFile))
+    # print(f"sourceFiles: {sourceFiles}")
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
@@ -306,7 +320,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
-        log.error(message)
+        log.exception(message)
         raise
     except ConnectionError as e:
         log.error(e)
@@ -388,6 +402,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
                                                                     triple_store_graph.value(
                                                                         subject=triple_store_config,
                                                                         predicate=MUST.password))
+                log.info("triple_store_creds" + triple_store["username"])
+                log.info("triple_store_creds" + triple_store["password"])
             except (FileNotFoundError, ValueError) as e:
                 triple_store["error"] = e
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
@@ -461,17 +477,6 @@ def get_credential_from_file(triple_store_name: URIRef, credential: str, config_
         raise ValueError(f"Error reading credentials config file: {e}")
     return config[str(triple_store_name)][credential]
 
-
-# Get column order
-def json_results_order(result: str) -> list[str]:
-    columns = []
-    json_result = json.loads(result)
-    for binding in json_result["head"]["vars"]:
-        columns.append(binding)
-        columns.append(binding + "_datatype")
-    return columns
-
-
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
 def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     json_result = json.loads(result)
@@ -504,24 +509,21 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 # https://github.com/Semantic-partners/mustrd/issues/52
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
+    order_list = ["order by ?", "order by desc", "order by asc"]
+    ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
     then = spec.then.value
     try:
         if is_json(result):
             df = json_results_to_panda_dataframe(result)
-            columns = json_results_order(result)
+            columns = list(df.columns)
         else:
             raise ParseException
+        sorted_columns = sorted(columns)
+        sorted_then_cols = sorted(list(then))
+        if not df.empty:
 
-        if df.empty is False:
-            when_ordered = False
-
-            order_list = ["order by ?", "order by desc", "order by asc"]
-            if any(pattern in spec.when[0].value.lower() for pattern in order_list):
-                when_ordered = True
-            else:
-                df = df[columns]
+            if not ordered_result:
                 df.sort_values(by=columns[::2], inplace=True)
-
                 df.reset_index(inplace=True, drop=True)
                 if spec.then.ordered:
                     warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
@@ -532,22 +534,43 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 message = f"Expected 0 row(s) and 0 column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
                 empty_then = create_empty_dataframe_with_columns(df)
                 df_diff = empty_then.compare(df, result_names=("expected", "actual"))
+
             else:
                 # Scenario 2: expected a result and got a result
+                # pandas.set_option('display.max_columns', None)
                 message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
                           f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                if when_ordered is True and not spec.then.ordered:
+                if ordered_result is True and not spec.then.ordered:
                     message += ". Actual result is ordered, must:then must contain sh:order on every row."
-                    if df.shape == then.shape and (df.columns == then.columns).all():
-                        df_diff = then.compare(df, result_names=("expected", "actual"))
-                        if df_diff.empty:
-                            df_diff = df
-                    else:
-                        df_diff = construct_df_diff(df, then)
+                    return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
+                    # if df.shape == then.shape and (df.columns == then.columns).all():
+                    #     df_diff = then.compare(df, result_names=("expected", "actual"))
+                    #     if df_diff.empty:
+                    #         df_diff = df
+                    #         print(df_diff.to_markdown())
+                    # else:
+                    #     df_diff = construct_df_diff(df, then)
+                    #     print(df_diff.to_markdown())
                 else:
-                    if df.shape == then.shape and (df.columns == then.columns).all():
-                        df_diff = then.compare(df, result_names=("expected", "actual"))
+                    if len(columns) == len(then.columns):
+                        if sorted_columns == sorted_then_cols:
+                            then = then[columns]
+                            if not ordered_result:
+                                then.sort_values(by=columns[::2], inplace=True)
+                                then.reset_index(drop=True, inplace=True)
+                            if df.shape == then.shape and (df.columns == then.columns).all():
+                                df_diff = then.compare(df, result_names=("expected", "actual"))
+                            else:
+                                df_diff = construct_df_diff(df, then)
+
+                        else:
+                            then = then[sorted_then_cols]
+                            df = df[sorted_columns]
+                            df_diff = construct_df_diff(df, then)
                     else:
+
+                        then = then[sorted_then_cols]
+                        df = df[sorted_columns]
                         df_diff = construct_df_diff(df, then)
         else:
 
@@ -558,8 +581,10 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 # Scenario 4: expected a result, but got an empty result
                 message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
+                then = then[sorted_then_cols]
                 df = create_empty_dataframe_with_columns(then)
             df_diff = then.compare(df, result_names=("expected", "actual"))
+            print(df_diff.to_markdown())
 
         if df_diff.empty:
             if warning:
@@ -567,7 +592,13 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 return SpecPassed(spec.spec_uri, spec.triple_store["type"])
         else:
+            # message += f"\nexpected:\n{then}\nactual:{df}"
             log.error(message)
+            # print(spec.spec_uri)
+            # print("actual:")
+            # print(then)
+            # print("expected:")
+            # print(df)
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
     except ParseException as e:
@@ -646,7 +677,7 @@ def construct_df_diff(df: pandas.DataFrame,
     elif actual_columns.size > 0 or expected_columns.size > 0:
         df_diff = modified_then.compare(modified_df, result_names=("expected", "actual"), keep_shape=True,
                                         keep_equal=True)
-
+    df_diff.fillna("", inplace=True)
     return df_diff
 
 
@@ -666,10 +697,9 @@ def generate_row_diff(actual_rows: pandas.DataFrame, expected_rows: pandas.DataF
     return df_diff_rows
 
 
-def create_empty_dataframe_with_columns(original: pandas.DataFrame) -> pandas.DataFrame:
-    empty_copy = original.copy()
-    for col in empty_copy.columns:
-        empty_copy[col].values[:] = None
+def create_empty_dataframe_with_columns(df: pandas.DataFrame) -> pandas.DataFrame:
+    empty_copy = pandas.DataFrame().reindex_like(df)
+    empty_copy.fillna("", inplace=True)
     return empty_copy
 
 
