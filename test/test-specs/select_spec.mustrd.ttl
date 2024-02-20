@@ -1,22 +1,26 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
-@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-test-data:an_invalid_delete_insert_with_a_table_result_scenario
+
+test-data:a_complete_select_scenario
     a          must:TestSpec ;
+    #must:focus true ;
     must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}" ;
-                 must:queryType must:UpdateSparql  ; ] ;
+                                   must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
+                                   must:queryType must:SelectSparql ] ;
     must:then  [ a must:TableDataset ;
-                 must:hasRow [ must:hasBinding  [ must:variable "s" ;
-                                        must:boundValue  test-data:obj ; ],
+                                   must:hasRow [ must:hasBinding[
+                                        must:variable "s" ;
+                                        must:boundValue  test-data:sub ; ],
                                       [ must:variable "p" ;
                                         must:boundValue  test-data:pred ; ],
                                       [ must:variable "o" ;
-                                        must:boundValue  test-data:sub ; ] ;
-                   ] ; ] .
+                                        must:boundValue  test-data:obj ; ] ;
+               ] ; ] .

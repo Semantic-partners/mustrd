@@ -4,6 +4,7 @@
 
 test-data:a_complete_insert_data_scenario
     a          must:TestSpec ;
+    #must:focus true ;
     must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
                                                      rdf:subject   test-data:sub ;
