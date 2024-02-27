@@ -4,18 +4,19 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:nestedFilterNotExists_anzo_fixed
+test-data:property_path_star
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/nestedFilterNotExists.ttl"
+                must:file "./given/property_path_star.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/nestedFilterNotExists_fixed_for_anzo.sparql";
+                must:file "./when/property_path_star.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/nestedFilterNotExists_results.csv"
+                must:file "./then/property_path_star.csv"
     ].
+

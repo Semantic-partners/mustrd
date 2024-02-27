@@ -3,20 +3,18 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-
-test-data:property_path_or_plus
+test-data:property_path_precedence_sequence_zeroorone
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/property_path_or_plus.ttl"
+                must:file "./given/property_path_precedence.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/property_path_or_plus.sparql";
-        must:queryType must:SelectSparql
+                must:file "./when/property_path_precedence_sequence_zeroorone.sparql";
+                must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/property_path_or_plus.csv"
+                must:file "./then/property_path_precedence_sequence_zeroorone.csv"
     ].
-

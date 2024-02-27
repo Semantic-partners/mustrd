@@ -3,20 +3,18 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-
-test-data:optional_filter
+test-data:property_path_precedence_sequence_alternative
     a          must:TestSpec ;
 
-    must:given [a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/optional_filter.ttl"
+    must:given [ a must:FileDataset ;
+                must:file "./given/property_path_precedence.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/optional_filter.sparql";
+                must:file "./when/property_path_precedence_sequence_alternative.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/optional_filter.csv"
+                must:file "./then/property_path_precedence_sequence_alternative.csv"
     ].
-

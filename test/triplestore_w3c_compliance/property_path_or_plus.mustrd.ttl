@@ -4,19 +4,19 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:union_bind
+test-data:property_path_or_plus
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/union.ttl"
+                must:file "./given/property_path_or_plus.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/union_bind.sparql";
-                must:queryType must:SelectSparql
+                must:file "./when/property_path_or_plus.sparql";
+        must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/union_results.csv"
+                must:file "./then/property_path_or_plus.csv"
     ].
 

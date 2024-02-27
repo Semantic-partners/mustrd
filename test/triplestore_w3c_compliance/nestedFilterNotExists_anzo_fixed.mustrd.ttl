@@ -3,18 +3,19 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-test-data:property_path_precedence_sequence_alternative
+
+test-data:nestedFilterNotExists_anzo_fixed
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/property_path_precedence.ttl"
+                must:file "./given/nestedFilterNotExists.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/property_path_precedence_sequence_alternative.sparql";
+                must:file "./when/nestedFilterNotExists_fixed_for_anzo.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/property_path_precedence_sequence_alternative.csv"
+                must:file "./then/nestedFilterNotExists_results.csv"
     ].

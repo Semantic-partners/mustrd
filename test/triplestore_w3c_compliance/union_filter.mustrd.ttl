@@ -3,18 +3,20 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-test-data:subselect_filter_not_exists
+
+test-data:union_filter
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/subselect.ttl"
+                must:file "./given/union.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/subselect_filter_not_exists.sparql";
+                must:file "./when/union_filter.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/subselect_filter_not_exists.csv"
+                must:file "./then/union_results.csv"
     ].
+
