@@ -3,18 +3,19 @@
 @prefix must:      <https://mustrd.com/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-test-data:subselect
+
+test-data:NegatedPropertySet_plus
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/subselect.ttl"
+                must:file "./given/property_path_precedence.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/subselect.sparql";
+                must:file "./when/NegatedPropertySet_plus.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/subselect.csv"
+                must:file "./then/NegatedPropertySet_plus.csv"
     ].

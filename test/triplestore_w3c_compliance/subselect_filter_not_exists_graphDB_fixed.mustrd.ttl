@@ -7,14 +7,14 @@ test-data:subselect_filter_not_exists_graphDB_fixed
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/subselect.ttl"
+                must:file "./given/subselect.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/subselect_filter_not_exists_graphDB_fixed.sparql";
+                must:file "./when/subselect_filter_not_exists_graphDB_fixed.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/subselect_filter_not_exists.csv"
+                must:file "./then/subselect_filter_not_exists.csv"
     ].
