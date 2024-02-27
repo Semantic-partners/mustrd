@@ -4,19 +4,19 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:union
+test-data:filternotexists_union
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/union.ttl"
+                must:file "./given/filternotexists_union.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/union.sparql";
+                must:file "./when/filternotexists_union.sparql";
                 must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/union_results.csv"
+                must:file "./then/filternotexists_union.csv"
     ].
 

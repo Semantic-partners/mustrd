@@ -4,19 +4,19 @@
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
 
-test-data:filternotexists_filter
+test-data:same_subject_object
     a          must:TestSpec ;
 
     must:given [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/given/filternotexists_filter.ttl"
+                must:file "./given/same_subject_object.ttl"
     ];
 
     must:when [ a must:FileSparqlSource  ;
-                must:file "./test/triplestore_w3c_compliance/when/filternotexists_filter.sparql";
-                must:queryType must:SelectSparql
+                must:file "./when/same_subject_object.sparql";
+        must:queryType must:SelectSparql
     ];
 
     must:then [ a must:FileDataset ;
-                must:file "./test/triplestore_w3c_compliance/then/filternotexists_filter.csv"
+                must:file "./then/same_subject_object.csv"
     ].
 
