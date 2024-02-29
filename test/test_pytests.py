@@ -10,23 +10,42 @@ from requests import ConnectionError
 from src.utils import get_project_root
 from mustrd import get_spec, run_spec, review_results, get_triple_stores,SpecPassed, SpecSkipped,validate_specs
 
-TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+namespace = Namespace("https://semanticpartners.com/data/test/")
 
 project_root = get_project_root()
 
-shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
-ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
 
-triplestore_spec_path = project_root / "test" / "triplestore_config" / "tripleStores-template.ttl"
-
-triple_stores = get_triple_stores(Graph().parse(triplestore_spec_path))
-
+test_data = {
+    "test_unit": {
+        "fixture" : "unit_tests",
+        "spec_path": "test/test-specs",
+        "data_path" : "test/data",
+        "shacl_graph": "model/mustrdShapes.ttl",
+        "ont_graph": "model/ontology.ttl",
+        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl"
+    },    
+    "test_w3c": {
+        "fixture" : "w3c_tests",
+        "spec_path": "test/triplestore_w3c_compliance",
+        "data_path" : "test/data",
+        "shacl_graph": "model/mustrdShapes.ttl",
+        "ont_graph": "model/ontology.ttl",
+        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl"
+    }
+}
 
 def test_unit(unit_tests):
     assert run_test_spec(unit_tests)
     
 def test_w3c(w3c_tests):
     assert run_test_spec(w3c_tests)
+
+
+
+
+
+
+
 
 def run_test_spec(test_spec):
     result = run_spec(test_spec)
@@ -37,19 +56,20 @@ def run_test_spec(test_spec):
     return result_type == SpecPassed
 
 def pytest_generate_tests(metafunc):
-    unit_tests = generate_tests_for_config({"spec_path": project_root / "test" / "test-specs",
-                        "data_path": project_root / "test" / "data"})
+    if metafunc.function.__name__ in test_data:
+        one_test_data = test_data[metafunc.function.__name__]
     
-    w3c_tests = generate_tests_for_config({"spec_path": project_root / "test" / "triplestore_w3c_compliance",
-                        "data_path": project_root / "test" / "data"})
+        triple_stores = get_triple_stores(Graph().parse(project_root / one_test_data["triplestore_spec_path"]))
+        shacl_graph = Graph().parse(Path(os.path.join(project_root, one_test_data["shacl_graph"])))
+        ont_graph = Graph().parse(Path(os.path.join(project_root, one_test_data["ont_graph"])))
         
-    if "unit_tests" in metafunc.fixturenames:
-        metafunc.parametrize("unit_tests", unit_tests, ids=get_test_name)
-    
-    if "w3c_tests" in metafunc.fixturenames:
-        metafunc.parametrize("w3c_tests", w3c_tests, ids=get_test_name)
+        unit_tests = generate_tests_for_config({"spec_path": project_root / one_test_data["spec_path"],
+                            "data_path": project_root / one_test_data["data_path"]}, triple_stores, shacl_graph, ont_graph)
+            
+        if one_test_data["fixture"] in metafunc.fixturenames:
+            metafunc.parametrize(one_test_data["fixture"] , unit_tests, ids=get_test_name)
 
-def generate_tests_for_config(config):
+def generate_tests_for_config(config, triple_stores, shacl_graph, ont_graph):
     valid_spec_uris, spec_graph, invalid_spec_results = \
     validate_specs(config, triple_stores, shacl_graph, ont_graph)
     specs = []
@@ -78,5 +98,5 @@ def generate_tests_for_config(config):
 
 
 def get_test_name(spec):
-    return spec.triple_store["type"].replace("https://mustrd.com/model/", "") + ": " + spec.spec_uri.replace(TEST_DATA, "").replace("_", " ")
+    return spec.triple_store["type"].replace("https://mustrd.com/model/", "") + ": " + spec.spec_uri.replace(namespace, "").replace("_", " ")
     
