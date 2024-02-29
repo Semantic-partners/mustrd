@@ -23,12 +23,19 @@ test_data = {
         "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
         "filter_on_tripleStore" : [MUST.RdfLib]
     },    
-    "test_w3c": {
+    "test_w3c_gdb": {
         "fixture" : "w3c_tests",
         "spec_path": "test/triplestore_w3c_compliance",
         "data_path" : "test/data",
         "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
-        "filter_on_tripleStore" : [MUST.RdfLib, MUST.GraphDb]
+        "filter_on_tripleStore" : [MUST.GraphDb]
+    },    
+    "test_w3c_rdflib": {
+        "fixture" : "w3c_tests",
+        "spec_path": "test/triplestore_w3c_compliance",
+        "data_path" : "test/data",
+        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
+        "filter_on_tripleStore" : [MUST.RdfLib]
     }
 }
 
