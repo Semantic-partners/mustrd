@@ -69,19 +69,14 @@ def generate_tests_for_config(config, triple_stores):
     ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
     valid_spec_uris, spec_graph, invalid_spec_results = \
     validate_specs(config, triple_stores, shacl_graph, ont_graph)
-    specs = []
+    specs = invalid_spec_results
     try:
         for triple_store in triple_stores:
-            if "error" in triple_store:
-                print(f"{triple_store['error']}. No specs run for this triple store.")
-                specs += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
-                            invalid_spec_results]
-            else:
-                for spec_uri in valid_spec_uris:
-                    try:
-                        specs += [get_spec(spec_uri, spec_graph, config, triple_store)]
-                    except (ValueError, FileNotFoundError, ConnectionError) as e:
-                        specs += [SpecSkipped(spec_uri, triple_store['type'], e)]
+            for spec_uri in valid_spec_uris:
+                try:
+                    specs += [get_spec(spec_uri, spec_graph, config, triple_store)]
+                except (ValueError, FileNotFoundError, ConnectionError) as e:
+                    specs += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -95,5 +90,12 @@ def generate_tests_for_config(config, triple_stores):
 
 
 def get_test_name(spec):
-    return spec.triple_store["type"].replace("https://mustrd.com/model/", "") + ": " + spec.spec_uri.replace(spnamespace, "").replace("_", " ")
+    # FIXME: SpecSkipped should have the same structure?
+    if type(spec) == SpecSkipped:
+        triple_store = spec.triple_store
+    else:
+        triple_store = spec.triple_store['type']
+    triple_store_name = triple_store.replace("https://mustrd.com/model/", "")
+    test_name = spec.spec_uri.replace(spnamespace, "").replace("_", " ")
+    return triple_store_name + ": " + test_name
     
