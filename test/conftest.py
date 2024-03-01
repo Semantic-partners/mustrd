@@ -1,5 +1,6 @@
 # content of test_sysexit.py
 import pytest
+import logger_setup
 import os
 from pathlib import Path
 from rdflib.namespace import Namespace
@@ -12,15 +13,15 @@ from mustrd import get_spec, run_spec, review_results, get_triple_stores,SpecPas
 from namespace import MUST
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
+log = logger_setup.setup_logger(__name__)
 
 project_root = get_project_root()
     
-test_data = {
+test_config = {
     "test_unit": {
         "fixture" : "unit_tests",
         "spec_path": "test/test-specs",
         "data_path" : "test/data",
-        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
         "filter_on_tripleStore" : [MUST.RdfLib]
     },    
     "test_w3c_gdb": {
@@ -34,7 +35,6 @@ test_data = {
         "fixture" : "w3c_tests",
         "spec_path": "test/triplestore_w3c_compliance",
         "data_path" : "test/data",
-        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
         "filter_on_tripleStore" : [MUST.RdfLib]
     }
 }
@@ -50,18 +50,16 @@ def run_test_spec(test_spec):
     return result_type == SpecPassed
 
 def pytest_generate_tests(metafunc):
-    if metafunc.function.__name__ in test_data:
-        one_test_data = test_data[metafunc.function.__name__]
-        triple_stores = get_triple_stores(Graph().parse(project_root / one_test_data["triplestore_spec_path"]))
-        if "filter_on_tripleStore" in one_test_data and one_test_data["filter_on_tripleStore"]:
-            triple_stores = list(filter(lambda triple_store: (triple_store["type"] in  one_test_data["filter_on_tripleStore"]), triple_stores)) 
+    if metafunc.function.__name__ in test_config:
+        one_test_config = test_config[metafunc.function.__name__]
+
+        triple_stores = get_triple_stores_from_test_config(one_test_config)
         
-        
-        unit_tests = generate_tests_for_config({"spec_path": project_root / one_test_data["spec_path"],
-                            "data_path": project_root / one_test_data["data_path"]}, triple_stores)
+        unit_tests = generate_tests_for_config({"spec_path": project_root / one_test_config["spec_path"],
+                            "data_path": project_root / one_test_config["data_path"]}, triple_stores)
             
-        if one_test_data["fixture"] in metafunc.fixturenames and unit_tests:
-            metafunc.parametrize(one_test_data["fixture"] , unit_tests, ids=get_test_name)
+        if one_test_config["fixture"] in metafunc.fixturenames and unit_tests and triple_stores:
+            metafunc.parametrize(one_test_config["fixture"] , unit_tests, ids=get_test_name)
 
 def generate_tests_for_config(config, triple_stores):
     
@@ -99,3 +97,17 @@ def get_test_name(spec):
     test_name = spec.spec_uri.replace(spnamespace, "").replace("_", " ")
     return triple_store_name + ": " + test_name
     
+def get_triple_stores_from_test_config(test_config):
+    if "triplestore_spec_path" in test_config:
+        try:
+            triple_stores = get_triple_stores(Graph().parse(project_root / test_config["triplestore_spec_path"]))
+        except Exception as e :
+            log.warning(f"No triple store configuration found at {project_root / test_config['triplestore_spec_path']}. Fall back: only embedded rdflib will be executed", e)
+            triple_stores = [{'type': MUST.RdfLib}]
+    else :
+        log.info("No triple store configuration required: using embedded rdflib")
+        triple_stores = [{'type': MUST.RdfLib}]
+        
+    if "filter_on_tripleStore" in test_config and test_config["filter_on_tripleStore"]:
+        triple_stores = list(filter(lambda triple_store: (triple_store["type"] in  test_config["filter_on_tripleStore"]), triple_stores)) 
+    return triple_stores
