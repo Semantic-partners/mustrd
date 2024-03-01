@@ -40,11 +40,13 @@ test_data = {
 }
 
 def run_test_spec(test_spec):
+    if type(test_spec)==SpecSkipped:
+      pytest.skip("Invalid configuration")  
     result = run_spec(test_spec)
     print(review_results([result], False))
     result_type = type(result)
-    if(result_type==SpecSkipped):
-        pytest.skip("unsupported configuration")
+    if result_type==SpecSkipped:
+        pytest.skip("Unsupported configuration")
     return result_type == SpecPassed
 
 def pytest_generate_tests(metafunc):
@@ -72,14 +74,14 @@ def generate_tests_for_config(config, triple_stores):
         for triple_store in triple_stores:
             if "error" in triple_store:
                 print(f"{triple_store['error']}. No specs run for this triple store.")
-                results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                specs += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
                             invalid_spec_results]
             else:
                 for spec_uri in valid_spec_uris:
                     try:
                         specs += [get_spec(spec_uri, spec_graph, config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
-                        results += [SpecSkipped(spec_uri, triple_store['type'], e)]
+                        specs += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
