@@ -36,7 +36,7 @@ jobs:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
       - name: Define Job summary
-        run: cat junit/md_report.md >> $GITHUB_STEP_SUMMARY
+      - run: cat junit/md_report.md >> $GITHUB_STEP_SUMMARY
         # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
       - name: Generate coverage HTML report
