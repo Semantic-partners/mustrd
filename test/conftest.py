@@ -159,7 +159,7 @@ def pytest_sessionfinish(session: Session, exitstatus):
                     table+=f"<tr><td>{test_result.module_name}</td><td>{test_result.class_name}</td><td>{test_result.test_name}</td><td>{test_result.status}</td></tr>"
                 table+=f"</tbody></table>"
                 md+= table#escape(table)
-                md+=f"</div>\n"
+                md+=f"</details>"
             md+="</details>"
         file.write(md)
         
