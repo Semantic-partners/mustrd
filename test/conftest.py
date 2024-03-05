@@ -145,18 +145,18 @@ def pytest_sessionfinish(session: Session, exitstatus):
     result_dict = dict(result_dict)
     
     md = """
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     """
     with open('junit/results.html', 'w') as file:
         file.write(md)
         for module_name, result_in_module in result_dict.items():
-            md+=f"""<h1>{module_name}</h1>\n<button class="btn btn-primary" onclick= "$('#module-{module_name}').show();"> See module module-{module_name} results  </button>\n <div id="module-{module_name}" style = "display: none">\n"""
+            md+=f"""<h1>{module_name}</h1>\n<a class="btn btn-primary" onclick= "$('#module-{module_name}').show();"> See module module-{module_name} results  </a>\n <div id="module-{module_name}" style = "display: none">\n"""
             for class_name, test_results in result_in_module.items():
                 count, success_count, fail_count, skipped_count = get_class_stats(test_results)
                 md+=f"<h2>{class_name}:</h2>\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}<br/>\n"
-                md+=f"""<button class="btn btn-primary" onclick= "$('#class-{module_name}-{class_name}').show();">See class class-{module_name}-{class_name}</button> \n <div id="class-{module_name}-{class_name}" style = "display: none">\n"""
+                md+=f"""<a class="btn btn-primary" onclick= "$('#class-{module_name}-{class_name}').show();">See class class-{module_name}-{class_name}</a> \n <div id="class-{module_name}-{class_name}" style = "display: none">\n"""
                 md+= f"""<table class="table">\n<thead>\n<tr>\n<th scope="col">module</th>\n<th scope="col">class</th>\n<th scope="col">test</th>\n<th scope="col">status</th>\n<tr>\n</thead>\n<tbody>\n"""
                 for test_result in test_results:
                     md+=f"<tr><td>{test_result.module_name}</td>\n<td>{test_result.class_name}</td>\n<td>{test_result.test_name}</td>\n<td>{test_result.status}</td>\n</tr>\n"
