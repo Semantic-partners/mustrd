@@ -1,4 +1,5 @@
 # content of test_sysexit.py
+from dataclasses import dataclass
 import pytest
 import os
 from pathlib import Path
@@ -10,6 +11,9 @@ from requests import ConnectionError
 from src.utils import get_project_root
 from mustrd import get_spec, run_spec, review_results, get_triple_stores,SpecPassed, SpecSkipped,validate_specs
 from namespace import MUST
+from collections import defaultdict
+import re
+from pytest import Session
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -110,3 +114,87 @@ def get_triple_stores_from_file(test_config):
     if "filter_on_tripleStore" in test_config and test_config["filter_on_tripleStore"]:
         triple_stores = list(filter(lambda triple_store: (triple_store["type"] in  test_config["filter_on_tripleStore"]), triple_stores)) 
     return triple_stores
+
+def pytest_sessionstart(session):
+    session.results = dict()
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    result = outcome.get_result()
+
+    if result.when == 'call':
+        item.session.results[item] = result
+
+def pytest_sessionfinish(session: Session, exitstatus):
+    md = ""
+    result_list = []
+    for result in session.results.values():   
+        test_name = get_match(r'\[(.*?)\]', result.nodeid) or result.nodeid.split("::") [2]
+        class_name = get_match(r'::(.*?)\[', result.nodeid) or get_match(r'::(.*?)::', result.nodeid)
+        module_name = get_match(r'\/(.*?)\.py', result.nodeid)
+        result_list.append(TestResult(test_name, class_name, module_name, result.outcome ))
+    
+    result_dict = defaultdict(lambda: defaultdict(list))
+
+    # Partition the list
+    for testResult in result_list:
+        result_dict[testResult.module_name][testResult.class_name].append(testResult)
+
+    result_dict = dict(result_dict)
+    
+    md = """
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    """
+    with open('junit/results.html', 'w') as file:
+        file.write(md)
+        for module_name, result_in_module in result_dict.items():
+            md+=f"""<h1>{module_name}</h1>\n<button class="btn btn-primary" onclick= "$('#module-{module_name}').show();"> See module module-{module_name} results  </button>\n <div id="module-{module_name}" style = "display: none">\n"""
+            for class_name, test_results in result_in_module.items():
+                count, success_count, fail_count, skipped_count = get_class_stats(test_results)
+                md+=f"<h2>{class_name}:</h2>\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}<br/>\n"
+                md+=f"""<button class="btn btn-primary" onclick= "$('#class-{module_name}-{class_name}').show();">See class class-{module_name}-{class_name}</button> \n <div id="class-{module_name}-{class_name}" style = "display: none">\n"""
+                md+= f"""<table class="table">\n<thead>\n<tr>\n<th scope="col">module</th>\n<th scope="col">class</th>\n<th scope="col">test</th>\n<th scope="col">status</th>\n<tr>\n</thead>\n<tbody>\n"""
+                for test_result in test_results:
+                    md+=f"<tr><td>{test_result.module_name}</td>\n<td>{test_result.class_name}</td>\n<td>{test_result.test_name}</td>\n<td>{test_result.status}</td>\n</tr>\n"
+                md+=f"</tbody>\n</table>\n</div>\n"
+            md+="</div>"
+        file.write(md)
+        
+    
+    print(result_dict)
+
+def get_match(regex, string):
+    search = re.search(regex, string)
+    if search:
+        return search.group(1)
+    else: 
+        return None
+    
+   
+def get_class_stats(test_results):
+    count = len(test_results)
+    success_count = len(list(filter(lambda x: x.status == "passed", test_results)))
+    fail_count = len(list(filter(lambda x: x.status == "failed", test_results)))
+    skipped_count = len(list(filter(lambda x: x.status == "skipped", test_results)))
+    return count, success_count, fail_count, skipped_count
+     
+#def get_module_stats(result_in_module):
+#    class_count = result_in_module.keys().count()
+#    test_success_count = 
+        
+@dataclass
+class TestResult:
+    test_name: str
+    class_name: str
+    module_name: str
+    status: str
+    
+    def __init__(self, test_name: str, class_name: str, module_name: str, status: str):
+        self.test_name = test_name
+        self.class_name = class_name
+        self.module_name = module_name
+        self.status = status
