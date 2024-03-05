@@ -14,6 +14,7 @@ from namespace import MUST
 from collections import defaultdict
 import re
 from pytest import Session
+from html import escape
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -130,10 +131,11 @@ def pytest_runtest_makereport(item, call):
 def pytest_sessionfinish(session: Session, exitstatus):
     md = ""
     result_list = []
-    for result in session.results.values():   
+    for test_conf, result in session.results.items():  
+        
         test_name = get_match(r'\[(.*?)\]', result.nodeid) or result.nodeid.split("::") [2]
-        class_name = get_match(r'::(.*?)\[', result.nodeid) or get_match(r'::(.*?)::', result.nodeid)
-        module_name = get_match(r'\/(.*?)\.py', result.nodeid)
+        class_name = test_conf.obj.__name__ #get_match(r'::(.*?)\[', result.nodeid) or get_match(r'::(.*?)::', result.nodeid)
+        module_name = test_conf.obj.__module__ # get_match(r'\/(.*?)\.py', result.nodeid)
         result_list.append(TestResult(test_name, class_name, module_name, result.outcome ))
     
     result_dict = defaultdict(lambda: defaultdict(list))
