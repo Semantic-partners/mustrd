@@ -153,17 +153,16 @@ def pytest_sessionfinish(session: Session, exitstatus):
             md+=f"""<details><summary>{module_name}</summary>\n"""
             for class_name, test_results in result_in_module.items():
                 count, success_count, fail_count, skipped_count = get_class_stats(test_results)
-                md+=f"<details><summary>{class_name}:\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}</summary>\n"
+                md+=f"<ul><details><summary>{class_name}:\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}</summary>\n"
                 table= f"""<table class="table"><thead><tr><th scope="col">module</th><th scope="col">class</th><th scope="col">test</th><th scope="col">status</th><tr></thead><tbody>"""
                 for test_result in test_results:
                     table+=f"<tr><td>{test_result.module_name}</td><td>{test_result.class_name}</td><td>{test_result.test_name}</td><td>{test_result.status}</td></tr>"
                 table+=f"</tbody></table>"
-                md+= table#escape(table)
-                md+=f"</details>"
+                md+= table
+                md+=f"</details></ul>"
             md+="</details>"
         file.write(md)
-        
-    
+            
     print(result_dict)
 
 def get_match(regex, string):
