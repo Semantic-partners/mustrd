@@ -153,10 +153,10 @@ def pytest_sessionfinish(session: Session, exitstatus):
             md+=f"""<details><summary>{module_name}</summary>\n"""
             for class_name, test_results in result_in_module.items():
                 count, success_count, fail_count, skipped_count = get_class_stats(test_results)
-                md+=f"<ul><details><summary>{class_name}:\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}</summary>\n"
+                md+=f"""<ul><details><summary>{class_name}:\n <br/> total: {count}, <span style="color:green">success: {success_count}<span>, <span style="color:red">fail: {fail_count}</span>, <span style="color:yellow">skipped: {skipped_count}</span></summary>\n"""
                 table= f"""<table class="table"><thead><tr><th scope="col">module</th><th scope="col">class</th><th scope="col">test</th><th scope="col">status</th><tr></thead><tbody>"""
                 for test_result in test_results:
-                    table+=f"<tr><td>{test_result.module_name}</td><td>{test_result.class_name}</td><td>{test_result.test_name}</td><td>{test_result.status}</td></tr>"
+                    table+=f"<tr><td>{get_color(test_result.module_name, test_result.status)}</td><td>{get_color(test_result.class_name, test_result.status)}</td><td>{get_color(test_result.test_name, test_result.status)}</td><td>{get_color(test_result.status, test_result.status)}</td></tr>"
                 table+=f"</tbody></table>"
                 md+= table
                 md+=f"</details></ul>"
@@ -183,6 +183,12 @@ def get_class_stats(test_results):
 #def get_module_stats(result_in_module):
 #    class_count = result_in_module.keys().count()
 #    test_success_count = 
+
+colors = {"passed": "green", "failed": "red", "skipped": "yellow"}
+def get_color(text, status):
+    if status in colors.keys():
+        return f"""<span style="color:{colors[status]}">{text}</span>"""
+    else: return text
         
 @dataclass
 class TestResult:
