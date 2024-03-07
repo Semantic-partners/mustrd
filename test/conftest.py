@@ -153,14 +153,17 @@ def pytest_sessionfinish(session: Session, exitstatus):
 
     result_dict = dict(result_dict)
     
-    md = ""
+    md = f"# Mustrd tests summary:"
+    count, success_count, fail_count, skipped_count = get_global_stats(result_dict)
+    md += get_summary("Tests", count, success_count, fail_count, skipped_count)
     with open('junit/github_job_summary.md', 'w') as file:
-        file.write(md)
+        file.write("")
         for module_name, result_in_module in result_dict.items():
-            md+=f"""<details><summary>{module_name}</summary>\n"""
+            count, success_count, fail_count, skipped_count = get_module_stats(result_in_module)
+            md+=f"""<details><summary>{get_summary(module_name, count, success_count, fail_count, skipped_count)}</summary>"""
             for class_name, test_results in result_in_module.items():
-                count, success_count, fail_count, skipped_count = get_class_stats(test_results)
-                md+=f"""<ul><details><summary>{class_name}:\n <br/> total: {count}, <span style="color:green">success: {success_count}<span>, <span style="color:red">fail: {fail_count}</span>, <span style="color:yellow">skipped: {skipped_count}</span></summary>\n"""
+                count, success_count, fail_count, skipped_count = get_stats(test_results)
+                md+=f"<ul><details><summary>{get_summary(class_name, count, success_count, fail_count, skipped_count )}</summary>"
                 table= f"""<table class="table"><thead><tr><th scope="col">module</th><th scope="col">class</th><th scope="col">test</th><th scope="col">status</th><tr></thead><tbody>"""
                 for test_result in test_results:
                     table+=f"<tr><td>{get_color(test_result.module_name, test_result.status)}</td><td>{get_color(test_result.class_name, test_result.status)}</td><td>{get_color(test_result.test_name, test_result.status)}</td><td>{get_color(test_result.status, test_result.status)}</td></tr>"
@@ -180,16 +183,36 @@ def get_match(regex, string):
         return None
     
    
-def get_class_stats(test_results):
+def get_stats(test_results):
     count = len(test_results)
     success_count = len(list(filter(lambda x: x.status == "passed", test_results)))
     fail_count = len(list(filter(lambda x: x.status == "failed", test_results)))
     skipped_count = len(list(filter(lambda x: x.status == "skipped", test_results)))
     return count, success_count, fail_count, skipped_count
      
-#def get_module_stats(result_in_module):
-#    class_count = result_in_module.keys().count()
-#    test_success_count = 
+def get_module_stats(result_in_module):
+    count, success_count, fail_count, skipped_count = 0 , 0 , 0, 0
+    for test_results in result_in_module.values():
+        sub_count, sub_success_count, sub_fail_count, sub_skipped_count = get_stats(test_results)
+        count += sub_count
+        success_count += sub_success_count
+        fail_count += sub_fail_count
+        skipped_count += sub_skipped_count
+    return count, success_count, fail_count, skipped_count
+
+def get_global_stats(result_dict):
+    count, success_count, fail_count, skipped_count = 0 , 0 , 0, 0
+    for test_results in result_dict.values():
+        sub_count, sub_success_count, sub_fail_count, sub_skipped_count = get_module_stats(test_results)
+        count += sub_count
+        success_count += sub_success_count
+        fail_count += sub_fail_count
+        skipped_count += sub_skipped_count
+    return count, success_count, fail_count, skipped_count
+    
+
+def get_summary(item, count, success_count, fail_count, skipped_count):
+    return f"""{item}:\n <br/> total: {count}, success: {success_count}, fail: {fail_count}, skipped: {skipped_count}\n"""
 
 colors = {"passed": "green", "failed": "red", "skipped": "yellow"}
 def get_color(text, status):
