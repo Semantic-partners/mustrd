@@ -137,43 +137,39 @@ def pytest_sessionfinish(session: Session, exitstatus):
             class_name = test_conf.originalname 
             test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
             module_name = test_conf.parent.name
+            is_mustrd = True
         # Case normal unit tests
         else:
             test_name = test_conf.originalname
             class_name = test_conf.parent.name
             module_name = test_conf.parent.parent.name
+            is_mustrd = False
         
-        result_list.append(TestResult(test_name, class_name, module_name, result.outcome ))
+        result_list.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
     
-    result_dict = defaultdict(lambda: defaultdict(list))
+    mustrd_result_dict = defaultdict(lambda: defaultdict(list))
+    pytest_result_dict = defaultdict(lambda: defaultdict(list))
 
     # Partition the list
     for testResult in result_list:
-        result_dict[testResult.module_name][testResult.class_name].append(testResult)
+        if testResult.is_mustrd:
+            mustrd_result_dict[testResult.module_name][testResult.class_name].append(testResult)
+        else:
+            pytest_result_dict[testResult.module_name][testResult.class_name].append(testResult)
 
-    result_dict = dict(result_dict)
     
-    md = f"# Mustrd tests summary:"
-    count, success_count, fail_count, skipped_count = get_global_stats(result_dict)
-    md += get_summary("Tests", count, success_count, fail_count, skipped_count)
     with open('junit/github_job_summary.md', 'w') as file:
         file.write("")
-        for module_name, result_in_module in result_dict.items():
-            count, success_count, fail_count, skipped_count = get_module_stats(result_in_module)
-            md+=f"""<details><summary>{get_summary(module_name, count, success_count, fail_count, skipped_count)}</summary>"""
-            for class_name, test_results in result_in_module.items():
-                count, success_count, fail_count, skipped_count = get_stats(test_results)
-                md+=f"<ul><details><summary>{get_summary(class_name, count, success_count, fail_count, skipped_count )}</summary>"
-                table= f"""<table class="table"><thead><tr><th scope="col">module</th><th scope="col">class</th><th scope="col">test</th><th scope="col">status</th><tr></thead><tbody>"""
-                for test_result in test_results:
-                    table+=f"<tr><td>{get_color(test_result.module_name, test_result.status)}</td><td>{get_color(test_result.class_name, test_result.status)}</td><td>{get_color(test_result.test_name, test_result.status)}</td><td>{get_color(test_result.status, test_result.status)}</td></tr>"
-                table+=f"</tbody></table>"
-                md+= table
-                md+=f"</details></ul>"
-            md+="</details>"
+        md = f"<h1>Mustrd tests summary:</h1>"
+        count, success_count, fail_count, skipped_count = get_global_stats(mustrd_result_dict)
+        md += get_summary("Tests", count, success_count, fail_count, skipped_count)
+        md += generate_md(mustrd_result_dict)
+        md += f"<h1>Pytest summary:</h1> "
+        count, success_count, fail_count, skipped_count = get_global_stats(pytest_result_dict)
+        md += get_summary("Tests", count, success_count, fail_count, skipped_count)
+        md += generate_md(pytest_result_dict)
         file.write(md)
-            
-    print(result_dict)
+        
 
 def get_match(regex, string):
     search = re.search(regex, string)
@@ -182,6 +178,22 @@ def get_match(regex, string):
     else: 
         return None
     
+def generate_md(result_dict):
+    md = ""
+    for module_name, result_in_module in result_dict.items():
+        count, success_count, fail_count, skipped_count = get_module_stats(result_in_module)
+        md+=f"""<details><summary>{get_summary(module_name, count, success_count, fail_count, skipped_count)}</summary>"""
+        for class_name, test_results in result_in_module.items():
+            count, success_count, fail_count, skipped_count = get_stats(test_results)
+            md+=f"<ul><details><summary>{get_summary(class_name, count, success_count, fail_count, skipped_count )}</summary>"
+            table= f"""<table class="table"><thead><tr><th scope="col">module</th><th scope="col">class</th><th scope="col">test</th><th scope="col">status</th><tr></thead><tbody>"""
+            for test_result in test_results:
+                table+=f"<tr><td>{get_color(test_result.module_name, test_result.status)}</td><td>{get_color(test_result.class_name, test_result.status)}</td><td>{get_color(test_result.test_name, test_result.status)}</td><td>{get_color(test_result.status, test_result.status)}</td></tr>"
+            table+=f"</tbody></table>"
+            md+= table
+            md+=f"</details></ul>"
+        md+="</details>"
+    return md
    
 def get_stats(test_results):
     count = len(test_results)
@@ -226,9 +238,11 @@ class TestResult:
     class_name: str
     module_name: str
     status: str
+    is_mustrd: bool
     
-    def __init__(self, test_name: str, class_name: str, module_name: str, status: str):
+    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
         self.test_name = test_name
         self.class_name = class_name
         self.module_name = module_name
         self.status = status
+        self.is_mustrd = is_mustrd
