@@ -131,11 +131,18 @@ def pytest_runtest_makereport(item, call):
 def pytest_sessionfinish(session: Session, exitstatus):
     md = ""
     result_list = []
-    for test_conf, result in session.results.items():  
+    for test_conf, result in session.results.items(): 
+        # Case auto generated tests 
+        if test_conf.originalname != test_conf.name:
+            class_name = test_conf.originalname 
+            test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
+            module_name = test_conf.parent.name
+        # Case normal unit tests
+        else:
+            test_name = test_conf.originalname
+            class_name = test_conf.parent.name
+            module_name = test_conf.parent.parent.name
         
-        test_name = get_match(r'\[(.*?)\]', result.nodeid) or result.nodeid.split("::") [2]
-        class_name = test_conf.obj.__name__ #get_match(r'::(.*?)\[', result.nodeid) or get_match(r'::(.*?)::', result.nodeid)
-        module_name = test_conf.obj.__module__ # get_match(r'\/(.*?)\.py', result.nodeid)
         result_list.append(TestResult(test_name, class_name, module_name, result.outcome ))
     
     result_dict = defaultdict(lambda: defaultdict(list))
