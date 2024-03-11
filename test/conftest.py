@@ -4,15 +4,12 @@ import pytest
 import os
 from pathlib import Path
 from rdflib.namespace import Namespace
-from rdflib.plugins.parsers.notation3 import BadSyntax
 from rdflib import Graph
-from requests import ConnectionError
 
 from src.utils import get_project_root
-from mustrd import get_spec, run_spec, get_triple_stores,SpecPassed, SpecSkipped,validate_specs
+from mustrd import run_spec, get_triple_stores,SpecPassed, SpecSkipped,validate_specs, get_specs
 from namespace import MUST
 from collections import defaultdict
-import re
 from pytest import Session
 
 #TODO: This should be a pytest plugin so it can be called from another repository
@@ -61,6 +58,7 @@ def pytest_generate_tests(metafunc):
         
         unit_tests = generate_tests_for_config({"spec_path": project_root / one_test_config["spec_path"],
                             "data_path": project_root / one_test_config["data_path"]}, triple_stores)
+        
         if "filter_on_tripleStore" in one_test_config and not triple_stores:
             unit_tests = []
             for triple_store in one_test_config["filter_on_tripleStore"]:
@@ -76,24 +74,12 @@ def generate_tests_for_config(config, triple_stores):
     ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
     valid_spec_uris, spec_graph, invalid_spec_results = \
     validate_specs(config, triple_stores, shacl_graph, ont_graph)
-    specs = invalid_spec_results
-    try:
-        for triple_store in triple_stores:
-            for spec_uri in valid_spec_uris:
-                try:
-                    specs += [get_spec(spec_uri, spec_graph, config, triple_store)]
-                except (ValueError, FileNotFoundError, ConnectionError) as e:
-                    specs += [SpecSkipped(spec_uri, triple_store['type'], e)]
-
-    except (BadSyntax, FileNotFoundError) as e:
-        template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
-                "Arguments:\n{1!r}"
-        message = template.format(type(e).__name__, e.args)
-        print(message)
-        print("No specifications will be run.")
-
-    print(f"Extracted {len(specs)} specifications that will be run")
-    return specs
+    
+    specs, skipped_spec_results = \
+        get_specs(valid_spec_uris, spec_graph, triple_stores, config)
+    
+    # Return normal specs + skipped results
+    return specs + skipped_spec_results + invalid_spec_results
 
 # Function called to generate the name of the test
 def get_test_name(spec):
