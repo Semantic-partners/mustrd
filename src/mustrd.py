@@ -267,22 +267,22 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
         log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")   
         return valid_spec_uris, spec_graph, invalid_specs
 
-
-def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResult], triple_stores: List[dict],
-              run_config: dict) -> List[SpecResult]:
+def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[dict],
+              run_config: dict):
     specs = []
+    skipped_results = []
     try:
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
                             spec_uris]
             else:
                 for spec_uri in spec_uris:
                     try:
                         specs += [get_spec(spec_uri, spec_graph, run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
-                        results += [SpecSkipped(spec_uri, triple_store['type'], e)]
+                        skipped_results += [SpecSkipped(spec_uri, triple_store['type'], e)]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -292,11 +292,13 @@ def run_specs(spec_uris: List[URIRef], spec_graph: Graph, results: List[SpecResu
         log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
+    return specs , skipped_results
+
+def run_specs(specs) -> List[SpecResult]:
+    results = []
     # https://github.com/Semantic-partners/mustrd/issues/115
-
     for specification in specs:
-        results += [run_spec(specification)]
-
+        results.append(run_spec(specification))
     return results
 
 

@@ -27,7 +27,7 @@ import logger_setup
 import sys
 import os
 from rdflib import Graph
-from mustrd import run_specs, get_triple_stores, review_results, validate_specs
+from mustrd import run_specs, get_triple_stores, review_results, validate_specs, get_specs
 from pathlib import Path
 from namespace import MUST
 from utils import get_project_root
@@ -94,10 +94,12 @@ def main(argv):
     valid_spec_uris, spec_graph, invalid_spec_results = \
         validate_specs(run_config, triple_stores, shacl_graph, ont_graph)
 
-    results = \
-        run_specs(valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, run_config)
+    specs, skipped_spec_results = \
+        get_specs(valid_spec_uris, spec_graph, triple_stores, run_config)
+        
+    results = invalid_spec_results + skipped_spec_results + run_specs(specs)
 
-    review_results(results, verbose)
+    review_results(results, verbose)    
 
 
 if __name__ == "__main__":
