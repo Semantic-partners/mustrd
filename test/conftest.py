@@ -38,7 +38,7 @@ test_config = {
 }
 
 
-# Functon called in the test to actually run it
+# Function called in the test to actually run it
 def run_test_spec(test_spec):
     if isinstance(test_spec, SpecSkipped):
         pytest.skip(f"Invalid configuration, error : {test_spec.message}")
@@ -46,7 +46,7 @@ def run_test_spec(test_spec):
 
     result_type = type(result)
     if result_type == SpecSkipped:
-        # FIXME: better exception management
+        # FIXME: Better exception management
         pytest.skip("Unsupported configuration")
     return result_type == SpecPassed
 
@@ -140,10 +140,10 @@ def pytest_runtest_makereport(item, call):
 def pytest_sessionfinish(session: Session, exitstatus):
     md = ""
     result_list = []
-    for test_conf, result in session.results.items(): 
-        # Case auto generated tests 
+    for test_conf, result in session.results.items():
+        # Case auto generated tests
         if test_conf.originalname != test_conf.name:
-            class_name = test_conf.originalname 
+            class_name = test_conf.originalname
             test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
             module_name = test_conf.parent.name
             is_mustrd = True
@@ -173,7 +173,7 @@ def pytest_sessionfinish(session: Session, exitstatus):
         count, success_count, fail_count, skipped_count = get_global_stats(mustrd_result_dict)
         md += get_summary("Tests", count, success_count, fail_count, skipped_count)
         md += generate_md(mustrd_result_dict)
-        md += "<h1>Pytest summary:</h1> "
+        md += "<h1>Pytest summary:</h1>"
         count, success_count, fail_count, skipped_count = get_global_stats(pytest_result_dict)
         md += get_summary("Tests", count, success_count, fail_count, skipped_count)
         md += generate_md(pytest_result_dict)
@@ -181,21 +181,19 @@ def pytest_sessionfinish(session: Session, exitstatus):
 
 
 # Generate md file section
+# FIXME: should probably use a template
 def generate_md(result_dict):
     md = ""
     for module_name, result_in_module in result_dict.items():
         count, success_count, fail_count, skipped_count = get_module_stats(result_in_module)
         md += f"""<details>
-                        <summary>
-                            {get_summary(module_name, count, success_count, fail_count, skipped_count)}
-                        </summary>"""
+                        <summary>{get_summary(module_name, count, success_count, fail_count, skipped_count)}</summary>
+                        """
         for class_name, test_results in result_in_module.items():
             count, success_count, fail_count, skipped_count = get_stats(test_results)
             md += f"""<ul>
                         <details>
-                            <summary
-                                {get_summary(class_name, count, success_count, fail_count, skipped_count )}
-                            </summary>"""
+                            <summary>{get_summary(class_name, count, success_count, fail_count, skipped_count)}</summary>"""
             table = """<table class="table">
                         <thead>
                             <tr>
@@ -231,21 +229,18 @@ def get_stats(test_results):
 
 # Aggregate statistic at the module level
 def get_module_stats(result_in_module):
-    count, success_count, fail_count, skipped_count = 0, 0, 0, 0
-    for test_results in result_in_module.values():
-        sub_count, sub_success_count, sub_fail_count, sub_skipped_count = get_stats(test_results)
-        count += sub_count
-        success_count += sub_success_count
-        fail_count += sub_fail_count
-        skipped_count += sub_skipped_count
-    return count, success_count, fail_count, skipped_count
+    return aggregate_stats(result_in_module, get_stats)
 
 
 # Aggregate statistic at the top level
 def get_global_stats(result_dict):
+    return aggregate_stats(result_dict, get_module_stats)
+
+
+def aggregate_stats(results, sub_stat_function):
     count, success_count, fail_count, skipped_count = 0, 0, 0, 0
-    for test_results in result_dict.values():
-        sub_count, sub_success_count, sub_fail_count, sub_skipped_count = get_module_stats(test_results)
+    for test_results in results.values():
+        sub_count, sub_success_count, sub_fail_count, sub_skipped_count = sub_stat_function(test_results)
         count += sub_count
         success_count += sub_success_count
         fail_count += sub_fail_count
