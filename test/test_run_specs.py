@@ -1,4 +1,4 @@
-from test.conftest import run_test_spec
+from mustrdTestPlugin import run_test_spec
 
 
 def test_unit(unit_tests):
