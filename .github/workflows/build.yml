@@ -34,16 +34,17 @@ jobs:
       - name: Test with pytest
         run:  poetry run coverage run -m pytest test/ --doctest-modules --junitxml=junit/test-results-${{ matrix.python-version }}.xml
       - name: Upload pytest test results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
       - name: Define Job summary
         run: cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
-        # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
       - name: Generate coverage HTML report
         run: poetry run coverage html --directory=htmlcov --include=src/*
+        if: ${{ always() }}
       - name: Upload coverage HTML summary
         uses: actions/upload-artifact@v3
         with:
