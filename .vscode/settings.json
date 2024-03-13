@@ -1,6 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "test", "-p mustrd_plugin"
+        "test", "--md=junit/github_job_summary.md", "-p mustrd_plugin"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

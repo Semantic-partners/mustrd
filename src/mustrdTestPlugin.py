@@ -39,12 +39,9 @@ test_config = {
 class MustrdTestPlugin:
     md_path: str
     
-    def __init__(self):
-        return
     
-    # FIXME: use md_path given in parameter
-    #def __init__(self,md_path):
-    #    self.md_path = md_path
+    def __init__(self,md_path):
+        self.md_path = md_path
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     def pytest_generate_tests(self, metafunc):
@@ -133,6 +130,9 @@ class MustrdTestPlugin:
 
     # Take all the test results in session, parse them, split them in mustrd and standard pytest  and generate md file
     def pytest_sessionfinish(self, session: Session, exitstatus):
+        # if md path has not been defined in argument, then do not generate md file
+        if not self.md_path:
+            return
         md = ""
         result_list = []
         for test_conf, result in session.results.items():
@@ -161,8 +161,7 @@ class MustrdTestPlugin:
             else:
                 pytest_result_dict[testResult.module_name][testResult.class_name].append(testResult)
 
-        # TODO: file name from cmd argument
-        with open('junit/github_job_summary.md', 'w') as file:
+        with open(self.md_path, 'w') as file:
             file.write("")
             md = "<h1>Mustrd tests summary:</h1>"
             count, success_count, fail_count, skipped_count = self.get_global_stats(mustrd_result_dict)
