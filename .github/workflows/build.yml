@@ -32,7 +32,7 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           poetry run flake8 . --exclude .venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
-        run:  poetry run coverage run -m pytest test/ --doctest-modules --junitxml=junit/test-results-${{ matrix.python-version }}.xml
+        run:  poetry run coverage run -m pytest test/ --doctest-modules --junitxml=junit/test-results-${{ matrix.python-version }}.xml --md=junit/github_job_summary.md
       - name: Upload pytest test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v3
