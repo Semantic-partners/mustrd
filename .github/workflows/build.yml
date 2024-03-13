@@ -31,6 +31,8 @@ jobs:
           poetry run flake8 . --exclude .venv --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           poetry run flake8 . --exclude .venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
       - name: Test with pytest
         run:  poetry run coverage run -m pytest test/ --doctest-modules --junitxml=junit/test-results-${{ matrix.python-version }}.xml
       - name: Upload pytest test results
@@ -40,8 +42,6 @@ jobs:
           path: junit/test-results-${{ matrix.python-version }}.xml
       - name: Define Job summary
         run: cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
       - name: Generate coverage HTML report
         run: poetry run coverage html --directory=htmlcov --include=src/*
       - name: Upload coverage HTML summary
