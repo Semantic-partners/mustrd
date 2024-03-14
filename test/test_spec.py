@@ -209,7 +209,9 @@ class TestRunSpec:
 
     def test_spec_file_from_folder_passes(self):
         project_root = get_project_root()
-        run_config = {'then_path': Path(os.path.join(project_root, "test/data"))}
+        run_config = {'then_path': Path("data"),
+                      # FIXME: spec_path seems mandatory, is that normal?
+                      'spec_path': Path(os.path.join(project_root, "test/"))}
 
         spec_graph = Graph()
         spec = """

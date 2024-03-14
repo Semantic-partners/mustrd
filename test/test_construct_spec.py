@@ -619,7 +619,7 @@ class TestRunConstructSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
+                when_result.exception) == "Expected ConstructQuery, found '?'  (at char 10), (line:1, col:11)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
@@ -740,7 +740,9 @@ class TestRunConstructSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
 
         project_root = get_project_root()
-        run_config = {'when_path': Path(os.path.join(project_root, "test/data"))}
+        run_config = {'when_path': Path("data"),
+                      # FIXME: spec_path seems mandatory, is that normal?
+                      'spec_path': Path(os.path.join(project_root, "test/"))}
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .

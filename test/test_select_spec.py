@@ -341,7 +341,7 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+                when_result.exception) == "Expected SelectQuery, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
