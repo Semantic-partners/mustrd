@@ -29,6 +29,14 @@ from rdflib.namespace import DefinedNamespace, Namespace
 class MUST(DefinedNamespace):
     _NS = Namespace("https://mustrd.com/model/")
 
+    # test configuration
+    TestConfig: URIRef
+    hasTestFunction: URIRef
+    hasSpecPath: URIRef
+    hasDataPath: URIRef
+    triplestoreSpecPath: URIRef
+    filterOnTripleStore: URIRef
+
     # Specification classes
     TestSpec: URIRef
     SelectSparql: URIRef
