@@ -11,59 +11,59 @@ from namespace import MUST
 from collections import defaultdict
 from pytest import Session
 from mustrd import run_spec, SpecPassed, SpecSkipped
+from typing import Dict
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 project_root = get_project_root()
 
-# FIXME: this should probably go to a file. What kind of file: toml, ttl? should the file be versionned?
-test_config = {
-    "test_unit": {
-        "spec_path": "test/test-specs",
-        "data_path": "test/data",
-        "filter_on_tripleStore": [MUST.RdfLib]
-    },
-    "test_w3c_gdb": {
-        "spec_path": "test/triplestore_w3c_compliance",
-        "data_path": "test/data",
-        "triplestore_spec_path": "test/triplestore_config/tripleStores-template.ttl",
-        "filter_on_tripleStore": [MUST.GraphDb]
-    },
-    "test_w3c_rdflib": {
-        "spec_path": "test/triplestore_w3c_compliance",
-        "data_path": "test/data",
-        "filter_on_tripleStore": [MUST.RdfLib]
-    }
-}
+@dataclass
+class TestConfig:
+    test_function: str
+    spec_path: str
+    data_path: str
+    triplestore_spec_path: str
+    filter_on_tripleStore: str
+    
+    def __init__(self, test_function: str, spec_path: str, data_path: str, triplestore_spec_path: str, filter_on_tripleStore: str = None):
+        self.test_function = test_function
+        self.spec_path = spec_path
+        self.data_path = data_path
+        self.triplestore_spec_path = triplestore_spec_path
+        self.filter_on_tripleStore = filter_on_tripleStore
 
 class MustrdTestPlugin:
     md_path: str
+    test_configs: Dict[str, TestConfig]
     
     
-    def __init__(self,md_path):
+    def __init__(self, md_path, test_configs):
         self.md_path = md_path
+        self.test_configs = test_configs
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     def pytest_generate_tests(self, metafunc):
-        if metafunc.function.__name__ in test_config and len(metafunc.fixturenames) > 0:
-            one_test_config = test_config[metafunc.function.__name__]
+    
+        if len(metafunc.fixturenames) > 0:
+            if metafunc.function.__name__ in self.test_configs:
+                one_test_config = self.test_configs[metafunc.function.__name__]
 
-            triple_stores = self.get_triple_stores_from_file(one_test_config)
+                triple_stores = self.get_triple_stores_from_file(one_test_config)
 
-            unit_tests = self.generate_tests_for_config({"spec_path": project_root / one_test_config["spec_path"],
-                                                    "data_path": project_root / one_test_config["data_path"]},
-                                                triple_stores)
-
-            # If the triple store is not available for some reason, then create a unique fake test, automatically skipped.
-            if "filter_on_tripleStore" in one_test_config and not triple_stores:
                 unit_tests = []
-                for triple_store in one_test_config["filter_on_tripleStore"]:
-                    unit_tests += [SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")]
+                if one_test_config.filter_on_tripleStore and not triple_stores:
+                    unit_tests = list(map(lambda triple_store: SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"), one_test_config.filter_on_tripleStore))
+                else:
+                    unit_tests = self.generate_tests_for_config({"spec_path": project_root / one_test_config.spec_path,
+                                                        "data_path": project_root / one_test_config.data_path},
+                                                    triple_stores)
 
-            # Create the test in itself
-            if unit_tests:
-                metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=self.get_test_name)
-
+                # Create the test in itself
+                if unit_tests:
+                    metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=self.get_test_name)
+            else:
+                metafunc.parametrize(metafunc.fixturenames[0], [SpecSkipped(MUST.TestSpec, None, "No triplestore found")], ids=lambda x: "No configuration found for this test")
+        
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores):
@@ -93,19 +93,19 @@ class MustrdTestPlugin:
 
     # Get triple store configuration or default
     def get_triple_stores_from_file(self, test_config):
-        if "triplestore_spec_path" in test_config:
+        if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(Graph().parse(project_root / test_config["triplestore_spec_path"]))
+                triple_stores = get_triple_stores(Graph().parse(project_root / test_config.triplestore_spec_path))
             except Exception:
-                print(f"""No triple store configuration found at {project_root / test_config['triplestore_spec_path']}.
+                print(f"""No triple store configuration found at {project_root / test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""")
                 triple_stores = [{'type': MUST.RdfLib}]
         else:
             print("No triple store configuration required: using embedded rdflib")
             triple_stores = [{'type': MUST.RdfLib}]
 
-        if "filter_on_tripleStore" in test_config and test_config["filter_on_tripleStore"]:
-            triple_stores = list(filter(lambda triple_store: (triple_store["type"] in test_config["filter_on_tripleStore"]),
+        if test_config.filter_on_tripleStore:
+            triple_stores = list(filter(lambda triple_store: (triple_store["type"] in test_config.filter_on_tripleStore),
                                         triple_stores))
         return triple_stores
 
