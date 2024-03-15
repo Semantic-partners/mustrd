@@ -267,6 +267,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
         log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")   
         return valid_spec_uris, spec_graph, invalid_specs
 
+
 def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[dict],
               run_config: dict):
     specs = []
@@ -276,7 +277,7 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
             if "error" in triple_store:
                 log.error(f"{triple_store['error']}. No specs run for this triple store.")
                 skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
-                            spec_uris]
+                                    spec_uris]
             else:
                 for spec_uri in spec_uris:
                     try:
@@ -292,7 +293,8 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
         log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
-    return specs , skipped_results
+    return specs, skipped_results
+
 
 def run_specs(specs) -> List[SpecResult]:
     results = []
@@ -300,7 +302,6 @@ def run_specs(specs) -> List[SpecResult]:
     for specification in specs:
         results.append(run_spec(specification))
     return results
-
 
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
