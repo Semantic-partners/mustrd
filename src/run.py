@@ -96,10 +96,10 @@ def main(argv):
 
     specs, skipped_spec_results = \
         get_specs(valid_spec_uris, spec_graph, triple_stores, run_config)
-        
+
     results = invalid_spec_results + skipped_spec_results + run_specs(specs)
 
-    review_results(results, verbose)    
+    review_results(results, verbose)
 
 
 if __name__ == "__main__":
