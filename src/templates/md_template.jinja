@@ -5,11 +5,13 @@
 {{result_by_type.name}}: <br/> total: {{result_by_type.stats.count}}, success: {{result_by_type.stats.success_count}}, fail: {{result_by_type.stats.fail_count}}, skipped: {{result_by_type.stats.skipped_count}}
 </summary>
 {% for  result_in_module in result_by_type.result_list %}
+<ul>
 <details>
 <summary>
     {{result_in_module.name}} : <br/> total: {{result_in_module.stats.count}}, success: {{result_in_module.stats.success_count}}, fail: {{result_in_module.stats.fail_count}}, skipped: {{result_in_module.stats.skipped_count}}
 </summary>
 {% for  result_in_class in result_in_module.result_list %}
+<ul>
 <details>
 <summary>
     {{result_in_class.name}} : <br/> total: {{result_in_class.stats.count}}, success: {{result_in_class.stats.success_count}}, fail: {{result_in_class.stats.fail_count}}, skipped: {{result_in_class.stats.skipped_count}}
@@ -34,8 +36,10 @@
     {% endfor %}</tbody>
 </table>
 </details>
+</ul>
     {% endfor %}
 </details>
+</ul>
 {% endfor %}
 </details>
 {% endfor %}
