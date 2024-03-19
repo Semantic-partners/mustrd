@@ -1,0 +1,41 @@
+
+{% for  result_by_type in result_list.result_list %}
+<details>
+<summary>
+{{result_by_type.name}}: <br/> total: {{result_by_type.stats.count}}, success: {{result_by_type.stats.success_count}}, fail: {{result_by_type.stats.fail_count}}, skipped: {{result_by_type.stats.skipped_count}}
+</summary>
+{% for  result_in_module in result_by_type.result_list %}
+<details>
+<summary>
+    {{result_in_module.name}} : <br/> total: {{result_in_module.stats.count}}, success: {{result_in_module.stats.success_count}}, fail: {{result_in_module.stats.fail_count}}, skipped: {{result_in_module.stats.skipped_count}}
+</summary>
+{% for  result_in_class in result_in_module.result_list %}
+<details>
+<summary>
+    {{result_in_class.name}} : <br/> total: {{result_in_class.stats.count}}, success: {{result_in_class.stats.success_count}}, fail: {{result_in_class.stats.fail_count}}, skipped: {{result_in_class.stats.skipped_count}}
+</summary>
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">module</th>
+            <th scope="col">class</th>
+            <th scope="col">test</th>
+            <th scope="col">status</th>
+        <tr>
+    </thead>
+    <tbody>
+    {% for  result in result_in_class.result_list -%}
+        <tr>
+            <td>{{result.module_name}}</td>
+            <td>{{result.class_name}}</td>
+            <td>{{result.test_name}}</td>
+            <td>{{result.status}}</td>
+        </tr>
+    {% endfor %}</tbody>
+</table>
+</details>
+    {% endfor %}
+</details>
+{% endfor %}
+</details>
+{% endfor %}
