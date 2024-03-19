@@ -11,7 +11,7 @@ from namespace import MUST
 from collections import defaultdict
 from pytest import Session
 from typing import Dict, Union
-import itertools
+from itertools import groupby
 from jinja2 import Environment, FileSystemLoader
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
@@ -271,18 +271,15 @@ class Stats:
         self.skipped_count = skipped_count
         
 def get_result_list(result_list: list[TestResult]):
-    type_result_list = []
-    for type, result_by_type in itertools.groupby(result_list, lambda result: "Mustrd" if result.is_mustrd else "Pytest"):
-        print(type + " :", list(result_by_type)) 
-        
-    for type, result_by_type in itertools.groupby(result_list, lambda result: "Mustrd" if result.is_mustrd else "Pytest"):
+    type_result_list = []        
+    for type, result_by_type in groupby(sorted(result_list, key=lambda result: result.is_mustrd), lambda result: result.is_mustrd):
         module_result_list = []
-        for module_name, result_by_module in itertools.groupby(result_by_type, lambda result: result.module_name):
+        for module_name, result_by_module in groupby(result_by_type, lambda result: result.module_name):
             class_result_list = []
-            for class_name, result_by_class in itertools.groupby(result_by_module, lambda result: result.class_name):
+            for class_name, result_by_class in groupby(result_by_module, lambda result: result.class_name):
                 class_result_list.append(ResultList(class_name, list(result_by_class), True))
             module_result_list.append(ResultList(module_name, class_result_list, False))
-        type_result_list.append(ResultList(f"is mustrd: {type} tests", module_result_list, False))
+        type_result_list.append(ResultList(f"{'Mustrd' if type else 'Pytest'} tests", module_result_list, False))
     return ResultList("Total", type_result_list, False)
     
         
