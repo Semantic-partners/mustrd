@@ -5,19 +5,24 @@ from jinja2 import Environment, FileSystemLoader
 from dataclasses import dataclass
 from enum import Enum
 
+
 class testType(Enum):
     MUSTRD = "Mustrd"
     PYTEST = "Pytest"
+
 
 class testStatus(Enum):
     PASSED = "passed"
     FAILED = "failed"
     SKIPPED = "skipped"
-    
+
+
 TEMPLATE_FOLDER = "src/templates/"
+
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
 RESULT_LIST_LEAF_MD_TEMPLATE = "md_ResultList_leaf_template.jinja"
+
 
 @dataclass
 class TestResult:
@@ -35,51 +40,59 @@ class TestResult:
         self.status = status
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
-        
+
+
 @dataclass
 class Stats:
     count: int
     success_count: int
     fail_count: int
     skipped_count: int
-    
+
     def __init__(self, count: int, success_count: int, fail_count: int, skipped_count: int):
         self.count = count
         self.success_count = success_count
         self.fail_count = fail_count
         self.skipped_count = skipped_count
-        
+
+
 def get_result_list(test_results: list[TestResult], *group_functions):
     if len(group_functions) > 0:
         return list(map(lambda key_group:
-                        ResultList(key_group[0], get_result_list(key_group[1], *group_functions[1:]), len(group_functions) == 1),
+                        ResultList(key_group[0],
+                                   get_result_list(key_group[1],
+                                   *group_functions[1:]),
+                                   len(group_functions) == 1),
                         groupby(sorted(test_results, key=group_functions[0]), group_functions[0])))
     else:
         return list(test_results)
-    
-        
+
 
 @dataclass
 class ResultList:
     name: str
-    stats:Stats
+    stats: Stats
     is_leaf: bool
-    result_list: Union[list['ResultList'], list[TestResult]] # string type to workaround recursive call
-    
+    # string type to workaround recursive call
+    result_list: Union[list['ResultList'], list[TestResult]]
+
     def __init__(self, name: str, result_list: Union[list['ResultList'], list[TestResult]], is_leaf: bool = False):
         self.name = name
         self.result_list = result_list
         self.is_leaf = is_leaf
         self.compute_stats()
-    
+
     def compute_stats(self):
         count, success_count, fail_count, skipped_count = 0, 0, 0, 0
-        
+
         if self.is_leaf:
             count = len(self.result_list)
-            success_count = len(list(filter(lambda x: x.status == testStatus.PASSED.value, self.result_list)))
-            fail_count = len(list(filter(lambda x: x.status == testStatus.FAILED.value, self.result_list)))
-            skipped_count = len(list(filter(lambda x: x.status == testStatus.SKIPPED.value, self.result_list)))
+            success_count = len(
+                list(filter(lambda x: x.status == testStatus.PASSED.value, self.result_list)))
+            fail_count = len(
+                list(filter(lambda x: x.status == testStatus.FAILED.value, self.result_list)))
+            skipped_count = len(
+                list(filter(lambda x: x.status == testStatus.SKIPPED.value, self.result_list)))
         else:
             for test_results in self.result_list:
                 sub_count, sub_success_count, sub_fail_count, sub_skipped_count = test_results.compute_stats()
@@ -87,12 +100,11 @@ class ResultList:
                 success_count += sub_success_count
                 fail_count += sub_fail_count
                 skipped_count += sub_skipped_count
-        
+
         self.stats = Stats(count, success_count, fail_count, skipped_count)
         return count, success_count, fail_count, skipped_count
-    
+
     def render(self):
         environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
         template = RESULT_LIST_LEAF_MD_TEMPLATE if self.is_leaf else RESULT_LIST_MD_TEMPLATE
-        return environment.get_template(template).render(result_list = self.result_list, environment = environment)
-            
+        return environment.get_template(template).render(result_list=self.result_list, environment=environment)

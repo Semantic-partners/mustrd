@@ -65,7 +65,9 @@ class MustrdTestPlugin:
                 if unit_tests:
                     metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=self.get_test_name)
             else:
-                metafunc.parametrize(metafunc.fixturenames[0], [SpecSkipped(MUST.TestSpec, None, "No triplestore found")], ids=lambda x: "No configuration found for this test")
+                metafunc.parametrize(metafunc.fixturenames[0],
+                                     [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
+                                     ids=lambda x: "No configuration found for this test")
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores):
@@ -148,14 +150,13 @@ class MustrdTestPlugin:
                 is_mustrd = False
 
             test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
-        
+
         result_list = ResultList(None, get_result_list(test_results,
-                                                          lambda result: result.type,
-                                                          lambda result: result.module_name,
-                                                          lambda result: result.class_name),
+                                                       lambda result: result.type,
+                                                       lambda result: result.module_name,
+                                                       lambda result: result.class_name),
                                  False)
-        
-        
+
         md = result_list.render()
         with open(self.md_path, 'w') as file:
             file.write(md)
@@ -172,4 +173,3 @@ def run_test_spec(test_spec):
         # FIXME: Better exception management
         pytest.skip("Unsupported configuration")
     return result_type == SpecPassed
-    
