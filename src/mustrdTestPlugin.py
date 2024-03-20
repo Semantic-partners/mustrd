@@ -151,7 +151,7 @@ class MustrdTestPlugin:
             test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
         
         result_list = ResultList("Total", get_result_list(test_results,
-                                                          lambda result: result.is_mustrd,
+                                                          lambda result: result.type,
                                                           lambda result: result.module_name,
                                                           lambda result: result.class_name),
                                  False)
@@ -182,6 +182,7 @@ class TestResult:
     module_name: str
     status: str
     is_mustrd: bool
+    type: str
 
     def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
         self.test_name = test_name
@@ -189,6 +190,7 @@ class TestResult:
         self.module_name = module_name
         self.status = status
         self.is_mustrd = is_mustrd
+        self.type = "Mustrd" if self.is_mustrd else "Pytest"
         
 @dataclass
 class Stats:
