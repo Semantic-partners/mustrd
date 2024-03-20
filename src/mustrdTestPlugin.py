@@ -156,8 +156,8 @@ class MustrdTestPlugin:
                                                           lambda result: result.class_name),
                                  False)
         
-        environment = Environment(loader=FileSystemLoader("src/templates/"))
-        md = environment.get_template("md_template.jinja").render(result_list = result_list)
+        
+        md = result_list.render()
         with open(self.md_path, 'w') as file:
             file.write(md)
 
@@ -205,8 +205,8 @@ class Stats:
         
 def get_result_list(test_results: list[TestResult], *group_functions):
     if len(group_functions) > 0:
-        return list(map(lambda key_value:
-                        ResultList(key_value[0], get_result_list(key_value[1], *group_functions[1:]), len(group_functions) == 1),
+        return list(map(lambda key_group:
+                        ResultList(key_group[0], get_result_list(key_group[1], *group_functions[1:]), len(group_functions) == 1),
                         groupby(sorted(test_results, key=group_functions[0]), group_functions[0])))
     else:
         return list(test_results)
@@ -244,3 +244,9 @@ class ResultList:
         
         self.stats = Stats(count, success_count, fail_count, skipped_count)
         return count, success_count, fail_count, skipped_count
+    
+    def render(self):
+        environment = Environment(loader=FileSystemLoader("src/templates/"))
+        template = "md_ResultList_leaf_template.jinja" if self.is_leaf else "md_ResultList_template.jinja"
+        return environment.get_template(template).render(result_list = self.result_list, environment = environment)
+            
