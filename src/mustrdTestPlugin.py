@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from TestResult import ResultList, TestResult, get_result_list
 import pytest
 import os
 from pathlib import Path
@@ -9,9 +10,7 @@ from utils import get_project_root
 from mustrd import get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from namespace import MUST
 from pytest import Session
-from typing import Dict, Union
-from itertools import groupby
-from jinja2 import Environment, FileSystemLoader
+from typing import Dict
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -132,25 +131,25 @@ class MustrdTestPlugin:
         # if md path has not been defined in argument, then do not generate md file
         if not self.md_path:
             return
-        md = ""
+
         test_results = []
         for test_conf, result in session.results.items():
             # Case auto generated tests
             if test_conf.originalname != test_conf.name:
+                module_name = test_conf.parent.name
                 class_name = test_conf.originalname
                 test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
-                module_name = test_conf.parent.name
                 is_mustrd = True
             # Case normal unit tests
             else:
-                test_name = test_conf.originalname
-                class_name = test_conf.parent.name
                 module_name = test_conf.parent.parent.name
+                class_name = test_conf.parent.name
+                test_name = test_conf.originalname
                 is_mustrd = False
 
             test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
         
-        result_list = ResultList("Total", get_result_list(test_results,
+        result_list = ResultList(None, get_result_list(test_results,
                                                           lambda result: result.type,
                                                           lambda result: result.module_name,
                                                           lambda result: result.class_name),
@@ -174,81 +173,3 @@ def run_test_spec(test_spec):
         pytest.skip("Unsupported configuration")
     return result_type == SpecPassed
     
-
-@dataclass
-class TestResult:
-    test_name: str
-    class_name: str
-    module_name: str
-    status: str
-    is_mustrd: bool
-    type: str
-
-    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
-        self.test_name = test_name
-        self.class_name = class_name
-        self.module_name = module_name
-        self.status = status
-        self.is_mustrd = is_mustrd
-        self.type = "Mustrd" if self.is_mustrd else "Pytest"
-        
-@dataclass
-class Stats:
-    count: int
-    success_count: int
-    fail_count: int
-    skipped_count: int
-    
-    def __init__(self, count: int, success_count: int, fail_count: int, skipped_count: int):
-        self.count = count
-        self.success_count = success_count
-        self.fail_count = fail_count
-        self.skipped_count = skipped_count
-        
-def get_result_list(test_results: list[TestResult], *group_functions):
-    if len(group_functions) > 0:
-        return list(map(lambda key_group:
-                        ResultList(key_group[0], get_result_list(key_group[1], *group_functions[1:]), len(group_functions) == 1),
-                        groupby(sorted(test_results, key=group_functions[0]), group_functions[0])))
-    else:
-        return list(test_results)
-    
-        
-
-@dataclass
-class ResultList:
-    name: str
-    stats:Stats
-    is_leaf: bool
-    result_list: Union[list['ResultList'], list[TestResult]] # string type to workaround recursive call
-    
-    def __init__(self, name: str, result_list: Union[list['ResultList'], list[TestResult]], is_leaf: bool = False):
-        self.name = name
-        self.result_list = result_list
-        self.is_leaf = is_leaf
-        self.compute_stats()
-    
-    def compute_stats(self):
-        count, success_count, fail_count, skipped_count = 0, 0, 0, 0
-        
-        if self.is_leaf:
-            count = len(self.result_list)
-            success_count = len(list(filter(lambda x: x.status == "passed", self.result_list)))
-            fail_count = len(list(filter(lambda x: x.status == "failed", self.result_list)))
-            skipped_count = len(list(filter(lambda x: x.status == "skipped", self.result_list)))
-        else:
-            for test_results in self.result_list:
-                sub_count, sub_success_count, sub_fail_count, sub_skipped_count = test_results.compute_stats()
-                count += sub_count
-                success_count += sub_success_count
-                fail_count += sub_fail_count
-                skipped_count += sub_skipped_count
-        
-        self.stats = Stats(count, success_count, fail_count, skipped_count)
-        return count, success_count, fail_count, skipped_count
-    
-    def render(self):
-        environment = Environment(loader=FileSystemLoader("src/templates/"))
-        template = "md_ResultList_leaf_template.jinja" if self.is_leaf else "md_ResultList_template.jinja"
-        return environment.get_template(template).render(result_list = self.result_list, environment = environment)
-            
