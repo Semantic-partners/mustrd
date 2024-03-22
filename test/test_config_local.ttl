@@ -8,7 +8,7 @@
                 <https://mustrd.com/model/hasTestFunction> "test_w3c_gdb";
                 <https://mustrd.com/model/hasSpecPath> "test/triplestore_w3c_compliance";
                 <https://mustrd.com/model/hasDataPath> "test/data";
-                <https://mustrd.com/model/triplestoreSpecPath> "test/triplestore_config/tripleStores-template.ttl";
+                <https://mustrd.com/model/triplestoreSpecPath> "test/triplestore_config/tripleStores.ttl";
                 <https://mustrd.com/model/filterOnTripleStore> <https://mustrd.com/model/GraphDb> .
 
 <urn:test_w3c_rdflib> a <https://mustrd.com/model/TestConfig>;
