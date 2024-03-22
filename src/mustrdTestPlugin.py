@@ -7,7 +7,7 @@ from rdflib.namespace import Namespace
 from rdflib import Graph
 
 from utils import get_project_root
-from mustrd import get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
+from mustrd import get_triple_store_graph, get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from namespace import MUST
 from pytest import Session
 from typing import Dict
@@ -98,7 +98,7 @@ class MustrdTestPlugin:
     def get_triple_stores_from_file(self, test_config):
         if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(Graph().parse(project_root / test_config.triplestore_spec_path))
+                triple_stores = get_triple_stores(get_triple_store_graph(project_root / test_config.triplestore_spec_path))
             except Exception:
                 print(f"""No triple store configuration found at {project_root / test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""")

@@ -383,6 +383,9 @@ def run_spec(spec: Specification) -> SpecResult:
 
 
 
+def get_triple_store_graph(triple_store_graph_path: Path):
+    secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix)
+    return Graph().parse(triple_store_graph_path).parse(secret_path)
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
@@ -397,16 +400,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
-                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
-                                                                    triple_store_graph.value(
-                                                                        subject=triple_store_config,
-                                                                        predicate=MUST.username))
-                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
-                                                                    triple_store_graph.value(
-                                                                        subject=triple_store_config,
-                                                                        predicate=MUST.password))
-                log.info("triple_store_creds" + triple_store["username"])
-                log.info("triple_store_creds" + triple_store["password"])
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
             except (FileNotFoundError, ValueError) as e:
                 triple_store["error"] = e
             triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
@@ -424,14 +419,8 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
-                triple_store["username"] = get_credential_from_file(triple_store_config, "username",
-                                                                    triple_store_graph.value(
-                                                                        subject=triple_store_config,
-                                                                        predicate=MUST.username))
-                triple_store["password"] = get_credential_from_file(triple_store_config, "password",
-                                                                    triple_store_graph.value(
-                                                                        subject=triple_store_config,
-                                                                        predicate=MUST.password))
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
             except (FileNotFoundError, ValueError) as e:
                 log.error(f"Credential retrieval failed {e}")
                 triple_store["error"] = e
