@@ -102,8 +102,8 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/anzo")))
         triple_store_graph.add((triple_store_uri, MUST.port, Literal(8080)))
-        triple_store_graph.add((triple_store_uri, MUST.username, Literal(f"{self.config_file.name}")))
-        triple_store_graph.add((triple_store_uri, MUST.password, Literal(f"{self.config_file.name}")))
+        triple_store_graph.add((triple_store_uri, MUST.username, Literal("test_user")))
+        triple_store_graph.add((triple_store_uri, MUST.password, Literal("test_password")))
         triple_store_graph.add((triple_store_uri, MUST.gqeURI, Literal("http://example.com/gqe")))
         triple_store_graph.add((triple_store_uri, MUST.inputGraph, Literal("http://example.com/input-graph")))
 
@@ -126,8 +126,8 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/graphdb")))
         triple_store_graph.add((triple_store_uri, MUST.port, Literal(8080)))
-        triple_store_graph.add((triple_store_uri, MUST.username, Literal(f"{self.config_file.name}")))
-        triple_store_graph.add((triple_store_uri, MUST.password, Literal(f"{self.config_file.name}")))
+        triple_store_graph.add((triple_store_uri, MUST.username, Literal("test_user")))
+        triple_store_graph.add((triple_store_uri, MUST.password, Literal("test_password")))
         triple_store_graph.add((triple_store_uri, MUST.repository, Literal("Test")))
         triple_store_graph.add((triple_store_uri, MUST.inputGraph, Literal("http://example.com/input-graph")))
 
