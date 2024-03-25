@@ -32,13 +32,13 @@ from pytest import Session
 from typing import Dict
 
 from mustrd.TestResult import ResultList, TestResult, get_result_list
-from mustrd.utils import get_project_root
+from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import get_triple_store_graph, get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
-project_root = get_project_root()
+mustrd_root = get_mustrd_root()
 
 
 @dataclass
@@ -81,8 +81,8 @@ class MustrdTestPlugin:
                                       SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"),
                                       one_test_config.filter_on_tripleStore))
                 else:
-                    unit_tests = self.generate_tests_for_config({"spec_path": project_root / one_test_config.spec_path,
-                                                                "data_path": project_root / one_test_config.data_path},
+                    unit_tests = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
+                                                                "data_path": Path(one_test_config.data_path)},
                                                                 triple_stores)
 
                 # Create the test in itself
@@ -96,8 +96,8 @@ class MustrdTestPlugin:
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores):
 
-        shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
-        ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
+        shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdShapes.ttl")))
+        ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/ontology.ttl")))
         valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(config, triple_stores,
                                                                            shacl_graph, ont_graph)
 
@@ -122,9 +122,9 @@ class MustrdTestPlugin:
     def get_triple_stores_from_file(self, test_config):
         if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(get_triple_store_graph(project_root / test_config.triplestore_spec_path))
+                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path)))
             except Exception:
-                print(f"""No triple store configuration found at {project_root / test_config.triplestore_spec_path}.
+                print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""")
                 triple_stores = [{'type': MUST.RdfLib}]
         else:

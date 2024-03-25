@@ -35,7 +35,6 @@ from mustrd.mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFa
     SpecPassedWithWarning, check_result, Specification, SpecSkipped
 from mustrd.namespace import MUST
 from mustrd.spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
-from mustrd.utils import get_project_root
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -1845,10 +1844,9 @@ class TestRunSelectSpec:
 
     def test_select_given_file_then_file_spec_passes(self):
 
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': ""}
         given_path = "test/data/given.ttl"
-        file_path = Path(os.path.join(project_root, given_path))
+        file_path = Path(given_path)
         triples = get_spec_component_from_file(file_path)
         given = Graph().parse(data=triples, format="ttl")
         spec = """
@@ -1891,10 +1889,9 @@ class TestRunSelectSpec:
 
     
     def test_select_given_file_then_file_spec_fails(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         given_path = "test/data/given.ttl"
-        file_path = Path(os.path.join(project_root, given_path))
+        file_path = Path (given_path)
         triples = get_spec_component_from_file(file_path)
         given = Graph().parse(data=triples, format="ttl")
         spec = """
