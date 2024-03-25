@@ -35,10 +35,10 @@ from rdflib.exceptions import ParserError
 from rdflib.term import Node
 import logging 
 
-import logger_setup
-from mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
-from namespace import MUST
-from utils import get_project_root
+from . import logger_setup
+from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
+from .namespace import MUST
+from .utils import get_project_root
 from multimethods import MultiMethod, Default
 
 log = logger_setup.setup_logger(__name__)

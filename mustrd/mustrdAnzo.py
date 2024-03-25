@@ -28,7 +28,7 @@ from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 import logging
-from namespace import MUST
+from .namespace import MUST
 
 
 # https://github.com/Semantic-partners/mustrd/issues/73

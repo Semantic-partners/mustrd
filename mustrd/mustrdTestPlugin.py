@@ -23,18 +23,18 @@ SOFTWARE.
 """
 
 from dataclasses import dataclass
-from TestResult import ResultList, TestResult, get_result_list
 import pytest
 import os
 from pathlib import Path
 from rdflib.namespace import Namespace
 from rdflib import Graph
-
-from utils import get_project_root
-from mustrd import get_triple_store_graph, get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
-from namespace import MUST
 from pytest import Session
 from typing import Dict
+
+from mustrd.TestResult import ResultList, TestResult, get_result_list
+from mustrd.utils import get_project_root
+from mustrd.mustrd import get_triple_store_graph, get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
+from mustrd.namespace import MUST
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 

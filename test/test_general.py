@@ -2,9 +2,9 @@ import unittest
 import os
 from pathlib import Path
 
-from mustrd import run_specs, get_triple_stores, validate_specs, get_specs
+from mustrd.mustrd import run_specs, get_triple_stores, validate_specs, get_specs
 from rdflib import Graph
-from namespace import MUST
+from mustrd.namespace import MUST
 
 
 class RunGeneralTests(unittest.TestCase):

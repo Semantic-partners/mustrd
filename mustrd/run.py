@@ -27,10 +27,10 @@ import logger_setup
 import sys
 import os
 from rdflib import Graph
-from mustrd import get_triple_store_graph, run_specs, get_triple_stores, review_results, validate_specs, get_specs
+from .mustrd import get_triple_store_graph, run_specs, get_triple_stores, review_results, validate_specs, get_specs
 from pathlib import Path
-from namespace import MUST
-from utils import get_project_root
+from .namespace import MUST
+from .utils import get_project_root
 import logging 
 log = logger_setup.setup_logger(__name__)
 
