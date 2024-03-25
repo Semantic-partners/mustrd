@@ -27,6 +27,9 @@ from itertools import groupby
 from jinja2 import Environment, FileSystemLoader
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+import os
+from mustrd.utils import get_mustrd_root
 
 
 class testType(Enum):
@@ -40,7 +43,7 @@ class testStatus(Enum):
     SKIPPED = "skipped"
 
 
-TEMPLATE_FOLDER = "mustrd/templates/"
+TEMPLATE_FOLDER =  Path(os.path.join(get_mustrd_root(), "templates/"))
 
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
