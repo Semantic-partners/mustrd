@@ -24,12 +24,10 @@ SOFTWARE.
 
 from typing import Dict
 from .mustrdTestPlugin import MustrdTestPlugin, TestConfig
-from .utils import get_project_root
 from rdflib import RDF, Graph
 from .namespace import MUST
 from collections import defaultdict
 
-project_root = get_project_root()
 
 
 def pytest_addoption(parser):
@@ -58,7 +56,7 @@ def pytest_configure(config) -> None:
 
     # Read configuration file
     test_configs: Dict[str, TestConfig] = defaultdict(lambda: defaultdict(list))
-    config_graph = Graph().parse(project_root / config.getoption("configpath"))
+    config_graph = Graph().parse(config.getoption("configpath"))
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
         test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
         spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)

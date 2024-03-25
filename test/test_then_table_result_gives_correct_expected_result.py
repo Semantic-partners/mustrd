@@ -22,26 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
-import string
-from itertools import groupby
 
 import pandas
-from numpy import nan
-from pandas import DataFrame
-from pyparsing import ParseException
 from rdflib import Graph, XSD
 from rdflib.namespace import Namespace
-from rdflib.term import Literal, Variable, URIRef
-
-from pathlib import Path
-
-from mustrd.mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning, check_result, Specification
+from rdflib.term import Literal
 from mustrd.namespace import MUST
-from mustrd.spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
-from mustrd.utils import get_project_root
-from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 

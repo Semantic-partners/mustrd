@@ -33,7 +33,6 @@ from rdflib.namespace import Namespace
 from mustrd.mustrd import Specification, run_when, SpecSkipped, run_spec
 from mustrd.namespace import MUST
 from mustrd.spec_component import parse_spec_component, ThenSpec
-from mustrd.utils import get_project_root
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 
@@ -78,8 +77,7 @@ class TestRunSpec:
                                  mustrd_triple_store=self.triple_store)
 
     def test_file_not_found_error(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -105,8 +103,7 @@ class TestRunSpec:
 
     
     def test_spec_then_from_file_error(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -131,8 +128,7 @@ class TestRunSpec:
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_given_from_file_error(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -157,8 +153,7 @@ class TestRunSpec:
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_wrong_file_format_error(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -182,8 +177,7 @@ class TestRunSpec:
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_folder_path_missing_error(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
@@ -208,10 +202,9 @@ class TestRunSpec:
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_file_from_folder_passes(self):
-        project_root = get_project_root()
         run_config = {'then_path': Path("data"),
                       # FIXME: spec_path seems mandatory, is that normal?
-                      'spec_path': Path(os.path.join(project_root, "test/"))}
+                      'spec_path': Path( "test/")}
 
         spec_graph = Graph()
         spec = """
