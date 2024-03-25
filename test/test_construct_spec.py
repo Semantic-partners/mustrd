@@ -30,13 +30,13 @@ from rdflib import Graph, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, \
+from mustrd.mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, \
      check_result, Specification
-from steprunner import run_when
+from mustrd.steprunner import run_when
 from graph_util import graph_comparison_message
-from namespace import MUST
-from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
-from utils import get_project_root
+from mustrd.namespace import MUST
+from mustrd.spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
+from mustrd.utils import get_project_root
 
 from test.addspec_source_file_to_spec_graph import parse_spec
 

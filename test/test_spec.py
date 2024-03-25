@@ -30,10 +30,10 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
-from mustrd import Specification, run_when, SpecSkipped, run_spec
-from namespace import MUST
-from spec_component import parse_spec_component, ThenSpec
-from utils import get_project_root
+from mustrd.mustrd import Specification, run_when, SpecSkipped, run_spec
+from mustrd.namespace import MUST
+from mustrd.spec_component import parse_spec_component, ThenSpec
+from mustrd.utils import get_project_root
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 

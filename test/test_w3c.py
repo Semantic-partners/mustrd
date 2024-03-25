@@ -1,4 +1,4 @@
-from mustrdTestPlugin import run_test_spec
+from mustrd.mustrdTestPlugin import run_test_spec
 
 
 def test_w3c_gdb(w3c_tests):

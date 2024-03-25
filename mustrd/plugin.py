@@ -23,10 +23,10 @@ SOFTWARE.
 """
 
 from typing import Dict
-from mustrdTestPlugin import MustrdTestPlugin, TestConfig
-from utils import get_project_root
+from .mustrdTestPlugin import MustrdTestPlugin, TestConfig
+from .utils import get_project_root
 from rdflib import RDF, Graph
-from namespace import MUST
+from .namespace import MUST
 from collections import defaultdict
 
 project_root = get_project_root()

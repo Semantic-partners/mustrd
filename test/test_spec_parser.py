@@ -28,8 +28,8 @@ from rdflib import Graph
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
-from namespace import MUST
-from spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, parse_spec_component
+from mustrd.namespace import MUST
+from mustrd.spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, parse_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
