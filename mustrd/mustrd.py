@@ -28,7 +28,7 @@ from typing import Tuple, List
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
-import logger_setup
+from . import logger_setup
 from dataclasses import dataclass
 
 from pyparsing import ParseException
@@ -40,20 +40,20 @@ from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
 from rdflib.compare import isomorphic, graph_diff
 import pandas
 
-from namespace import MUST
+from .namespace import MUST
 import requests
 import json
 from pandas import DataFrame
 
-from spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from utils import  is_json
+from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
+from .utils import  is_json
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
 from pyshacl import validate
 import logging 
 from http.client import HTTPConnection
-from steprunner import upload_given, run_when
+from .steprunner import upload_given, run_when
 
 log = logger_setup.setup_logger(__name__)
 

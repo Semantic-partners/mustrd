@@ -24,22 +24,22 @@ SOFTWARE.
 
 import json
 
-import logger_setup
+from . import logger_setup
 from multimethods import MultiMethod, Default
-from namespace import MUST
+from .namespace import MUST
 from rdflib import Graph, URIRef
-from mustrdRdfLib import execute_select as execute_select_rdflib
-from mustrdRdfLib import execute_construct as execute_construct_rdflib
-from mustrdRdfLib import execute_update as execute_update_rdflib
-from mustrdAnzo import upload_given as upload_given_anzo
-from mustrdAnzo import execute_update as execute_update_anzo
-from mustrdAnzo import execute_construct as execute_construct_anzo
-from mustrdAnzo import execute_select as execute_select_anzo
-from mustrdGraphDb import upload_given as upload_given_graphdb
-from mustrdGraphDb import execute_update as execute_update_graphdb
-from mustrdGraphDb import execute_construct as execute_construct_graphdb
-from mustrdGraphDb import execute_select as execute_select_graphdb
-from spec_component import AnzoWhenSpec, WhenSpec
+from .mustrdRdfLib import execute_select as execute_select_rdflib
+from .mustrdRdfLib import execute_construct as execute_construct_rdflib
+from .mustrdRdfLib import execute_update as execute_update_rdflib
+from .mustrdAnzo import upload_given as upload_given_anzo
+from .mustrdAnzo import execute_update as execute_update_anzo
+from .mustrdAnzo import execute_construct as execute_construct_anzo
+from .mustrdAnzo import execute_select as execute_select_anzo
+from .mustrdGraphDb import upload_given as upload_given_graphdb
+from .mustrdGraphDb import execute_update as execute_update_graphdb
+from .mustrdGraphDb import execute_construct as execute_construct_graphdb
+from .mustrdGraphDb import execute_select as execute_select_graphdb
+from .spec_component import AnzoWhenSpec, WhenSpec
 
 log = logger_setup.setup_logger(__name__)
 

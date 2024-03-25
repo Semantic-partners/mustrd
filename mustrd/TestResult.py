@@ -40,7 +40,7 @@ class testStatus(Enum):
     SKIPPED = "skipped"
 
 
-TEMPLATE_FOLDER = "src/templates/"
+TEMPLATE_FOLDER = "mustrd/templates/"
 
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
