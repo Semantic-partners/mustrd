@@ -43,7 +43,7 @@ jobs:
         run: cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
         if: ${{ always() }}
       - name: Generate coverage HTML report
-        run: poetry run coverage html --directory=htmlcov --include=src/*
+        run: poetry run coverage html --directory=htmlcov --include=mustrd/*
         if: ${{ always() }}
       - name: Upload coverage HTML summary
         uses: actions/upload-artifact@v3
