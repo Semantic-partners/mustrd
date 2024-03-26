@@ -36,7 +36,7 @@ def pytest_addoption(parser):
         "--md",
         action="store",
         dest="mdpath",
-        metavar="path",
+        metavar="pathToMdSummary",
         default=None,
         help="create md summary file at that path.",
     )
@@ -44,10 +44,19 @@ def pytest_addoption(parser):
         "--config",
         action="store",
         dest="configpath",
-        metavar="path",
+        metavar="pathToTestConfig",
         default=None,
         required=True,
         help="Ttl file containing the list of test to construct.",
+    )
+    group.addoption(
+        "--secrets",
+        action="store",
+        dest="secrets",
+        metavar="Secrets",
+        default=None,
+        required=False,
+        help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
     )
     return
 
@@ -70,7 +79,7 @@ def pytest_configure(config) -> None:
                                                  triplestore_spec_path=triplestore_spec_path,
                                                  filter_on_tripleStore=filter_on_tripleStore)
 
-    config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"), test_configs))
+    config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"), test_configs, config.getoption("secrets")))
 
 
 def get_config_param(config_graph, config_subject, config_param, convert_function):
