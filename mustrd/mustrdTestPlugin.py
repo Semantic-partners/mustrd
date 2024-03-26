@@ -27,18 +27,77 @@ import pytest
 import os
 from pathlib import Path
 from rdflib.namespace import Namespace
-from rdflib import Graph
+from rdflib import Graph, RDF
 from pytest import Session
 from typing import Dict
 
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
-from mustrd.mustrd import get_triple_store_graph, get_triple_stores, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
+from mustrd.mustrd import get_triple_store_graph, get_triple_stores
+from mustrd.mustrd import SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST
+from collections import defaultdict
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 mustrd_root = get_mustrd_root()
+
+
+def pytest_addoption(parser):
+    group = parser.getgroup("md summary")
+    group.addoption(
+        "--md",
+        action="store",
+        dest="mdpath",
+        metavar="pathToMdSummary",
+        default=None,
+        help="create md summary file at that path.",
+    )
+    group.addoption(
+        "--config",
+        action="store",
+        dest="configpath",
+        metavar="pathToTestConfig",
+        default=None,
+        required=True,
+        help="Ttl file containing the list of test to construct.",
+    )
+    group.addoption(
+        "--secrets",
+        action="store",
+        dest="secrets",
+        metavar="Secrets",
+        default=None,
+        required=False,
+        help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
+    )
+    return
+
+
+def pytest_configure(config) -> None:
+    # Read configuration file
+    test_configs: Dict[str, TestConfig] = defaultdict(lambda: defaultdict(list))
+    config_graph = Graph().parse(config.getoption("configpath"))
+    for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
+        test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
+        spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
+        data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
+        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
+        filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
+                                                          predicate=MUST.filterOnTripleStore))
+
+        test_configs[test_function] = TestConfig(test_function=test_function,
+                                                 spec_path=spec_path, data_path=data_path,
+                                                 triplestore_spec_path=triplestore_spec_path,
+                                                 filter_on_tripleStore=filter_on_tripleStore)
+
+    config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
+                                                   test_configs, config.getoption("secrets")))
+
+
+def get_config_param(config_graph, config_subject, config_param, convert_function):
+    raw_value = config_graph.value(subject=config_subject, predicate=config_param, any=True)
+    return convert_function(raw_value) if raw_value else None
 
 
 @dataclass
@@ -124,7 +183,8 @@ class MustrdTestPlugin:
     def get_triple_stores_from_file(self, test_config):
         if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path), self.secrets))
+                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path),
+                                                                         self.secrets))
             except Exception as e:
                 print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""", e)
