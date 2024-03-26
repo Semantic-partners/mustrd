@@ -381,11 +381,13 @@ def run_spec(spec: Specification) -> SpecResult:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
     #         mustrd_triple_store.clear_graph()
 
-
-
-def get_triple_store_graph(triple_store_graph_path: Path):
-    secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix)
-    return Graph().parse(triple_store_graph_path).parse(secret_path)
+def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
+    if secrets:
+        return Graph().parse(triple_store_graph_path).parse(data = secrets)
+    else:
+        secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix)
+        return Graph().parse(triple_store_graph_path).parse(source = secret_path)
+    
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []

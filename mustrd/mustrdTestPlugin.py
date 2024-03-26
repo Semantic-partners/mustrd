@@ -61,10 +61,12 @@ class TestConfig:
 class MustrdTestPlugin:
     md_path: str
     test_configs: Dict[str, TestConfig]
+    secrets: str
 
-    def __init__(self, md_path, test_configs):
+    def __init__(self, md_path, test_configs, secrets):
         self.md_path = md_path
         self.test_configs = test_configs
+        self.secrets = secrets
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     def pytest_generate_tests(self, metafunc):
@@ -122,10 +124,10 @@ class MustrdTestPlugin:
     def get_triple_stores_from_file(self, test_config):
         if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path)))
-            except Exception:
+                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path), self.secrets))
+            except Exception as e:
                 print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
-                    Fall back: only embedded rdflib will be executed""")
+                    Fall back: only embedded rdflib will be executed""", e)
                 triple_stores = [{'type': MUST.RdfLib}]
         else:
             print("No triple store configuration required: using embedded rdflib")
