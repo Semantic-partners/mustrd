@@ -1,5 +1,5 @@
-<urn:test_unit> a <https://mustrd.com/model/TestConfig>;
-                <https://mustrd.com/model/hasTestFunction> "test_unit";
+<urn:test_unit_rdflib> a <https://mustrd.com/model/TestConfig>;
+                <https://mustrd.com/model/hasTestFunction> "test_unit_rdflib";
                 <https://mustrd.com/model/hasSpecPath> "test/test-specs";
                 <https://mustrd.com/model/hasDataPath> "test/data";
                 <https://mustrd.com/model/filterOnTripleStore> <https://mustrd.com/model/RdfLib> .
