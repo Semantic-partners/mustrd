@@ -1,8 +1,0 @@
-<test:s1> <test:p1> <test:o1> .
-<test:o1> <test:p2> <test:o2> .
-
-<test:s2> <test:p1> <test:o3> .
-<test:o3> <test:p3> <test:o4> .
-
-<test:s3> <test:p1> <test:o5> .
-<test:o5> <test:p4> <test:o6> .
