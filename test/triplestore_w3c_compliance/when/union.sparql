@@ -1,8 +1,0 @@
-SELECT ?subj  WHERE {
-   ?subj a <test:class>;
-   {
-     ?subj <test:prop1> <test:b1>
-   } UNION {
-     ?subj <test:prop1> <test:b2>
-   }
-}

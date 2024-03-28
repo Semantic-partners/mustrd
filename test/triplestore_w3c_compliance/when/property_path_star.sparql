@@ -1,4 +1,0 @@
-SELECT ?intermediate  WHERE {
-   <test:a1> <test:prop1>*  ?intermediate .
-   ?intermediate <test:prop1>* <test:a5>
-}
