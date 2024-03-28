@@ -1,8 +1,0 @@
-SELECT ?subj ?obj1 ?obj2  WHERE {
-   ?subj a <test:class>;
-     <test:prop1> ?obj1
-   OPTIONAL {
-     ?subj <test:prop2> ?obj2
-     FILTER(?obj1 =<test:b1>)
-   }
-}
