@@ -1,5 +1,7 @@
-<urn:test_unit_rdflib> a <https://mustrd.com/model/TestConfig>;
-                <https://mustrd.com/model/hasTestFunction> "test_unit_rdflib";
-                <https://mustrd.com/model/hasSpecPath> "test/test-specs";
-                <https://mustrd.com/model/hasDataPath> "test/data";
-                <https://mustrd.com/model/filterOnTripleStore> <https://mustrd.com/model/RdfLib> .
+@prefix must: <https://mustrd.com/model/> .
+
+must:test_unit_rdflib a must:TestConfig;
+                must:hasTestFunction "test_unit_rdflib";
+                must:hasSpecPath "test/test-specs";
+                must:hasDataPath "test/data";
+                must:filterOnTripleStore must:RdfLib .
