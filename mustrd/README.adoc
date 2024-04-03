@@ -178,16 +178,16 @@ The configuration file should be serialised RDF. An example in Turtle format is 
 must:GraphDbConfig1  a must:GraphDbConfig ;
         must:url "http://localhost";
         must:port "7200";
-        must:username "test/triplestore_config/tripleStoreCredentials.toml" ;
-        must:password "test/triplestore_config/tripleStoreCredentials.toml" ;
         must:inputGraph "http://localhost:7200/test-graph" ;
         must:repository "mustrd" .
 ----
-The triplestore credentials are held in a separate TOML file so that configurations can be shared without sharing credentials.
+To avoid versioning secrets when you want to version triplestore configuration (for example in case you want to run mustrd in CI), you have to configure user/password in a different file.
+This file must be named as the triple store configuration file, but with "_secrets" just before the extension. For example triplestores.ttl -> triplestores_secrets.ttl
+Subjects in the two files must match, no need to redefine the type, for example:
 ----
-["https://mustrd.com/model/GraphDbConfig1"]
-"username"="<username>"
-"password"="<password>"
+@prefix must:      <https://mustrd.com/model/> .
+must:GraphDbConfig1  must:username 'test' ;
+              must:password 'test' .
 ----
 
 == Additional Notes for Developers
