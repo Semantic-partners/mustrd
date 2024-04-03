@@ -11,7 +11,8 @@
 @base <https://mustrd.com/model/> .
 
 <https://mustrd.com/model> rdf:type owl:Ontology ;
-                            owl:imports rdf: ,
+                            owl:imports <https://mustrd.com/triplestore/> ,
+                                        rdf: ,
                                         rdfs: ;
                             rdfs:comment "" ;
                             rdfs:label "Mustrd" .
