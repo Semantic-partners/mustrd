@@ -165,3 +165,5 @@ mustrd.iml
 
 # because it potentially contains credentials
 *_secrets*
+test/triplestore_config/*
+junit/*
