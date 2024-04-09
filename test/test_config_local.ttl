@@ -1,13 +1,13 @@
 @prefix must: <https://mustrd.com/model/> .
 
 must:test_unit_rdflib a must:TestConfig;
-                must:hasTestFunction "test_unit_rdflib";
+                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:filterOnTripleStore must:RdfLib .
 
 must:test_unit_gdb a must:TestConfig;
-                must:hasTestFunction "test_unit_gdb";
+                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:triplestoreSpecPath "test/triplestore_config/tripleStores.ttl";
