@@ -1,6 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "test", "--md=junit/github_job_summary.md", "--config=test/test_config_local.ttl"
+        "mustrd/test", "--md=junit/github_job_summary.md", "--config=test/test_config_local.ttl"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

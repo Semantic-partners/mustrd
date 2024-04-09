@@ -4,6 +4,7 @@ must:test_unit_rdflib a must:TestConfig;
                 must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
+                must:hasPytestPath "testcollection1/rdflib";
                 must:filterOnTripleStore must:RdfLib .
 
 must:test_unit_gdb a must:TestConfig;
@@ -11,4 +12,23 @@ must:test_unit_gdb a must:TestConfig;
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:triplestoreSpecPath "test/triplestore_config/tripleStores.ttl";
+                must:hasPytestPath "testcollection1/gdb";
                 must:filterOnTripleStore must:GraphDb .
+
+
+
+must:test_unit_gdb2 a must:TestConfig;
+                must:hasTestFunction "test_unit";
+                must:hasSpecPath "test/test-specs";
+                must:hasDataPath "test/data";
+                must:triplestoreSpecPath "test/triplestore_config/tripleStores.ttl";
+                must:hasPytestPath "testcollection2/gdb";
+                must:filterOnTripleStore must:GraphDb .
+
+
+must:test_unit_rdflib2 a must:TestConfig;
+                must:hasTestFunction "test_unit";
+                must:hasSpecPath "test/test-specs";
+                must:hasDataPath "test/data";
+                must:hasPytestPath "testcollection2/rdflib";
+                must:filterOnTripleStore must:RdfLib .
