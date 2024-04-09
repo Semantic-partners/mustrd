@@ -29,14 +29,12 @@ from pathlib import Path
 from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
 from pytest import Session
-from typing import Dict
 
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import get_triple_store_graph, get_triple_stores
 from mustrd.mustrd import SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST
-from collections import defaultdict
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -76,7 +74,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config) -> None:
     # Read configuration file
-    test_configs: Dict[str, TestConfig] = defaultdict(lambda: defaultdict(list))
+    test_configs = []
     config_graph = Graph().parse(config.getoption("configpath"))
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
         test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
@@ -86,10 +84,10 @@ def pytest_configure(config) -> None:
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                           predicate=MUST.filterOnTripleStore))
 
-        test_configs[test_function] = TestConfig(test_function=test_function,
+        test_configs.append(TestConfig(test_function=test_function,
                                                  spec_path=spec_path, data_path=data_path,
                                                  triplestore_spec_path=triplestore_spec_path,
-                                                 filter_on_tripleStore=filter_on_tripleStore)
+                                                 filter_on_tripleStore=filter_on_tripleStore))
 
     config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
                                                    test_configs, config.getoption("secrets")))
@@ -119,32 +117,64 @@ class TestConfig:
 
 class MustrdTestPlugin:
     md_path: str
-    test_configs: Dict[str, TestConfig]
+    test_configs: list
     secrets: str
 
     def __init__(self, md_path, test_configs, secrets):
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
+        
+    def get_test_triplestore(self, item):
+        triple_store = item.callspec.params["unit_tests"].triple_store
+        if isinstance(triple_store, str):
+            return triple_store
+        else:
+            return triple_store['type']
+    
+    @pytest.hookimpl(tryfirst=True)
+    def pytest_collection(self, session):
+        args = session.config.args
+        if len(args) > 0:
+            if "::" in args[0]:
+                session.config.args[0] = "./test/test_run_specs.py::" + args[0].split("::")[1]
+            else:
+                session.config.args[0] = "./test/test_run_specs.py"
+        
+        
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_pycollect_makeitem(self, collector, name, obj):
+        if name == "test_unit":
+            self.testFunction = obj
+        report = yield
+        if name == "test_unit":
+            items = report.get_result()
+            new_results = []
+            for item in items:
+                triple_store = MUST.get_local_name(self.get_test_triplestore(item))
+                virtual_path = triple_store + "/" + item.fspath.basename
+                item.fspath = Path(virtual_path)
+                item._nodeid = virtual_path + "::" + item.name
+                new_results.append(item)
+            return new_results
+        
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     def pytest_generate_tests(self, metafunc):
-
         if len(metafunc.fixturenames) > 0:
-            if metafunc.function.__name__ in self.test_configs:
-                one_test_config = self.test_configs[metafunc.function.__name__]
-
-                triple_stores = self.get_triple_stores_from_file(one_test_config)
-
+            if metafunc.function.__name__  == "test_unit":
                 unit_tests = []
-                if one_test_config.filter_on_tripleStore and not triple_stores:
-                    unit_tests = list(map(lambda triple_store:
-                                      SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"),
-                                      one_test_config.filter_on_tripleStore))
-                else:
-                    unit_tests = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
-                                                                "data_path": Path(one_test_config.data_path)},
-                                                                triple_stores)
+                for one_test_config in self.test_configs:
+                    triple_stores = self.get_triple_stores_from_file(one_test_config)
+
+                    if one_test_config.filter_on_tripleStore and not triple_stores:
+                        unit_tests.extend(list(map(lambda triple_store:
+                                        SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"),
+                                        one_test_config.filter_on_tripleStore)))
+                    else:
+                        unit_tests.extend(self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
+                                                                    "data_path": Path(one_test_config.data_path)},
+                                                                    triple_stores))
 
                 # Create the test in itself
                 if unit_tests:
@@ -153,6 +183,9 @@ class MustrdTestPlugin:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
                                      ids=lambda x: "No configuration found for this test")
+    
+                
+            
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores):

@@ -116,3 +116,8 @@ class MUST(DefinedNamespace):
     # GraphDb
     GraphDb: URIRef
     GraphDbConfig: URIRef
+    
+    # FIXME: There is nothing to do that by default?
+    @classmethod
+    def get_local_name(cls, uri: URIRef):
+        return str(uri).split(cls._NS)[1]
