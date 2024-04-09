@@ -33,8 +33,9 @@ from pytest import Session
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import get_triple_store_graph, get_triple_stores
-from mustrd.mustrd import SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
+from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST
+from typing import Union
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -81,12 +82,14 @@ def pytest_configure(config) -> None:
         spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
         data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
         triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
+        pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                           predicate=MUST.filterOnTripleStore))
 
         test_configs.append(TestConfig(test_function=test_function,
                                                  spec_path=spec_path, data_path=data_path,
                                                  triplestore_spec_path=triplestore_spec_path,
+                                                 pytest_path = pytest_path,
                                                  filter_on_tripleStore=filter_on_tripleStore))
 
     config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
@@ -104,16 +107,23 @@ class TestConfig:
     spec_path: str
     data_path: str
     triplestore_spec_path: str
+    pytest_path: str
     filter_on_tripleStore: str
 
-    def __init__(self, test_function: str, spec_path: str, data_path: str, triplestore_spec_path: str,
-                 filter_on_tripleStore: str = None):
+    def __init__(self, test_function: str, spec_path: str, data_path: str, triplestore_spec_path: str, 
+                 pytest_path: str, filter_on_tripleStore: str = None):
         self.test_function = test_function
         self.spec_path = spec_path
         self.data_path = data_path
         self.triplestore_spec_path = triplestore_spec_path
+        self.pytest_path = pytest_path
         self.filter_on_tripleStore = filter_on_tripleStore
+        
 
+@dataclass
+class TestParamWrapper:
+    test_config: TestConfig
+    unit_test: Union[Specification, SpecSkipped]
 
 class MustrdTestPlugin:
     md_path: str
@@ -124,35 +134,25 @@ class MustrdTestPlugin:
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
-        
-    def get_test_triplestore(self, item):
-        triple_store = item.callspec.params["unit_tests"].triple_store
-        if isinstance(triple_store, str):
-            return triple_store
-        else:
-            return triple_store['type']
     
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         args = session.config.args
         if len(args) > 0:
             if "::" in args[0]:
-                session.config.args[0] = "./test/test_run_specs.py::" + args[0].split("::")[1]
+                session.config.args[0] = "./mustrd/test/test_mustrd.py::" + args[0].split("::")[1]
             else:
-                session.config.args[0] = "./test/test_run_specs.py"
+                session.config.args[0] = "./mustrd/test/test_mustrd.py"
         
         
     @pytest.hookimpl(hookwrapper=True)
     def pytest_pycollect_makeitem(self, collector, name, obj):
-        if name == "test_unit":
-            self.testFunction = obj
         report = yield
         if name == "test_unit":
             items = report.get_result()
             new_results = []
             for item in items:
-                triple_store = MUST.get_local_name(self.get_test_triplestore(item))
-                virtual_path = triple_store + "/" + item.fspath.basename
+                virtual_path =  item.callspec.params["unit_tests"].test_config.pytest_path
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
                 new_results.append(item)
@@ -169,16 +169,16 @@ class MustrdTestPlugin:
 
                     if one_test_config.filter_on_tripleStore and not triple_stores:
                         unit_tests.extend(list(map(lambda triple_store:
-                                        SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"),
+                                        TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
                                         one_test_config.filter_on_tripleStore)))
                     else:
-                        unit_tests.extend(self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
+                        specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
                                                                     "data_path": Path(one_test_config.data_path)},
-                                                                    triple_stores))
-
+                                                                    triple_stores)
+                        unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
                 # Create the test in itself
                 if unit_tests:
-                    metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=self.get_test_name)
+                    metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=lambda test_param: test_param.unit_test.spec_uri.replace(spnamespace, "").replace("_", " "))
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],

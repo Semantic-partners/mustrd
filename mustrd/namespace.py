@@ -35,6 +35,7 @@ class MUST(DefinedNamespace):
     hasSpecPath: URIRef
     hasDataPath: URIRef
     triplestoreSpecPath: URIRef
+    hasPytestPath: URIRef
     filterOnTripleStore: URIRef
 
     # Specification classes
