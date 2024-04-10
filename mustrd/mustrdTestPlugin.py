@@ -152,7 +152,7 @@ class MustrdTestPlugin:
             items = report.get_result()
             new_results = []
             for item in items:
-                virtual_path =  item.callspec.params["unit_tests"].test_config.pytest_path
+                virtual_path =  item.callspec.params["unit_tests"].test_config.pytest_path or "default/path"
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
                 new_results.append(item)
