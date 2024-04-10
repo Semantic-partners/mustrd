@@ -93,6 +93,7 @@ class Specification:
     given: Graph
     when: WhenSpec
     then: ThenSpec
+    spec_file_name: str = "default.mustrd.ttl"
 
 
 @dataclass
@@ -152,6 +153,7 @@ class TripleStoreConnectionError(SpecResult):
 @dataclass
 class SpecSkipped(SpecResult):
     message: str
+    spec_file_name: str = "default.mustrd.ttl"
 
 
 @dataclass
@@ -176,16 +178,15 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 
-def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph)\
+def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*")\
         -> Tuple[List, Graph, List]:
     spec_graph = Graph()
     subject_uris = set()
     focus_uris = set()
     invalid_specs = []
-  #  ttl_files = list(spec_path.glob('**/*.mustrd.ttl'))
-    ttl_files = list(run_config['spec_path'].glob('**/*.mustrd.ttl'))
+    ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
     ttl_files.sort()
-    log.info(f"Found {len(ttl_files)} mustrd.ttl files in {run_config['spec_path']}")
+    log.info(f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
     for file in ttl_files:
         error_messages = []
@@ -233,7 +234,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
             if len(error_messages) > 0:
                 error_messages.sort()
                 error_message = "\n".join(msg for msg in error_messages)
-                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message) for triple_store in
+                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name) for triple_store in
                                 triple_stores]
             else:
                 subject_uris.add(subject_uri)
@@ -241,13 +242,12 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 this_spec_graph.parse(file)
                 spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
                 for spec in spec_uris_in_this_file:
-                    tripleToAdd = [spec, MUST.specSourceFile, Literal(file)]
                     # print(f"adding {tripleToAdd}")
-                    this_spec_graph.add(tripleToAdd)
+                    this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
+                    this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
                 # print(f"beforeadd: {spec_graph}" )
                 # print(f"beforeadd: {str(this_spec_graph.serialize())}" )
                 spec_graph += this_spec_graph
-                # print(f"afteradd: {str(spec_graph.serialize())}" )
 
 
     sourceFiles = list(spec_graph.subject_objects(MUST.specSourceFile))
@@ -276,14 +276,14 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error']) for spec_uri in
+                skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error'], get_spec_file(spec_uri, spec_graph)) for spec_uri in
                                     spec_uris]
             else:
                 for spec_uri in spec_uris:
                     try:
                         specs += [get_spec(spec_uri, spec_graph, run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
-                        skipped_results += [SpecSkipped(spec_uri, triple_store['type'], e)]
+                        skipped_results += [SpecSkipped(spec_uri, triple_store['type'], e, get_spec_file(spec_uri, spec_graph))]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -303,6 +303,9 @@ def run_specs(specs) -> List[SpecResult]:
         results.append(run_spec(specification))
     return results
 
+def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
+    test =  str(spec_graph.value(subject = spec_uri, predicate = MUST.specFileName, default = "default.mustrd.ttl"))
+    return test
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
@@ -316,9 +319,9 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
                                                 run_config=run_config,
                                                 mustrd_triple_store=mustrd_triple_store))
 
-
+        spec_file_name = get_spec_file(spec_uri, spec_graph)
         # https://github.com/Semantic-partners/mustrd/issues/92
-        return Specification(spec_uri, mustrd_triple_store, components[0].value, components[1], components[2])
+        return Specification(spec_uri, mustrd_triple_store, components[0].value, components[1], components[2], spec_file_name)
     
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"

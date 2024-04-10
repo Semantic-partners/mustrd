@@ -85,6 +85,7 @@ class MUST(DefinedNamespace):
     fileSource: URIRef
     loadedFromFile: URIRef
     specSourceFile: URIRef
+    specFileName: URIRef
 
     # Triple store config parameters
     url: URIRef
