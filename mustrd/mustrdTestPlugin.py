@@ -41,6 +41,8 @@ spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 mustrd_root = get_mustrd_root()
 
+MUSTRD_PYTEST_PATH = "mustrd_tests/"
+
 
 def pytest_addoption(parser):
     group = parser.getgroup("md summary")
@@ -142,13 +144,12 @@ class MustrdTestPlugin:
         args = session.config.args
         if len(args) > 0:
             file_name = self.get_file_name_from_arg(args[0])
-            if "::" in args[0]:
-                test_id = args[0].split("::")[1]
-                session.config.args[0] = "./mustrd/test/test_mustrd.py::" + test_id
-            else:
-                session.config.args[0] = "./mustrd/test/test_mustrd.py"
-                
-        for one_test_config in self.test_configs:
+            # Filter test to collect only specified path
+            config_to_collect = list(filter(lambda config: MUSTRD_PYTEST_PATH not in args[0] or config.pytest_path in args[0],self.test_configs))
+            # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
+            session.config.args[0] = "./mustrd/test/test_mustrd.py"
+        # Collecting only relevant tests
+        for one_test_config in config_to_collect: 
             triple_stores = self.get_triple_stores_from_file(one_test_config)
 
             if one_test_config.filter_on_tripleStore and not triple_stores:
@@ -162,8 +163,8 @@ class MustrdTestPlugin:
                 self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
         
     def get_file_name_from_arg(self, arg):
-        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl#" in arg:
-            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl#")]
+        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
+            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]
         return None
         
         
@@ -174,7 +175,7 @@ class MustrdTestPlugin:
             items = report.get_result()
             new_results = []
             for item in items:
-                virtual_path =  item.callspec.params["unit_tests"].test_config.pytest_path or "default/path"
+                virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default/path")
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
                 new_results.append(item)
@@ -187,7 +188,7 @@ class MustrdTestPlugin:
             if metafunc.function.__name__  == "test_unit":
                 # Create the test in itself
                 if self.unit_tests:
-                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests, ids=lambda test_param: test_param.unit_test.spec_file_name + "#")
+                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests, ids=lambda test_param: test_param.unit_test.spec_file_name + "@" + test_param.test_config.pytest_path)
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
