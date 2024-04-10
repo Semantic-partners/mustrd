@@ -129,6 +129,7 @@ class MustrdTestPlugin:
     md_path: str
     test_configs: list
     secrets: str
+    unit_tests: Union[Specification, SpecSkipped]
 
     def __init__(self, md_path, test_configs, secrets):
         self.md_path = md_path
@@ -137,12 +138,33 @@ class MustrdTestPlugin:
     
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
+        self.unit_tests = []
         args = session.config.args
         if len(args) > 0:
+            file_name = self.get_file_name_from_arg(args[0])
             if "::" in args[0]:
-                session.config.args[0] = "./mustrd/test/test_mustrd.py::" + args[0].split("::")[1]
+                test_id = args[0].split("::")[1]
+                session.config.args[0] = "./mustrd/test/test_mustrd.py::" + test_id
             else:
                 session.config.args[0] = "./mustrd/test/test_mustrd.py"
+                
+        for one_test_config in self.test_configs:
+            triple_stores = self.get_triple_stores_from_file(one_test_config)
+
+            if one_test_config.filter_on_tripleStore and not triple_stores:
+                self.unit_tests.extend(list(map(lambda triple_store:
+                                TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
+                                one_test_config.filter_on_tripleStore)))
+            else:
+                specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
+                                                            "data_path": Path(one_test_config.data_path)},
+                                                            triple_stores, file_name)
+                self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
+        
+    def get_file_name_from_arg(self, arg):
+        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl#" in arg:
+            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl#")]
+        return None
         
         
     @pytest.hookimpl(hookwrapper=True)
@@ -163,22 +185,9 @@ class MustrdTestPlugin:
     def pytest_generate_tests(self, metafunc):
         if len(metafunc.fixturenames) > 0:
             if metafunc.function.__name__  == "test_unit":
-                unit_tests = []
-                for one_test_config in self.test_configs:
-                    triple_stores = self.get_triple_stores_from_file(one_test_config)
-
-                    if one_test_config.filter_on_tripleStore and not triple_stores:
-                        unit_tests.extend(list(map(lambda triple_store:
-                                        TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
-                                        one_test_config.filter_on_tripleStore)))
-                    else:
-                        specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
-                                                                    "data_path": Path(one_test_config.data_path)},
-                                                                    triple_stores)
-                        unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
                 # Create the test in itself
-                if unit_tests:
-                    metafunc.parametrize(metafunc.fixturenames[0], unit_tests, ids=lambda test_param: test_param.unit_test.spec_uri.replace(spnamespace, "").replace("_", " "))
+                if self.unit_tests:
+                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests, ids=lambda test_param: test_param.unit_test.spec_file_name + "#")
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
@@ -188,12 +197,12 @@ class MustrdTestPlugin:
             
 
     # Generate test for each triple store available
-    def generate_tests_for_config(self, config, triple_stores):
+    def generate_tests_for_config(self, config, triple_stores, file_name):
 
         shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/ontology.ttl")))
         valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(config, triple_stores,
-                                                                           shacl_graph, ont_graph)
+                                                                           shacl_graph, ont_graph, file_name or "*")
 
         specs, skipped_spec_results = \
             get_specs(valid_spec_uris, spec_graph, triple_stores, config)
