@@ -45,7 +45,13 @@ MUSTRD_PYTEST_PATH = "mustrd_tests/"
 
 
 def pytest_addoption(parser):
-    group = parser.getgroup("md summary")
+    group = parser.getgroup("mustrd option")
+    group.addoption(
+        "--mustrd",
+        action="store_true",
+        dest="mustrd",
+        help="Activate/deactivate mustrd test generation.",
+    )
     group.addoption(
         "--md",
         action="store",
@@ -60,7 +66,6 @@ def pytest_addoption(parser):
         dest="configpath",
         metavar="pathToTestConfig",
         default=None,
-        required=True,
         help="Ttl file containing the list of test to construct.",
     )
     group.addoption(
@@ -69,7 +74,6 @@ def pytest_addoption(parser):
         dest="secrets",
         metavar="Secrets",
         default=None,
-        required=False,
         help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
     )
     return
@@ -78,24 +82,25 @@ def pytest_addoption(parser):
 def pytest_configure(config) -> None:
     # Read configuration file
     test_configs = []
-    config_graph = Graph().parse(config.getoption("configpath"))
-    for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
-        test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
-        spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
-        data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
-        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
-        pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
-        filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
-                                                          predicate=MUST.filterOnTripleStore))
+    if config.getoption("mustrd"):
+        config_graph = Graph().parse(config.getoption("configpath"))
+        for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
+            test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
+            spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
+            data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
+            triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
+            pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
+            filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
+                                                            predicate=MUST.filterOnTripleStore))
 
-        test_configs.append(TestConfig(test_function=test_function,
-                                                 spec_path=spec_path, data_path=data_path,
-                                                 triplestore_spec_path=triplestore_spec_path,
-                                                 pytest_path = pytest_path,
-                                                 filter_on_tripleStore=filter_on_tripleStore))
+            test_configs.append(TestConfig(test_function=test_function,
+                                                    spec_path=spec_path, data_path=data_path,
+                                                    triplestore_spec_path=triplestore_spec_path,
+                                                    pytest_path = pytest_path,
+                                                    filter_on_tripleStore=filter_on_tripleStore))
 
-    config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
-                                                   test_configs, config.getoption("secrets")))
+        config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
+                                                    test_configs, config.getoption("secrets")))
 
 
 def get_config_param(config_graph, config_subject, config_param, convert_function):
