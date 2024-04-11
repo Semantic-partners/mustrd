@@ -145,10 +145,14 @@ class MustrdTestPlugin:
         if len(args) > 0:
             file_name = self.get_file_name_from_arg(args[0])
             # Filter test to collect only specified path
-            config_to_collect = list(filter(lambda config: MUSTRD_PYTEST_PATH not in args[0] or config.pytest_path in args[0],self.test_configs))
+            config_to_collect = list(filter(lambda config: 
+                                            MUSTRD_PYTEST_PATH not in args[0] 
+                                            or (config.pytest_path or "") in args[0],
+                                            self.test_configs))
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
             session.config.args[0] = "./mustrd/test/test_mustrd.py"
         # Collecting only relevant tests
+        
         for one_test_config in config_to_collect: 
             triple_stores = self.get_triple_stores_from_file(one_test_config)
 
@@ -175,7 +179,7 @@ class MustrdTestPlugin:
             items = report.get_result()
             new_results = []
             for item in items:
-                virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default/path")
+                virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
                 new_results.append(item)
@@ -188,7 +192,9 @@ class MustrdTestPlugin:
             if metafunc.function.__name__  == "test_unit":
                 # Create the test in itself
                 if self.unit_tests:
-                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests, ids=lambda test_param: test_param.unit_test.spec_file_name + "@" + test_param.test_config.pytest_path)
+                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
+                                         ids=lambda test_param: (test_param.unit_test.spec_file_name or "") + "@" +
+                                         (test_param.test_config.pytest_path or ""))
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
