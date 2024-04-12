@@ -81,26 +81,30 @@ def pytest_addoption(parser):
 
 def pytest_configure(config) -> None:
     # Read configuration file
-    test_configs = []
     if config.getoption("mustrd"):
-        config_graph = Graph().parse(config.getoption("configpath"))
-        for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
-            test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
-            spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
-            data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
-            triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
-            pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
-            filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
-                                                            predicate=MUST.filterOnTripleStore))
-
-            test_configs.append(TestConfig(test_function=test_function,
-                                                    spec_path=spec_path, data_path=data_path,
-                                                    triplestore_spec_path=triplestore_spec_path,
-                                                    pytest_path = pytest_path,
-                                                    filter_on_tripleStore=filter_on_tripleStore))
-
+        test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
                                                     test_configs, config.getoption("secrets")))
+    
+def parse_config(config_path):
+    test_configs = []
+    config_graph = Graph().parse(config_path)
+    for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
+        test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
+        spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
+        data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
+        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
+        pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
+        filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
+                                                        predicate=MUST.filterOnTripleStore))
+
+        test_configs.append(TestConfig(test_function=test_function,
+                                                spec_path=spec_path, data_path=data_path,
+                                                triplestore_spec_path=triplestore_spec_path,
+                                                pytest_path = pytest_path,
+                                                filter_on_tripleStore=filter_on_tripleStore))
+    return test_configs
+    
 
 
 def get_config_param(config_graph, config_subject, config_param, convert_function):
@@ -137,11 +141,13 @@ class MustrdTestPlugin:
     test_configs: list
     secrets: str
     unit_tests: Union[Specification, SpecSkipped]
+    items: list
 
     def __init__(self, md_path, test_configs, secrets):
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
+        self.items = []
     
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
@@ -151,9 +157,14 @@ class MustrdTestPlugin:
             file_name = self.get_file_name_from_arg(args[0])
             # Filter test to collect only specified path
             config_to_collect = list(filter(lambda config: 
-                                            MUSTRD_PYTEST_PATH not in args[0] 
-                                            or (config.pytest_path or "") in args[0],
+                                            # Case we want to collect everything
+                                            MUSTRD_PYTEST_PATH not in args[0]
+                                            # Case we want to collect a test or sub test
+                                            or (config.pytest_path or "") in args[0]
+                                            # Case we want to collect a whole test folder
+                                            or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
                                             self.test_configs))
+                
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
             session.config.args[0] = "./mustrd/test/test_mustrd.py"
         # Collecting only relevant tests
@@ -187,6 +198,7 @@ class MustrdTestPlugin:
                 virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
+                self.items.append(item)
                 new_results.append(item)
             return new_results
         
