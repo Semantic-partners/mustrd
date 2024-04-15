@@ -38,12 +38,6 @@
              rdfs:range xsd:string .
 
 
-###  https://mustrd.com/mustrdTest/hasTestFunction
-:hasTestFunction rdf:type owl:DatatypeProperty ;
-                 rdfs:domain :MustrdTest ;
-                 rdfs:range xsd:string .
-
-
 #################################################################
 #    Classes
 #################################################################
