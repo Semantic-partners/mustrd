@@ -90,7 +90,6 @@ def parse_config(config_path):
     test_configs = []
     config_graph = Graph().parse(config_path)
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
-        test_function = get_config_param(config_graph, test_config_subject, MUST.hasTestFunction, str)
         spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
         data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
         triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
@@ -98,8 +97,7 @@ def parse_config(config_path):
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                         predicate=MUST.filterOnTripleStore))
 
-        test_configs.append(TestConfig(test_function=test_function,
-                                                spec_path=spec_path, data_path=data_path,
+        test_configs.append(TestConfig(spec_path=spec_path, data_path=data_path,
                                                 triplestore_spec_path=triplestore_spec_path,
                                                 pytest_path = pytest_path,
                                                 filter_on_tripleStore=filter_on_tripleStore))
@@ -114,21 +112,11 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
 
 @dataclass
 class TestConfig:
-    test_function: str
     spec_path: str
     data_path: str
     triplestore_spec_path: str
     pytest_path: str
-    filter_on_tripleStore: str
-
-    def __init__(self, test_function: str, spec_path: str, data_path: str, triplestore_spec_path: str, 
-                 pytest_path: str, filter_on_tripleStore: str = None):
-        self.test_function = test_function
-        self.spec_path = spec_path
-        self.data_path = data_path
-        self.triplestore_spec_path = triplestore_spec_path
-        self.pytest_path = pytest_path
-        self.filter_on_tripleStore = filter_on_tripleStore
+    filter_on_tripleStore: str = None
         
 
 @dataclass
