@@ -1,28 +1,24 @@
 @prefix must: <https://mustrd.com/model/> .
 
 must:test_unit_rdflib11 a must:TestConfig;
-                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:hasPytestPath "col1/test1/rdflib";
                 must:filterOnTripleStore must:RdfLib .
 
 must:test_unit_rdflib12 a must:TestConfig;
-                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:hasPytestPath "col1/test2/rdflib";
                 must:filterOnTripleStore must:RdfLib .
 
 must:test_unit_rdflib21 a must:TestConfig;
-                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:hasPytestPath "col2/test1/rdflib";
                 must:filterOnTripleStore must:RdfLib .
 
 must:test_unit_rdflib22 a must:TestConfig;
-                must:hasTestFunction "test_unit";
                 must:hasSpecPath "test/test-specs";
                 must:hasDataPath "test/data";
                 must:hasPytestPath "col2/test2/rdflib";
