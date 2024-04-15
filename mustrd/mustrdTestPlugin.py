@@ -36,6 +36,7 @@ from mustrd.mustrd import get_triple_store_graph, get_triple_stores
 from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST
 from typing import Union
+from pyshacl import validate
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -89,6 +90,18 @@ def pytest_configure(config) -> None:
 def parse_config(config_path):
     test_configs = []
     config_graph = Graph().parse(config_path)
+    shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestShapes.ttl")))
+    ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestOntology.ttl")))
+    conforms, results_graph, results_text = validate(
+            data_graph= config_graph,
+            shacl_graph = shacl_graph,
+            ont_graph  = ont_graph,
+            advanced= True,
+            inference= 'none'
+        )
+    if not conforms:
+        raise ValueError(f"Mustrd test configuration not conform to the shapes. SHACL report: {results_text}", results_graph)
+        
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
         spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
         data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)

@@ -146,6 +146,83 @@ def test_collection_path3():
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item : path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item : path in item.nodeid, mustrd_plugin.items))) == 64
+    
+def test_mustrd_config_duplicate():
+    # Mustrd test generation should fail with ValueError if configuration is not conform
+    with pytest.raises(ValueError) as error:
+        run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only")
+    assert error
+    shacl_report_graph = error.value.args[1]
+    #report = shacl_report_graph.serialize(None, format="ttl")
+    assert shacl_report_graph
+    assert found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasSpecPath>",
+                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+    
+    
+    assert found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasDataPath>",
+                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+    
+    assert found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasPytestPath>",
+                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+    
+def test_mustrd_missing_props():
+    # Mustrd test generation should fail with ValueError if configuration is not conform
+    with pytest.raises(ValueError) as error:
+        run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only")
+    assert error
+    shacl_report_graph = error.value.args[1]
+    #report = shacl_report_graph.serialize(None, format="ttl")
+    assert shacl_report_graph
+    assert found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasSpecPath>",
+                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+    
+    
+    assert found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasDataPath>",
+                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+    
+    # hasPytestPath has a default value, no value should be accepted
+    assert not found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/hasPytestPath>",
+                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+
+
+    #  has a default value, no value should be accepted
+    assert not found_error_in_shacl_report(shacl_report_graph,
+                                             "<https://mustrd.com/mustrdTest/test_unit>",
+                                             "<https://mustrd.com/mustrdTest/filterOnTripleStore>",
+                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+
+
+# Returns true if a the report contains a node with the right constraint validation type on the path 
+def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type):
+    return shacl_report_graph.query(f"""
+                                    PREFIX : <https://mustrd.com/mustrdTest/> 
+                                    PREFIX sh: <http://www.w3.org/ns/shacl#> 
+
+                                    ASK {{
+                                        [] a sh:ValidationReport ;
+                                            sh:conforms false ;
+                                            sh:result [
+                                                a sh:ValidationResult ;
+                                                sh:focusNode {node} ;
+                                                sh:resultPath {path} ;
+                                                sh:resultSeverity sh:Violation ;
+                                                sh:sourceConstraintComponent {constraint_type} ; 
+                                            ]
+                                    }} 
+                                    """).askAnswer
+    
 
 def get_node_id(ttl_file: str, path: str):
     return f"mustrd_tests/{path}::test_unit[{ttl_file}@{path}]"
