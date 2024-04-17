@@ -27,14 +27,14 @@ import pandas
 from rdflib import Graph, XSD
 from rdflib.namespace import Namespace
 from rdflib.term import Literal
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestRunSelectSpec:
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
 
         spec = """

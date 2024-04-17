@@ -37,7 +37,7 @@ import logging
 
 from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
-from .namespace import MUST
+from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
 
 log = logger_setup.setup_logger(__name__)
@@ -417,7 +417,7 @@ def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentD
 def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
-    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         # Get GIVEN or THEN from anzo graphmart
         graphmart = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                             predicate=MUST.graphmart)
@@ -428,7 +428,7 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
             graphmart=graphmart,
             layer=layer)
     else:
-        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartDataset}")
+        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartDataset}")
 
     return spec_component
 
@@ -438,7 +438,7 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_folder = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                predicate=MUST.queryFolder)
         query_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
@@ -448,7 +448,7 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
                                                            query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
+        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -460,14 +460,14 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
     spec_component = init_spec_component(spec_component_details.predicate)
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                              predicate=MUST.anzoQueryStep)
         spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
                                                     query_step_uri=query_step_uri)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
+        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -478,7 +478,7 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
     spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"] )
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                              predicate=MUST.anzoQueryStep)
         queries = get_queries_from_templated_step(triple_store=spec_component_details.mustrd_triple_store,
@@ -487,7 +487,7 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
         spec_component.queryTemplate = queries["query_template"]
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
+        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -497,7 +497,7 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
 def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> list:
     spec_components = []
     # Get the ordered  WHEN specComponents which is the transform and query driven template queries for the Layer
-    if spec_component_details.mustrd_triple_store["type"] == MUST.Anzo:
+    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         graphmart_layer_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                              predicate=MUST.anzoGraphmartLayer)
         queries = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
@@ -529,7 +529,7 @@ def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None ) ->
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
-        if triple_store_type == MUST.Anzo:
+        if triple_store_type == TRIPLESTORE.Anzo:
             spec_component = AnzoWhenSpec()
         else:
             spec_component = WhenSpec()

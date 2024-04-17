@@ -34,7 +34,7 @@ from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import get_triple_store_graph, get_triple_stores
 from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
 
@@ -102,13 +102,13 @@ def parse_config(config_path):
     if not conforms:
         raise ValueError(f"Mustrd test configuration not conform to the shapes. SHACL report: {results_text}", results_graph)
         
-    for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUST.TestConfig):
-        spec_path = get_config_param(config_graph, test_config_subject, MUST.hasSpecPath, str)
-        data_path = get_config_param(config_graph, test_config_subject, MUST.hasDataPath, str)
-        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUST.triplestoreSpecPath, str)
-        pytest_path = get_config_param(config_graph, test_config_subject, MUST.hasPytestPath, str)
+    for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUSTRDTEST.MustrdTest):
+        spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasSpecPath, str)
+        data_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasDataPath, str)
+        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.triplestoreSpecPath, str)
+        pytest_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasPytestPath, str)
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
-                                                        predicate=MUST.filterOnTripleStore))
+                                                        predicate=MUSTRDTEST.filterOnTripleStore))
 
         test_configs.append(TestConfig(spec_path=spec_path, data_path=data_path,
                                                 triplestore_spec_path=triplestore_spec_path,
@@ -255,10 +255,10 @@ class MustrdTestPlugin:
             except Exception as e:
                 print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""", e)
-                triple_stores = [{'type': MUST.RdfLib, 'uri': MUST.RdfLib}]
+                triple_stores = [{'type': TRIPLESTORE.RdfLib, 'uri': TRIPLESTORE.RdfLib}]
         else:
             print("No triple store configuration required: using embedded rdflib")
-            triple_stores = [{'type': MUST.RdfLib, 'uri': MUST.RdfLib}]
+            triple_stores = [{'type': TRIPLESTORE.RdfLib, 'uri': TRIPLESTORE.RdfLib}]
 
         if test_config.filter_on_tripleStore:
             triple_stores = list(filter(lambda triple_store: (triple_store["uri"] in test_config.filter_on_tripleStore),

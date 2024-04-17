@@ -6,7 +6,7 @@
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
 @prefix triplestore:      <https://mustrd.com/triplestore/> .
 
-must:ExternalTripleStoreShape
+triplestore:ExternalTripleStoreShape
     a              sh:NodeShape ;
     sh:targetClass triplestore:ExternalTripleStore ;
     sh:property    [ sh:path     triplestore:url ;
@@ -20,7 +20,7 @@ must:ExternalTripleStoreShape
                     [ sh:path     triplestore:password ;
                      sh:maxCount 1 ] .
 
-must:AnzoShape
+triplestore:AnzoShape
     a              sh:NodeShape ;
     sh:targetClass triplestore:Anzo ;
     sh:property    [ sh:path     triplestore:gqeURI ;
@@ -34,7 +34,7 @@ must:AnzoShape
                    [ sh:path     triplestore:inputGraph ;
                      sh:minCount 1 ]  .
 
-must:GraphDbShape
+triplestore:GraphDbShape
     a              sh:NodeShape ;
     sh:targetClass triplestore:GraphDb ;
     sh:property    [ sh:path     triplestore:repository ;

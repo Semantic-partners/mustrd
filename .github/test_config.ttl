@@ -1,6 +1,7 @@
-@prefix must: <https://mustrd.com/model/> .
+@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix triplestore:<https://mustrd.com/triplestore/> .
 
-must:test_unit_rdflib a must:TestConfig;
-                must:hasSpecPath "test/test-specs";
-                must:hasDataPath "test/data";
-                must:filterOnTripleStore must:RdfLib .
+:test_unit_rdflib a :MustrdTest;
+                :hasSpecPath "test/test-specs";
+                :hasDataPath "test/data";
+                :filterOnTripleStore triplestore:RdfLib .

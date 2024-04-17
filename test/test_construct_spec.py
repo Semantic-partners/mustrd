@@ -34,7 +34,7 @@ from mustrd.mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, 
      check_result, Specification
 from mustrd.steprunner import run_when
 from graph_util import graph_comparison_message
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
 
 from test.addspec_source_file_to_spec_graph import parse_spec
@@ -48,7 +48,7 @@ class TestRunConstructSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_construct_spec_passes(self):
         run_config = {}

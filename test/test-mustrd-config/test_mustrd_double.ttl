@@ -1,13 +1,14 @@
-@prefix must: <https://mustrd.com/model/> .
+@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix triplestore:<https://mustrd.com/triplestore/> .
 
-must:test_unit_rdflib a must:TestConfig;
-                must:hasSpecPath "test/test-specs";
-                must:hasDataPath "test/data";
-                must:hasPytestPath "rdflib1";
-                must:filterOnTripleStore must:RdfLib .
+:test_unit_rdflib a :MustrdTest;
+                :hasSpecPath "test/test-specs";
+                :hasDataPath "test/data";
+                :hasPytestPath "rdflib1";
+                :filterOnTripleStore triplestore:RdfLib .
 
-must:test_unit_rdflib2 a must:TestConfig;
-                must:hasSpecPath "test/test-specs";
-                must:hasDataPath "test/data";
-                must:hasPytestPath "rdflib2";
-                must:filterOnTripleStore must:RdfLib .
+:test_unit_rdflib2 a :MustrdTest;
+                :hasSpecPath "test/test-specs";
+                :hasDataPath "test/data";
+                :hasPytestPath "rdflib2";
+                :filterOnTripleStore triplestore:RdfLib .
