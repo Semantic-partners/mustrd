@@ -422,6 +422,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
                 triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.password))
             except (FileNotFoundError, ValueError) as e:
                 log.error(f"Credential retrieval failed {e}")
                 triple_store["error"] = e
