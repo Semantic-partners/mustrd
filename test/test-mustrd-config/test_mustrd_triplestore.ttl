@@ -1,0 +1,15 @@
+@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix triplestore:<https://mustrd.com/triplestore/> .
+
+:test_unit_rdflib a :MustrdTest;
+                :hasSpecPath "test/test-specs";
+                :hasDataPath "test/data";
+                :hasPytestPath "rdflib";
+                :filterOnTripleStore triplestore:RdfLib .
+
+:test_unit_gdb a :MustrdTest;
+                :hasSpecPath "test/test-specs";
+                :hasDataPath "test/data";
+                :triplestoreSpecPath "test/test-mustrd-config/triplestore_config.ttl";
+                :hasPytestPath "gdb";
+                :filterOnTripleStore triplestore:GraphDb_local .

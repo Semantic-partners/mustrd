@@ -46,7 +46,7 @@ import json
 from pandas import DataFrame
 
 from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from .utils import  is_json
+from .utils import  is_json,get_mustrd_root
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -394,6 +394,17 @@ def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
+    shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl")))
+    ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreOntology.ttl")))
+    conforms, results_graph, results_text = validate(
+            data_graph= triple_store_graph,
+            shacl_graph = shacl_graph,
+            ont_graph  = ont_graph,
+            advanced= True,
+            inference= 'none'
+        )
+    if not conforms:
+        raise ValueError(f"Triple store configuration not conform to the shapes. SHACL report: {results_text}", results_graph)
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
         triple_store["type"] = triple_store_type

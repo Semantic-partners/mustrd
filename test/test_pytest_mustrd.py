@@ -25,6 +25,8 @@ import pytest
 from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
 
+from urllib.parse import urljoin
+from rdflib.parser import _create_input_source_from_location
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
     test_config = parse_config(config_path)
     mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets )
@@ -203,6 +205,15 @@ def test_mustrd_missing_props():
                                              "<https://mustrd.com/mustrdTest/filterOnTripleStore>",
                                              "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
 
+def test_triplestore_config():
+    mustrd_plugin, config = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
+    items = mustrd_plugin.items
+    
+    skipped_nodes = list(map(lambda item: item.nodeid,  
+                             # Filter on skipped items
+                             list(filter(lambda item : isinstance(item.callspec.params["unit_tests"].unit_test, SpecSkipped), items))))
+    
+    assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")
 
 # Returns true if a the report contains a node with the right constraint validation type on the path 
 def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type):

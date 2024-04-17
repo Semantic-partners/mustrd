@@ -253,8 +253,8 @@ class MustrdTestPlugin:
                 triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path),
                                                                          self.secrets))
             except Exception as e:
-                print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
-                    Fall back: only embedded rdflib will be executed""", e)
+                print(f"""Triplestore configuration parsing failed {test_config.triplestore_spec_path}.
+                    Only rdflib will be executed""", e)
                 triple_stores = [{'type': TRIPLESTORE.RdfLib, 'uri': TRIPLESTORE.RdfLib}]
         else:
             print("No triple store configuration required: using embedded rdflib")
