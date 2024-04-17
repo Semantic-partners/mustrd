@@ -40,7 +40,7 @@ from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
 from rdflib.compare import isomorphic, graph_diff
 import pandas
 
-from .namespace import MUST
+from .namespace import MUST, TRIPLESTORE
 import requests
 import json
 from pandas import DataFrame
@@ -310,7 +310,7 @@ def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
         if mustrd_triple_store is None:
-            mustrd_triple_store = {"type": MUST.RdfLib}
+            mustrd_triple_store = {"type": TRIPLESTORE.RdfLib}
         components = []
         for predicate in MUST.given, MUST.when, MUST.then:
             components.append(parse_spec_component(subject=spec_uri,
@@ -357,7 +357,7 @@ def run_spec(spec: Specification) -> SpecResult:
         log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
     else:
-        if triple_store['type'] == MUST.RdfLib:
+        if triple_store['type'] == TRIPLESTORE.RdfLib:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
     try:
         for when in spec.when:
@@ -399,43 +399,42 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         triple_store["type"] = triple_store_type
         triple_store["uri"] = triple_store_config
         # Anzo graph via anzo
-        if triple_store_type == MUST.Anzo:
-            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
+        if triple_store_type == TRIPLESTORE.Anzo:
+            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
+            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.password))
             except (FileNotFoundError, ValueError) as e:
                 triple_store["error"] = e
-            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.gqeURI)
+            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=MUST.inputGraph)
+                                                                   predicate=TRIPLESTORE.inputGraph)
             triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=MUST.outputGraph)
+                                                                   predicate=TRIPLESTORE.outputGraph)
             try:
                 check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
             except ValueError as e:
                 triple_store["error"] = e
         # GraphDB
-        elif triple_store_type == MUST.GraphDb:
-            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
+        elif triple_store_type == TRIPLESTORE.GraphDb:
+            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
+            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=MUST.password))
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.username))
             except (FileNotFoundError, ValueError) as e:
                 log.error(f"Credential retrieval failed {e}")
                 triple_store["error"] = e
             triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
-                                                                  predicate=MUST.repository)
+                                                                  predicate=TRIPLESTORE.repository)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=MUST.inputGraph)
+                                                                   predicate=TRIPLESTORE.inputGraph)
 
             try:
                 check_triple_store_params(triple_store, ["url", "port", "repository"])
             except ValueError as e:
                 triple_store["error"] = e
-        elif triple_store_type != MUST.RdfLib:
+        elif triple_store_type != TRIPLESTORE.RdfLib:
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
 
         triple_stores.append(triple_store)

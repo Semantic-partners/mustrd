@@ -26,7 +26,7 @@ import json
 
 from . import logger_setup
 from multimethods import MultiMethod, Default
-from .namespace import MUST
+from .namespace import MUST, TRIPLESTORE
 from rdflib import Graph, URIRef
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
@@ -53,17 +53,17 @@ def dispatch_upload_given(triple_store: dict, given: Graph):
 upload_given = MultiMethod('upload_given', dispatch_upload_given)
 
 
-@upload_given.method(MUST.RdfLib)
+@upload_given.method(TRIPLESTORE.RdfLib)
 def _upload_given_rdflib(triple_store: dict, given: Graph):
     triple_store["given"] = given
 
 
-@upload_given.method(MUST.GraphDb)
+@upload_given.method(TRIPLESTORE.GraphDb)
 def _upload_given_graphdb(triple_store: dict, given: Graph):
     upload_given_graphdb(triple_store, given)
 
 
-@upload_given.method(MUST.Anzo)
+@upload_given.method(TRIPLESTORE.Anzo)
 def _upload_given_anzo(triple_store: dict, given: Graph):
     upload_given_anzo(triple_store, given)
 
@@ -78,52 +78,52 @@ def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
 run_when = MultiMethod('run_when', dispatch_run_when)
 
 
-@run_when.method((MUST.Anzo, MUST.UpdateSparql))
+@run_when.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_update_anzo(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.Anzo, MUST.ConstructSparql))
+@run_when.method((TRIPLESTORE.Anzo, MUST.ConstructSparql))
 def _anzo_run_when_construct(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_construct_anzo(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.Anzo, MUST.SelectSparql))
+@run_when.method((TRIPLESTORE.Anzo, MUST.SelectSparql))
 def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_select_anzo(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.GraphDb, MUST.UpdateSparql))
+@run_when.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
 def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_update_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.GraphDb, MUST.ConstructSparql))
+@run_when.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
 def _graphdb_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_construct_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.GraphDb, MUST.SelectSparql))
+@run_when.method((TRIPLESTORE.GraphDb, MUST.SelectSparql))
 def _graphdb_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((MUST.RdfLib, MUST.UpdateSparql))
+@run_when.method((TRIPLESTORE.RdfLib, MUST.UpdateSparql))
 def _rdflib_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_update_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((MUST.RdfLib, MUST.ConstructSparql))
+@run_when.method((TRIPLESTORE.RdfLib, MUST.ConstructSparql))
 def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_construct_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((MUST.RdfLib, MUST.SelectSparql))
+@run_when.method((TRIPLESTORE.RdfLib, MUST.SelectSparql))
 def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((MUST.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
+@run_when.method((TRIPLESTORE.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
 def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     # run the parameters query to obtain the values for the template step and put them into a dictionary
     query_parameters = json.loads(execute_select_anzo(triple_store, when.paramQuery, None))
@@ -158,7 +158,7 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
     elif when.queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
         msg = "SPARQL DESCRIBE not implemented."
-    elif triple_store['type'] not in [MUST.Anzo, MUST.GraphDb, MUST.RdfLib]:
+    elif triple_store['type'] not in [TRIPLESTORE.Anzo, TRIPLESTORE.GraphDb, TRIPLESTORE.RdfLib]:
         msg = f"{when.queryType} not implemented for {triple_store['type']}"
     else:
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from mustrd.mustrd import run_specs, get_triple_stores, validate_specs, get_specs
 from rdflib import Graph
-from mustrd.namespace import MUST
+from mustrd.namespace import TRIPLESTORE
 from mustrd.utils import get_mustrd_root
 
 
@@ -59,7 +59,7 @@ test-data:a_complete_construct_scenario
 
     def test_run_specs_with_invalid_spec_path(self):
         # Define an invalid spec_path
-        triple_stores = [{'type': MUST.RdfLib}]
+        triple_stores = [{'type': TRIPLESTORE.RdfLib}]
         run_config = {'spec_path': Path("not_exists")}
         shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/ontology.ttl")))

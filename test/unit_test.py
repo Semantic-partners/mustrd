@@ -6,7 +6,7 @@ import toml
 from rdflib import Graph, Literal, URIRef, RDF
 
 from mustrd.mustrd import get_credential_from_file, get_triple_stores
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 
 
 class TestGetCredentialFromFile(unittest.TestCase):
@@ -86,31 +86,31 @@ class TestGetTripleStores(unittest.TestCase):
     def test_get_triple_stores_with_rdflib(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.RdfLib
+        triple_store_type = TRIPLESTORE.RdfLib
         triple_store_graph.add((URIRef("http://example.org/rdflib-store"), rdf_type, triple_store_type))
 
         triple_stores = get_triple_stores(triple_store_graph)
 
         self.assertEqual(len(triple_stores), 1)
-        self.assertEqual(triple_stores[0]["type"], MUST.RdfLib)
+        self.assertEqual(triple_stores[0]["type"], TRIPLESTORE.RdfLib)
 
     def test_get_triple_stores_with_anzo(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.Anzo
+        triple_store_type = TRIPLESTORE.Anzo
         triple_store_uri = URIRef("https://mustrd.com/model/AnzoConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
-        triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/anzo")))
-        triple_store_graph.add((triple_store_uri, MUST.port, Literal(8080)))
-        triple_store_graph.add((triple_store_uri, MUST.username, Literal("test_user")))
-        triple_store_graph.add((triple_store_uri, MUST.password, Literal("test_password")))
-        triple_store_graph.add((triple_store_uri, MUST.gqeURI, Literal("http://example.com/gqe")))
-        triple_store_graph.add((triple_store_uri, MUST.inputGraph, Literal("http://example.com/input-graph")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://example.com/anzo")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.port, Literal(8080)))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("test_password")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.gqeURI, Literal("http://example.com/gqe")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
 
         triple_stores = get_triple_stores(triple_store_graph)
 
         self.assertEqual(len(triple_stores), 1)
-        self.assertEqual(triple_stores[0]["type"], MUST.Anzo)
+        self.assertEqual(triple_stores[0]["type"], TRIPLESTORE.Anzo)
         self.assertEqual(triple_stores[0]["url"], Literal("http://example.com/anzo"))
         self.assertEqual(triple_stores[0]["port"], Literal(8080))
         self.assertEqual(triple_stores[0]["username"], "test_user")
@@ -121,20 +121,20 @@ class TestGetTripleStores(unittest.TestCase):
     def test_get_triple_stores_with_graphdb(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.GraphDb
+        triple_store_type = TRIPLESTORE.GraphDb
         triple_store_uri = URIRef("https://mustrd.com/model/GraphDbConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
-        triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/graphdb")))
-        triple_store_graph.add((triple_store_uri, MUST.port, Literal(8080)))
-        triple_store_graph.add((triple_store_uri, MUST.username, Literal("test_user")))
-        triple_store_graph.add((triple_store_uri, MUST.password, Literal("test_password")))
-        triple_store_graph.add((triple_store_uri, MUST.repository, Literal("Test")))
-        triple_store_graph.add((triple_store_uri, MUST.inputGraph, Literal("http://example.com/input-graph")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://example.com/graphdb")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.port, Literal(8080)))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("test_password")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.repository, Literal("Test")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
 
         triple_stores = get_triple_stores(triple_store_graph)
 
         self.assertEqual(len(triple_stores), 1)
-        self.assertEqual(triple_stores[0]["type"], MUST.GraphDb)
+        self.assertEqual(triple_stores[0]["type"], TRIPLESTORE.GraphDb)
         self.assertEqual(triple_stores[0]["url"], Literal("http://example.com/graphdb"))
         self.assertEqual(triple_stores[0]["port"], Literal(8080))
         self.assertEqual(triple_stores[0]["username"], "test_user")

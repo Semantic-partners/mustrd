@@ -28,14 +28,14 @@ from rdflib import Graph
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, parse_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 
 class TestSpecParserTest:
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
     select_spec_uri = TEST_DATA.a_complete_select_spec
     select_spec = f"""
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
