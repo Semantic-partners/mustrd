@@ -11,7 +11,7 @@ must:test_unit_gdb a must:TestConfig;
                 must:hasDataPath "test/data";
                 must:triplestoreSpecPath "test/triplestore_config/tripleStores.ttl";
                 must:hasPytestPath "testcollection1/gdb";
-                must:filterOnTripleStore must:GraphDb .
+                must:filterOnTripleStore must:GraphDb_local .
 
 
 
@@ -20,7 +20,7 @@ must:test_unit_gdb2 a must:TestConfig;
                 must:hasDataPath "test/data";
                 must:triplestoreSpecPath "test/triplestore_config/tripleStores.ttl";
                 must:hasPytestPath "testcollection2/gdb";
-                must:filterOnTripleStore must:GraphDb .
+                must:filterOnTripleStore must:GraphDb_local .
 
 
 must:test_unit_rdflib2 a must:TestConfig;

@@ -428,7 +428,7 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
             graphmart=graphmart,
             layer=layer)
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartDataset}")
+        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartDataset}")
 
     return spec_component
 
@@ -448,7 +448,7 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
                                                            query_name=query_name)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoQueryBuilderSparqlSource}")
+        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -467,7 +467,7 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
                                                     query_step_uri=query_step_uri)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartStepSparqlSource}")
+        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -487,7 +487,7 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
         spec_component.queryTemplate = queries["query_template"]
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {MUST.AnzoConfig} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
+        raise ValueError(f"You must define {MUST.Anzo} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
