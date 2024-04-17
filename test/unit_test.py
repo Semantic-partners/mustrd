@@ -86,7 +86,7 @@ class TestGetTripleStores(unittest.TestCase):
     def test_get_triple_stores_with_rdflib(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.RdfLibConfig
+        triple_store_type = MUST.RdfLib
         triple_store_graph.add((URIRef("http://example.org/rdflib-store"), rdf_type, triple_store_type))
 
         triple_stores = get_triple_stores(triple_store_graph)
@@ -97,7 +97,7 @@ class TestGetTripleStores(unittest.TestCase):
     def test_get_triple_stores_with_anzo(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.AnzoConfig
+        triple_store_type = MUST.Anzo
         triple_store_uri = URIRef("https://mustrd.com/model/AnzoConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/anzo")))
@@ -121,7 +121,7 @@ class TestGetTripleStores(unittest.TestCase):
     def test_get_triple_stores_with_graphdb(self):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
-        triple_store_type = MUST.GraphDbConfig
+        triple_store_type = MUST.GraphDb
         triple_store_uri = URIRef("https://mustrd.com/model/GraphDbConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, MUST.url, Literal("http://example.com/graphdb")))

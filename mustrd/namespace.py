@@ -97,11 +97,9 @@ class MUST(DefinedNamespace):
 
     # RDFLib
     RdfLib: URIRef
-    RdfLibConfig: URIRef
 
     # Anzo
     Anzo: URIRef
-    AnzoConfig: URIRef
     AnzoGraphmartDataset: URIRef
     AnzoQueryBuilderSparqlSource: URIRef
     AnzoGraphmartStepSparqlSource: URIRef
@@ -117,7 +115,6 @@ class MUST(DefinedNamespace):
 
     # GraphDb
     GraphDb: URIRef
-    GraphDbConfig: URIRef
     
     # FIXME: There is nothing to do that by default?
     @classmethod

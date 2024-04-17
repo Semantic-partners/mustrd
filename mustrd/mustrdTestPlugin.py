@@ -255,13 +255,13 @@ class MustrdTestPlugin:
             except Exception as e:
                 print(f"""No triple store configuration found at {test_config.triplestore_spec_path}.
                     Fall back: only embedded rdflib will be executed""", e)
-                triple_stores = [{'type': MUST.RdfLib}]
+                triple_stores = [{'type': MUST.RdfLib, 'uri': MUST.RdfLib}]
         else:
             print("No triple store configuration required: using embedded rdflib")
-            triple_stores = [{'type': MUST.RdfLib}]
+            triple_stores = [{'type': MUST.RdfLib, 'uri': MUST.RdfLib}]
 
         if test_config.filter_on_tripleStore:
-            triple_stores = list(filter(lambda triple_store: (triple_store["type"] in test_config.filter_on_tripleStore),
+            triple_stores = list(filter(lambda triple_store: (triple_store["uri"] in test_config.filter_on_tripleStore),
                                         triple_stores))
         return triple_stores
 
