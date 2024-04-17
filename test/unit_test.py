@@ -106,6 +106,7 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("test_password")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.gqeURI, Literal("http://example.com/gqe")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.outputGraph, Literal("http://example.com/output-graph")))
 
         triple_stores = get_triple_stores(triple_store_graph)
 
