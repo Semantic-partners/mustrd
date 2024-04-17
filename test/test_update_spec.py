@@ -29,7 +29,7 @@ from rdflib.compare import isomorphic
 from mustrd.mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, SpecSkipped, \
     Specification, check_result
 from graph_util import graph_comparison_message
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component
 from mustrd.steprunner import run_when
 
@@ -42,7 +42,7 @@ class TestRunUpdateSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_insert_spec_passes(self):
 

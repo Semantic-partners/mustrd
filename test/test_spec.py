@@ -31,7 +31,7 @@ from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
 from mustrd.mustrd import Specification, run_when, SpecSkipped, run_spec
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component, ThenSpec
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
@@ -49,7 +49,7 @@ class TestRunSpec:
     test-data:obj test-data:sub test-data:pred .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_no_rdf_type_error(self):
         spec_graph = Graph()

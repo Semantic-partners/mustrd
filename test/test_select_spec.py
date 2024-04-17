@@ -33,7 +33,7 @@ from pathlib import Path
 
 from mustrd.mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
     SpecPassedWithWarning, check_result, Specification, SpecSkipped
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
 
@@ -46,7 +46,7 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_select_spec_passes(self):
 
