@@ -389,19 +389,17 @@ def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
         return Graph().parse(triple_store_graph_path).parse(data = secrets)
     else:
         secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix)
-        return Graph().parse(triple_store_graph_path).parse(source = secret_path)
+        return Graph().parse(triple_store_graph_path).parse(secret_path)
     
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
-        # Local rdf lib triple store
-        if triple_store_type == MUST.RdfLibConfig:
-            triple_store["type"] = MUST.RdfLib
+        triple_store["type"] = triple_store_type
+        triple_store["uri"] = triple_store_config
         # Anzo graph via anzo
-        elif triple_store_type == MUST.AnzoConfig:
-            triple_store["type"] = MUST.Anzo
+        if triple_store_type == MUST.Anzo:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -419,8 +417,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             except ValueError as e:
                 triple_store["error"] = e
         # GraphDB
-        elif triple_store_type == MUST.GraphDbConfig:
-            triple_store["type"] = MUST.GraphDb
+        elif triple_store_type == MUST.GraphDb:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=MUST.port)
             try:
@@ -438,8 +435,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
                 check_triple_store_params(triple_store, ["url", "port", "repository"])
             except ValueError as e:
                 triple_store["error"] = e
-        else:
-            triple_store["type"] = triple_store_type
+        elif triple_store_type != MUST.RdfLib:
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
 
         triple_stores.append(triple_store)
