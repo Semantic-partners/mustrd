@@ -24,7 +24,6 @@ SOFTWARE.
 
 import os
 from dataclasses import dataclass, field
-from itertools import groupby
 from pathlib import Path
 from typing import Tuple, List, Type
 
@@ -39,6 +38,7 @@ from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
+from .utils import  get_mustrd_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -84,18 +84,14 @@ class SpecComponentDetails:
     spec_component_node: Node
     data_source_type: Node
     run_config: dict
+    root_paths: list
 
-def get_path(path_type: str, run_config: dict) -> Path:
-    try:
-        if str(run_config[path_type]).startswith("/"):
-            return run_config[path_type]
-        else: 
-            return Path(os.path.join(run_config['spec_path'], run_config[path_type]))
-    except(KeyError):
-        if str(run_config['data_path']).startswith("/"):
-            return run_config['data_path']
-        else: 
-            return Path(os.path.join(run_config['spec_path'], run_config['data_path']))
+def get_path(path_type: str, file_name, spec_component_details: SpecComponentDetails) -> Path:
+    if path_type in spec_component_details.run_config:
+        relative_path = os.path.join(spec_component_details.run_config[path_type], file_name)
+    else:
+        relative_path = file_name
+    return get_file_absolute_path(spec_component_details, relative_path)
     
 
 def parse_spec_component(subject: URIRef,
@@ -117,7 +113,8 @@ def parse_spec_component(subject: URIRef,
                 mustrd_triple_store=mustrd_triple_store,
                 spec_component_node=spec_component_node,
                 data_source_type=data_source_type,
-                run_config=run_config)
+                run_config=run_config, 
+                root_paths=get_components_roots(spec_graph, subject, run_config))
             spec_component = get_spec_component(spec_component_details)
             if type(spec_component) == list:
                 spec_components += spec_component 
@@ -130,6 +127,33 @@ def parse_spec_component(subject: URIRef,
     # print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
 
+# Here we retrieve all the possible root paths for a specification component.
+# This defines the order of priority between root paths which is:
+# 1) Path where the spec is located
+# 2) spec_path defined in mustrd test configuration files or cmd line argument
+# 3) data_path defined in mustrd test configuration files or cmd line argument
+# 4) Mustrd source folder: In case of default resources packaged with mustrd source (will be in venv when mustrd is called as library)
+# We intentionally don't try for absolute files, but you should feel free to argue that we should do
+def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
+    where_did_i_load_this_spec_from = spec_graph.value(subject=subject,
+                                                                 predicate=MUST.specSourceFile)
+    if (where_did_i_load_this_spec_from == None):
+        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_graph}")
+    return [
+        Path(os.path.dirname(where_did_i_load_this_spec_from)),
+        Path(run_config['spec_path']),
+        Path(run_config['data_path']),
+        get_mustrd_root()
+    ]
+
+
+# From the list of component potential roots, return the first path that exists
+def get_file_absolute_path(spec_component_details: SpecComponentDetails, relative_file_path: str):
+    absolute_file_paths = list(map(lambda root_path: Path(os.path.join(root_path, relative_file_path)), spec_component_details.root_paths))
+    for absolute_file_path in absolute_file_paths:
+        if (os.path.exists(absolute_file_path)):
+            return absolute_file_path
+    raise FileNotFoundError(f"Could not find file {relative_file_path=} in any of the {absolute_file_paths=}")
 
 def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
     # Get the type of the first object in the list
@@ -224,7 +248,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = Path(os.path.join(str(get_path('given_path',spec_component_details.run_config)), str(file_name)))
+    path = get_path('given_path', file_name,spec_component_details)
     try:
         spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     except ParserError as e:
@@ -240,7 +264,7 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = Path(os.path.join(str(get_path('when_path',spec_component_details.run_config)), str(file_name)))
+    path = get_path('when_path', file_name,spec_component_details)
     spec_component.value = get_spec_component_from_file(path)
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
@@ -253,7 +277,7 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
-    path = Path(os.path.join(str(get_path('then_path',spec_component_details.run_config)), str(file_name)))
+    path = get_path('then_path', file_name,spec_component_details)
 
     return load_dataset_from_file(path, spec_component)
 
@@ -264,27 +288,9 @@ def _get_spec_component_filedatasource(spec_component_details: SpecComponentDeta
     return load_spec_component(spec_component_details, spec_component)
 
 def load_spec_component(spec_component_details, spec_component):
-    where_did_i_load_this_spec_from = spec_component_details.spec_graph.value(subject=spec_component_details.subject,
-                                                                 predicate=MUST.specSourceFile)
-    if (where_did_i_load_this_spec_from == None):
-        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={spec_component_details.subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_component_details.spec_graph}")
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
-    
-    test_spec_file_path = os.path.dirname(where_did_i_load_this_spec_from)
-
-    # first we try local relative to the test_spec_file_path, then we try relative to the path under test
-    # we intentionally don't try for absolute files, but you should feel free to argue that we should do.
-    paths = [
-        Path(test_spec_file_path, file_path),
-        Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    ]
-    
-    for path in paths:
-        if (os.path.exists(path)):
-            return load_dataset_from_file(path, spec_component)
-
-    raise FileNotFoundError(f"Could not find file {file_path=} in any of the {paths=}")
+    return load_dataset_from_file(get_file_absolute_path(spec_component_details, file_path), spec_component)
     
 
 def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
@@ -320,12 +326,8 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
-    if str(file_path).startswith("/"): # absolute path
-        path = file_path
-    else: #relative path
-        path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-    spec_component.value = get_spec_component_from_file(path)
+                                                                 predicate=MUST.file)))    
+    spec_component.value = get_spec_component_from_file(get_file_absolute_path(spec_component_details, file_path))
 
     spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                        predicate=MUST.queryType)
