@@ -142,9 +142,9 @@ def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
         log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_graph}")
     else:
         roots.append(Path(os.path.dirname(where_did_i_load_this_spec_from))) 
-    if 'spec_path' in run_config:
+    if run_config and'spec_path' in run_config:
         roots.append(Path(run_config['spec_path']))
-    if 'data_path' in run_config:
+    if run_config and 'data_path'  in run_config:
         roots.append(run_config['data_path'])
     roots.append(get_mustrd_root())
     
@@ -153,6 +153,8 @@ def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
 
 # From the list of component potential roots, return the first path that exists
 def get_file_absolute_path(spec_component_details: SpecComponentDetails, relative_file_path: str):
+    if not relative_file_path:
+        raise ValueError("Cannot get absolute path of None")
     absolute_file_paths = list(map(lambda root_path: Path(os.path.join(root_path, relative_file_path)), spec_component_details.root_paths))
     for absolute_file_path in absolute_file_paths:
         if (os.path.exists(absolute_file_path)):

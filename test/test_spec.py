@@ -194,7 +194,7 @@ class TestRunSpec:
         spec_uri = TEST_DATA.my_failing_spec
         addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
