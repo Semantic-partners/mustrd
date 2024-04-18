@@ -137,14 +137,18 @@ def parse_spec_component(subject: URIRef,
 def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
     where_did_i_load_this_spec_from = spec_graph.value(subject=subject,
                                                                  predicate=MUST.specSourceFile)
+    roots = [] 
     if (where_did_i_load_this_spec_from == None):
         log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_graph}")
-    return [
-        Path(os.path.dirname(where_did_i_load_this_spec_from)),
-        Path(run_config['spec_path']),
-        Path(run_config['data_path']),
-        get_mustrd_root()
-    ]
+    else:
+        roots.append(Path(os.path.dirname(where_did_i_load_this_spec_from))) 
+    if 'spec_path' in run_config:
+        roots.append(Path(run_config['spec_path']))
+    if 'data_path' in run_config:
+        roots.append(run_config['data_path'])
+    roots.append(get_mustrd_root())
+    
+    return roots
 
 
 # From the list of component potential roots, return the first path that exists

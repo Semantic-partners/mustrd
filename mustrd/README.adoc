@@ -26,6 +26,15 @@ Run `pytest` from the project root.
 
 If you have got this far then you are probably ready to create your own specifications to test your application SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure one or more alternatives. The instructions for this are included in <<Configuring external triplestores>> below.
 
+=== Paths
+All paths are consired relative. That way mustrd tests can be versionned and shared easily.
+To get absolute path from relative path in a spec file, we prefix it with the first existing result in:
+1) Path where the spec is located
+2) spec_path defined in mustrd test configuration files or cmd line argument
+3) data_path defined in mustrd test configuration files or cmd line argument
+4) Mustrd folder: In case of default resources packaged with mustrd source (will be in venv when mustrd is called as library)
+We intentionally use the same method to build paths in all spec components to avoid confusion.
+
 === Givens
 These are used to specify the dataset against which the SPARQL statement will be run.
 They can be generated from external sources such as an existing graph, or a file or folder containing serialised RDF. It is also possible to specify the dataset as reified RDF directly in the test step. Currently tabular data sources such as csv files or TableDatasets are not supported.
