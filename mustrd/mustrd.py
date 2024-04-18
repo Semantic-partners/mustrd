@@ -304,8 +304,7 @@ def run_specs(specs) -> List[SpecResult]:
     return results
 
 def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
-    test =  str(spec_graph.value(subject = spec_uri, predicate = MUST.specFileName, default = "default.mustrd.ttl"))
-    return test
+    return str(spec_graph.value(subject = spec_uri, predicate = MUST.specFileName, default = "default.mustrd.ttl"))
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
