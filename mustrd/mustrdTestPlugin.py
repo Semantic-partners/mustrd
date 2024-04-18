@@ -167,7 +167,7 @@ class MustrdTestPlugin:
                                             self.test_configs))
                 
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
-            session.config.args[0] = "./mustrd/test/test_mustrd.py"
+            session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
         # Collecting only relevant tests
         
         for one_test_config in config_to_collect: 
