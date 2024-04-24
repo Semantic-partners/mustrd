@@ -17,7 +17,7 @@ namespace = "https://mustrd.com/query/"
 class MustrdQueryProcessor:
     original_query : Union [Query, ParseResults]
     current_query : Union [Query, ParseResults] 
-    graph = Graph()
+    graph : Graph
     algebra_mode: bool = False
     graph_mode: bool = True
 
@@ -28,6 +28,7 @@ class MustrdQueryProcessor:
         self.current_query = self.original_query
         self.algebra_mode = algebra_mode
         self.graph_mode = graph_mode
+        self.graph = Graph()
         if graph_mode:
             self.query_to_graph((algebra_mode and self.original_query.algebra) or parsetree._toklist, BNode())
 
