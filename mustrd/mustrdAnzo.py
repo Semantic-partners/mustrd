@@ -28,7 +28,6 @@ from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 import logging
-from .namespace import MUST
 
 
 # https://github.com/Semantic-partners/mustrd/issues/73
@@ -43,7 +42,6 @@ def manage_anzo_response(response: Response) -> str:
     else:
         raise RequestException(f"Anzo error, status code: {response.status_code}, content: {content_string}")
 
-
 def query_with_bindings(bindings: dict, when: str) -> str:
     values = ""
     for key, value in bindings.items():
@@ -52,68 +50,70 @@ def query_with_bindings(bindings: dict, when: str) -> str:
     return f"{split_query[0].strip()} WHERE {{ {values} {split_query[1].strip()}"
 
 def execute_select (triple_store: dict,  when: str, bindings: dict = None) -> str:
+    if bindings:
+        when = query_with_bindings(bindings, when)
+    # Just remove ${fromSources} if we are executing a query step; the sources are defined using http parameters 
+    when = when.replace("${fromSources}", "")
+    return execute_sparql(triple_store, False, when, triple_store['input_graph'])
+
+PARAMS = {
+    # Update parameters for INSERT / DELETE
+    True: {
+        "default-graph-param": "using-graph-uri",
+        "named-graph-param":"using-named-graph-uri",
+        "Content-Type": "application/sparql-update"
+    },
+    # Query parameters for SELECT / CONSTRUCT  
+    False: {
+        "default-graph-param": "default-graph-uri",
+        "named-graph-param":"named-graph-uri",
+        "Content-Type": "application/sparql-query"
+    }
+}
+def execute_sparql(triple_store: dict, is_update: bool, sparql, graph: str, format: str = "application/sparql-results+json"):
+    params = {
+        "format" : format,
+        "datasourceURI" : triple_store['gqe_uri'],
+        "skipCache": "true",
+        # Default and named datasets have different query param for query and update
+        PARAMS[is_update]["default-graph-param"] : graph,
+        PARAMS[is_update]["named-graph-param"] : graph
+    }
+    headers={"Content-Type": PARAMS[is_update]["Content-Type"]}
     try:
-        if bindings:
-            when = query_with_bindings(bindings, when)
-        when = when.replace("${fromSources}", f"FROM <{triple_store['input_graph']}>\nFROM <{triple_store['output_graph']}>").replace(
-        "${targetGraph}", f"<{triple_store['output_graph']}>")
-        data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
-                 'skipCache': 'true'}
-        url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=application/sparql-results+json"
-        return manage_anzo_response(requests.post(url=url,
-                                                  auth=(triple_store['username'], triple_store['password']),
-                                                  data=data,
-                                                  verify=False))
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
+        response = manage_anzo_response(requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
+                                                    params=params,
+                                                    auth=(triple_store['username'], triple_store['password']),
+                                                    headers=headers,
+                                                    data=sparql,
+                                                    verify=False))
+        logging.debug(f'response {response}')
+        return response
+    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
+        logging.error(f'response {e}')
         raise
 
 def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Graph:
     logging.debug(f"updating in anzo! {triple_store=} {when=}")
-    input_graph = triple_store['input_graph']
-    output_graph = triple_store['output_graph']
 
-    substituted_query = when.replace("${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
-        "${targetGraph}", f"<{output_graph}>")
-   
-    data = {'datasourceURI': triple_store['gqe_uri'], 'update': substituted_query,
-                'default-graph-uri': input_graph, 'skipCache': 'true'}
-    url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
-    response = manage_anzo_response(requests.post(url=url,
-            auth=(triple_store['username'],
-                triple_store['password']),
-            data=data,
-            verify=False))
-    logging.debug(f'response {response}')
-    check_data = {'datasourceURI': triple_store['gqe_uri'], 'query': "construct {?s ?p ?o} { ?s ?p ?o }",
-                'default-graph-uri': output_graph, 'skipCache': 'true'}
-    everything_response = manage_anzo_response(requests.post(url=url,
-            auth=(triple_store['username'],
-                triple_store['password']),
-            data=check_data,
-            verify=False))
-    # todo deal with error responses
-    new_graph = Graph().parse(data=everything_response)
+    # FIXME If query doesn't contain ${targetGraph}, then graph should be defined explicitly in the query
+    substituted_query = when.replace("${usingSources}", "").replace(
+        "${targetGraph}", f"<{triple_store['output_graph']}>")
+    
+    execute_sparql(triple_store, True, substituted_query, triple_store['input_graph'], "ttl")
+    
+    new_graph = execute_construct(triple_store, "construct {?s ?p ?o} { ?s ?p ?o }")
+    
     logging.debug(f"new_graph={new_graph.serialize(format='ttl')}")
+    
     return new_graph
 
 
 def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Graph:
-    try:
-        if bindings:
-            when = query_with_bindings(bindings, when)
-        data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
-                'default-graph-uri': triple_store['input_graph'], 'skipCache': 'true'}
-        url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
-        response = requests.post(url=url,
-            auth=(triple_store['username'],
-                triple_store['password']),
-            data=data,
-            verify=False)
-        logging.debug(f'response {response}')
-        return Graph().parse(data=manage_anzo_response(response))
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
-        logging.error(f'response {e}')
-        raise
+    if bindings:
+        when = query_with_bindings(bindings, when)
+    response = execute_sparql(triple_store, False, when, triple_store['input_graph'], "ttl")
+    return Graph().parse(data=response)
 
 
 # Get Given or then from the content of a graphmart
@@ -207,30 +207,14 @@ SELECT ?query ?param_query ?query_template
 
 def upload_given(triple_store: dict, given: Graph):
     logging.debug(f"upload_given {triple_store} {given}")
-
-    try:
-        input_graph = triple_store['input_graph']
-        output_graph = triple_store['output_graph']
-        clear_graph(triple_store, input_graph)
-        clear_graph(triple_store, output_graph)
-        serialized_given = given.serialize(format="nt")
-        insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
-        data = {'datasourceURI': triple_store['gqe_uri'], 'update': insert_query}
-        response = requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
-                                    auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
-        manage_anzo_response(response)
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
-        raise
+    clear_graph(triple_store, triple_store['input_graph'])
+    clear_graph(triple_store, triple_store['output_graph'])
+    serialized_given = given.serialize(format="nt")
+    
+    insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
+    execute_sparql(triple_store, True, insert_query, None, None)
 
 
 def clear_graph(triple_store: dict, graph_uri: str):
-    try:
-        clear_query = f"CLEAR GRAPH <{graph_uri}>"
-        data = {'datasourceURI': triple_store['gqe_uri'], 'update': clear_query}
-        url = f"https://{triple_store['url']}:{triple_store['port']}/sparql"
-        response = requests.post(url=url,
-                                 auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
-        manage_anzo_response(response)
-    except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
-        raise
+    execute_sparql(triple_store, True, f"CLEAR GRAPH <{graph_uri}>", None, None)
 
