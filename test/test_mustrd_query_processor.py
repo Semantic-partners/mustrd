@@ -12,8 +12,8 @@ def test_mustrd_algebra_processor():
                 }      
             """
 
-    proc = MustrdQueryProcessor(query, False)
-    res = proc.query("SELECT DISTINCT ?class WHERE {?s <https://mustrd.com/query/has_class> ?class}")
+    proc = MustrdQueryProcessor(query, False, True)
+    res = proc.query_graph("SELECT DISTINCT ?class WHERE {?s <https://mustrd.com/query/has_class> ?class}")
     
     change_prefix = """
         prefix ns1: <https://mustrd.com/query/>
@@ -36,13 +36,13 @@ def test_mustrd_algebra_processor():
             ns1:has_value "o"
         }
     """
-    graph_str = proc.serialize()
+    graph_str = proc.serialize_graph()
     print(graph_str)
     
     proc.update(change_prefix)
     proc.update(change_variable)
     
-    graph_str = proc.serialize()
+    graph_str = proc.serialize_graph()
     print(graph_str)
     
     query = proc.get_query()
