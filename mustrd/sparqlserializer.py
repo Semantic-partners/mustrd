@@ -20,32 +20,42 @@ def serialize_component(component):
     
     match component.name:
         case "SelectQuery":
-            return f"""SELECT {component.modifier or ''} {serialize_component(component.projection) or '*'} 
-                        {serialize_component(component.datasetClause)}
-                        WHERE {{ 
-                        {serialize_component(component.where)}  
-                        }} 
-                        {serialize_component(component.groupby)} 
-                        {serialize_component(component.orderby)}
-                        {serialize_component(component.having)}
-                        {serialize_component(component.limitoffset)}
-                        """
+            return f"""
+SELECT {component.modifier or ''} {serialize_component(component.projection) or '*'} 
+{serialize_component(component.datasetClause)}
+WHERE {{ 
+    {serialize_component(component.where)}  
+}} 
+{serialize_component(component.groupby)} 
+{serialize_component(component.orderby)}
+{serialize_component(component.having)}
+{serialize_component(component.limitoffset)}
+"""
         case "ConstructQuery":
-            return f"""CONSTRUCT {{
-                {serialize_triples(component.template)} 
-            }} WHERE {{
-                {serialize_component(component.where)} 
-            }}
-        """
+            return f"""
+CONSTRUCT {{
+    {serialize_triples(component.template)} 
+}} WHERE {{
+    {serialize_component(component.where)} 
+}}
+"""
         
         case "Modify":
-            return f""" {serialize_component(component.delete)}
-                        {serialize_component(component.insert)}
-                        {serialize_component(component.using)}
-                        WHERE {{
-                             {serialize_component(component.where)}
-                        }}
-        """
+            return f"""
+{serialize_component(component.delete)}
+{serialize_component(component.insert)}
+{serialize_component(component.using)}
+WHERE {{
+        {serialize_component(component.where)}
+}}
+"""
+        case "SubSelect":
+            return f"""
+SELECT {component.modifier or ''} {serialize_component(component.projection) or '*'} 
+WHERE {{ 
+    {serialize_component(component.where)}  
+}} {serialize_component(component.groupby)} {serialize_component(component.orderby)}
+"""
         case "DeleteClause":
             return f"DELETE {{ {serialize_component(component.quads)} }}"
         case "InsertClause":
@@ -56,29 +66,23 @@ def serialize_component(component):
                 return serialize_triples(component.triples)
         case "QuadsNotTriples":
             return f"GRAPH {component.term} {{ {serialize_triples(component.triples)} }}"
-        case "SubSelect":
-            return f"""SELECT {component.modifier or ''} {serialize_component(component.projection) or '*'} 
-                        WHERE {{ 
-                            {serialize_component(component.where)}  
-                        }} {serialize_component(component.groupby)} {serialize_component(component.orderby)}
-                        """
         case "PrefixDecl":
-            return f"PREFIX {component.prefix}: {serialize_component(component.iri)} \n"
+            return f"PREFIX {component.prefix}: {serialize_component(component.iri)}"
         case "DatasetClause":
             if hasattr(component, "default") and component.default:
-                return f"FROM {serialize_component(component.default)} \n"
+                return f"FROM {serialize_component(component.default)}"
             elif hasattr(component, "named") and component.named:
-                return f"FROM NAMED {serialize_component(component.named)} \n"
+                return f"FROM NAMED {serialize_component(component.named)}"
         case "UsingClause":
             if hasattr(component, "default") and component.default:
-                return f"USING {serialize_component(component.default)} \n"
+                return f"USING {serialize_component(component.default)}"
             elif hasattr(component, "named") and component.named:
-                return f"USING NAMED {serialize_component(component.named)} \n"
+                return f"USING NAMED {serialize_component(component.named)}"
             
         case "GroupClause":
-            return f"GROUP BY {serialize_component(component.condition)} \n"
+            return f"GROUP BY {serialize_component(component.condition)}"
         case "OrderClause":
-            return f"ORDER BY {serialize_component(component.condition)} \n"
+            return f"ORDER BY {serialize_component(component.condition)}"
         case "OrderCondition":
             return f"{component.order}({serialize_component(component.expr)})"
         case "LimitOffsetClauses":
@@ -112,7 +116,7 @@ def serialize_component(component):
             return f"VALUES ({join_serialization(component.var, ' ')}) {{( {join_serialization(component.value, ') (')} )}}"
         
         case "Filter":
-            return f"\n  FILTER( {serialize_component(component.expr)} ) \n"
+            return f"FILTER( {serialize_component(component.expr)} )"
         
         # Builtin function that cannot be managed in a generic way
         case "Builtin_NOTEXISTS":
@@ -126,7 +130,7 @@ def serialize_component(component):
             return f"CONCAT({join_serialization(component.arg, ',')})"
         
         case "GroupOrUnionGraphPattern":
-            return f" {{ \n {join_serialization(component.graph, '} UNION {')} \n }}"
+            return f" {{ {join_serialization(component.graph, '} UNION {')} }}"
         case "OptionalGraphPattern":
             return f"OPTIONAL {{ {serialize_component(component.graph)} }}"
         case "MinusGraphPattern":
@@ -197,6 +201,6 @@ def serialize_triples(triplegroup) :
             serialized += serialize_component(item)
             # Add point and line break after triple
             if index % 3 == 2:
-                serialized +=".\n"
+                serialized +=" . "
     return serialized
     
