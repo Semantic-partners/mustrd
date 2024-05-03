@@ -8,17 +8,30 @@ from rdflib.plugins.sparql.parserutils import CompValue, value, Expr, Param, Com
 from rdflib.namespace import DefinedNamespace, Namespace
 from rdflib.term import Identifier
 from typing import Union
-from datetime import datetime
 
 from builtins import list, set, tuple, str
 from pyparsing import Optional, CaselessKeyword as Keyword, Suppress, Forward, Combine, ZeroOrMore, OneOrMore
 
-from .sparqlserializer import serialize_component
 
 namespace = "https://mustrd.com/query/"
 
-# Sparql sistematically process query and update differently but in our case it would just duplicate code for nothing
-all_grammar = query_grammar | update_grammar
+def get_grammar_dict(grammar, grammar_dict = {}, already_explored = []):
+    # Grammar has cyclic references, once we explored and didn't find new base we can explore next branch
+    # We cannot only test existance in grammar_dict because cycles can be on unnamed components
+    if grammar in already_explored:
+        return
+    else:
+        already_explored.append(grammar)
+    if hasattr(grammar, 'customName') and grammar.customName:
+        grammar_dict[grammar.customName] = grammar
+    if hasattr(grammar, 'exprs'):
+        for expr in grammar.exprs:
+            get_grammar_dict(expr, grammar_dict, already_explored)
+    elif hasattr(grammar, 'expr'):
+        get_grammar_dict(grammar.expr, grammar_dict, already_explored)
+    return grammar_dict
+
+query_grammar_dict = get_grammar_dict(query_grammar)
 
 class MustrdQueryProcessor:
     original_query : Union [Query, ParseResults]
@@ -28,11 +41,7 @@ class MustrdQueryProcessor:
     graph_mode: bool = True
 
     def __init__(self, query_str: str, algebra_mode: bool = False, graph_mode: bool = True):
-        # Can parse all types of query
-        t1 = datetime.now()
-        parsetree = all_grammar.parseString(query_str, parseAll=True)
-        print(f"Time to parse: {str(datetime.now()-t1)}")
-        
+        parsetree = parseQuery(query_str)
         # Init original query to algebra or parsed query
         self.original_query = (algebra_mode and translateQuery(parsetree)) or parsetree
         self.current_query = self.original_query
@@ -40,15 +49,53 @@ class MustrdQueryProcessor:
         self.graph_mode = graph_mode
         self.graph = Graph()
         
-        t2 = datetime.now()
-        serialized = serialize_component(parsetree)
-        print(f"Time to serialize: {str(datetime.now()-t2)}")
-    
+        serialized = self.serialize_component(parsetree._toklist[1])
         print(serialized)
         #
         #if graph_mode:
         #    self.query_to_graph((algebra_mode and self.original_query.algebra) or parsetree._toklist, BNode())        
         
+    def serialize_component(self, component):
+        serialized = ""
+        if hasattr(component, '__iter__') and not isinstance(component, Identifier) and not isinstance(component, str) and not isinstance(component, CompValue):
+            for subComponent in component:
+                serialized += self.serialize_component(subComponent)      
+            return serialized
+        if isinstance(component, Identifier):
+            return f" {component.n3()} "
+        if isinstance(component, str):
+            return component
+        # Shortcut so we don't parse all grammar from scratch
+        grammar = query_grammar_dict.get(component.name, None)
+        if not grammar:
+            return serialized
+        #return f" <{component.name}> { self.serialize_grammar(grammar, component)} </{component.name}> "
+        return self.serialize_grammar(grammar, component)
+    
+    def serialize_grammar(self, grammar, component, already_explored = []):
+        
+        if grammar in already_explored:
+            print(f"We have already explored that cyclic branch: {grammar}, go to the next branch")
+            return ""
+        else:
+            already_explored.append(grammar)
+            
+        serialized = ""
+        # Some component don't have semantic for generation: serialize child directly
+        if isinstance(grammar, Comp) or isinstance(grammar, Optional) or isinstance(grammar, Forward) or isinstance(grammar, ZeroOrMore) or isinstance(grammar, OneOrMore):
+            serialized += self.serialize_grammar(grammar.expr, component, already_explored)
+        
+        elif isinstance(grammar, MatchFirst) or isinstance(grammar, And) or isinstance(grammar, Combine):
+            for expr in grammar.exprs:
+                serialized += self.serialize_grammar(expr, component, already_explored)
+            
+        elif isinstance(grammar, Param) and hasattr(grammar, "customName") and grammar.customName and grammar.customName in component.keys():
+            serialized +=self.serialize_component(component[grammar.customName])
+            
+        elif isinstance(grammar, Keyword) :
+            serialized += f" {grammar.match} "
+            
+        return serialized
 
     def query_to_graph(self, part: CompValue, partBnode):
         if not part or not partBnode:
