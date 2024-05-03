@@ -3,42 +3,17 @@ from datetime import datetime
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
 
 
-query = """
-PREFIX test: <http://test.com/>
-SELECT *
-WHERE {
-    ?s test:p ?o ;
-    <urn:p2> ?o1
-    {
-        ?s test:p3 ?o ;
-    } UNION {
-        ?s <urn:p4> ?o ;
-    }
-    ?o <urn:p5> ?obj .
-    OPTIONAL {
-        ?obj <urn:p5> ?jj
-    }
-    FILTER NOT EXISTS {
-        ?obj <urn:p6> ?jj
-    }
-    BIND(LANG(?jj) as ?lang)
-    FILTER((isNumeric(?o) && ?o > 4) || isIRI(?o))
-    {
-        SELECT * WHERE {
-            ?s <urn:a> ?o1
-            {
-                ?s <urn:b> ?o2
-            } UNION {
-                ?s <urn:c> ?o3
-            }
-        }
-    }
-        
-} 
-"""
 
-def test_mustrd_processor_graph_mode_on():
-    proc = MustrdQueryProcessor(query, True)
+def test_mustrd_algebra_processor():
+    query = """
+                PREFIX test: <http://test.com/>
+                SELECT * FROM <http://mustrd.com/test> WHERE {
+                    ?s test:p ?o
+                }      
+            """
+
+    proc = MustrdQueryProcessor(query, False, True)
+    res = proc.query_graph("SELECT DISTINCT ?class WHERE {?s <https://mustrd.com/query/has_class> ?class}")
     
     change_prefix = """
         prefix ns1: <https://mustrd.com/query/>
@@ -61,22 +36,56 @@ def test_mustrd_processor_graph_mode_on():
             ns1:has_value "o"
         }
     """
-    #graph_str = proc.serialize_graph()
-    #print(graph_str)
+    graph_str = proc.serialize_graph()
+    print(graph_str)
     
     proc.update(change_prefix)
     proc.update(change_variable)
     
-    #graph_str = proc.serialize_graph()
-    #print(graph_str)
+    graph_str = proc.serialize_graph()
+    print(graph_str)
     
-    modified_query = proc.get_query()
-    print(modified_query)
+    query = proc.get_query()
     
-def test_mustrd_processor_graph_mode_off():
+    print(res)
+    
+def test_perf():
+    query = """
+            PREFIX test: <http://test.com/>
+            SELECT * FROM <http://mustrd.com/test> WHERE {
+                ?s test:p ?o .
+                OPTIONAL {
+                    ?s test:p2 ?o2;
+                        test:p3 "bar", "foo";
+                        test:p4 1 .
+                }
+                FILTER NOT EXISTS {
+                    ?s test:p "foo" .
+                }
+                
+            }      
+        """
+    t1 = datetime.now()
     proc = MustrdQueryProcessor(query, False)
-    
-    
-    modified_query = proc.get_query()
-    print(modified_query)
-    
+    query = proc.get_query()
+    print(f"Time: {str(datetime.now()-t1)}")
+
+def test_perf2():
+    query_str = """
+        PREFIX test: <http://test.com/>
+        SELECT * FROM <http://mustrd.com/test> WHERE {
+            ?s test:p ?o .
+            OPTIONAL {
+                ?s test:p2 ?o2;
+                    test:p3 "bar", "foo";
+                    test:p4 1 .
+            }
+            FILTER NOT EXISTS {
+                ?s test:p "foo" .
+            }
+            
+        }      
+    """
+    t1 = datetime.now()
+    parsetree = parseQuery(query_str)
+    print(f"Time: {str(datetime.now()-t1)}")

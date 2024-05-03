@@ -24,41 +24,33 @@ class MustrdQueryProcessor:
     original_query : Union [Query, ParseResults]
     current_query : Union [Query, ParseResults] 
     graph : Graph
+    algebra_mode: bool = False
     graph_mode: bool = True
 
-    def __init__(self, query_str: str, graph_mode: bool = True):
+    def __init__(self, query_str: str, algebra_mode: bool = False, graph_mode: bool = True):
         # Can parse all types of query
         t1 = datetime.now()
-        self.original_query = all_grammar.parseString(query_str, parseAll=True)
+        parsetree = all_grammar.parseString(query_str, parseAll=True)
         print(f"Time to parse: {str(datetime.now()-t1)}")
         
         # Init original query to algebra or parsed query
+        self.original_query = (algebra_mode and translateQuery(parsetree)) or parsetree
         self.current_query = self.original_query
+        self.algebra_mode = algebra_mode
         self.graph_mode = graph_mode
         self.graph = Graph()
         
         t2 = datetime.now()
-        serialized = serialize_component(self.original_query)
+        serialized = serialize_component(parsetree)
         print(f"Time to serialize: {str(datetime.now()-t2)}")
     
         print(serialized)
+        #
+        #if graph_mode:
+        #    self.query_to_graph((algebra_mode and self.original_query.algebra) or parsetree._toklist, BNode())        
         
-        if graph_mode:
-            self.query_to_graph(self.original_query) 
-                   
-    def get_query(self):
-        if self.graph_mode:
-            roots = self.graph.query("SELECT DISTINCT ?sub WHERE {?sub ?prop ?obj FILTER NOT EXISTS {?s ?p ?sub}}")
-            if len(roots) != 1:
-                raise Exception("query graph has more than one root: invalid")
-            
-            for root in roots:
-                new_query = self.graph_to_query(root.sub)
-        else:
-            new_query = self.current_query
-        return serialize_component(new_query)        
 
-    def query_to_graph(self, part: CompValue, partBnode = BNode()):
+    def query_to_graph(self, part: CompValue, partBnode):
         if not part or not partBnode:
             return
         self.graph.add((partBnode, RDF.type, URIRef(namespace + type(part).__name__)))
@@ -93,6 +85,28 @@ class MustrdQueryProcessor:
             # Implement update directly on objects: self.current_query
             pass
         return self.graph.update(meta_query)
+    
+    def get_query(self):
+        if self.graph_mode:
+            roots = self.graph.query("SELECT DISTINCT ?sub WHERE {?sub ?prop ?obj FILTER NOT EXISTS {?s ?p ?sub}}")
+            if len(roots) != 1:
+                raise Exception("query graph has more than one root: invalid")
+            
+            for root in roots:
+                new_query = self.graph_to_query(root.sub)
+            if not self.algebra_mode:
+                new_query = ParseResults(toklist=new_query, name=self.original_query.name)
+                new_query = translateQuery(new_query)
+            else:
+                new_query = Query(algebra=new_query, prologue=self.original_query.prologue)
+        else:
+            if not self.algebra_mode:
+                new_query = translateQuery(self.current_query)
+            else:
+                new_query = self.current_query
+        return translateAlgebra(new_query)
+        
+        
 
     def graph_to_query(self, subject):
         subject_dict = self.get_subject_dict(subject)
