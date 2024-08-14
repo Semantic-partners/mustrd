@@ -149,8 +149,8 @@ class MustrdTestPlugin:
         self.test_configs = test_configs
         self.secrets = secrets
         self.items = []
-    
-    @pytest.hookimpl(tryfirst=True)
+
+    @pytest.hookimpl(hookwrapper=True)
     def pytest_collection(self, session):
         self.unit_tests = []
         args = session.config.args
@@ -172,7 +172,7 @@ class MustrdTestPlugin:
         
         for one_test_config in config_to_collect: 
             triple_stores = self.get_triple_stores_from_file(one_test_config)
-
+            print("one_test_config.filter_on_tripleStore: " + str(one_test_config.filter_on_tripleStore))
             if one_test_config.filter_on_tripleStore and not triple_stores:
                 self.unit_tests.extend(list(map(lambda triple_store:
                                 TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
@@ -182,26 +182,40 @@ class MustrdTestPlugin:
                                                             "data_path": Path(one_test_config.data_path)},
                                                             triple_stores, file_name)
                 self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
+        foo = yield
+        session.tree = {
+            "name": 'mustrd_test',
+            "path": os.path.join(mustrd_root, "test/"),
+            "type_": "folder",
+            "children" : []
+        }
+        for item in session.items:
+            pytest_path = (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
+            mustrd_file = next(filter(lambda file: file['id_'] == pytest_path, session.tree["children"]), None)
+            if not mustrd_file:
+                mustrd_file= {
+                    'id_': pytest_path,
+                    "name": pytest_path,
+                    "path": os.path.join(mustrd_root, "test/test_mustrd.py"),
+                    "type_": "file",
+                    "children" : []
+                }
+                session.tree["children"].append(mustrd_file)
+            mustrd_test= {
+                "name": item.name[item.name.index("[") + 1: item.name.index(".mustrd.ttl@")],
+                "path": os.path.join(mustrd_root, "test/test_mustrd.py"),
+                "type_": "test",
+                "id_": MUSTRD_PYTEST_PATH + pytest_path + item.name,
+                "runID": MUSTRD_PYTEST_PATH + pytest_path + item.name,
+                "lineno": "5"
+            }
+            mustrd_file["children"].append(mustrd_test)
+        
         
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
             return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]
         return None
-        
-        
-    @pytest.hookimpl(hookwrapper=True)
-    def pytest_pycollect_makeitem(self, collector, name, obj):
-        report = yield
-        if name == "test_unit":
-            items = report.get_result()
-            new_results = []
-            for item in items:
-                virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
-                item.fspath = Path(virtual_path)
-                item._nodeid = virtual_path + "::" + item.name
-                self.items.append(item)
-                new_results.append(item)
-            return new_results
         
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
