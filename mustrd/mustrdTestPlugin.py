@@ -154,42 +154,44 @@ class MustrdTestPlugin:
     def pytest_collection(self, session):
         self.unit_tests = []
         args = session.config.args
-        if len(args) > 0:
-            file_name = self.get_file_name_from_arg(args[0])
+        for arg in args:
+            file_name = self.get_file_name_from_arg(arg)
             # Filter test to collect only specified path
             config_to_collect = list(filter(lambda config: 
-                                            # Case we want to collect everything
-                                            MUSTRD_PYTEST_PATH not in args[0]
-                                            # Case we want to collect a test or sub test
-                                            or (config.pytest_path or "") in args[0]
+                                            # Case we want to collect everything:
+                                            # If current arg doesn't contain mustrd root
+                                            "test_mustrd.py" not in arg
+                                            # Case we want to collect a test or sub test:
+                                            # If current arg contains pytest_path
+                                            or (config.pytest_path or "") in arg
                                             # Case we want to collect a whole test folder
-                                            or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
+                                            or arg.replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
                                             self.test_configs))
                 
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
-            session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
-        # Collecting only relevant tests
-        
-        for one_test_config in config_to_collect: 
-            triple_stores = self.get_triple_stores_from_file(one_test_config)
-            print("one_test_config.filter_on_tripleStore: " + str(one_test_config.filter_on_tripleStore))
-            if one_test_config.filter_on_tripleStore and not triple_stores:
-                self.unit_tests.extend(list(map(lambda triple_store:
-                                TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
-                                one_test_config.filter_on_tripleStore)))
-            else:
-                specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
-                                                            "data_path": Path(one_test_config.data_path)},
-                                                            triple_stores, file_name)
-                self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
+            arg = os.path.join(mustrd_root, "test/test_mustrd.py")
+            # Collecting only relevant tests
+            
+            for one_test_config in config_to_collect: 
+                triple_stores = self.get_triple_stores_from_file(one_test_config)
+                print("one_test_config.filter_on_tripleStore: " + str(one_test_config.filter_on_tripleStore))
+                if one_test_config.filter_on_tripleStore and not triple_stores:
+                    self.unit_tests.extend(list(map(lambda triple_store:
+                                    TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
+                                    one_test_config.filter_on_tripleStore)))
+                else:
+                    specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
+                                                                "data_path": Path(one_test_config.data_path)},
+                                                                triple_stores, file_name)
+                    self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
         foo = yield
         session.tree = {
-            "name": 'mustrd_test',
+            "name": MUSTRD_PYTEST_PATH,
             "path": os.path.join(mustrd_root, "test/"),
             "type_": "folder",
             "children" : []
         }
-        for item in session.items:
+        for item in self.items:
             pytest_path = (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
             mustrd_file = next(filter(lambda file: file['id_'] == pytest_path, session.tree["children"]), None)
             if not mustrd_file:
@@ -206,7 +208,7 @@ class MustrdTestPlugin:
                 "path": os.path.join(mustrd_root, "test/test_mustrd.py"),
                 "type_": "test",
                 "id_": MUSTRD_PYTEST_PATH + pytest_path + item.name,
-                "runID": MUSTRD_PYTEST_PATH + pytest_path + item.name,
+                "runID": "mustrd/test/test_mustrd.py::" + item.name,
                 "lineno": "5"
             }
             mustrd_file["children"].append(mustrd_test)
@@ -232,7 +234,12 @@ class MustrdTestPlugin:
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
                                      ids=lambda x: "No configuration found for this test")
     
-                
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_pycollect_makeitem(self, collector, name, obj):
+        report = yield
+        if name == "test_unit":
+            self.items = report.get_result()
+                        
             
 
     # Generate test for each triple store available
