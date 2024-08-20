@@ -52,13 +52,13 @@ class TestRunUpdateSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        
-        test-data:my_first_spec 
+
+        test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
@@ -94,18 +94,18 @@ class TestRunUpdateSpec:
     def test_delete_spec_passes(self):
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        query ="delete { ?s ?p ?o } where {?s ?p ?o}"
+        query = "delete { ?s ?p ?o } where {?s ?p ?o}"
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
                   must:then  [ a must:EmptyGraph ] .
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -143,7 +143,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -188,12 +188,12 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ; 
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:EmptyGraph ] .
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -232,7 +232,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -277,7 +277,7 @@ class TestRunUpdateSpec:
         test-data:my_failing_insert_spec
             a must:TestSpec ;
                                     must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -301,10 +301,10 @@ class TestRunUpdateSpec:
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
-                                          predicate=MUST.then,
-                                          spec_graph=spec_graph,
-                                          run_config=None,
-                                          mustrd_triple_store=self.triple_store)
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              run_config=None,
+                                              mustrd_triple_store=self.triple_store)
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
@@ -344,9 +344,9 @@ class TestRunUpdateSpec:
         test-data:my_failing_delete_spec
             a must:TestSpec ;
                                     must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:EmptyGraph ] .
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -403,7 +403,7 @@ class TestRunUpdateSpec:
         test-data:my_failing_insert_data_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -466,7 +466,7 @@ class TestRunUpdateSpec:
         test-data:my_failing_delete_data_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -528,7 +528,7 @@ class TestRunUpdateSpec:
         test-data:my_failing_delete_insert_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -595,7 +595,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 must:hasBinding [ must:variable "p" ;
                                             must:boundValue  test-data:pred ; ] ;
@@ -663,7 +663,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 must:hasBinding [ must:variable "o" ;
                                             must:boundValue  "hello world" ; ] ;
@@ -717,7 +717,7 @@ class TestRunUpdateSpec:
         test-data:my_failing_spec 
            a must:TestSpec ;
                        must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
            must:then  [ a must:TableDataset ;
@@ -772,7 +772,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;
@@ -825,7 +825,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec 
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ; 
             must:then  [ a must:StatementsDataset ;

@@ -22,21 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 from pathlib import Path
 
 import pytest
-from rdflib import Graph, URIRef, Literal
+from rdflib import Graph, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
-from mustrd.mustrd import Specification, run_when, SpecSkipped, run_spec
+from mustrd.mustrd import Specification, SpecSkipped, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component, ThenSpec
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
+
 
 class TestRunSpec:
     given_sub_pred_obj = """
@@ -58,7 +58,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                 must:then  [ must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
@@ -84,7 +84,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
                                    must:file "../../test/data/missingFile.nt" ] .
@@ -101,7 +101,6 @@ class TestRunSpec:
                                  run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
-    
     def test_spec_then_from_file_error(self):
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
@@ -135,7 +134,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
                                    must:file "../../test/data" ] .
@@ -144,7 +143,7 @@ class TestRunSpec:
 
         spec_uri = TEST_DATA.my_failing_spec
         addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
-        
+
         with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
@@ -160,7 +159,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
                                    must:file "test/test_spec.py" ] .
@@ -184,7 +183,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FolderDataset ;
                                    must:file "thenSuccess.nt" ] .
@@ -204,7 +203,7 @@ class TestRunSpec:
     def test_spec_file_from_folder_passes(self):
         run_config = {'then_path': Path("data"),
                       # FIXME: spec_path seems mandatory, is that normal?
-                      'spec_path': Path( "test/")}
+                      'spec_path': Path("test/")}
 
         spec_graph = Graph()
         spec = """
@@ -231,7 +230,7 @@ class TestRunSpec:
         then = Graph()
         then.parse(data=self.then_obj_sub_pred, format="ttl")
 
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
         assert isomorphic(then, then_component.value)
 
     def test_invalid_data_source_predicate_combination_error(self):
@@ -241,7 +240,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                  must:given  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
@@ -344,5 +343,5 @@ class TestRunSpec:
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
-        assert type(result) == SpecSkipped
+        assert isinstance(result, SpecSkipped)
         assert result.message == "https://mustrd.com/model/DeleteSparql is not a valid SPARQL query type."

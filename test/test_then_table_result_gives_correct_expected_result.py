@@ -35,6 +35,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 class TestRunSelectSpec:
 
     triple_store = {"type": TRIPLESTORE.RdfLib}
+
     def test_select_spec_fails_with_expected_vs_actual_table_comparison(self):
 
         spec = """
@@ -42,7 +43,7 @@ class TestRunSelectSpec:
         @prefix sh:        <http://www.w3.org/ns/shacl#> .
         @prefix must:      <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
-            
+
             test-data:my_failing_spec 
                  a          must:TestSpec ;
     must:then  [ a must:TableDataset ;
@@ -61,22 +62,22 @@ class TestRunSelectSpec:
 
                ] .
             """
-        spec_graph= Graph().parse(data=spec, format='ttl')
+        spec_graph = Graph().parse(data=spec, format='ttl')
         subject = TEST_DATA.my_failing_spec
         predicate = MUST.then
 
         then_query = f"""
         prefix sh:        <http://www.w3.org/ns/shacl#> 
             SELECT ?row ?variable ?binding ?order
-            WHERE {{ 
+            WHERE {{
                  <{subject}> <{predicate}> [
                         a <{MUST.TableDataset}> ;
                         <{MUST.hasRow}> ?row ].
                           ?row  <{MUST.hasBinding}> [
                                 <{MUST.variable}> ?variable ;
                                 <{MUST.boundValue}> ?binding ; ] .
-                          OPTIONAL {{ ?row sh:order ?order . }}        
-                                     .}} 
+                          OPTIONAL {{ ?row sh:order ?order . }}
+                                     .}}
              ORDER BY ?row ?order"""
 
         expected_results = spec_graph.query(then_query)
@@ -88,7 +89,7 @@ class TestRunSelectSpec:
         df = pandas.DataFrame(index=list(index), columns=list(columns))
         for row in expected_results:
             df.loc[str(row.row), row.variable.value] = str(row.binding)
-            if type(row.binding) == Literal:
+            if isinstance(row.binding, Literal):
                 literal_type = str(XSD.string)
                 if hasattr(row.binding, "datatype") and row.binding.datatype:
                     literal_type = str(row.binding.datatype)
