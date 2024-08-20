@@ -99,9 +99,7 @@ def parse_spec_component(subject: URIRef,
                          spec_graph: Graph,
                          run_config: dict,
                          mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
-    # print(f"parse_spec_component {subject=} {predicate=} ")
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
-    # all_data_source_types = []
     spec_components = []
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
@@ -120,9 +118,6 @@ def parse_spec_component(subject: URIRef,
                 spec_components += spec_component 
             else:
                 spec_components += [spec_component]
-
-        # all_data_source_types.extend(data_source_types)
-    # return all_data_source_types
     # merge multiple graphs into one, give error if spec config is a TableThen
     # print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
@@ -340,20 +335,6 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
 
     return spec_component
 
-
-# @get_spec_component.method((MUST.FileDataset, MUST.then))
-# def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
-#     spec_component = init_spec_component(spec_component_details.predicate)
-
-#     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-#                                                                  predicate=MUST.file)))
-#     if str(file_path).startswith("/"): # absolute path
-#         path = file_path
-#     else: #relative path
-#         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-#     return get_then_from_file(path, spec_component)
-
-
 @get_spec_component.method((MUST.TextSparqlSource, MUST.when))
 def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
@@ -559,9 +540,6 @@ def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Gra
 
 
 def get_spec_component_from_file(path: Path) -> str:
-    # project_root = get_project_root()
-    # file_path = Path(os.path.join(project_root, path))
-
     if path.is_dir():
         raise ValueError(f"Path {path} is a directory, expected a file")
 
