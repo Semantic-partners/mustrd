@@ -322,7 +322,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store,
                              components[0].value, components[1], components[2], spec_file_name)
-    
+
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
@@ -334,7 +334,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec, result):
-    if type(spec.then) == TableThenSpec:
+    if isinstance(spec.then, TableThenSpec):
         return table_comparison(result, spec)
     else:
         graph_compare = graph_comparison(spec.then.value, result)
@@ -392,7 +392,7 @@ def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
         secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem +
                                                             "_secrets" + triple_store_graph_path.suffix)
         return Graph().parse(triple_store_graph_path).parse(secret_path)
-    
+
 
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
@@ -542,7 +542,8 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
 
             # Scenario 1: expected no result but got a result
             if then.empty:
-                message = f"Expected 0 row(s) and 0 column(s), got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
+                message = f"""Expected 0 row(s) and 0 column(s),
+                got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"""
                 empty_then = create_empty_dataframe_with_columns(df)
                 df_diff = empty_then.compare(df, result_names=("expected", "actual"))
 
@@ -583,7 +584,8 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 df = pandas.DataFrame()
             else:
                 # Scenario 4: expected a result, but got an empty result
-                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"
+                message = f"""Expected {then.shape[0]} row(s)
+                              and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"""
                 then = then[sorted_then_cols]
                 df = create_empty_dataframe_with_columns(then)
             df_diff = then.compare(df, result_names=("expected", "actual"))
@@ -616,18 +618,18 @@ def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphCompari
 
 def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     then_query = f"""
-    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
-        <{spec_uri}> <{MUST.then}> 
+        <{spec_uri}> <{MUST.then}>
             a <{MUST.StatementsDataset}> ;
             <{MUST.hasStatement}> [
                 a rdf:Statement ;
                 rdf:subject ?s ;
                 rdf:predicate ?p ;
                 rdf:object ?o ;
-            ] ; ] 
+            ] ; ]
     }}
     """
     expected_results = spec_graph.query(then_query).graph
@@ -717,7 +719,8 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     # Convert dictionaries to list for tabulate
     table_rows = [[spec_uri] + [
-        f"{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}{status_dict[spec_uri][triple_store].__name__}{Style.RESET_ALL}"
+        f"""{colours.get(status_dict[spec_uri][triple_store], Fore.RED)}
+        {status_dict[spec_uri][triple_store].__name__}{Style.RESET_ALL}"""
         for triple_store in triple_stores] for spec_uri in set(status_dict.keys())]
 
     status_rows = [[f"{colours.get(status, Fore.RED)}{status.__name__}{Style.RESET_ALL}"] +
@@ -747,7 +750,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
-            if type(res) == UpdateSpecFailure:
+            if isinstance(res, UpdateSpecFailure):
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(f"{Fore.BLUE} In Expected Not In Actual:")
                 print(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
@@ -757,25 +760,19 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
                 print(f"{Fore.GREEN} in_both")
                 print(res.graph_comparison.in_both.serialize(format="ttl"))
 
-            if type(res) == SelectSpecFailure:
+            if isinstance(res, SelectSpecFailure):
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.message)
                 print(res.table_comparison.to_markdown())
-            if type(res) == ConstructSpecFailure or type(res) == UpdateSpecFailure:
+            if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            if type(res) == SpecPassedWithWarning:
+            if isinstance(res, SpecPassedWithWarning):
                 print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
                 print(res.warning)
-            if type(res) == TripleStoreConnectionError or type(res) == SparqlExecutionError or \
-                    type(res) == SparqlParseFailure:
+            if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
+                    isinstance(res, SparqlParseFailure):
                 print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
                 print(res.exception)
-            if type(res) == SpecSkipped:
+            if isinstance(res, SpecSkipped):
                 print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
                 print(res.message)
-
-
-
-    
-
-
