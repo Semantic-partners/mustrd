@@ -1,4 +1,4 @@
-from namespace import MUST
+from mustrd.namespace import MUST
 from rdflib import Graph, Literal, URIRef
 
 def parse_spec(spec: str, spec_uri: URIRef, filename: str):

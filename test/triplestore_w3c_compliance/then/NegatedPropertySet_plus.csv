@@ -1,4 +1,0 @@
-obj,obj_datatype
-test:a2,http://www.w3.org/2001/XMLSchema#anyURI
-test:a4,http://www.w3.org/2001/XMLSchema#anyURI
-test:a3,http://www.w3.org/2001/XMLSchema#anyURI

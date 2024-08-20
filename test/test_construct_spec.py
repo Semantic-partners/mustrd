@@ -30,13 +30,12 @@ from rdflib import Graph, Literal
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, \
+from mustrd.mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, \
      check_result, Specification
-from steprunner import run_when
+from mustrd.steprunner import run_when
 from graph_util import graph_comparison_message
-from namespace import MUST
-from spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
-from utils import get_project_root
+from mustrd.namespace import MUST, TRIPLESTORE
+from mustrd.spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
 
 from test.addspec_source_file_to_spec_graph import parse_spec
 
@@ -49,7 +48,7 @@ class TestRunConstructSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_construct_spec_passes(self):
         run_config = {}
@@ -619,16 +618,15 @@ class TestRunConstructSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found '?'  (at char 10), (line:1, col:11)"
+                when_result.exception) == "Expected ConstructQuery, found '?'  (at char 10), (line:1, col:11)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
     def test_construct_when_file_spec_passes(self):
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        project_root = get_project_root()
         when_path = "test/data/construct.rq"
-        run_config = {'spec_path': project_root, 'when_path': when_path}
+        run_config = {'spec_path': "", 'when_path': when_path}
 
         spec_graph = Graph()
         spec = f"""
@@ -673,9 +671,8 @@ class TestRunConstructSpec:
         assert type(then_component) == ThenSpec
 
     def test_construct_given_then_files_spec_passes(self):
-        project_root = get_project_root()
         when_path = "data/construct.rq"
-        spec_path = Path(os.path.join(project_root, "test"))
+        spec_path = Path("test")
         run_config = {'when_path': when_path,
                       'spec_path': spec_path,
                       'given_path': "data/given.ttl"}
@@ -739,8 +736,9 @@ class TestRunConstructSpec:
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
 
-        project_root = get_project_root()
-        run_config = {'when_path': Path(os.path.join(project_root, "test/data"))}
+        run_config = {'when_path': Path("data"),
+                      # FIXME: spec_path seems mandatory, is that normal?
+                      'spec_path': Path("test/")}
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
