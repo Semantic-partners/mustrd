@@ -520,7 +520,7 @@ class TestRunConstructSpec:
                 must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
                                 must:queryType must:ConstructSparql  ;
-                             ] ; 
+                             ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -680,7 +680,7 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                 must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
@@ -688,16 +688,16 @@ class TestRunConstructSpec:
                                                      rdf:predicate test-data:pred1 ;
                                                      rdf:object    test-data:obj1 ; ] ; ] ,
                             [ a must:FileDataset ;
-                            must:file "data/given.ttl"  ] ;        
+                            must:file "data/given.ttl"  ] ;
                 must:when  [ a  must:FileSparqlSource ;
-                                must:file  "{when_path}" ; 
-                                must:queryType must:ConstructSparql  ; 
-                            ] ;            
+                                must:file  "{when_path}" ;
+                                must:queryType must:ConstructSparql  ;
+                            ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
-                                   rdf:object    test-data:pred1 ; ] ; ] ; 
+                                   rdf:object    test-data:pred1 ; ] ; ] ;
                  must:then  [ a must:FileDataset ;
                                    must:file "data/thenSuccess.nt" ] .
         """

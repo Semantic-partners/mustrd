@@ -159,7 +159,7 @@ class MustrdTestPlugin:
         if len(args) > 0:
             file_name = self.get_file_name_from_arg(args[0])
             # Filter test to collect only specified path
-            config_to_collect = list(filter(lambda config: 
+            config_to_collect = list(filter(lambda config:
                                             # Case we want to collect everything
                                             MUSTRD_PYTEST_PATH not in args[0]
                                             # Case we want to collect a test or sub test
@@ -168,22 +168,26 @@ class MustrdTestPlugin:
                                             or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
                                             self.test_configs))
 
-            # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
+            # Redirect everything to test_mustrd.py,
+            # no need to filter on specified test: Only specified test will be collected anyway
             session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
         # Collecting only relevant tests
 
-        for one_test_config in config_to_collect: 
+        for one_test_config in config_to_collect:
             triple_stores = self.get_triple_stores_from_file(one_test_config)
 
             if one_test_config.filter_on_tripleStore and not triple_stores:
-                self.unit_tests.extend(list(map(lambda triple_store:
-                                TestParamWrapper(test_config=one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
-                                one_test_config.filter_on_tripleStore)))
+                self.unit_tests.extend(list(map(
+                    lambda triple_store:
+                        TestParamWrapper(test_config=one_test_config,
+                                         unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
+                        one_test_config.filter_on_tripleStore)))
             else:
                 specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
                                                         "data_path": Path(one_test_config.data_path)},
                                                        triple_stores, file_name)
-                self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
+                self.unit_tests.extend(list(map(
+                    lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:

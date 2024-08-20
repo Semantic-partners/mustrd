@@ -134,18 +134,18 @@ class TestRunUpdateSpec:
     def test_insert_data_spec_passes(self):
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        query = "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }"
+        query = """PREFIX t:<https://semanticpartners.com/data/test/> insert data {t:subject t:predicate t:object}"""
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
@@ -182,7 +182,7 @@ class TestRunUpdateSpec:
 
     def test_delete_data_spec_passes(self):
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        query = "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }"
+        query = """PREFIX t:<https://semanticpartners.com/data/test/>  delete data {t:sub t:pred t:obj}"""
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -191,7 +191,7 @@ class TestRunUpdateSpec:
         test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
-                                must:queryText  "{query}" ; 
+                                must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 ] ;
             must:then  [ a must:EmptyGraph ] .
@@ -229,12 +229,12 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
@@ -273,13 +273,13 @@ class TestRunUpdateSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        
+
         test-data:my_failing_insert_spec
             a must:TestSpec ;
                                     must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
@@ -393,7 +393,7 @@ class TestRunUpdateSpec:
     def test_insert_data_spec_fails_with_graph_comparison(self):
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        query = "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }"
+        query = """PREFIX t:<https://semanticpartners.com/data/test/> insert data {t:subject t:predicate t:object}"""
 
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
@@ -405,7 +405,7 @@ class TestRunUpdateSpec:
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:subject ;
@@ -456,7 +456,7 @@ class TestRunUpdateSpec:
     def test_delete_data_spec_fails_with_graph_comparison(self):
 
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        query = "delete data { <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> <https://semanticpartners.com/data/test/obj> }"
+        query = """PREFIX t:<https://semanticpartners.com/data/test/>  delete data {t:sub t:pred t:obj}"""
 
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
@@ -468,7 +468,7 @@ class TestRunUpdateSpec:
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
@@ -530,7 +530,7 @@ class TestRunUpdateSpec:
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                          must:hasStatement [ a             rdf:Statement ;
                                            rdf:subject   test-data:sub ;
@@ -592,7 +592,7 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
@@ -601,14 +601,14 @@ class TestRunUpdateSpec:
                                             must:boundValue  test-data:pred ; ] ;
                                 must:hasBinding [ must:variable "pred" ;
                                             must:boundValue  test-data:predicate ; ] ;
-                                ] ; 
+                                ] ;
             must:then [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub1 ;
                             rdf:predicate test-data:pred ;
                             rdf:object test-data:obj ;
-                        ] , 
+                        ] ,
                         [
                             a rdf:Statement ;
                             rdf:subject test-data:sub2 ;
@@ -653,28 +653,28 @@ class TestRunUpdateSpec:
         """
         given = Graph().parse(data=triples, format="ttl")
 
-        query = "delete { ?s ?p ?o } insert { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }"
+        query = "delete{ ?s ?p ?o }insert{?s <https://semanticpartners.com/data/test/predicate> ?o}where{?s ?p ?o}"
 
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
                                 must:hasBinding [ must:variable "o" ;
                                             must:boundValue  "hello world" ; ] ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
                             rdf:predicate test-data:predicate ;
                             rdf:object "hello world" ;
-                        ] , 
+                        ] ,
                         [
                             a rdf:Statement ;
                             rdf:subject test-data:sub ;
@@ -714,17 +714,17 @@ class TestRunUpdateSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
            a must:TestSpec ;
                        must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
            must:then  [ a must:TableDataset ;
                         must:hasRow [ sh:order 1 ;
                                     must:hasBinding[
                                        must:variable "s" ;
-                                       must:boundValue test-data:wrong-subject ; 
+                                       must:boundValue test-data:wrong-subject ;
                                         ] ; ] ; ].
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -749,7 +749,7 @@ class TestRunUpdateSpec:
             when_result = run_when(spec_uri, self.triple_store, when_component[0])
         except ParseException as e:
             when_result = SparqlParseFailure(spec_uri, self.triple_store["type"], e)
-        if type(when_result) == SparqlParseFailure:
+        if isinstance(when_result, SparqlParseFailure):
             assert when_result.spec_uri == spec_uri
             assert str(
                 when_result.exception) == "Expected end of text, found 'insert'  (at char 0), (line:1, col:1)"
@@ -769,12 +769,12 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -822,12 +822,12 @@ class TestRunUpdateSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                         must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{query}" ;
                                 must:queryType must:UpdateSparql  ;
-                                ] ; 
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:sub ;
@@ -848,18 +848,12 @@ class TestRunUpdateSpec:
                                               run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        then_component = parse_spec_component(subject=spec_uri,
-                                              predicate=MUST.then,
-                                              spec_graph=spec_graph,
-                                              run_config=None,
-                                              mustrd_triple_store=self.triple_store)
-
         triple_store["given"] = given
         try:
             when_result = run_when(spec_uri, triple_store, when_component[0])
         except NotImplementedError as ex:
             when_result = SpecSkipped(spec_uri, triple_store, ex.args[0])
-        expected_result = SpecSkipped(spec_uri, triple_store, f"{when_component[0].queryType} not implemented for {triple_store['type']}")
+        expected_result = SpecSkipped(spec_uri,
+                                      triple_store,
+                                      f"{when_component[0].queryType} not implemented for {triple_store['type']}")
         assert when_result == expected_result
-
-
