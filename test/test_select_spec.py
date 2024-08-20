@@ -146,7 +146,8 @@ class TestRunSelectSpec:
             table_diff = then_result.table_comparison.to_markdown()
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert table_diff == """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
+            assert table_diff == \
+                """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
         else:
@@ -218,7 +219,7 @@ class TestRunSelectSpec:
             raise Exception(f"wrong spec result type {then_result}")
 
     def test_select_spec_fails_for_different_types_where_one_is_string(self):
-        
+
         triples = """
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         test-data:sub test-data:pred 1 .
@@ -278,7 +279,8 @@ class TestRunSelectSpec:
             table_diff = then_result.table_comparison.to_markdown()
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert table_diff == """|    | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
+            assert table_diff == \
+                """|    | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                 |
 |---:|:----------------------------------------|:-----------------------------------------|
 |  0 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#integer |"""
         else:
@@ -415,7 +417,7 @@ class TestRunSelectSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a must:TextSparqlSource ;
                         must:queryText  "select ?s ?p ?o { ?s ?p ?o }" ;
@@ -1382,7 +1384,8 @@ class TestRunSelectSpec:
                         must:hasRow [ must:hasBinding[
                                        must:variable "s" ;
                                        must:boundValue test-data:sub ;
-                                        ] ,                                                                               [
+                                        ] ,
+                                    [
                                        must:variable "o" ;
                                        must:boundValue test-data:obj  ;
                                         ]; ] ;
@@ -1553,7 +1556,7 @@ class TestRunSelectSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-            test-data:my_first_spec 
+            test-data:my_first_spec
                 a must:TestSpec ;
                 must:when  [ a must:TextSparqlSource ;
                         must:queryText  "select ?s ?p ?o { ?s ?p ?o }" ;
@@ -1688,7 +1691,7 @@ class TestRunSelectSpec:
                                         must:boundValue  test-data:pred2 ; ],
                                       [ must:variable "o" ;
                                         must:boundValue  test-data:obj2 ; ] ; ] ,
-                 
+
                  [ must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
                                       [ must:variable "p" ;

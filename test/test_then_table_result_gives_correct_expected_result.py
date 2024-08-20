@@ -44,7 +44,7 @@ class TestRunSelectSpec:
         @prefix must:      <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-            test-data:my_failing_spec 
+            test-data:my_failing_spec
                  a          must:TestSpec ;
     must:then  [ a must:TableDataset ;
                  must:hasRow
@@ -67,7 +67,7 @@ class TestRunSelectSpec:
         predicate = MUST.then
 
         then_query = f"""
-        prefix sh:        <http://www.w3.org/ns/shacl#> 
+        prefix sh:        <http://www.w3.org/ns/shacl#>
             SELECT ?row ?variable ?binding ?order
             WHERE {{
                  <{subject}> <{predicate}> [

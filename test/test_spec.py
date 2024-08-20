@@ -109,7 +109,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
                                    must:file "../../test/data" ] .
@@ -211,7 +211,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FolderDataset ;
                                    must:fileName "thenSuccess.nt" ] .
@@ -263,8 +263,8 @@ class TestRunSpec:
                                  spec_graph=spec_graph,
                                  run_config=None,
                                  mustrd_triple_store=self.triple_store)
-        assert str(
-            error_message.value) == f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
+        assert str(error_message.value) == \
+            f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
 
     def test_invalid_query_type_ask_error(self):
         state = Graph()
@@ -276,7 +276,7 @@ class TestRunSpec:
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-                test-data:my_first_spec 
+                test-data:my_first_spec
                     a must:TestSpec ;
                         must:when [ a must:TextSparqlSource ;
                                     must:queryText  "ask { ?s ?p 25 }" ;
@@ -316,7 +316,7 @@ class TestRunSpec:
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-                test-data:my_first_spec 
+                test-data:my_first_spec
                     a must:TestSpec ;
                         must:when [ a must:TextSparqlSource ;
                                     must:queryText  "delete { ?s ?p 25 }" ;
