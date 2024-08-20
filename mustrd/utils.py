@@ -30,6 +30,7 @@ from pathlib import Path
 def get_mustrd_root() -> Path:
     return Path(__file__).parent
 
+
 def is_json(myjson: str) -> bool:
     try:
         json.loads(myjson)
