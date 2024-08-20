@@ -31,11 +31,10 @@ from rdflib.term import Literal, Variable, URIRef
 
 from pathlib import Path
 
-from mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
+from mustrd.mustrd import run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
     SpecPassedWithWarning, check_result, Specification, SpecSkipped
-from namespace import MUST
-from spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
-from src.utils import get_project_root
+from mustrd.namespace import MUST, TRIPLESTORE
+from mustrd.spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
@@ -47,7 +46,7 @@ class TestRunSelectSpec:
         test-data:sub test-data:pred test-data:obj .
         """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_select_spec_passes(self):
 
@@ -341,7 +340,7 @@ class TestRunSelectSpec:
             assert type(then_component) == TableThenSpec
             assert when_result.spec_uri == spec_uri
             assert str(
-                when_result.exception) == "Expected {SelectQuery | ConstructQuery | DescribeQuery | AskQuery}, found 'typo'  (at char 18), (line:1, col:19)"
+                when_result.exception) == "Expected SelectQuery, found 'typo'  (at char 18), (line:1, col:19)"
         else:
             raise Exception(f"wrong spec result type {when_result}")
 
@@ -1845,10 +1844,9 @@ class TestRunSelectSpec:
 
     def test_select_given_file_then_file_spec_passes(self):
 
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': ""}
         given_path = "test/data/given.ttl"
-        file_path = Path(os.path.join(project_root, given_path))
+        file_path = Path(given_path)
         triples = get_spec_component_from_file(file_path)
         given = Graph().parse(data=triples, format="ttl")
         spec = """
@@ -1891,10 +1889,9 @@ class TestRunSelectSpec:
 
     
     def test_select_given_file_then_file_spec_fails(self):
-        project_root = get_project_root()
-        run_config = {'spec_path': project_root}
+        run_config = {'spec_path': "/"}
         given_path = "test/data/given.ttl"
-        file_path = Path(os.path.join(project_root, given_path))
+        file_path = Path (given_path)
         triples = get_spec_component_from_file(file_path)
         given = Graph().parse(data=triples, format="ttl")
         spec = """

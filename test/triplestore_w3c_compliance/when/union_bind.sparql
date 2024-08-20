@@ -1,9 +1,0 @@
-SELECT ?subj  WHERE {
-   ?subj a <test:class>;
-     <test:prop1> ?obj
-   {
-     BIND(<test:b1> as ?obj)
-   } UNION {
-     BIND(<test:b2> as ?obj)
-   }
-}

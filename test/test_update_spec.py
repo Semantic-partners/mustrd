@@ -26,12 +26,12 @@ from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, SpecSkipped, \
+from mustrd.mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, SpecSkipped, \
     Specification, check_result
 from graph_util import graph_comparison_message
-from namespace import MUST
-from spec_component import parse_spec_component
-from steprunner import run_when
+from mustrd.namespace import MUST, TRIPLESTORE
+from mustrd.spec_component import parse_spec_component
+from mustrd.steprunner import run_when
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -42,7 +42,7 @@ class TestRunUpdateSpec:
     test-data:sub test-data:pred test-data:obj .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_insert_spec_passes(self):
 

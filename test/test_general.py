@@ -2,9 +2,10 @@ import unittest
 import os
 from pathlib import Path
 
-from mustrd import run_specs, get_triple_stores, validate_specs
+from mustrd.mustrd import run_specs, get_triple_stores, validate_specs, get_specs
 from rdflib import Graph
-from namespace import MUST
+from mustrd.namespace import TRIPLESTORE
+from mustrd.utils import get_mustrd_root
 
 
 class RunGeneralTests(unittest.TestCase):
@@ -58,13 +59,18 @@ test-data:a_complete_construct_scenario
 
     def test_run_specs_with_invalid_spec_path(self):
         # Define an invalid spec_path
-        triple_stores = [{'type': MUST.RdfLib}]
-        project_root = Path(__file__).resolve().parent.parent
+        triple_stores = [{'type': TRIPLESTORE.RdfLib}]
         run_config = {'spec_path': Path("not_exists")}
-        shacl_graph = Graph().parse(Path(os.path.join(project_root, "model/mustrdShapes.ttl")))
-        ont_graph = Graph().parse(Path(os.path.join(project_root, "model/ontology.ttl")))
-        valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(run_config, triple_stores, shacl_graph, ont_graph )
-        final_results = run_specs( valid_spec_uris, spec_graph, invalid_spec_results, triple_stores, run_config)
+        shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/mustrdShapes.ttl")))
+        ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/ontology.ttl")))
+
+        valid_spec_uris, spec_graph, invalid_spec_results = \
+            validate_specs(run_config, triple_stores, shacl_graph, ont_graph)
+
+        specs, skipped_spec_results = \
+            get_specs(valid_spec_uris, spec_graph, triple_stores, run_config)
+            
+        final_results = invalid_spec_results + skipped_spec_results + run_specs(specs)
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(final_results, list)
         self.assertEqual(len(final_results), 0)  # Assert that no results were returned
