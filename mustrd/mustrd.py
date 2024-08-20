@@ -242,16 +242,9 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 this_spec_graph.parse(file)
                 spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
                 for spec in spec_uris_in_this_file:
-                    # print(f"adding {tripleToAdd}")
                     this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
                     this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-                # print(f"beforeadd: {spec_graph}" )
-                # print(f"beforeadd: {str(this_spec_graph.serialize())}" )
                 spec_graph += this_spec_graph
-
-
-    sourceFiles = list(spec_graph.subject_objects(MUST.specSourceFile))
-    # print(f"sourceFiles: {sourceFiles}")
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
@@ -308,7 +301,7 @@ def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
-        if mustrd_triple_store is None:
+        if not mustrd_triple_store:
             mustrd_triple_store = {"type": TRIPLESTORE.RdfLib}
         components = []
         for predicate in MUST.given, MUST.when, MUST.then:
@@ -461,11 +454,9 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
 
 def get_credential_from_file(triple_store_name: URIRef, credential: str, config_path: Literal) -> str:
     log.info(f"get_credential_from_file {triple_store_name}, {credential}, {config_path}")
-    if config_path is None:
+    if not config_path:
         raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
                          f"Missing required parameter: {credential}.")
-    # if os.path.isrelative(config_path)
-    # project_root = get_project_root()
     path = Path(config_path)
     log.info(f"get_credential_from_file {path}")
 
@@ -546,14 +537,6 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 if ordered_result is True and not spec.then.ordered:
                     message += ". Actual result is ordered, must:then must contain sh:order on every row."
                     return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
-                    # if df.shape == then.shape and (df.columns == then.columns).all():
-                    #     df_diff = then.compare(df, result_names=("expected", "actual"))
-                    #     if df_diff.empty:
-                    #         df_diff = df
-                    #         print(df_diff.to_markdown())
-                    # else:
-                    #     df_diff = construct_df_diff(df, then)
-                    #     print(df_diff.to_markdown())
                 else:
                     if len(columns) == len(then.columns):
                         if sorted_columns == sorted_then_cols:
@@ -595,13 +578,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 return SpecPassed(spec.spec_uri, spec.triple_store["type"])
         else:
-            # message += f"\nexpected:\n{then}\nactual:{df}"
             log.error(message)
-            # print(spec.spec_uri)
-            # print("actual:")
-            # print(then)
-            # print("expected:")
-            # print(df)
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
     except ParseException as e:
