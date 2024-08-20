@@ -85,37 +85,38 @@ def pytest_configure(config) -> None:
     if config.getoption("mustrd"):
         test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
-                                                    test_configs, config.getoption("secrets")))
-    
+                                                       test_configs, config.getoption("secrets")))
+
+
 def parse_config(config_path):
     test_configs = []
     config_graph = Graph().parse(config_path)
     shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestShapes.ttl")))
     ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestOntology.ttl")))
     conforms, results_graph, results_text = validate(
-            data_graph= config_graph,
-            shacl_graph = shacl_graph,
-            ont_graph  = ont_graph,
-            advanced= True,
-            inference= 'none'
+            data_graph=config_graph,
+            shacl_graph=shacl_graph,
+            ont_graph=ont_graph,
+            advanced=True,
+            inference='none'
         )
     if not conforms:
-        raise ValueError(f"Mustrd test configuration not conform to the shapes. SHACL report: {results_text}", results_graph)
-        
+        raise ValueError(f"Mustrd test configuration not conform to the shapes. SHACL report: {results_text}",
+                         results_graph)
+
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUSTRDTEST.MustrdTest):
         spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasSpecPath, str)
         data_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasDataPath, str)
         triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.triplestoreSpecPath, str)
         pytest_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasPytestPath, str)
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
-                                                        predicate=MUSTRDTEST.filterOnTripleStore))
+                                                          predicate=MUSTRDTEST.filterOnTripleStore))
 
         test_configs.append(TestConfig(spec_path=spec_path, data_path=data_path,
-                                                triplestore_spec_path=triplestore_spec_path,
-                                                pytest_path = pytest_path,
-                                                filter_on_tripleStore=filter_on_tripleStore))
+                                       triplestore_spec_path=triplestore_spec_path,
+                                       pytest_path=pytest_path,
+                                       filter_on_tripleStore=filter_on_tripleStore))
     return test_configs
-    
 
 
 def get_config_param(config_graph, config_subject, config_param, convert_function):
@@ -130,12 +131,13 @@ class TestConfig:
     triplestore_spec_path: str
     pytest_path: str
     filter_on_tripleStore: str = None
-        
+
 
 @dataclass
 class TestParamWrapper:
     test_config: TestConfig
     unit_test: Union[Specification, SpecSkipped]
+
 
 class MustrdTestPlugin:
     md_path: str
@@ -149,7 +151,7 @@ class MustrdTestPlugin:
         self.test_configs = test_configs
         self.secrets = secrets
         self.items = []
-    
+
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         self.unit_tests = []
@@ -165,30 +167,29 @@ class MustrdTestPlugin:
                                             # Case we want to collect a whole test folder
                                             or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
                                             self.test_configs))
-                
+
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
             session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
         # Collecting only relevant tests
-        
+
         for one_test_config in config_to_collect: 
             triple_stores = self.get_triple_stores_from_file(one_test_config)
 
             if one_test_config.filter_on_tripleStore and not triple_stores:
                 self.unit_tests.extend(list(map(lambda triple_store:
-                                TestParamWrapper(test_config = one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
+                                TestParamWrapper(test_config=one_test_config, unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
                                 one_test_config.filter_on_tripleStore)))
             else:
                 specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
-                                                            "data_path": Path(one_test_config.data_path)},
-                                                            triple_stores, file_name)
-                self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
-        
+                                                        "data_path": Path(one_test_config.data_path)},
+                                                       triple_stores, file_name)
+                self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
+
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
             return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]
         return None
-        
-        
+
     @pytest.hookimpl(hookwrapper=True)
     def pytest_pycollect_makeitem(self, collector, name, obj):
         report = yield
@@ -196,18 +197,17 @@ class MustrdTestPlugin:
             items = report.get_result()
             new_results = []
             for item in items:
-                virtual_path =  MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
+                virtual_path = MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
                 item.fspath = Path(virtual_path)
                 item._nodeid = virtual_path + "::" + item.name
                 self.items.append(item)
                 new_results.append(item)
             return new_results
-        
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     def pytest_generate_tests(self, metafunc):
         if len(metafunc.fixturenames) > 0:
-            if metafunc.function.__name__  == "test_unit":
+            if metafunc.function.__name__ == "test_unit":
                 # Create the test in itself
                 if self.unit_tests:
                     metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
@@ -217,9 +217,6 @@ class MustrdTestPlugin:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
                                      ids=lambda x: "No configuration found for this test")
-    
-                
-            
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):

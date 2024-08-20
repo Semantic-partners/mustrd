@@ -46,12 +46,12 @@ import json
 from pandas import DataFrame
 
 from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from .utils import  is_json,get_mustrd_root
+from .utils import is_json, get_mustrd_root
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
 from pyshacl import validate
-import logging 
+import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
 
@@ -73,6 +73,7 @@ def debug_requests_on():
     requests_log.setLevel(logging.DEBUG)
     requests_log.propagate = True
 
+
 def debug_requests_off():
     '''Switches off logging of the requests module, might be some side-effects'''
     HTTPConnection.debuglevel = 0
@@ -84,7 +85,9 @@ def debug_requests_off():
     requests_log.setLevel(logging.WARNING)
     requests_log.propagate = False
 
+
 debug_requests_off()
+
 
 @dataclass
 class Specification:
@@ -234,8 +237,8 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
             if len(error_messages) > 0:
                 error_messages.sort()
                 error_message = "\n".join(msg for msg in error_messages)
-                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name) for triple_store in
-                                triple_stores]
+                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name)
+                                  for triple_store in triple_stores]
             else:
                 subject_uris.add(subject_uri)
                 this_spec_graph = Graph()
@@ -257,7 +260,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
         log.info(f"Collected {len(focus_uris)} focus test spec(s)")
         return focus_uris, spec_graph, invalid_focus_specs
     else:
-        log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")   
+        log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")
         return valid_spec_uris, spec_graph, invalid_specs
 
 
@@ -269,14 +272,16 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(f"{triple_store['error']}. No specs run for this triple store.")
-                skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error'], get_spec_file(spec_uri, spec_graph)) for spec_uri in
+                skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error'],
+                                                get_spec_file(spec_uri, spec_graph)) for spec_uri in
                                     spec_uris]
             else:
                 for spec_uri in spec_uris:
                     try:
                         specs += [get_spec(spec_uri, spec_graph, run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
-                        skipped_results += [SpecSkipped(spec_uri, triple_store['type'], e, get_spec_file(spec_uri, spec_graph))]
+                        skipped_results += [SpecSkipped(spec_uri, triple_store['type'],
+                                                        e, get_spec_file(spec_uri, spec_graph))]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -296,8 +301,10 @@ def run_specs(specs) -> List[SpecResult]:
         results.append(run_spec(specification))
     return results
 
+
 def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
-    return str(spec_graph.value(subject = spec_uri, predicate = MUST.specFileName, default = "default.mustrd.ttl"))
+    return str(spec_graph.value(subject=spec_uri, predicate=MUST.specFileName, default="default.mustrd.ttl"))
+
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
     try:
@@ -306,14 +313,15 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
         components = []
         for predicate in MUST.given, MUST.when, MUST.then:
             components.append(parse_spec_component(subject=spec_uri,
-                                                predicate=predicate,
-                                                spec_graph=spec_graph,
-                                                run_config=run_config,
-                                                mustrd_triple_store=mustrd_triple_store))
+                                                   predicate=predicate,
+                                                   spec_graph=spec_graph,
+                                                   run_config=run_config,
+                                                   mustrd_triple_store=mustrd_triple_store))
 
         spec_file_name = get_spec_file(spec_uri, spec_graph)
         # https://github.com/Semantic-partners/mustrd/issues/92
-        return Specification(spec_uri, mustrd_triple_store, components[0].value, components[1], components[2], spec_file_name)
+        return Specification(spec_uri, mustrd_triple_store,
+                             components[0].value, components[1], components[2], spec_file_name)
     
     except (ValueError, FileNotFoundError) as e:
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -376,11 +384,13 @@ def run_spec(spec: Specification) -> SpecResult:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
     #         mustrd_triple_store.clear_graph()
 
+
 def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
     if secrets:
-        return Graph().parse(triple_store_graph_path).parse(data = secrets)
+        return Graph().parse(triple_store_graph_path).parse(data=secrets)
     else:
-        secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix)
+        secret_path = triple_store_graph_path.parent / Path(triple_store_graph_path.stem +
+                                                            "_secrets" + triple_store_graph_path.suffix)
         return Graph().parse(triple_store_graph_path).parse(secret_path)
     
 
@@ -389,14 +399,15 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl")))
     ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreOntology.ttl")))
     conforms, results_graph, results_text = validate(
-            data_graph= triple_store_graph,
-            shacl_graph = shacl_graph,
-            ont_graph  = ont_graph,
-            advanced= True,
-            inference= 'none'
+            data_graph=triple_store_graph,
+            shacl_graph=shacl_graph,
+            ont_graph=ont_graph,
+            advanced=True,
+            inference='none'
         )
     if not conforms:
-        raise ValueError(f"Triple store configuration not conform to the shapes. SHACL report: {results_text}", results_graph)
+        raise ValueError(f"Triple store configuration not conform to the shapes. SHACL report: {results_text}",
+                         results_graph)
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples((None, RDF.type, None)):
         triple_store = {}
         triple_store["type"] = triple_store_type
@@ -406,15 +417,18 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.password))
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                        predicate=TRIPLESTORE.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                        predicate=TRIPLESTORE.password))
             except (FileNotFoundError, ValueError) as e:
                 triple_store["error"] = e
-            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.gqeURI)
+            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config,
+                                                               predicate=TRIPLESTORE.gqeURI)
             triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                    predicate=TRIPLESTORE.inputGraph)
             triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=TRIPLESTORE.outputGraph)
+                                                                    predicate=TRIPLESTORE.outputGraph)
             try:
                 check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
             except ValueError as e:
@@ -424,8 +438,10 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
             triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.password))
+                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                        predicate=TRIPLESTORE.username))
+                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                        predicate=TRIPLESTORE.password))
             except (FileNotFoundError, ValueError) as e:
                 log.error(f"Credential retrieval failed {e}")
                 triple_store["error"] = e
@@ -470,6 +486,7 @@ def get_credential_from_file(triple_store_name: URIRef, credential: str, config_
         log.error(f"config error {path} {e}")
         raise ValueError(f"Error reading credentials config file: {e}")
     return config[str(triple_store_name)][credential]
+
 
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
 def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
@@ -562,7 +579,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
 
             if then.empty:
                 # Scenario 3: expected no result, got no result
-                message = f"Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
+                message = "Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
                 df = pandas.DataFrame()
             else:
                 # Scenario 4: expected a result, but got an empty result
