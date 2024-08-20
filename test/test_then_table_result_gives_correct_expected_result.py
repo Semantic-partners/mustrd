@@ -64,7 +64,6 @@ class TestRunSelectSpec:
         spec_graph= Graph().parse(data=spec, format='ttl')
         subject = TEST_DATA.my_failing_spec
         predicate = MUST.then
-        # addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         then_query = f"""
         prefix sh:        <http://www.w3.org/ns/shacl#> 
@@ -98,13 +97,3 @@ class TestRunSelectSpec:
                 df.loc[str(row.row), row.variable.value + "_datatype"] = str(XSD.anyURI)
         df.reset_index(drop=True, inplace=True)
         df.fillna('', inplace=True)
-
-        print(df.to_string())
-        # df.groupby('Row').apply(lambda x: join(x.astype(str)))
-        # print(then_component.value.to_string())
-        # remove = string.whitespace
-        # mapping = {ord(c): None for c in remove}
-        expected_result = '''                                             s                               s_datatype                                           o                               o_datatype                                         object                          object_datatype
-0  https://semanticpartners.com/data/test/sub1  http://www.w3.org/2001/XMLSchema#anyURI  https://semanticpartners.com/data/test/obj  http://www.w3.org/2001/XMLSchema#anyURI  https://semanticpartners.com/data/test/object  http://www.w3.org/2001/XMLSchema#anyURI
-1  https://semanticpartners.com/data/test/sub2  http://www.w3.org/2001/XMLSchema#anyURI  https://semanticpartners.com/data/test/obj  http://www.w3.org/2001/XMLSchema#anyURI                                                                                        '''
-
