@@ -76,7 +76,8 @@ def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Grap
     output_graph = triple_store['output_graph']
 
     substituted_query = when.replace("${usingSources}",
-                                     f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
+                                     f"""USING <{triple_store['input_graph']}>
+USING <{triple_store['output_graph']}>""").replace(
                                          "${targetGraph}", f"<{output_graph}>")
 
     data = {'datasourceURI': triple_store['gqe_uri'], 'update': substituted_query,
@@ -124,7 +125,7 @@ def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> G
 # Get Given or then from the content of a graphmart
 def get_spec_component_from_graphmart(triple_store: dict, graphmart: URIRef, layer: URIRef = None) -> ConjunctiveGraph:
     try:
-        anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+        anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
                                  username=triple_store['username'],
                                  password=triple_store['password'])
         return anzo_client.query_graphmart(graphmart=graphmart,
@@ -145,10 +146,10 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
             ?queryFolder a <http://www.cambridgesemantics.com/ontologies/QueryPlayground#QueryFolder>;
                         <http://purl.org/dc/elements/1.1/title> "{folder_name}"
     }}"""
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
                              username=triple_store['username'],
                              password=triple_store['password'])
-    
+
     result = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
     if len(result) == 0:
         raise FileNotFoundError(f"Query {query_name} not found in folder {folder_name}")
@@ -163,7 +164,7 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
     }}
     # """
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
                              username=triple_store['username'],
                              password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
@@ -181,7 +182,7 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
                         <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
                              username=triple_store['username'],
                              password=triple_store['password'])
     record_dictionaries = anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
@@ -195,7 +196,7 @@ SELECT ?query ?param_query ?query_template
   {{ <{graphmart_layer_uri}> graphmarts:step ?step .
   ?step         anzo:index ?index ;
                 anzo:orderedValue ?query_step .
-  ?query_step graphmarts:enabled true ; 
+  ?query_step graphmarts:enabled true ;
   OPTIONAL {{  ?query_step
                 graphmarts:parametersTemplate ?param_query ;
                 graphmarts:template ?query_template ;
@@ -205,7 +206,7 @@ SELECT ?query ?param_query ?query_template
       . }}
   }}
   ORDER BY ?index"""
-    anzo_client = AnzoClient(triple_store['url'], triple_store['port'], 
+    anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
                              username=triple_store['username'],
                              password=triple_store['password'])
     return anzo_client.query_journal(query_string=query).as_table_results().as_record_dictionaries()
