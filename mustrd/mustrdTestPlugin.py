@@ -154,22 +154,25 @@ class MustrdTestPlugin:
     def pytest_collection(self, session):
         self.unit_tests = []
         args = session.config.args
-        for arg in args:
+        for i in range(len(args)):
+            arg = args[i]
             file_name = self.get_file_name_from_arg(arg)
+            
+            is_path =  len(list(filter(lambda config: arg in config.pytest_path, self.test_configs))) > 0
             # Filter test to collect only specified path
             config_to_collect = list(filter(lambda config: 
                                             # Case we want to collect everything:
-                                            # If current arg doesn't contain mustrd root
-                                            "test_mustrd.py" not in arg
+                                            # If current arg doesn't point on any particular test, nor is a path
+                                            ("mustrd.ttl" not in arg and not is_path)
                                             # Case we want to collect a test or sub test:
                                             # If current arg contains pytest_path
                                             or (config.pytest_path or "") in arg
                                             # Case we want to collect a whole test folder
-                                            or arg.replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
+                                            or arg in config.pytest_path,
                                             self.test_configs))
                 
             # Redirect everything to test_mustrd.py, no need to filter on specified test: Only specified test will be collected anyway
-            arg = os.path.join(mustrd_root, "test/test_mustrd.py")
+            args[i] = os.path.join(mustrd_root, "test/test_mustrd.py")
             # Collecting only relevant tests
             
             for one_test_config in config_to_collect: 
@@ -184,6 +187,7 @@ class MustrdTestPlugin:
                                                                 "data_path": Path(one_test_config.data_path)},
                                                                 triple_stores, file_name)
                     self.unit_tests.extend(list(map(lambda spec: TestParamWrapper(test_config = one_test_config, unit_test=spec),specs)))
+                    
         foo = yield
         session.tree = {
             "name": MUSTRD_PYTEST_PATH,
