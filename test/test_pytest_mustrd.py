@@ -25,28 +25,28 @@ import pytest
 from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
 
-from urllib.parse import urljoin
-from rdflib.parser import _create_input_source_from_location
+
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
     test_config = parse_config(config_path)
-    mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets )
+    mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets)
     pytest.main([*args], plugins=[mustrd_plugin])
     return mustrd_plugin, test_config
-    
+
 
 # test collection of all tests
 def test_collection_full():
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
     assert len(test_config) == 1
     pytest_path = test_config[0].pytest_path
-    
+
     # Get collected items
     items = mustrd_plugin.items
     collected_nodes = list(map(lambda item: item.nodeid, items))
-    skipped_nodes = list(map(lambda item: item.nodeid,  
+    skipped_nodes = list(map(lambda item: item.nodeid,
                              # Filter on skipped items
-                             list(filter(lambda item : isinstance(item.callspec.params["unit_tests"].unit_test, SpecSkipped), items))))
-    
+                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                                                                 SpecSkipped), items))))
+
     # Check that the items have been collected
     assert has_item(collected_nodes, "construct_spec.mustrd.ttl", pytest_path)
     assert has_item(collected_nodes, "construct_spec_from_folders.mustrd.ttl", pytest_path)
@@ -104,8 +104,8 @@ def test_collection_full():
     assert not has_item(skipped_nodes, "select_spec_ordered.mustrd.ttl", pytest_path)
     assert not has_item(skipped_nodes, "select_spec_variable.mustrd.ttl", pytest_path)
     assert not has_item(skipped_nodes, "select_spec_variable_datatypes.mustrd.ttl", pytest_path)
-    
-    # Check invalid spec are skipped 
+
+    # Check invalid spec are skipped
     assert has_item(skipped_nodes, "invalid_delete_insert_spec_with_table_result.mustrd.ttl", pytest_path)
     assert has_item(skipped_nodes, "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl", pytest_path)
     assert has_item(skipped_nodes, "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl", pytest_path)
@@ -114,13 +114,14 @@ def test_collection_full():
     assert has_item(skipped_nodes, "invalid_select_spec_with_statement_dataset_result.mustrd.ttl", pytest_path)
     assert has_item(skipped_nodes, "invalid_select_spec_with_table_dataset_given.mustrd.ttl", pytest_path)
     assert has_item(skipped_nodes, "select_spec2.mustrd.ttl", pytest_path)
-    
+
     # FIXME: This is skipped is that normal?
-    #assert has_item(skipped_nodes, "construct_spec_from_folders.mustrd.ttl", pytest_path)
-    
+    # assert has_item(skipped_nodes, "construct_spec_from_folders.mustrd.ttl", pytest_path)
+
     # FIXME: this should be skipped?
-    #assert has_item(skipped_nodes, "invalid_spec.mustrd.ttl", pytest_path)
-    
+    # assert has_item(skipped_nodes, "invalid_spec.mustrd.ttl", pytest_path)
+
+
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
     node_id = "mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"
@@ -128,51 +129,58 @@ def test_collection_single():
     items = mustrd_plugin.items
     assert list(map(lambda item: item.nodeid, items)) == ["mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"]
 
+
 def test_collection_path():
     path = "rdflib1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl", "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
+                                            "--collect-only", f"./mustrd_tests/{path}")
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item : path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item : path in item.nodeid, mustrd_plugin.items))) == 32
-    
+    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+
+
 def test_collection_path2():
     path = "col1/test1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl", "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
+                                            "--collect-only", f"./mustrd_tests/{path}")
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item : path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item : path in item.nodeid, mustrd_plugin.items))) == 32
-    
+    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+
+
 def test_collection_path3():
     path = "col1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl", "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
+                                            "--collect-only", f"./mustrd_tests/{path}")
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item : path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item : path in item.nodeid, mustrd_plugin.items))) == 64
-    
+    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 64
+
+
 def test_mustrd_config_duplicate():
     # Mustrd test generation should fail with ValueError if configuration is not conform
     with pytest.raises(ValueError) as error:
         run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only")
     assert error
     shacl_report_graph = error.value.args[1]
-    #report = shacl_report_graph.serialize(None, format="ttl")
+    # report = shacl_report_graph.serialize(None, format="ttl")
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasSpecPath>",
-                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
-    
-    
+                                       "<https://mustrd.com/mustrdTest/test_unit>",
+                                       "<https://mustrd.com/mustrdTest/hasSpecPath>",
+                                       "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+
     assert found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasDataPath>",
-                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
-    
+                                       "<https://mustrd.com/mustrdTest/test_unit>",
+                                       "<https://mustrd.com/mustrdTest/hasDataPath>",
+                                       "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+
     assert found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasPytestPath>",
-                                             "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
-    
+                                       "<https://mustrd.com/mustrdTest/test_unit>",
+                                       "<https://mustrd.com/mustrdTest/hasPytestPath>",
+                                       "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+
+
 def test_mustrd_missing_props():
     # Mustrd test generation should fail with ValueError if configuration is not conform
     with pytest.raises(ValueError) as error:
@@ -181,44 +189,45 @@ def test_mustrd_missing_props():
     shacl_report_graph = error.value.args[1]
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasSpecPath>",
-                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
-    
-    
+                                       "<https://mustrd.com/mustrdTest/test_unit>",
+                                       "<https://mustrd.com/mustrdTest/hasSpecPath>",
+                                       "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+
     assert found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasDataPath>",
-                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
-    
+                                       "<https://mustrd.com/mustrdTest/test_unit>",
+                                       "<https://mustrd.com/mustrdTest/hasDataPath>",
+                                       "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+
     # hasPytestPath has a default value, no value should be accepted
     assert not found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/hasPytestPath>",
-                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
-
+                                           "<https://mustrd.com/mustrdTest/test_unit>",
+                                           "<https://mustrd.com/mustrdTest/hasPytestPath>",
+                                           "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
 
     #  has a default value, no value should be accepted
     assert not found_error_in_shacl_report(shacl_report_graph,
-                                             "<https://mustrd.com/mustrdTest/test_unit>",
-                                             "<https://mustrd.com/mustrdTest/filterOnTripleStore>",
-                                             "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+                                           "<https://mustrd.com/mustrdTest/test_unit>",
+                                           "<https://mustrd.com/mustrdTest/filterOnTripleStore>",
+                                           "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
+
 
 def test_triplestore_config():
     mustrd_plugin, config = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
     items = mustrd_plugin.items
-    
-    skipped_nodes = list(map(lambda item: item.nodeid,  
+
+    skipped_nodes = list(map(lambda item: item.nodeid,
                              # Filter on skipped items
-                             list(filter(lambda item : isinstance(item.callspec.params["unit_tests"].unit_test, SpecSkipped), items))))
-    
+                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                                                                 SpecSkipped), items))))
+
     assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")
 
-# Returns true if a the report contains a node with the right constraint validation type on the path 
+
+# Returns true if a the report contains a node with the right constraint validation type on the path
 def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type):
     return shacl_report_graph.query(f"""
-                                    PREFIX : <https://mustrd.com/mustrdTest/> 
-                                    PREFIX sh: <http://www.w3.org/ns/shacl#> 
+                                    PREFIX : <https://mustrd.com/mustrdTest/>
+                                    PREFIX sh: <http://www.w3.org/ns/shacl#>
 
                                     ASK {{
                                         [] a sh:ValidationReport ;
@@ -228,14 +237,15 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
                                                 sh:focusNode {node} ;
                                                 sh:resultPath {path} ;
                                                 sh:resultSeverity sh:Violation ;
-                                                sh:sourceConstraintComponent {constraint_type} ; 
+                                                sh:sourceConstraintComponent {constraint_type} ;
                                             ]
-                                    }} 
+                                    }}
                                     """).askAnswer
-    
+
 
 def get_node_id(ttl_file: str, path: str):
     return f"mustrd_tests/{path}::test_unit[{ttl_file}@{path}]"
+
 
 def has_item(node_ids: list, ttl_file: str, path: str):
     return get_node_id(ttl_file, path) in node_ids

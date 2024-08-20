@@ -69,7 +69,7 @@ test-data:a_complete_construct_scenario
 
         specs, skipped_spec_results = \
             get_specs(valid_spec_uris, spec_graph, triple_stores, run_config)
-            
+
         final_results = invalid_spec_results + skipped_spec_results + run_specs(specs)
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(final_results, list)
