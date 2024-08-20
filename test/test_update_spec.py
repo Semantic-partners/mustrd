@@ -587,8 +587,6 @@ class TestRunUpdateSpec:
         """
         given = Graph().parse(data=triples, format="ttl")
         query = "insert { ?s ?p ?o ; ?pred ?obj . } where { ?s ?p ?o OPTIONAL { ?s ?pred ?obj } }"
-        # query.bindings = {Variable('p'): URIRef("https://semanticpartners.com/data/test/pred"),
-        #                   Variable('pred'): URIRef("https://semanticpartners.com/data/test/predicate")}
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -657,7 +655,6 @@ class TestRunUpdateSpec:
 
         query = "delete { ?s ?p ?o } insert { ?s <https://semanticpartners.com/data/test/predicate> ?o } where { ?s ?p ?o }"
 
-        # query.bindings = {Variable('o'): Literal('hello world')}
         spec = f"""
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .

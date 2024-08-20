@@ -179,7 +179,6 @@ def test_mustrd_missing_props():
         run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only")
     assert error
     shacl_report_graph = error.value.args[1]
-    #report = shacl_report_graph.serialize(None, format="ttl")
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
                                              "<https://mustrd.com/mustrdTest/test_unit>",
