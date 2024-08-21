@@ -56,6 +56,6 @@ We're a specialist consultancy in Semantic Tech, we're putting this out in case 
 
 // tag::body[]
 Get started:
-include::GETSTARTED.adoc
+include::GETSTARTED.adoc[tags=body]
 Developer doc:
 include::mustrd/README.adoc[tags=body]
