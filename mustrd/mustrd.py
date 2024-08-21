@@ -596,6 +596,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 return SpecPassed(spec.spec_uri, spec.triple_store["type"])
         else:
             # message += f"\nexpected:\n{then}\nactual:{df}"
+            log.error("\n" + df_diff.to_markdown())
             log.error(message)
             # print(spec.spec_uri)
             # print("actual:")
