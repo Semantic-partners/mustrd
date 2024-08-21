@@ -16,7 +16,7 @@ The default triplestore config file is https://github.com/Semantic-partners/must
 
 You can store your passwords in another https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores_secrets.ttl[file] at the same location and same name suffixed with "_secrets".
 
-For example passwords of triplestores configured in [repo_root]/test/triplestore_config/triplestores.ttl have to be stored in the file [repo_root]/test/triplestore_config/triplestores_secrets.ttl
+For example passwords of triplestores configured in `/test/triplestore_config/triplestores.ttl` have to be stored in the file `/test/triplestore_config/triplestores_secrets.ttl`
 
 By default .gitignore is configured so you don't commit the secrets files, while the triplestore configuration files will be commited, so be sure to store your secrets in the separated _secrets file.
 
@@ -29,6 +29,31 @@ Triplestore configuration can be placed anywhere, inside our outside of your pro
 In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/local_configuration.ttl[here] 
 
 In that file you can define different test that mustrd will run when you give that file as parameter of mustrd pytest plugin
+
+For each test, you can configure 
+- `hasSpecPath`: folder where your mustrd spec are (in subfolder as well).
+- `hasDataPath`: folder where your input/output data is
+- `triplestoreSpecPath`: where your external triplestore configuration file is located
+- `filterOnTripleStore`: list of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
+
+For example 
+```
+:test_anzo a :MustrdTest;
+            :hasSpecPath "test/test_examples/";
+            :hasDataPath "test/test_data";
+            :hasPytestPath "anzo";
+            :triplestoreSpecPath "test/triplestore_config/triplestores.ttl";
+            :filterOnTripleStore triplestore:anzo_test .
+```
+I'll run the tests contained in all the specs
+
+located in `[project_root]/test/test_examples/` 
+
+using the data located in `[project_root]/test/test_data` 
+
+against the triplestore defined as `triplestore:anzo_test` in the file `[project_root]/test/triplestore_config/triplestores.ttl`
+
+If needed, the secrets have to be located in `[project_root]/test/triplestore_config/triplestores_secrets.ttl`
 
 ----
 // tag::body[]
