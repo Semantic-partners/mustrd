@@ -24,6 +24,16 @@ To associate a triplestore configuration and its secrets, use the same subject i
 
 Triplestore configuration can be placed anywhere, inside our outside of your project, but it has to be referenced in the test configuration.
 
+All the triplestore defined must contain a `url` and a `port` defined.
+
+Depending on the triplestore other properties can be mandatory as well:
+
+For anzo: 
+* `gqeURI` is necessary to identify on which anzograph the queries will be sent. 
+* `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. those must be already created layer URI. Graphmart has to be deployed.
+
+For graphDB only `repository` is mandatory. If `inputGraph` is not defined then all graphs of the repository will be queried.
+
 == Edit Test configuration
 
 In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/local_configuration.ttl[here] 
@@ -31,10 +41,10 @@ In the template project, the default test configuration is located https://githu
 In that file you can define different test that mustrd will run when you give that file as parameter of mustrd pytest plugin
 
 For each test, you can configure 
-- `hasSpecPath`: folder where your mustrd spec are (in subfolder as well).
-- `hasDataPath`: folder where your input/output data is
-- `triplestoreSpecPath`: where your external triplestore configuration file is located
-- `filterOnTripleStore`: list of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
+* `hasSpecPath`: folder where your mustrd spec are (in subfolder as well).
+* `hasDataPath`: folder where your input/output data is
+* `triplestoreSpecPath`: where your external triplestore configuration file is located
+* `filterOnTripleStore`: list of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
 
 For example 
 ```
@@ -56,4 +66,3 @@ against the triplestore defined as `triplestore:anzo_test` in the file `[project
 If needed, the secrets have to be located in `[project_root]/test/triplestore_config/triplestores_secrets.ttl`
 
 ----
-// tag::body[]
