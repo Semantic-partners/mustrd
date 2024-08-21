@@ -24,14 +24,14 @@ To associate a triplestore configuration and its secrets, use the same subject i
 
 Triplestore configuration can be placed anywhere, inside our outside of your project, but it has to be referenced in the test configuration.
 
-All the triplestore defined must contain a `url` and a `port` defined.
+All the triplestore defined must contain a `url` and a `port`.
 
 Depending on the triplestore other properties can be mandatory as well:
 
 For anzo: 
 
 * `gqeURI` is necessary to identify on which anzograph the queries will be sent. 
-* `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. those must be already created layer URI. Graphmart has to be deployed.
+* `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. Those must be already created layer URI. Graphmart has to be deployed.
 
 For graphDB only `repository` is mandatory. If `inputGraph` is not defined then all graphs of the repository will be queried.
 
@@ -45,6 +45,7 @@ For each test, you can configure :
 
 * `hasSpecPath`: folder where your mustrd spec are (in subfolder as well).
 * `hasDataPath`: folder where your input/output data is
+* `hasPytestPath `: path of in the test hierarchy
 * `triplestoreSpecPath`: where your external triplestore configuration file is located
 * `filterOnTripleStore`: list of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
 
@@ -69,7 +70,7 @@ If needed, the secrets have to be located in `[project_root]/test/triplestore_co
 
 == Creating your own Test Specifications
 
-If you have got this far then you are probably ready to create your own specifications to test your application SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure one or more alternatives. The instructions for this are included in <<Configuring external triplestores>> below.
+If you have got this far then you are probably ready to create your own specifications to test your application SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure one or more alternatives. The instructions for this are included in <<Edit the triple store configuration>>.
 
 === Paths
 All paths are consired relative. That way mustrd tests can be versionned and shared easily.
@@ -108,7 +109,7 @@ Multiple given statements can be supplied and data is combined into a single dat
                                      rdf:predicate test-data:pred ;
                                      rdf:object    test-data:obj ; ] ; ] ;
 ----
-* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external triplestores>>.
+* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Edit the triple store configuration>>.
 ----
     must:given [ a must:AnzoGraphmartDataset ;
                  must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
@@ -140,7 +141,7 @@ e.g.
                  must:fileName "construct.rq" ;
                  must:queryType must:ConstructSparql  ; ] ;
 ----
-* *AnzoQueryBuilderDataset* - The query is saved in the Query Builder of an Anzo instance and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external triplestores>>.
+* *AnzoQueryBuilderDataset* - The query is saved in the Query Builder of an Anzo instance and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Edit the triple store configuration>>.
 ----
    must:when  [ a must:AnzoQueryBuilderDataset ;
                 must:queryFolder "Mustrd";
@@ -213,7 +214,7 @@ E.g. A table dataset consisting of two ordered rows and three columns.
 ----
     must:then  [ a must:EmptyGraph ] .
 ----
-* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Configuring external triplestores>>.
+* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Edit the triple store configuration>>.
 ----
     must:then [ a must:AnzoGraphmartDataset ;
                 must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
