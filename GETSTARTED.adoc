@@ -1,27 +1,34 @@
 // tag::body[]
+
 == Get started
-== Configuring external triplestores
-The configuration file for external triplestores can be located outside of the project root as it is specified as an argument to the mustard module or as the -c option on the commandline when running run.py.
 
-It is anticipated that the external triplestore is running as mustrd is not configured to start them.
+Instanciate the project https://github.com/Semantic-partners/mustrd-template[mustrd-template]. It contains the basic configuration to get mustrd running.
 
-Currently, the supported external triplestores are GraphDB and Anzo.
+Clone the created repo in local.
 
-The configuration file should be serialised RDF. An example in Turtle format is included below for GraphDB. For Anzo the *must:repository* value is replaced with a *must:gqeURI*.
-----
-@prefix must:      <https://mustrd.com/model/> .
-must:GraphDbConfig1  a must:GraphDbConfig ;
-        must:url "http://localhost";
-        must:port "7200";
-        must:inputGraph "http://localhost:7200/test-graph" ;
-        must:repository "mustrd" .
-----
-To avoid versioning secrets when you want to version triplestore configuration (for example in case you want to run mustrd in CI), you have to configure user/password in a different file.
-This file must be named as the triple store configuration file, but with "_secrets" just before the extension. For example triplestores.ttl -> triplestores_secrets.ttl
-Subjects in the two files must match, no need to redefine the type, for example:
-----
-@prefix must:      <https://mustrd.com/model/> .
-must:GraphDbConfig1  must:username 'test' ;
-              must:password 'test' .
+== Edit the triple store configuration
+
+If you just want to use embedded RDFlib, you don't need to change anything.
+
+If you want to use an external triplestore such as Anzo or graphDB, you have to define some basic parameters.
+
+The default triplestore config file is https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores.ttl[here]
+
+You can store your passwords in another https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores_secrets.ttl[file] at the same location and same name suffixed with "_secrets".
+
+For example passwords of triplestores configured in [repo_root]/test/triplestore_config/triplestores.ttl have to be stored in the file [repo_root]/test/triplestore_config/triplestores_secrets.ttl
+
+By default .gitignore is configured so you don't commit the secrets files, while the triplestore configuration files will be commited, so be sure to store your secrets in the separated _secrets file.
+
+To associate a triplestore configuration and its secrets, use the same subject in configuration and secret file, like it is done in the example.
+
+Triplestore configuration can be placed anywhere, inside our outside of your project, but it has to be referenced in the test configuration.
+
+== Edit Test configuration
+
+In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/local_configuration.ttl[here] 
+
+In that file you can define different test that mustrd will run when you give that file as parameter of mustrd pytest plugin
+
 ----
 // tag::body[]
