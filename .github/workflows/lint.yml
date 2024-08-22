@@ -2,8 +2,7 @@ name: Lint comment
 
 on:
   pull_request:
-    branches:
-      - master
+  push:
 
 jobs:
   run-linters:
