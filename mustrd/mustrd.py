@@ -597,6 +597,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             else:
                 return SpecPassed(spec.spec_uri, spec.triple_store["type"])
         else:
+            log.error("\n" + df_diff.to_markdown())
             log.error(message)
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
