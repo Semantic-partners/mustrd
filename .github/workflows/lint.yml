@@ -1,9 +1,8 @@
 name: Lint comment
 
-on:
+on: 
   pull_request:
-    branches:
-      - master
+  push:
 
 jobs:
   run-linters:
