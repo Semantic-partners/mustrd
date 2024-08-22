@@ -31,7 +31,6 @@ from .mustrd import get_triple_store_graph, run_specs, get_triple_stores, review
 from pathlib import Path
 from .namespace import TRIPLESTORE
 from .utils import get_project_root
-import logging 
 log = logger_setup.setup_logger(__name__)
 
 
@@ -50,7 +49,7 @@ def parse_args() -> argparse.Namespace:
 
 # https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
-    #given_path = when_path = then_path = None
+    # Given_path = when_path = then_path = None
     project_root = get_project_root()
     run_config = {}
     args = parse_args()
@@ -59,7 +58,7 @@ def main(argv):
 
     verbose = args.verbose
     if verbose:
-        log.info(f"Verbose set")
+        log.info("Verbose set")
         run_config["verbose"] = True
 
     if args.config:
@@ -67,7 +66,7 @@ def main(argv):
         log.info(f"Path for triple store configuration is {triplestore_spec_path}")
         triple_stores = get_triple_stores(get_triple_store_graph(triplestore_spec_path))
     else:
-        log.info(f"No triple store configuration added, running default configuration")
+        log.info("No triple store configuration added, running default configuration")
         triple_stores = [{'type': TRIPLESTORE.RdfLib}]
     log.info("Triple Stores: " + str(triple_stores))
     if args.data:

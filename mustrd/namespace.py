@@ -25,10 +25,11 @@ SOFTWARE.
 from rdflib import URIRef
 from rdflib.namespace import DefinedNamespace, Namespace
 
+
 # Namespace for the test specifications
 class MUST(DefinedNamespace):
     _NS = Namespace("https://mustrd.com/model/")
-    
+
     # Specification classes
     TestSpec: URIRef
     SelectSparql: URIRef
@@ -55,7 +56,7 @@ class MUST(DefinedNamespace):
     hasBinding: URIRef
     variable: URIRef
     boundValue: URIRef
-    focus:URIRef
+    focus: URIRef
 
     # Specification data sources
     TableDataset: URIRef
@@ -85,15 +86,15 @@ class MUST(DefinedNamespace):
     AnzoGraphmartQueryDrivenTemplatedStepSparqlSource: URIRef
     anzoQueryStep: URIRef
     anzoGraphmartLayer: URIRef
-    
+
     graphmart: URIRef
     layer: URIRef
 
-    
     # FIXME: There is nothing to do that by default?
     @classmethod
     def get_local_name(cls, uri: URIRef):
         return str(uri).split(cls._NS)[1]
+
 
 # Namespace for triplestores
 class TRIPLESTORE(DefinedNamespace):
@@ -103,15 +104,16 @@ class TRIPLESTORE(DefinedNamespace):
     Anzo: URIRef
     ExternalTripleStore: URIRef
     InternalTripleStore: URIRef
-    
+
     gqeURI: URIRef
-    inputGraph: URIRef 
-    outputGraph: URIRef # anzo specials?     # Triple store config parameters
+    inputGraph: URIRef
+    outputGraph: URIRef  # anzo specials?     # Triple store config parameters
     url: URIRef
     port: URIRef
     username: URIRef
     password: URIRef
     repository: URIRef
+
 
 # namespace for pytest_mustrd config
 class MUSTRDTEST(DefinedNamespace):
@@ -122,4 +124,3 @@ class MUSTRDTEST(DefinedNamespace):
     triplestoreSpecPath: URIRef
     hasPytestPath: URIRef
     filterOnTripleStore: URIRef
-    

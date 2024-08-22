@@ -43,7 +43,7 @@ class testStatus(Enum):
     SKIPPED = "skipped"
 
 
-TEMPLATE_FOLDER =  Path(os.path.join(get_mustrd_root(), "templates/"))
+TEMPLATE_FOLDER = Path(os.path.join(get_mustrd_root(), "templates/"))
 
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
