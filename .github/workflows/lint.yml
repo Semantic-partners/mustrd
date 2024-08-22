@@ -28,4 +28,5 @@ jobs:
           auto_fix: false
           flake8: true
           flake8_auto_fix: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          flake8_args: "--exclude .venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics"
+          commit: false
