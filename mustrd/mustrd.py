@@ -599,6 +599,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         else:
             log.error("\n" + df_diff.to_markdown())
             log.error(message)
+            # This comment will result in a flake8 error or warning since the line will be too long. Let test if that works, maybe not, who knows. how many characters has this line? I don't know but probably too much
             return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
     except ParseException as e:
