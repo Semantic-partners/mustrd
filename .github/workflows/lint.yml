@@ -3,7 +3,7 @@ name: Lint comment
 on:
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   run-linters:
