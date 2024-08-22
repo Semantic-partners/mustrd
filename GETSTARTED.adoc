@@ -22,9 +22,9 @@ By default .gitignore is configured so you don't commit the secrets files, while
 
 To associate a triplestore configuration and its secrets, use the same subject in configuration and secret file, like it is done in the example.
 
-Triplestore configuration can be placed anywhere, inside our outside of your project, but it has to be referenced in the test configuration.
+Triplestore configuration can be placed anywhere, inside or outside of your project, but it has to be referenced in the test configuration.
 
-All the triplestore defined must contain a `url` and a `port`.
+All the triplestores defined must contain a `url` and a `port`.
 
 Depending on the triplestore other properties can be mandatory as well:
 
@@ -37,17 +37,17 @@ For graphDB only `repository` is mandatory. If `inputGraph` is not defined then 
 
 == Edit Test configuration
 
-In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/local_configuration.ttl[here] 
+In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/mustrd_configuration.ttl[here] 
 
 In that file you can define different test that mustrd will run when you give that file as parameter of mustrd pytest plugin
 
 For each test, you can configure :
 
-* `hasSpecPath`: folder where your mustrd spec are (in subfolder as well).
-* `hasDataPath`: folder where your input/output data is
-* `hasPytestPath `: path of in the test hierarchy
-* `triplestoreSpecPath`: where your external triplestore configuration file is located
-* `filterOnTripleStore`: list of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
+* `hasSpecPath`: Folder where your mustrd spec are (looks in subfolders as well).
+* `hasDataPath`: Folder where your input/output data is
+* `hasPytestPath `: Path in the test hierarchy
+* `triplestoreSpecPath`: Where your external triplestore configuration file is located
+* `filterOnTripleStore`: List of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
 
 For example 
 ```
@@ -60,13 +60,35 @@ For example
 ```
 I'll run the tests contained in all the specs
 
-located in `[project_root]/test/test_examples/` 
+Located in `[project_root]/test/test_examples/` 
 
-using the data located in `[project_root]/test/test_data` 
+Using the data located in `[project_root]/test/test_data` 
 
-against the triplestore defined as `triplestore:anzo_test` in the file `[project_root]/test/triplestore_config/triplestores.ttl`
+Against the triplestore defined as `triplestore:anzo_test` in the file `[project_root]/test/triplestore_config/triplestores.ttl`
 
 If needed, the secrets have to be located in `[project_root]/test/triplestore_config/triplestores_secrets.ttl`
+
+== Run the tests
+
+Once you have defined your triplestore(s) and your mustrd test(s), you can already run the mustrd-template's default test specs to be sure you configured everything well.
+
+For that, open a command line and go to your repo's root folder.
+
+Then execute the following command:
+
+```
+poetry run pytest --mustrd --config=test/mustrd_configuration.ttl --md=render/github_job_summary.md
+```
+
+which means that you use poetry to run pytest, using the mustrd pytest plugin.
+
+To the mustrd pytest plugin, you give the parameter:
+
+* config: Mustrd test config that you configured in <<Edit Test configuration>> 
+
+* md: Where test execution summary will output
+
+Now that you could run the default tests, you probably want to define your own tests!
 
 == Creating your own Test Specifications
 
