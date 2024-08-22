@@ -167,3 +167,4 @@ mustrd.iml
 *_secrets*
 test/triplestore_config/*
 junit/*
+test/anzoConnectionConfig.ttl
