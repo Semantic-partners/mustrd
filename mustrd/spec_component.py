@@ -342,8 +342,9 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
                                                                  predicate=MUST.file)))
     spec_component.value = get_spec_component_from_file(get_file_absolute_path(spec_component_details, file_path))
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
 
     return spec_component
 
@@ -358,8 +359,9 @@ def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDe
                                                 predicate=MUST.queryText))
 
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -373,9 +375,10 @@ def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails
     # Get specComponent with http GET protocol
     spec_component.value = requests.get(str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                predicate=MUST.dataSourceUrl)).content)   
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+                                                predicate=MUST.dataSourceUrl)).content) 
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -452,8 +455,9 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -471,14 +475,16 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
 @get_spec_component.method((MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource, MUST.when))
-def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
+def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent: # noqa
+    spec_component = init_spec_component(
+        spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
 
     # Get WHEN specComponent from query builder
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
@@ -535,7 +541,7 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
+def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec: # noqa
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
@@ -575,7 +581,7 @@ def get_spec_from_statements(subject: URIRef,
                              predicate: URIRef,
                              spec_graph: Graph) -> Graph:
     statements_query = f"""
-    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
@@ -600,7 +606,7 @@ def get_spec_from_table(subject: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
     # query the spec to get the expected result to convert to dataframe for comparison
     then_query = f"""
-        prefix sh:        <http://www.w3.org/ns/shacl#> 
+        prefix sh:        <http://www.w3.org/ns/shacl#>
             SELECT ?row ?variable ?binding ?order
             WHERE {{
                  <{subject}> <{predicate}> [
