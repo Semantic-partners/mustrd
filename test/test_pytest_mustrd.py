@@ -62,7 +62,7 @@ def test_collection_full():
     assert has_item(collected_nodes, "insert_data_spec.mustrd.ttl", pytest_path)
     assert has_item(collected_nodes, "insert_spec.mustrd.ttl", pytest_path)
     assert has_item(collected_nodes, "invalid_delete_insert_spec_with_table_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl", pytest_path)
+    assert has_item(collected_nodes, "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl", pytest_path) # noqa
     assert has_item(collected_nodes, "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl", pytest_path)
     assert has_item(collected_nodes, "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl", pytest_path)
     assert has_item(collected_nodes, "invalid_select_spec_with_empty_graph_result.mustrd.ttl", pytest_path)
