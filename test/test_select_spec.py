@@ -149,7 +149,7 @@ class TestRunSelectSpec:
             assert table_diff == \
                 """|    | ('s', 'expected')                                    | ('s', 'actual')                            |
 |---:|:-----------------------------------------------------|:-------------------------------------------|
-|  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |"""
+|  0 | https://semanticpartners.com/data/test/wrong-subject | https://semanticpartners.com/data/test/sub |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -214,7 +214,7 @@ class TestRunSelectSpec:
             assert then_result.spec_uri == spec_uri
             assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
-|  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |"""
+|  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -558,7 +558,7 @@ class TestRunSelectSpec:
             assert then_result.spec_uri == spec_uri
             assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                            | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
 |---:|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 |                     | https://semanticpartners.com/data/test/sub |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 |                     | https://semanticpartners.com/data/test/sub |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -616,7 +616,7 @@ class TestRunSelectSpec:
             assert then_result.spec_uri == spec_uri
             assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('s', 'expected')                          | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   |
 |---:|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:--------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
-|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/sub |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/sub |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -731,7 +731,7 @@ class TestRunSelectSpec:
             assert then_result.spec_uri == spec_uri
             assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
 |---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
-|  0 |                  25 |                25 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |"""
+|  0 |                  25 |                25 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -854,7 +854,7 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')                            | ('o_datatype', 'expected')              | ('o_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
 |---:|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/obj | https://semanticpartners.com/data/test/obj | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 | https://semanticpartners.com/data/test/obj | https://semanticpartners.com/data/test/obj | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -913,7 +913,7 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 2 column(s)"
             assert table_diff == """|    | ('o', 'expected')                          | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                |
 |---:|:-------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 | https://semanticpartners.com/data/test/obj |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |"""  # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -968,7 +968,7 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 2 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('obj', 'expected')                           | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                             | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                |
 |---:|:----------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/object |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 | https://semanticpartners.com/data/test/object |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1033,7 +1033,7 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')   | ('s', 'actual')                                | ('s_datatype', 'expected')   | ('s_datatype', 'actual')                | ('p', 'expected')   | ('p', 'actual')                                  | ('p_datatype', 'expected')   | ('p_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                               | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
 |---:|:--------------------|:-----------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:-------------------------------------------------|:-----------------------------|:----------------------------------------|:--------------------|:----------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 |                     | https://semanticpartners.com/data/test/subject |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/predicate |                              | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/object |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1105,7 +1105,7 @@ class TestRunSelectSpec:
             assert message == "Expected 2 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('s', 'expected')                              | ('s', 'actual')   | ('s_datatype', 'expected')              | ('s_datatype', 'actual')   | ('p', 'expected')                                | ('p', 'actual')   | ('p_datatype', 'expected')              | ('p_datatype', 'actual')   | ('o', 'expected')                             | ('o', 'actual')   | ('o_datatype', 'expected')              | ('o_datatype', 'actual')   |
 |---:|:-----------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:-------------------------------------------------|:------------------|:----------------------------------------|:---------------------------|:----------------------------------------------|:------------------|:----------------------------------------|:---------------------------|
-|  0 | https://semanticpartners.com/data/test/subject |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/predicate |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/object |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |"""
+|  0 | https://semanticpartners.com/data/test/subject |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/predicate |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            | https://semanticpartners.com/data/test/object |                   | http://www.w3.org/2001/XMLSchema#anyURI |                            |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1185,7 +1185,7 @@ class TestRunSelectSpec:
 |---:|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:---------------------------------------------|:---------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|
 |  0 |                                             | https://semanticpartners.com/data/test/sub2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                              | https://semanticpartners.com/data/test/pred2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                             | https://semanticpartners.com/data/test/obj2 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |
 |  1 |                                             | https://semanticpartners.com/data/test/sub3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                              | https://semanticpartners.com/data/test/pred3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                             | https://semanticpartners.com/data/test/obj3 |                                         | http://www.w3.org/2001/XMLSchema#anyURI |
-|  2 | https://semanticpartners.com/data/test/sub4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/pred4 |                                              | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         |"""
+|  2 | https://semanticpartners.com/data/test/sub4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/pred4 |                                              | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/obj4 |                                             | http://www.w3.org/2001/XMLSchema#anyURI |                                         |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1217,7 +1217,7 @@ class TestRunSelectSpec:
                                         must:boundValue  test-data:sub2 ; ],
                                       [ must:variable "o" ;
                                         must:boundValue  test-data:obj ; ]; ] ; ] .
-        """
+        """ # noqa
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
@@ -1270,7 +1270,7 @@ class TestRunSelectSpec:
                                         must:boundValue  test-data:sub2 ; ],
                                       [ must:variable "o" ;
                                         must:boundValue  test-data:object ; ]; ] ; ] .
-        """
+        """ # noqa
         spec_graph = Graph().parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
@@ -1299,7 +1299,7 @@ class TestRunSelectSpec:
             assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                             | ('o', 'actual')                            |
 |---:|:----------------------------------------------|:-------------------------------------------|
-|  1 | https://semanticpartners.com/data/test/object | https://semanticpartners.com/data/test/obj |"""
+|  1 | https://semanticpartners.com/data/test/object | https://semanticpartners.com/data/test/obj |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1359,7 +1359,7 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
 |---:|:-------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
-|  0 | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |"""
+|  0 | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1421,7 +1421,7 @@ class TestRunSelectSpec:
 |---:|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
 |  0 |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
 |  1 |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                            | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/sub |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/sub |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1482,7 +1482,7 @@ class TestRunSelectSpec:
 |---:|:-------------------------------------------|:----------------------------------------------|:----------------------------------------|:----------------------------------------|:-----------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:--------------------------------------------|:-----------------------------|:----------------------------------------|
 |  0 |                                            | https://semanticpartners.com/data/test/obj    |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
 |  1 |                                            | https://semanticpartners.com/data/test/object |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                                                | https://semanticpartners.com/data/test/sub |                                         | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/pred |                              | http://www.w3.org/2001/XMLSchema#anyURI |
-|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |"""
+|  2 | https://semanticpartners.com/data/test/obj |                                               | http://www.w3.org/2001/XMLSchema#anyURI |                                         | https://semanticpartners.com/data/test/subject |                                            | http://www.w3.org/2001/XMLSchema#anyURI |                                         |                     |                                             |                              |                                         |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1541,7 +1541,7 @@ class TestRunSelectSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert isinstance(then_component, TableThenSpec) 
+        assert isinstance(then_component, TableThenSpec)
 
     def test_select_spec_ordered_passes_with_warning(self):
 
@@ -1663,7 +1663,7 @@ class TestRunSelectSpec:
             assert table_diff == """|    | ('s', 'expected')                           | ('s', 'actual')                             | ('p', 'expected')                            | ('p', 'actual')                              | ('o', 'expected')                           | ('o', 'actual')                             |
 |---:|:--------------------------------------------|:--------------------------------------------|:---------------------------------------------|:---------------------------------------------|:--------------------------------------------|:--------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/sub2 | https://semanticpartners.com/data/test/sub1 | https://semanticpartners.com/data/test/pred2 | https://semanticpartners.com/data/test/pred1 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj1 |
-|  1 | https://semanticpartners.com/data/test/sub1 | https://semanticpartners.com/data/test/sub2 | https://semanticpartners.com/data/test/pred1 | https://semanticpartners.com/data/test/pred2 | https://semanticpartners.com/data/test/obj1 | https://semanticpartners.com/data/test/obj2 |"""
+|  1 | https://semanticpartners.com/data/test/sub1 | https://semanticpartners.com/data/test/sub2 | https://semanticpartners.com/data/test/pred1 | https://semanticpartners.com/data/test/pred2 | https://semanticpartners.com/data/test/obj1 | https://semanticpartners.com/data/test/obj2 |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -1722,7 +1722,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
 
     def test_select_spec_not_all_ordered_fails(self):
 
@@ -1780,7 +1780,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
 
     def test_select_spec_expected_fewer_rows_fails_ordered(self):
 
@@ -1838,7 +1838,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row."
+        assert then_result.message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
 
     def test_select_given_file_then_file_spec_passes(self):
 
@@ -1933,6 +1933,6 @@ class TestRunSelectSpec:
             assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s)"
             assert table_diff == """|    | ('o', 'expected')                           | ('o', 'actual')                            |
 |---:|:--------------------------------------------|:-------------------------------------------|
-|  0 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj |"""
+|  0 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
