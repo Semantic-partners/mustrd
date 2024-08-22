@@ -29,7 +29,7 @@ from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
-from mustrd.spec_component import ThenSpec, GivenSpec, WhenSpec, TableThenSpec, parse_spec_component
+from mustrd.spec_component import ThenSpec, GivenSpec, TableThenSpec, parse_spec_component
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -42,8 +42,7 @@ class TestSpecParserTest:
             @prefix sh: <http://www.w3.org/ns/shacl#> .
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
-            
-            
+
             <{select_spec_uri}>
                  a          must:TestSpec ;
     must:given [ a must:StatementsDataset ;
@@ -52,7 +51,7 @@ class TestSpecParserTest:
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ; 
+                                   must:queryText  "select ?s ?p ?o {{ ?s ?p ?o }}" ;
                  must:queryType must:SelectSparql   ; ] ;
     must:then  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
@@ -80,7 +79,7 @@ class TestSpecParserTest:
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ; 
+                                   must:queryText  "construct {{ ?o ?s ?p }} {{ ?s ?p ?o }}" ;
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
@@ -107,7 +106,7 @@ class TestSpecParserTest:
         expected_initial_state = Graph()
         expected_initial_state.parse(data=expected_triples, format='ttl')
 
-        assert type(given_component) == GivenSpec
+        assert isinstance(given_component, GivenSpec)
         assert isomorphic(given, expected_initial_state), graph_comparison_message(expected_initial_state, given)
 
     def test_when_select(self):
@@ -122,7 +121,7 @@ class TestSpecParserTest:
 
         expected_query = "select ?s ?p ?o { ?s ?p ?o }"
 
-        assert type(when_component) == list
+        assert isinstance(when_component, list)
         assert when_component[0].value == expected_query
 
     def test_then_select(self):
@@ -141,7 +140,7 @@ class TestSpecParserTest:
         actual_result = then_component.value[["s", "s_datatype", "p", "p_datatype", "o", "o_datatype"]]
         df_diff = expected_df.compare(actual_result, result_names=("expected", "actual"))
         assert df_diff.empty, f"\n{df_diff.to_markdown()}"
-        assert type(then_component) == TableThenSpec
+        assert isinstance(then_component, TableThenSpec)
 
     def test_when_construct(self):
         spec_graph = Graph()
@@ -155,7 +154,7 @@ class TestSpecParserTest:
         expected_query = "construct { ?o ?s ?p } { ?s ?p ?o }"
 
         assert when_component[0].value == expected_query
-        assert type(when_component) == list
+        assert isinstance(when_component, list)
 
     def test_then_construct(self):
         spec_graph = Graph()
@@ -172,5 +171,5 @@ class TestSpecParserTest:
         expected_graph = Graph()
         expected_graph.add((TEST_DATA.obj, TEST_DATA.sub, TEST_DATA.pred))
 
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
         assert isomorphic(then, expected_graph), graph_comparison_message(expected_graph, then)
