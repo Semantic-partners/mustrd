@@ -375,7 +375,7 @@ def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails
     # Get specComponent with http GET protocol
     spec_component.value = requests.get(str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                predicate=MUST.dataSourceUrl)).content) 
+                                                predicate=MUST.dataSourceUrl)).content)
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType)
