@@ -6,7 +6,7 @@ import toml
 from rdflib import Graph, Literal, URIRef, RDF
 
 from mustrd.mustrd import get_credential_from_file, get_triple_stores
-from mustrd.namespace import MUST, TRIPLESTORE
+from mustrd.namespace import TRIPLESTORE
 
 
 class TestGetCredentialFromFile(unittest.TestCase):

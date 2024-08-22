@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 from pathlib import Path
 
 from pyparsing import ParseException
@@ -35,7 +34,7 @@ from mustrd.mustrd import SpecPassed, ConstructSpecFailure, SparqlParseFailure, 
 from mustrd.steprunner import run_when
 from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
-from mustrd.spec_component import get_spec_component_from_file, ThenSpec, TableThenSpec, parse_spec_component
+from mustrd.spec_component import ThenSpec, TableThenSpec, parse_spec_component
 
 from test.addspec_source_file_to_spec_graph import parse_spec
 
@@ -53,15 +52,15 @@ class TestRunConstructSpec:
     def test_construct_spec_passes(self):
         run_config = {}
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
-        spec = f"""
+        spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        
-        test-data:my_first_spec 
+
+        test-data:my_first_spec
             a must:TestSpec ;
                     must:when  [ a must:TextSparqlSource ;
-                 must:queryText  "construct {{ ?o ?s ?p }} where {{ ?s ?p ?o }}" ;
+                 must:queryText  "construct { ?o ?s ?p } where { ?s ?p ?o }" ;
                  must:queryType must:ConstructSparql  ; ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
@@ -88,7 +87,7 @@ class TestRunConstructSpec:
         self.triple_store["given"] = given
         result = run_when(spec_uri, self.triple_store, when_component[0])
         assert isomorphic(result, then_component.value)
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_spec_fails_with_graph_comparison(self):
         run_config = {}
@@ -98,8 +97,8 @@ class TestRunConstructSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        
-        test-data:my_failing_construct_spec 
+
+        test-data:my_failing_construct_spec
             a must:TestSpec ;
                                 must:when  [ a must:TextSparqlSource ;
                  must:queryText  "construct { ?p ?o ?s } where { ?s ?p ?o }" ;
@@ -131,7 +130,7 @@ class TestRunConstructSpec:
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
         expected_in_expected_not_in_actual = Graph()
         expected_in_expected_not_in_actual.add((TEST_DATA.obj, TEST_DATA.sub, TEST_DATA.pred))
@@ -164,15 +163,15 @@ class TestRunConstructSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        
-        test-data:my_construct_spec 
+
+        test-data:my_construct_spec
             a must:TestSpec ;
             must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
                                 must:queryType must:ConstructSparql  ;
                                 must:hasBinding [ must:variable "o" ;
                                                   must:boundValue "hello world" ; ] ;
-                            ] ;                                 
+                            ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -204,7 +203,7 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_spec_with_variable_fails_with_graph_comparison(self):
 
@@ -219,15 +218,15 @@ class TestRunConstructSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            
-            test-data:my_failing_construct_spec 
+
+            test-data:my_failing_construct_spec
                 a must:TestSpec ;
                 must:when  [ a  must:TextSparqlSource ;
                                     must:queryText  "{construct_query}" ;
                                     must:queryType must:ConstructSparql  ;
                                     must:hasBinding [ must:variable "o" ;
                                                       must:boundValue "hello world" ; ] ;
-                                ] ;  
+                                ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -257,7 +256,7 @@ class TestRunConstructSpec:
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
         expected_in_expected_not_in_actual = Graph()
         expected_in_expected_not_in_actual.add((TEST_DATA.sub, TEST_DATA.pred, TEST_DATA.obj))
@@ -288,14 +287,14 @@ class TestRunConstructSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            
-            test-data:my_construct_spec 
+
+            test-data:my_construct_spec
                 a must:TestSpec ;
                 must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
-                                must:queryType must:ConstructSparql  ; 
+                                must:queryType must:ConstructSparql  ;
                                 must:hasBinding [ must:variable "o" ;
-                                            must:boundValue  "hello world" ; ] ; ] ;  
+                                            must:boundValue  "hello world" ; ] ; ] ;
                 must:then  [ a must:EmptyGraph ] .
             """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -320,7 +319,7 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_unexpected_result_spec_fails(self):
         run_config = {}
@@ -359,7 +358,7 @@ class TestRunConstructSpec:
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
         expected_in_expected_not_in_actual = Graph()
 
@@ -388,14 +387,14 @@ class TestRunConstructSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            
-            test-data:my_failing_construct_spec 
+
+            test-data:my_failing_construct_spec
                 a must:TestSpec ;
                 must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
-                                must:queryType must:ConstructSparql  ; 
+                                must:queryType must:ConstructSparql  ;
                                 must:hasBinding [ must:variable "o" ;
-                                            must:boundValue  "hello world" ; ] ; ] ; 
+                                            must:boundValue  "hello world" ; ] ; ] ;
                 must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -425,7 +424,7 @@ class TestRunConstructSpec:
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
         expected_in_expected_not_in_actual = Graph()
         expected_in_expected_not_in_actual.add((TEST_DATA.sub, TEST_DATA.pred, TEST_DATA.obj))
@@ -459,13 +458,13 @@ class TestRunConstructSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            
-            test-data:my_construct_spec 
+
+            test-data:my_construct_spec
                 a must:TestSpec ;
                 must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
-                                must:queryType must:ConstructSparql  ; 
-                                 ] ; 
+                                must:queryType must:ConstructSparql  ;
+                                 ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -500,7 +499,7 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_spec_result_mismatch_fails_with_graph_comparison(self):
         run_config = {}
@@ -515,13 +514,13 @@ class TestRunConstructSpec:
             @prefix must: <https://mustrd.com/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            
-            test-data:my_failing_construct_spec 
+
+            test-data:my_failing_construct_spec
                 a must:TestSpec ;
                 must:when  [ a  must:TextSparqlSource ;
                                 must:queryText  "{construct_query}" ;
-                                must:queryType must:ConstructSparql  ; 
-                             ] ; 
+                                must:queryType must:ConstructSparql  ;
+                             ] ;
             must:then  [ a must:StatementsDataset ;
                         must:hasStatement [
                             a rdf:Statement ;
@@ -550,7 +549,7 @@ class TestRunConstructSpec:
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
         expected_in_expected_not_in_actual = Graph()
 
@@ -579,17 +578,17 @@ class TestRunConstructSpec:
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-        test-data:my_failing_construct_spec 
+        test-data:my_failing_construct_spec
            a must:TestSpec ;
            must:when  [ a  must:TextSparqlSource ;
                 must:queryText  "{construct_query}" ;
-                must:queryType must:ConstructSparql  ; 
-             ] ; 
+                must:queryType must:ConstructSparql  ;
+             ] ;
             must:then  [ a must:TableDataset ;
                         must:hasRow [ sh:order 1 ;
                                     must:hasBinding[
                                        must:variable "s" ;
-                                       must:boundValue test-data:wrong-subject ; 
+                                       must:boundValue test-data:wrong-subject ;
                                         ] ; ] ; ].
         """
         spec_graph = Graph().parse(data=spec, format='ttl')
@@ -614,8 +613,8 @@ class TestRunConstructSpec:
         except ParseException as e:
             when_result = SparqlParseFailure(spec_uri, self.triple_store["type"], e)
 
-        if type(when_result) == SparqlParseFailure:
-            assert type(then_component) == TableThenSpec
+        if isinstance(when_result, SparqlParseFailure):
+            assert isinstance(then_component, TableThenSpec)
             assert when_result.spec_uri == spec_uri
             assert str(
                 when_result.exception) == "Expected ConstructQuery, found '?'  (at char 10), (line:1, col:11)"
@@ -634,12 +633,12 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
             must:when  [ a  must:FileSparqlSource ;
                 must:file  "{when_path}" ;
-                must:queryType must:ConstructSparql  ; 
-             ] ; 
+                must:queryType must:ConstructSparql  ;
+             ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
@@ -668,7 +667,7 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_given_then_files_spec_passes(self):
         when_path = "data/construct.rq"
@@ -681,7 +680,7 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                 must:given [ a must:StatementsDataset ;
                                    must:hasStatement [ a rdf:Statement ;
@@ -689,16 +688,16 @@ class TestRunConstructSpec:
                                                      rdf:predicate test-data:pred1 ;
                                                      rdf:object    test-data:obj1 ; ] ; ] ,
                             [ a must:FileDataset ;
-                            must:file "data/given.ttl"  ] ;        
+                            must:file "data/given.ttl"  ] ;
                 must:when  [ a  must:FileSparqlSource ;
-                                must:file  "{when_path}" ; 
-                                must:queryType must:ConstructSparql  ; 
-                            ] ;            
+                                must:file  "{when_path}" ;
+                                must:queryType must:ConstructSparql  ;
+                            ] ;
                 must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
                                    rdf:predicate test-data:sub1 ;
-                                   rdf:object    test-data:pred1 ; ] ; ] ; 
+                                   rdf:object    test-data:pred1 ; ] ; ] ;
                  must:then  [ a must:FileDataset ;
                                    must:file "data/thenSuccess.nt" ] .
         """
@@ -730,7 +729,7 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
 
     def test_construct_when_file_from_folder_spec_passes(self):
 
@@ -744,12 +743,12 @@ class TestRunConstructSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                 must:when [ a must:FolderSparqlSource ;
                             must:fileName "construct.rq" ;
                             must:queryType must:ConstructSparql ; ] ;
-                            
+
                 must:then  [ a must:StatementsDataset ;
                              must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj ;
@@ -779,5 +778,4 @@ class TestRunConstructSpec:
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
-        assert type(then_component) == ThenSpec
-
+        assert isinstance(then_component, ThenSpec)

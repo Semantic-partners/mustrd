@@ -32,13 +32,13 @@ import requests
 from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
-import logging 
 
 from . import logger_setup
-from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart, get_query_from_querybuilder, get_query_from_step
+from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart
+from .mustrdAnzo import get_query_from_querybuilder, get_query_from_step
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
-from .utils import  get_mustrd_root
+from .utils import get_mustrd_root
 
 log = logger_setup.setup_logger(__name__)
 
@@ -59,10 +59,12 @@ class WhenSpec(SpecComponent):
     queryType: URIRef = None
     bindings: dict = None
 
+
 @dataclass
 class AnzoWhenSpec(WhenSpec):
     paramQuery: str = None
     queryTemplate: str = None
+
 
 @dataclass
 class ThenSpec(SpecComponent):
@@ -86,22 +88,21 @@ class SpecComponentDetails:
     run_config: dict
     root_paths: list
 
+
 def get_path(path_type: str, file_name, spec_component_details: SpecComponentDetails) -> Path:
     if path_type in spec_component_details.run_config:
         relative_path = os.path.join(spec_component_details.run_config[path_type], file_name)
     else:
         relative_path = file_name
     return get_file_absolute_path(spec_component_details, relative_path)
-    
+
 
 def parse_spec_component(subject: URIRef,
                          predicate: URIRef,
                          spec_graph: Graph,
                          run_config: dict,
                          mustrd_triple_store: dict) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
-    # print(f"parse_spec_component {subject=} {predicate=} ")
     spec_component_nodes = get_spec_component_nodes(subject, predicate, spec_graph)
-    # all_data_source_types = []
     spec_components = []
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
@@ -113,41 +114,41 @@ def parse_spec_component(subject: URIRef,
                 mustrd_triple_store=mustrd_triple_store,
                 spec_component_node=spec_component_node,
                 data_source_type=data_source_type,
-                run_config=run_config, 
+                run_config=run_config,
                 root_paths=get_components_roots(spec_graph, subject, run_config))
             spec_component = get_spec_component(spec_component_details)
-            if type(spec_component) == list:
-                spec_components += spec_component 
+            if isinstance(spec_component, list):
+                spec_components += spec_component
             else:
                 spec_components += [spec_component]
-
-        # all_data_source_types.extend(data_source_types)
-    # return all_data_source_types
     # merge multiple graphs into one, give error if spec config is a TableThen
     # print(f"calling multimethod with {spec_components}")
     return combine_specs(spec_components)
+
 
 # Here we retrieve all the possible root paths for a specification component.
 # This defines the order of priority between root paths which is:
 # 1) Path where the spec is located
 # 2) spec_path defined in mustrd test configuration files or cmd line argument
 # 3) data_path defined in mustrd test configuration files or cmd line argument
-# 4) Mustrd source folder: In case of default resources packaged with mustrd source (will be in venv when mustrd is called as library)
+# 4) Mustrd source folder: In case of default resources packaged with mustrd source
+# (will be in venv when mustrd is called as library)
 # We intentionally don't try for absolute files, but you should feel free to argue that we should do
 def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
     where_did_i_load_this_spec_from = spec_graph.value(subject=subject,
-                                                                 predicate=MUST.specSourceFile)
-    roots = [] 
-    if (where_did_i_load_this_spec_from == None):
-        log.error(f"{where_did_i_load_this_spec_from=} was None for test_spec={subject}, we didn't set the test specifications specSourceFile when loading, spec_graph={spec_graph}")
+                                                       predicate=MUST.specSourceFile)
+    roots = []
+    if not where_did_i_load_this_spec_from:
+        log.error(f"""{where_did_i_load_this_spec_from=} was None for test_spec={subject},
+                  we didn't set the test specifications specSourceFile when loading, spec_graph={spec_graph}""")
     else:
-        roots.append(Path(os.path.dirname(where_did_i_load_this_spec_from))) 
-    if run_config and'spec_path' in run_config:
+        roots.append(Path(os.path.dirname(where_did_i_load_this_spec_from)))
+    if run_config and 'spec_path' in run_config:
         roots.append(Path(run_config['spec_path']))
-    if run_config and 'data_path'  in run_config:
+    if run_config and 'data_path' in run_config:
         roots.append(run_config['data_path'])
     roots.append(get_mustrd_root())
-    
+
     return roots
 
 
@@ -155,18 +156,20 @@ def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
 def get_file_absolute_path(spec_component_details: SpecComponentDetails, relative_file_path: str):
     if not relative_file_path:
         raise ValueError("Cannot get absolute path of None")
-    absolute_file_paths = list(map(lambda root_path: Path(os.path.join(root_path, relative_file_path)), spec_component_details.root_paths))
+    absolute_file_paths = list(map(lambda root_path: Path(os.path.join(root_path, relative_file_path)),
+                                   spec_component_details.root_paths))
     for absolute_file_path in absolute_file_paths:
         if (os.path.exists(absolute_file_path)):
             return absolute_file_path
     raise FileNotFoundError(f"Could not find file {relative_file_path=} in any of the {absolute_file_paths=}")
+
 
 def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
     # Get the type of the first object in the list
     spec_type = type(spec_components[0])
     # Loop through the remaining objects in the list and check their types
     for spec_component in spec_components[1:]:
-        if type(spec_component) != spec_type:
+        if not isinstance(spec_component, spec_type):
             # If an object has a different type, raise an error
             raise ValueError("All spec components must be of the same type")
 
@@ -216,13 +219,14 @@ def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
 @combine_specs.method(TableThenSpec)
 def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThenSpec:
     if len(spec_components) != 1:
-        raise ValueError(f"Parsing of multiple components of MUST.then for tables not implemented")
+        raise ValueError("Parsing of multiple components of MUST.then for tables not implemented")
     return spec_components[0]
 
 
 @combine_specs.method(Default)
 def _combine_specs_default(spec_components: List[SpecComponent]):
     raise ValueError(f"Parsing of multiple components of this type not implemented {spec_components}")
+
 
 def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph, source_node: Node) -> List[Node]:
     data_source_types = []
@@ -232,6 +236,7 @@ def get_data_source_types(subject: URIRef, predicate: URIRef, spec_graph: Graph,
     if len(data_source_types) == 0:
         raise ValueError(f"Node has no rdf type {subject} {predicate}")
     return data_source_types
+
 
 # https://github.com/Semantic-partners/mustrd/issues/99
 def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) -> Tuple[Node, URIRef]:
@@ -254,7 +259,7 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = get_path('given_path', file_name,spec_component_details)
+    path = get_path('given_path', file_name, spec_component_details)
     try:
         spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
     except ParserError as e:
@@ -270,10 +275,11 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
 
-    path = get_path('when_path', file_name,spec_component_details)
+    path = get_path('when_path', file_name, spec_component_details)
     spec_component.value = get_spec_component_from_file(path)
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -283,9 +289,10 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
-    path = get_path('then_path', file_name,spec_component_details)
+    path = get_path('then_path', file_name, spec_component_details)
 
     return load_dataset_from_file(path, spec_component)
+
 
 @get_spec_component.method((MUST.FileDataset, MUST.given))
 @get_spec_component.method((MUST.FileDataset, MUST.then))
@@ -293,11 +300,12 @@ def _get_spec_component_filedatasource(spec_component_details: SpecComponentDeta
     spec_component = init_spec_component(spec_component_details.predicate)
     return load_spec_component(spec_component_details, spec_component)
 
+
 def load_spec_component(spec_component_details, spec_component):
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.file)))
     return load_dataset_from_file(get_file_absolute_path(spec_component_details, file_path), spec_component)
-    
+
 
 def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
     if path.is_dir():
@@ -326,32 +334,19 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
             return spec_component
 
 
-
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
 
     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))    
+                                                                 predicate=MUST.file)))
     spec_component.value = get_spec_component_from_file(get_file_absolute_path(spec_component_details, file_path))
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
 
     return spec_component
-
-
-# @get_spec_component.method((MUST.FileDataset, MUST.then))
-# def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> SpecComponent:
-#     spec_component = init_spec_component(spec_component_details.predicate)
-
-#     file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-#                                                                  predicate=MUST.file)))
-#     if str(file_path).startswith("/"): # absolute path
-#         path = file_path
-#     else: #relative path
-#         path = Path(os.path.join(spec_component_details.run_config['spec_path'], file_path))
-#     return get_then_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.TextSparqlSource, MUST.when))
@@ -364,8 +359,9 @@ def _get_spec_component_TextSparqlSource(spec_component_details: SpecComponentDe
                                                 predicate=MUST.queryText))
 
     spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -379,9 +375,10 @@ def _get_spec_component_HttpDataset(spec_component_details: SpecComponentDetails
     # Get specComponent with http GET protocol
     spec_component.value = requests.get(str(
         spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                predicate=MUST.dataSourceUrl)).content)    
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+                                                predicate=MUST.dataSourceUrl)).content)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -458,8 +455,9 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
 
@@ -470,61 +468,71 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
     # Get WHEN specComponent from query builder
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.anzoQueryStep)
+                                                                 predicate=MUST.anzoQueryStep)
         spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
-                                                    query_step_uri=query_step_uri)
+                                                   query_step_uri=query_step_uri)
     # If anzo specific function is called but no anzo defined
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
 
+
 @get_spec_component.method((MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource, MUST.when))
-def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"] )
+def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent: # noqa
+    spec_component = init_spec_component(
+        spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
 
     # Get WHEN specComponent from query builder
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.anzoQueryStep)
+                                                                 predicate=MUST.anzoQueryStep)
         queries = get_queries_from_templated_step(triple_store=spec_component_details.mustrd_triple_store,
-                                                    query_step_uri=query_step_uri)
-        spec_component.paramQuery= queries["param_query"]
+                                                  query_step_uri=query_step_uri)
+        spec_component.paramQuery = queries["param_query"]
         spec_component.queryTemplate = queries["query_template"]
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}")
+        raise ValueError(f"""You must define {TRIPLESTORE.Anzo}
+                         to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}""")
 
-    spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType)
     return spec_component
+
 
 @get_spec_component.method((MUST.AnzoGraphmartLayerSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> list:
     spec_components = []
     # Get the ordered  WHEN specComponents which is the transform and query driven template queries for the Layer
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        graphmart_layer_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.anzoGraphmartLayer)
+        graphmart_layer_uri = spec_component_details.spec_graph.value(
+            subject=spec_component_details.spec_component_node,
+            predicate=MUST.anzoGraphmartLayer)
         queries = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
-                                                    graphmart_layer_uri=graphmart_layer_uri)
+                                        graphmart_layer_uri=graphmart_layer_uri)
     # If anzo specific function is called but no anzo defined
     else:
-        raise ValueError(f"This test specification is specific to Anzo and can only be run against that platform.")
+        raise ValueError("This test specification is specific to Anzo and can only be run against that platform.")
     for query in queries:
-        spec_component = init_spec_component(spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
-        spec_component.value = query.get("query") 
+        spec_component = init_spec_component(spec_component_details.predicate,
+                                             spec_component_details.mustrd_triple_store["type"])
+        spec_component.value = query.get("query")
         spec_component.paramQuery = query.get("param_query")
         spec_component.queryTemplate = query.get("query_template")
         if spec_component.value:
-            spec_component.queryType = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                       predicate=MUST.queryType)
+            spec_component.queryType = spec_component_details.spec_graph.value(
+                subject=spec_component_details.spec_component_node,
+                predicate=MUST.queryType)
         else:
-            spec_component.queryType  = MUST.AnzoQueryDrivenUpdateSparql   
+            spec_component.queryType = MUST.AnzoQueryDrivenUpdateSparql
         spec_components += [spec_component]
     return spec_components
+
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:
@@ -533,7 +541,7 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None ) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec:
+def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec: # noqa
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
@@ -559,9 +567,6 @@ def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Gra
 
 
 def get_spec_component_from_file(path: Path) -> str:
-    # project_root = get_project_root()
-    # file_path = Path(os.path.join(project_root, path))
-
     if path.is_dir():
         raise ValueError(f"Path {path} is a directory, expected a file")
 
@@ -576,7 +581,7 @@ def get_spec_from_statements(subject: URIRef,
                              predicate: URIRef,
                              spec_graph: Graph) -> Graph:
     statements_query = f"""
-    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
     CONSTRUCT {{ ?s ?p ?o }}
     {{
@@ -601,17 +606,17 @@ def get_spec_from_table(subject: URIRef,
                         spec_graph: Graph) -> pandas.DataFrame:
     # query the spec to get the expected result to convert to dataframe for comparison
     then_query = f"""
-        prefix sh:        <http://www.w3.org/ns/shacl#> 
+        prefix sh:        <http://www.w3.org/ns/shacl#>
             SELECT ?row ?variable ?binding ?order
-            WHERE {{ 
+            WHERE {{
                  <{subject}> <{predicate}> [
                         a <{MUST.TableDataset}> ;
                         <{MUST.hasRow}> ?row ].
                           ?row  <{MUST.hasBinding}> [
                                 <{MUST.variable}> ?variable ;
                                 <{MUST.boundValue}> ?binding ; ] .
-                          OPTIONAL {{ ?row sh:order ?order . }}        
-                                     .}} 
+                          OPTIONAL {{ ?row sh:order ?order . }}
+                                     .}}
              ORDER BY ?order"""
 
     expected_results = spec_graph.query(then_query)
@@ -630,7 +635,7 @@ def get_spec_from_table(subject: URIRef,
     for row in expected_results:
         df.loc[str(row.row), row.variable.value] = str(row.binding)
         df.loc[str(row.row), "order"] = row.order
-        if type(row.binding) == Literal:
+        if isinstance(row.binding, Literal):
             literal_type = str(XSD.string)
             if hasattr(row.binding, "datatype") and row.binding.datatype:
                 literal_type = str(row.binding.datatype)
@@ -648,7 +653,9 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextSparqlSource}> ; <{MUST.hasBinding}> [ <{MUST.variable}> ?variable ; <{MUST.boundValue}> ?binding ; ] ; ]  ;}}"""
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextSparqlSource}> ;
+    <{MUST.hasBinding}> [ <{MUST.variable}> ?variable ;
+    <{MUST.boundValue}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
 
     if len(when_bindings.bindings) == 0:
@@ -663,24 +670,24 @@ def get_when_bindings(subject: URIRef,
 def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:
     ask_select_ordered = f"""
     ASK {{
-    {{SELECT (count(?binding) as ?totalBindings) {{  
+    {{SELECT (count(?binding) as ?totalBindings) {{
     <{subject}> <{predicate}> [
                 a <{MUST.TableDataset}> ;
                 <{MUST.hasRow}> [ <{MUST.hasBinding}> [
                                     <{MUST.variable}> ?variable ;
                                     <{MUST.boundValue}> ?binding ;
-                            ] ; 
+                            ] ;
               ]
             ]
 }} }}
-    {{SELECT (count(?binding) as ?orderedBindings) {{    
+    {{SELECT (count(?binding) as ?orderedBindings) {{
     <{subject}> <{predicate}> [
                 a <{MUST.TableDataset}> ;
        <{MUST.hasRow}> [ sh:order ?order ;
-                    <{MUST.hasBinding}> [ 
+                    <{MUST.hasBinding}> [
                     <{MUST.variable}> ?variable ;
                                     <{MUST.boundValue}> ?binding ;
-                            ] ; 
+                            ] ;
               ]
             ]
 }} }}
