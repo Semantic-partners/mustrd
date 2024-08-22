@@ -1,0 +1,17 @@
+name: Lint comment
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-linters:
+    name: Run linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run linters
+        uses: wearerequired/lint-action@v2
+        with:
+          flake8: true
