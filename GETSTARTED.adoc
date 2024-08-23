@@ -2,7 +2,7 @@
 
 == Get started
 
-Instanciate the project https://github.com/Semantic-partners/mustrd-template[mustrd-template]. It contains the basic configuration to get mustrd running.
+Instantiate the project https://github.com/Semantic-partners/mustrd-template[mustrd-template]. It contains the basic configuration to get mustrd running.
 
 Clone the created repo in local.
 
@@ -10,7 +10,7 @@ Clone the created repo in local.
 
 If you just want to use embedded RDFlib, you don't need to change anything.
 
-If you want to use an external triplestore such as Anzo or graphDB, you have to define some basic parameters.
+If you want to use an external triplestore such as Anzo or graphDB, you have to tell mustrd how to connect.
 
 The default triplestore config file is https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores.ttl[here]
 
@@ -30,7 +30,7 @@ Depending on the triplestore other properties can be mandatory as well:
 
 For anzo: 
 
-* `gqeURI` is necessary to identify on which anzograph the queries will be sent. 
+* `gqeURI` is necessary to identify on which anzograph the queries will be executed. 
 * `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. Those must be already created layer URI. Graphmart has to be deployed.
 
 For graphDB only `repository` is mandatory. If `inputGraph` is not defined then all graphs of the repository will be queried.
