@@ -415,7 +415,6 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         # Anzo graph via anzo
         if triple_store_type == TRIPLESTORE.Anzo:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
                 triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                         predicate=TRIPLESTORE.username))
@@ -430,13 +429,12 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                                     predicate=TRIPLESTORE.outputGraph)
             try:
-                check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+                check_triple_store_params(triple_store, ["url", "username", "password", "input_graph"])
             except ValueError as e:
                 triple_store["error"] = e
         # GraphDB
         elif triple_store_type == TRIPLESTORE.GraphDb:
             triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
             try:
                 triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                         predicate=TRIPLESTORE.username))
@@ -451,7 +449,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
                                                                    predicate=TRIPLESTORE.inputGraph)
 
             try:
-                check_triple_store_params(triple_store, ["url", "port", "repository"])
+                check_triple_store_params(triple_store, ["url", "repository"])
             except ValueError as e:
                 triple_store["error"] = e
         elif triple_store_type != TRIPLESTORE.RdfLib:
