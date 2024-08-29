@@ -49,6 +49,9 @@ def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Grap
     input_graph = triple_store['input_graph']
     output_graph = triple_store['output_graph']
 
+    # FIXME: that will only work with steps.
+    # We could replace USING clauses with using-graph-uri parameter
+    # But there is no parameter for default insert graphs.
     substituted_query = when.replace("${usingSources}",
                                      f"""USING <{input_graph}>
 USING <{triple_store['output_graph']}>""").replace(
