@@ -1,8 +1,0 @@
-SELECT ?a ?b ?c  WHERE {
-    ?b <test:prop2> ?c
-    {
-        SELECT ?a ?b WHERE {
-            ?a <test:prop1> ?b
-        }
-    }
-}

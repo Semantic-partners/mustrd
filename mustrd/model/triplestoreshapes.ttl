@@ -1,0 +1,42 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:        <http://www.example.org/#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix triplestore:      <https://mustrd.com/triplestore/> .
+
+triplestore:ExternalTripleStoreShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:ExternalTripleStore ;
+    sh:property    [ sh:path     triplestore:url ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ],
+                    [ sh:path     triplestore:port ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ],
+                    [ sh:path     triplestore:username ;
+                     sh:maxCount 1 ],
+                    [ sh:path     triplestore:password ;
+                     sh:maxCount 1 ] .
+
+triplestore:AnzoShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:Anzo ;
+    sh:property    [ sh:path     triplestore:gqeURI ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ], 
+                   [ sh:path     triplestore:outputGraph ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ], 
+# For anzo the input graph is not really necessary if the user is sysadmin
+# but querying all graphs in AZG is usually not a good idea, so for the moment this is forbidden
+                   [ sh:path     triplestore:inputGraph ;
+                     sh:minCount 1 ]  .
+
+triplestore:GraphDbShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:GraphDb ;
+    sh:property    [ sh:path     triplestore:repository ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ] .

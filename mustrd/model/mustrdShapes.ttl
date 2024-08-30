@@ -1,0 +1,253 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:        <http://www.example.org/#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix must:      <https://mustrd.com/model/> .
+
+must:
+    sh:declare [ sh:prefix    "must" ;
+                 sh:namespace "https://mustrd.com/model/"^^xsd:anyURI ; ] .
+
+
+must:TestSpecShape
+    a              sh:NodeShape ;
+    sh:targetClass must:TestSpec ;
+    sh:property    [ sh:path     must:given ;
+                     sh:class    must:Dataset ;
+                     sh:minCount 1 ; ] ;
+    sh:property    [ sh:path     must:when ;
+                     sh:class    must:SparqlSource ;
+                     sh:minCount 1 ; ] ;
+    sh:property    [ sh:path     must:then ;
+                     sh:class    must:Dataset ;
+                     sh:minCount 1 ; ] .
+
+must:TestSpecGivenShape
+    a              sh:NodeShape ;
+    sh:targetClass must:TestSpec ;
+    sh:message "Invalid given clause: Table datasets for givens are not currently supported." ;
+    sh:not         [ sh:path     must:given ;
+                     sh:class    must:TableDataset ;
+                     sh:minCount 1 ; ] .
+
+must:TestSpecWithInheritedDatasetShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:given/rdf:type must:InheritedDataset .
+			}
+			""" ; ] ;
+    sh:property [ sh:message "Invalid given clause: Tests using an inherited state can only have a single given clause.";
+                  sh:path     must:given ;
+                  sh:minCount 1 ;
+                  sh:maxCount 1 ; ] .
+
+
+must:UpdateTestSpecThenValidationShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:UpdateSparql .
+			}
+			""" ; ] ;
+    sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL update test." ;
+    sh:not [
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ] ) ] .
+
+must:ConstructTestSpecThenValidationShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:ConstructSparql .
+			}
+			""" ; ] ;
+    sh:message  "Invalid then clause: A tabular data format has been specified for a SPARQL construct test." ;
+    sh:not [
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ] ) ] .
+
+must:UpdateTestSpecGivenValidationShape
+    a          sh:NodeShape ;
+    sh:target  [ a           sh:SPARQLTarget ;
+                 sh:prefixes must: ;
+                 sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:UpdateSparql .
+			}
+			""" ; ] ; ;
+    sh:message "Invalid given clause: An inherited dataset cannot be specified for a SPARQL update test." ;
+    sh:not     [ sh:path  must:given ;
+                 sh:class must:InheritedDataset ; ] .
+
+must:SelectTestSpecValidationShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:SelectSparql .
+			}
+			""" ; ] ;
+    sh:property [ sh:message  "Invalid then clause: The result format should be tabular for a SPARQL select test." ;
+                  sh:path     must:then ;
+                  sh:or       ( [ sh:class must:TableDataset ]
+                                [ sh:class must:EmptyTable ]
+                                [ sh:class must:FolderDataset ]
+                                [ sh:class must:FileDataset ] ) ] .
+
+must:StatementsDatasetShape
+    a              sh:NodeShape ;
+    sh:targetClass must:StatementsDataset ;
+    sh:property    [ sh:path     must:hasStatement ;
+                     sh:node     must:StatementShape ;
+                     sh:minCount 1 ; ] .
+
+must:TableDatasetShape
+    a              sh:NodeShape ;
+    sh:targetClass must:TableDataset ;
+    sh:property    [ sh:path     must:hasRow ;
+                     sh:node     must:RowShape ;
+                     sh:minCount 1 ; ] .
+
+must:OrderedTableDatasetShape
+    a              sh:NodeShape ;
+    sh:targetClass must:OrderedTableDataset ;
+    sh:property    [ sh:path     must:hasRow ;
+                     sh:node     must:OrderedRowShape ;
+                     sh:minCount 2 ; ] .
+
+must:FileDatasetShape
+    a              sh:NodeShape ;
+    sh:targetClass must:FileDataset ;
+    sh:property    [ sh:path     must:file ;
+                     sh:datatype xsd:string ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] .
+
+must:StatementShape
+    a              sh:NodeShape ;
+    sh:targetClass rdf:Statement ;
+    sh:property    [ sh:path     rdf:subject ;
+                     sh:minCount 1 ; ] ;
+    sh:property    [ sh:path     rdf:predicate ;
+                     sh:minCount 1 ; ] ;
+    sh:property    [ sh:path     rdf:object ;
+                     sh:minCount 1 ; ] .
+
+must:SparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path     must:queryType ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] .
+
+must:UpdateSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:UpdateSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
+
+must:SelectSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:SelectSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
+
+must:ConstructSparqlShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SparqlSource ;
+    sh:property    [ sh:path        must:queryType ;
+                     sh:targetClass must:ConstructSparql ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ] .
+
+must:TextSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:TextSparqlSource ;
+    sh:property    [ sh:path     must:queryText ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] .
+
+
+must:VariableBindingShape
+    a              sh:NodeShape ;
+    sh:targetClass must:Binding ;
+    sh:property    [ sh:path     must:variable ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] ;
+    sh:property    [ sh:path     must:boundValue ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] .
+
+must:RowShape
+    a              sh:NodeShape ;
+    sh:targetClass must:Row ;
+    sh:property    [ sh:path     must:hasBinding ;
+                     sh:node     must:VariableBindingShape ;
+                     sh:minCount 1 ; ] .
+
+must:OrderedRowShape
+    a              sh:NodeShape ;
+    sh:targetClass must:Row ;
+    sh:property    [ sh:path     sh:order ;
+                     sh:minCount 2 ; ] ;
+    sh:property    [ sh:path     must:hasBinding ;
+                     sh:node     must:VariableBindingShape ;
+                     sh:minCount 2 ; ] .
+
+must:AnzoGraphmartStepSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartStepSparqlSource ;
+    sh:property    [ sh:path     must:anzoQueryStep ;
+                     sh:message "An Anzo graphmart step sparql source must have one query step." ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ; ] .
+
+must:AnzoGraphmartLayerSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartLayerSparqlSource ;
+    sh:property    [ sh:path     must:anzoGraphmartLayer ;
+                     sh:message "An Anzo graphmart layer sparql source must have one graphmart layer." ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ; ] .
+
+must:AnzoGraphmartQueryDrivenTemplatedStepSparqlSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AnzoGraphmartQueryDrivenTemplatedStepSparqlSource ;
+    sh:property    
+                   [ sh:path        must:anzoQueryStep ;
+                     sh:message     "An Anzo query driven templated step sparql source must have one query step." ;
+                     sh:minCount    1 ; 
+                     sh:maxCount    1 ; ] ,
+                   [ sh:path        must:queryType ;
+                     sh:message     "An Anzo query driven templated step sparql source must have a query type of AnzoQueryDrivenUpdateSparql ." ;
+                     sh:minCount    1 ;
+                     sh:maxCount    1 ; ]  .
+
+
+

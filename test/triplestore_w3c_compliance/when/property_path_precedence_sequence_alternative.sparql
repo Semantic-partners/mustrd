@@ -1,3 +1,0 @@
-SELECT ?obj  WHERE {
-   <test:a1> <test:prop1>/<test:prop2>|<test:prop2> ?obj
-}
