@@ -29,9 +29,10 @@ from typing import Tuple, List, Type
 
 import pandas
 import requests
-from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util
+from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util, ConjunctiveGraph
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
+from rdflib.plugins.stores.memory import Memory
 
 from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart
@@ -50,7 +51,7 @@ class SpecComponent:
 
 @dataclass
 class GivenSpec(SpecComponent):
-    value: Graph = None
+    value: ConjunctiveGraph = None
 
 
 @dataclass
@@ -410,10 +411,14 @@ def _get_spec_component_EmptyGraph(spec_component_details: SpecComponentDetails)
 @get_spec_component.method((MUST.StatementsDataset, MUST.then))
 def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
+    store = Memory()
+    g = URIRef("http://localhost:7200/test-graph")
+    spec_component.value = ConjunctiveGraph(store=store)
+    spec_graph = Graph(store=store, identifier=g)
 
-    spec_component.value = Graph().parse(
-        data=get_spec_from_statements(spec_component_details.subject, spec_component_details.predicate,
-                                      spec_component_details.spec_graph))
+    data = get_spec_from_statements(spec_component_details.subject, spec_component_details.predicate,
+                                    spec_component_details.spec_graph)
+    spec_graph.parse(data=data)
     return spec_component
 
 
@@ -588,7 +593,6 @@ def get_spec_from_statements(subject: URIRef,
             <{subject}> <{predicate}> [
                 a <{MUST.StatementsDataset}> ;
                 <{MUST.hasStatement}> [
-                    a rdf:Statement ;
                     rdf:subject ?s ;
                     rdf:predicate ?p ;
                     rdf:object ?o ;
