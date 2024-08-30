@@ -8,7 +8,7 @@ image::https://github.com/Semantic-partners/mustrd/raw/python-coverage-comment-a
 
 How do you know your SPARQL, whether it's in a pipeline, or a query, is doing what you intend? 
 
-As much as we love RDF and SPARQL and Semantic Tech in general, we found a small gap in tooling to give us that certainty. 
+As much as we love RDF and SPARQL and Semantic Tech in general, we found a small gap in tooling which would give us that certainty. 
 
 We missed the powerful testing frameworks that have evolved in imperative languages that help ensure you've written code that does what you think it should. 
 

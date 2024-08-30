@@ -1,0 +1,36 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:a_complete_select_scenario_multiline_result
+    a          must:TestSpec ;
+    must:focus false ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ,
+                                                  [ a             rdf:Statement ;
+                                                   rdf:subject   test-data:subject ;
+                                                   rdf:predicate test-data:predicate ;
+                                                   rdf:object    test-data:object ; ] ; ] ;
+    must:when  [ a must:TextSparqlSource ;
+                                   must:queryText  "select ?s ?p ?o where { ?s ?p ?o }" ;
+                 must:queryType must:SelectSparql   ; ] ;
+    must:then  [ a must:TableDataset ;
+                                   must:hasRow [ must:hasBinding
+                                      [ must:variable "s" ;
+                                        must:boundValue  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:obj ; ] ; ] ,
+                            [ must:hasBinding[ must:variable "s" ;
+                                        must:boundValue  test-data:subject ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:predicate ; ],
+                                      [ must:variable "o" ;
+                                        must:boundValue  test-data:object ; ] ; ] ;
+               ] .

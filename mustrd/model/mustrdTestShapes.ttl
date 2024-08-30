@@ -1,0 +1,24 @@
+@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+@prefix triplestore: <https://mustrd.com/triplestore/> .
+@base <https://mustrd.com/mustrdTest/> .
+
+
+
+
+:MustrdTestShape
+    a              sh:NodeShape ;
+    sh:targetClass :MustrdTest ;
+    sh:property    [ sh:path     :hasDataPath ;
+                     sh:datatype xsd:string ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ],
+                    [ sh:path     :hasSpecPath ;
+                     sh:datatype xsd:string ;
+                     sh:minCount 1 ; 
+                     sh:maxCount 1 ],
+                     [ sh:path     :hasPytestPath ;
+                     sh:datatype xsd:string ;
+                     sh:maxCount 1 ] . 
+

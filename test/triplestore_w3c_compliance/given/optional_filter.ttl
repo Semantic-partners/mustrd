@@ -1,9 +1,0 @@
-<test:a1> a <test:class>;
-            <test:prop1> <test:b1> ;
-            <test:prop2> <test:c1> .
-<test:a2> a <test:class>;
-            <test:prop1> <test:b2> ;
-            <test:prop2> <test:c2> .
-<test:a3> a <test:class>;
-            <test:prop1> <test:b3> ;
-            <test:prop2> <test:c3> .

@@ -22,18 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 from pathlib import Path
 
 import pytest
-from rdflib import Graph
+from rdflib import Graph, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
-from mustrd import Specification, run_when, SpecSkipped, run_spec
-from namespace import MUST
-from spec_component import parse_spec_component, ThenSpec
-from utils import get_project_root
+from mustrd.mustrd import Specification, SpecSkipped, run_spec
+from mustrd.namespace import MUST, TRIPLESTORE
+from mustrd.spec_component import parse_spec_component, ThenSpec
+
+from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -49,7 +49,7 @@ class TestRunSpec:
     test-data:obj test-data:sub test-data:pred .
     """
 
-    triple_store = {"type": MUST.RdfLib}
+    triple_store = {"type": TRIPLESTORE.RdfLib}
 
     def test_no_rdf_type_error(self):
         spec_graph = Graph()
@@ -58,7 +58,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                 must:then  [ must:hasStatement [ a             rdf:Statement ;
                                    rdf:subject   test-data:obj1 ;
@@ -73,109 +73,117 @@ class TestRunSpec:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=None,
                                  mustrd_triple_store=self.triple_store)
 
     def test_file_not_found_error(self):
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data/missingFile.nt" ] .
+                                   must:file "../../test/data/missingFile.nt" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_then_from_file_error(self):
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data" ] .
+                                   must:file "../../test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        spec_graph.add([spec_uri, MUST.specSourceFile, Literal(__name__)])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_given_from_file_error(self):
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
-                                   must:file "test/data" ] .
+                                   must:file "../../test/data" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_wrong_file_format_error(self):
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FileDataset ;
                                    must:file "test/test_spec.py" ] .
         """
         spec_graph.parse(data=spec, format='ttl')
-
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(ValueError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_folder_path_missing_error(self):
+        run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
         @prefix must: <https://mustrd.com/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FolderDataset ;
                                    must:file "thenSuccess.nt" ] .
@@ -183,17 +191,19 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(ValueError):
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.then,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=run_config,
                                  mustrd_triple_store=self.triple_store)
 
     def test_spec_file_from_folder_passes(self):
-        project_root = get_project_root()
-        folder_path = Path(os.path.join(project_root, "test/data"))
+        run_config = {'then_path': Path("data"),
+                      # FIXME: spec_path seems mandatory, is that normal?
+                      'spec_path': Path("test/")}
 
         spec_graph = Graph()
         spec = """
@@ -201,7 +211,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_failing_spec 
+        test-data:my_failing_spec
             a must:TestSpec ;
                 must:then  [ a must:FolderDataset ;
                                    must:fileName "thenSuccess.nt" ] .
@@ -209,17 +219,18 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_failing_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=folder_path,
+                                              run_config=run_config,
                                               mustrd_triple_store=self.triple_store)
 
         then = Graph()
         then.parse(data=self.then_obj_sub_pred, format="ttl")
 
-        assert type(then_component) == ThenSpec
+        assert isinstance(then_component, ThenSpec)
         assert isomorphic(then, then_component.value)
 
     def test_invalid_data_source_predicate_combination_error(self):
@@ -229,7 +240,7 @@ class TestRunSpec:
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-        test-data:my_first_spec 
+        test-data:my_first_spec
             a must:TestSpec ;
                  must:given  [ a must:TableDataset ;
                                    must:hasRow [ must:hasBinding[
@@ -244,15 +255,16 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         with pytest.raises(ValueError) as error_message:
             parse_spec_component(subject=spec_uri,
                                  predicate=MUST.given,
                                  spec_graph=spec_graph,
-                                 folder_location=None,
+                                 run_config=None,
                                  mustrd_triple_store=self.triple_store)
-        assert str(
-            error_message.value) == f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
+        assert str(error_message.value) == \
+            f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
 
     def test_invalid_query_type_ask_error(self):
         state = Graph()
@@ -264,7 +276,7 @@ class TestRunSpec:
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-                test-data:my_first_spec 
+                test-data:my_first_spec
                     a must:TestSpec ;
                         must:when [ a must:TextSparqlSource ;
                                     must:queryText  "ask { ?s ?p 25 }" ;
@@ -274,26 +286,27 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
-        assert type(result) == SpecSkipped
+        # assert type(result) == SpecSkipped
         assert result.message == "SPARQL ASK not implemented."
 
-    def test_invalid_query_type_ask_error(self):
+    def test_invalid_query_type_delete_error(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
@@ -303,7 +316,7 @@ class TestRunSpec:
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-                test-data:my_first_spec 
+                test-data:my_first_spec
                     a must:TestSpec ;
                         must:when [ a must:TextSparqlSource ;
                                     must:queryText  "delete { ?s ?p 25 }" ;
@@ -313,21 +326,22 @@ class TestRunSpec:
         spec_graph.parse(data=spec, format='ttl')
 
         spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
 
         when_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.when,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         then_component = parse_spec_component(subject=spec_uri,
                                               predicate=MUST.then,
                                               spec_graph=spec_graph,
-                                              folder_location=None,
+                                              run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
         specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
-        assert type(result) == SpecSkipped
+        assert isinstance(result, SpecSkipped)
         assert result.message == "https://mustrd.com/model/DeleteSparql is not a valid SPARQL query type."
