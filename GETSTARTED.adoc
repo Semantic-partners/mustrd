@@ -31,7 +31,7 @@ Depending on the triplestore other properties can be mandatory as well:
 For anzo: 
 
 * `gqeURI` is necessary to identify on which anzograph the queries will be executed. 
-* `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. Those must be already created layer URI. Graphmart has to be deployed.
+* `inputGraph` and `outputGraph` are also mandatory because graph cannot be created simply on insert in anzo. You have to create a graphmart, layers in it, and activate the graphmart. We cannot for the moment automatically create a testing graphmart and layers.
 
 For graphDB only `repository` is mandatory. If `inputGraph` is not defined then all graphs of the repository will be queried.
 
