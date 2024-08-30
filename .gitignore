@@ -1,4 +1,5 @@
 src/__pycache__/__init__.cpython-311.pyc
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -163,9 +164,7 @@ cython_debug/
 mustrd.iml
 
 # because it potentially contains credentials
+*_secrets*
+test/triplestore_config/*
+junit/*
 test/anzoConnectionConfig.ttl
-/test/triplestore_config/tripleStoreCredentials.ini
-/test/triplestore_config/tripleStoreCredentials.toml
-/test/triplestore_config/tripleStore-graphDB.ttl
-/test/triplestore_config/tripleStores.ttl
-

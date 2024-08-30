@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.10" ]
+        python-version: [ "3.11.7" ]
     permissions:
       # Gives the action the necessary permissions for publishing new
       # comments in pull requests.
@@ -29,15 +29,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest coverage
-          pip install -r requirements.txt
+        run: poetry install
       - name: Create coverage config file
         run: echo -e "[run]\nrelative_files = True" >> .coveragerc
       - name: Test with pytest
-        run: coverage run -m pytest test/ --doctest-modules
+        run: poetry run coverage run -m pytest test/ --doctest-modules --config=.github/test_config.ttl
       - name: Coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3

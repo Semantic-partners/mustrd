@@ -1,0 +1,24 @@
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+test-data:a_complete_insert_data_scenario
+    a          must:TestSpec ;
+    #must:focus true ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "insert data { <https://semanticpartners.com/data/test/subject> <https://semanticpartners.com/data/test/predicate> <https://semanticpartners.com/data/test/object> }" ;
+                 must:queryType must:UpdateSparql  ; ] ;
+    must:then  [ a must:StatementsDataset ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ,
+                                   [ a             rdf:Statement ;
+                                     rdf:subject   test-data:subject ;
+                                     rdf:predicate test-data:predicate ;
+                                     rdf:object    test-data:object ; ] ; ] .

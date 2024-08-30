@@ -1,0 +1,7 @@
+@prefix :<https://mustrd.com/triplestore/> .
+:GraphDb_local  a :GraphDb ;
+        :url "http://localhost";
+        :url "http://127.0.0.1";
+        :port "7200";
+        :inputGraph "http://mustrd.org/test_graph" ;
+        :repository "mustrd" .
