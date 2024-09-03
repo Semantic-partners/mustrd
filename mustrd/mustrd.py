@@ -180,7 +180,7 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
-
+# Validate the specs found in spec_path
 def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*")\
         -> Tuple[List, Graph, List]:
     spec_graph = Graph()
@@ -191,10 +191,12 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
     ttl_files.sort()
     log.info(f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
+    # For each spec file found in spec_path
     for file in ttl_files:
         error_messages = []
 
         log.info(f"Parse: {file}")
+        # Parse spec file and add error message if not conform to RDF standard
         try:
             file_graph = Graph().parse(file)
         except BadSyntax as e:
@@ -204,6 +206,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
             error_messages += [f"Could not extract spec from {file} due to exception of type "
                                f"{type(e).__name__} when parsing file"]
             continue
+
         # run shacl validation
         conforms, results_graph, results_text = validate(file_graph,
                                                          shacl_graph=shacl_graph,
@@ -216,6 +219,8 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                                                          advanced=True,
                                                          js=False,
                                                          debug=False)
+
+        # Add error message if not conform to spec shapes
         if not conforms:
             for msg in results_graph.objects(predicate=SH.resultMessage):
                 log.warning(f"{file_graph}")
@@ -223,45 +228,59 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 error_messages += [f"{msg} File: {file.name}"]
 
         # collect a list of uris of the tests in focus
+        # If focus is found, only the spec in the focus will be executed
         for focus_uri in file_graph.subjects(predicate=MUST.focus, object=Literal("true", datatype=XSD.boolean)):
             if focus_uri in focus_uris:
                 focus_uri = URIRef(str(focus_uri) + "_DUPLICATE")
             focus_uris.add(focus_uri)
 
-        # make sure there are no duplicate test IRIs in the files
-        for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
-            if subject_uri in subject_uris:
-                log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
-                error_messages += [f"Duplicate subject URI found in {file.name}."]
-                subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
-            if len(error_messages) > 0:
-                error_messages.sort()
-                error_message = "\n".join(msg for msg in error_messages)
-                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name)
-                                  for triple_store in triple_stores]
-            else:
-                subject_uris.add(subject_uri)
-                this_spec_graph = Graph()
-                this_spec_graph.parse(file)
-                spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
-                for spec in spec_uris_in_this_file:
-                    this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                    this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-                spec_graph += this_spec_graph
+        add_spec_validation(file_graph, subject_uris, file, triple_stores, error_messages, invalid_specs, spec_graph)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
     if focus_uris:
-        invalid_focus_specs = []
-        for spec in invalid_specs:
-            if spec.spec_uri in focus_uris:
-                invalid_focus_specs += [spec]
-                focus_uris.remove(spec.spec_uri)
-        log.info(f"Collected {len(focus_uris)} focus test spec(s)")
+        invalid_focus_specs = get_invalid_focus_spec(focus_uris, invalid_specs)
         return focus_uris, spec_graph, invalid_focus_specs
     else:
         log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")
         return valid_spec_uris, spec_graph, invalid_specs
+
+
+def get_invalid_focus_spec(focus_uris, invalid_specs):
+    invalid_focus_specs = []
+    for spec in invalid_specs:
+        if spec.spec_uri in focus_uris:
+            invalid_focus_specs += [spec]
+            focus_uris.remove(spec.spec_uri)
+    log.info(f"Collected {len(focus_uris)} focus test spec(s)")
+    return invalid_focus_specs
+
+
+# Detect duplicate,
+# If no error: associate the spec configuration and the file where this conf is stored
+# If error, aggregate the messages and mark spec as skipped
+def add_spec_validation(file_graph, subject_uris, file, triple_stores, error_messages, invalid_specs, spec_graph):
+
+    for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+        # If we already collected a URI, then we tag it as duplicate and it won't be executed
+        if subject_uri in subject_uris:
+            log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
+            error_messages += [f"Duplicate subject URI found in {file.name}."]
+            subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
+        if len(error_messages) == 0:
+            subject_uris.add(subject_uri)
+            this_spec_graph = Graph()
+            this_spec_graph.parse(file)
+            spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
+            for spec in spec_uris_in_this_file:
+                this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
+                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
+            spec_graph += this_spec_graph
+        else:
+            error_messages.sort()
+            error_message = "\n".join(msg for msg in error_messages)
+            invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name)
+                              for triple_store in triple_stores]
 
 
 def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[dict],
