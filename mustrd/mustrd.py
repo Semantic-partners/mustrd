@@ -551,41 +551,36 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
     order_list = ["order by ?", "order by desc", "order by asc"]
     ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
 
-    try:
-        if is_json(result):
-            df = json_results_to_panda_dataframe(result)
+    # If sparql query doesn't contain order by clause, but order is define in then spec:
+    # Then ignore order in then spec and print a warning
+    if not ordered_result and spec.then.ordered:
+        warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
+        log.warning(warning)
+
+    # If sparql query contains an order by clause and then spec is not order:
+    # Spec is inconsistent
+    if ordered_result and not spec.then.ordered:
+        message = "Actual result is ordered, must:then must contain sh:order on every row."
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
+
+    # Convert results to dataframe
+    if is_json(result):
+        df = json_results_to_panda_dataframe(result)
+    else:
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, "Sparql result is not in JSON")
+
+    # Compare result with expected
+    df_diff, message = compare_table_results(df, spec)
+
+    if df_diff.empty:
+        if warning:
+            return SpecPassedWithWarning(spec.spec_uri, spec.triple_store["type"], warning)
         else:
-            raise ParseException
-
-        if not df.empty and not ordered_result:
-            df.sort_values(by=list(df.columns)[::2], inplace=True)
-            df.reset_index(inplace=True, drop=True)
-            if spec.then.ordered:
-                warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
-                log.warning(warning)
-
-        if not df.empty and ordered_result and not spec.then.ordered:
-            message = build_summary_message(spec.then.value.shape[0], round(spec.then.value.shape[1] / 2),
-                                            df.shape[0], round(df.shape[1] / 2))
-            message += ". Actual result is ordered, must:then must contain sh:order on every row."
-            return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
-
-        df_diff, message = compare_table_results(df, spec)
-
-        if df_diff.empty:
-            if warning:
-                return SpecPassedWithWarning(spec.spec_uri, spec.triple_store["type"], warning)
-            else:
-                return SpecPassed(spec.spec_uri, spec.triple_store["type"])
-        else:
-            log.error("\n" + df_diff.to_markdown())
-            log.error(message)
-            return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
-
-    except ParseException as e:
-        return SparqlParseFailure(spec.spec_uri, spec.triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec.spec_uri, spec.triple_store["type"], ex)
+            return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+    else:
+        log.error("\n" + df_diff.to_markdown())
+        log.error(message)
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
 
 def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
@@ -604,6 +599,10 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
     sorted_then_cols = sorted(list(then))
     order_list = ["order by ?", "order by desc", "order by asc"]
     ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
+
+    if not ordered_result:
+        resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)
+        resultDf.reset_index(inplace=True, drop=True)
 
     if len(columns) == len(then.columns):
         if sorted_columns == sorted_then_cols:
