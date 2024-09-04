@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -54,7 +54,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
-from multimethods import MultiMethod, Default
+from multimethods import MultiMethod
 
 log = logger_setup.setup_logger(__name__)
 
@@ -247,7 +247,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
         return valid_spec_uris, spec_graph, invalid_specs
 
 
-def get_invalid_focus_spec(focus_uris, invalid_specs):
+def get_invalid_focus_spec(focus_uris: set, invalid_specs: list):
     invalid_focus_specs = []
     for spec in invalid_specs:
         if spec.spec_uri in focus_uris:
@@ -260,7 +260,8 @@ def get_invalid_focus_spec(focus_uris, invalid_specs):
 # Detect duplicate,
 # If no error: associate the spec configuration and the file where this conf is stored
 # If error, aggregate the messages and mark spec as skipped
-def add_spec_validation(file_graph, subject_uris, file, triple_stores, error_messages, invalid_specs, spec_graph):
+def add_spec_validation(file_graph: Graph, subject_uris: set, file: Path, triple_stores: List,
+                        error_messages: list, invalid_specs: list, spec_graph: Graph):
 
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
         # If we already collected a URI, then we tag it as duplicate and it won't be executed
@@ -353,7 +354,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
         raise
 
 
-def check_result(spec, result):
+def check_result(spec: Specification, result: Union[str, Graph]):
     if isinstance(spec.then, TableThenSpec):
         return table_comparison(result, spec)
     else:
@@ -448,7 +449,7 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     return triple_stores
 
 
-def get_anzo_configuration(triple_store, triple_store_graph, triple_store_config):
+def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
     triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
     triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
@@ -470,7 +471,7 @@ def get_anzo_configuration(triple_store, triple_store_graph, triple_store_config
         triple_store["error"] = e
 
 
-def get_graphDB_configuration(triple_store, triple_store_graph, triple_store_config):
+def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
     triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
     triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
