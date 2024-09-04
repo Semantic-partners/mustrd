@@ -802,33 +802,37 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     logger_setup.flush()
     log.info(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
-          f"{overview_colour}{warning_count} passed with warnings =====")
+             f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
-        for res in results:
-            if isinstance(res, UpdateSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-                log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-                log.info()
-                log.info(f"{Fore.RED} in_actual_not_in_expected")
-                log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-                log.info(f"{Fore.GREEN} in_both")
-                log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+        display_verbose(results)
 
-            if isinstance(res, SelectSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(res.message)
-                log.info(res.table_comparison.to_markdown())
-            if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            if isinstance(res, SpecPassedWithWarning):
-                log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-                log.info(res.warning)
-            if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
-                    isinstance(res, SparqlParseFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(res.exception)
-            if isinstance(res, SpecSkipped):
-                log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
-                log.info(res.message)
+
+def display_verbose(results: List[SpecResult]):
+    for res in results:
+        if isinstance(res, UpdateSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(f"{Fore.BLUE} In Expected Not In Actual:")
+            log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+            log.info()
+            log.info(f"{Fore.RED} in_actual_not_in_expected")
+            log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+            log.info(f"{Fore.GREEN} in_both")
+            log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+        if isinstance(res, SelectSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(res.message)
+            log.info(res.table_comparison.to_markdown())
+        if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        if isinstance(res, SpecPassedWithWarning):
+            log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+            log.info(res.warning)
+        if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
+                isinstance(res, SparqlParseFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(res.exception)
+        if isinstance(res, SpecSkipped):
+            log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+            log.info(res.message)
