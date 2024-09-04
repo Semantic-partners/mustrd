@@ -54,6 +54,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
+from multimethods import MultiMethod, Default
 
 log = logger_setup.setup_logger(__name__)
 
@@ -545,79 +546,31 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
-# https://github.com/Semantic-partners/mustrd/issues/110
-# https://github.com/Semantic-partners/mustrd/issues/52
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
     order_list = ["order by ?", "order by desc", "order by asc"]
     ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
-    then = spec.then.value
+
     try:
         if is_json(result):
             df = json_results_to_panda_dataframe(result)
-            columns = list(df.columns)
         else:
             raise ParseException
-        sorted_columns = sorted(columns)
-        sorted_then_cols = sorted(list(then))
-        if not df.empty:
 
-            if not ordered_result:
-                df.sort_values(by=columns[::2], inplace=True)
-                df.reset_index(inplace=True, drop=True)
-                if spec.then.ordered:
-                    warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
-                    log.warning(warning)
+        if not df.empty and not ordered_result:
+            df.sort_values(by=list(df.columns)[::2], inplace=True)
+            df.reset_index(inplace=True, drop=True)
+            if spec.then.ordered:
+                warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
+                log.warning(warning)
 
-            # Scenario 1: expected no result but got a result
-            if then.empty:
-                message = f"""Expected 0 row(s) and 0 column(s),
-                got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"""
-                empty_then = create_empty_dataframe_with_columns(df)
-                df_diff = empty_then.compare(df, result_names=("expected", "actual"))
+        if not df.empty and ordered_result and not spec.then.ordered:
+            message = build_summary_message(spec.then.value.shape[0], round(spec.then.value.shape[1] / 2),
+                                            df.shape[0], round(df.shape[1] / 2))
+            message += ". Actual result is ordered, must:then must contain sh:order on every row."
+            return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
 
-            else:
-                # Scenario 2: expected a result and got a result
-                # pandas.set_option('display.max_columns', None)
-                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
-                          f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                if ordered_result is True and not spec.then.ordered:
-                    message += ". Actual result is ordered, must:then must contain sh:order on every row."
-                    return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
-                else:
-                    if len(columns) == len(then.columns):
-                        if sorted_columns == sorted_then_cols:
-                            then = then[columns]
-                            if not ordered_result:
-                                then.sort_values(by=columns[::2], inplace=True)
-                                then.reset_index(drop=True, inplace=True)
-                            if df.shape == then.shape and (df.columns == then.columns).all():
-                                df_diff = then.compare(df, result_names=("expected", "actual"))
-                            else:
-                                df_diff = construct_df_diff(df, then)
-
-                        else:
-                            then = then[sorted_then_cols]
-                            df = df[sorted_columns]
-                            df_diff = construct_df_diff(df, then)
-                    else:
-
-                        then = then[sorted_then_cols]
-                        df = df[sorted_columns]
-                        df_diff = construct_df_diff(df, then)
-        else:
-
-            if then.empty:
-                # Scenario 3: expected no result, got no result
-                message = "Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
-                df = pandas.DataFrame()
-            else:
-                # Scenario 4: expected a result, but got an empty result
-                message = f"""Expected {then.shape[0]} row(s)
-                              and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"""
-                then = then[sorted_then_cols]
-                df = create_empty_dataframe_with_columns(then)
-            df_diff = then.compare(df, result_names=("expected", "actual"))
+        df_diff, message = compare_table_results(df, spec)
 
         if df_diff.empty:
             if warning:
@@ -633,6 +586,80 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         return SparqlParseFailure(spec.spec_uri, spec.triple_store["type"], e)
     except NotImplementedError as ex:
         return SpecSkipped(spec.spec_uri, spec.triple_store["type"], ex)
+
+
+def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
+    return not resultDf.empty, not spec.then.value.empty
+
+
+compare_table_results = MultiMethod("compare_table_results", compare_table_results_dispatch)
+
+
+# Scenario 1: expected a result and got a result
+@compare_table_results.method((True, True))
+def _compare_results(resultDf: DataFrame, spec: Specification):
+    columns = list(resultDf.columns)
+    sorted_columns = sorted(columns)
+    then = spec.then.value
+    sorted_then_cols = sorted(list(then))
+    order_list = ["order by ?", "order by desc", "order by asc"]
+    ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
+
+    if len(columns) == len(then.columns):
+        if sorted_columns == sorted_then_cols:
+            then = then[columns]
+            if not ordered_result:
+                then.sort_values(by=columns[::2], inplace=True)
+                then.reset_index(drop=True, inplace=True)
+            if resultDf.shape == then.shape and (resultDf.columns == then.columns).all():
+                df_diff = then.compare(resultDf, result_names=("expected", "actual"))
+            else:
+                df_diff = construct_df_diff(resultDf, then)
+        else:
+            then = then[sorted_then_cols]
+            resultDf = resultDf[sorted_columns]
+            df_diff = construct_df_diff(resultDf, then)
+    else:
+        then = then[sorted_then_cols]
+        resultDf = resultDf[sorted_columns]
+        df_diff = construct_df_diff(resultDf, then)
+
+    message = build_summary_message(then.shape[0], round(then.shape[1] / 2), resultDf.shape[0], round(resultDf.shape[1] / 2))
+    return df_diff, message
+
+
+# Scenario 2: expected no result but got a result
+@compare_table_results.method((True, False))
+def _unexpected_results(resultDf: DataFrame, spec: Specification):
+    empty_then = create_empty_dataframe_with_columns(resultDf)
+    df_diff = empty_then.compare(resultDf, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(0, 0, resultDf.shape[0], round(resultDf.shape[1] / 2))
+
+
+# Scenario 3: expected a result, but got an empty result
+@compare_table_results.method((False, True))
+def _missing_results(resultDf: DataFrame, spec: Specification):
+    then = spec.then.value
+    then = then[sorted(list(then))]
+    df = create_empty_dataframe_with_columns(then)
+    df_diff = then.compare(df, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(then.shape[0], round(then.shape[1] / 2), 0, 0)
+
+
+# Scenario 4: expected no result, got no result
+@compare_table_results.method((False, False))
+def _no_results(resultDf: DataFrame, spec: Specification):
+    df = pandas.DataFrame()
+    df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(0, 0, 0, 0)
+
+
+def build_summary_message(expected_rows, expected_columns, got_rows, got_columns):
+    return f"Expected {expected_rows} row(s) and {expected_columns} column(s), " \
+        f"got {got_rows} row(s) and {got_columns} column(s)"
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
