@@ -112,6 +112,12 @@ def parse_config(config_path):
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                           predicate=MUSTRDTEST.filterOnTripleStore))
 
+        # Root path is the mustrd test config path
+        root_path = Path(config_path).parent
+        spec_path = root_path / Path(spec_path) if spec_path else None
+        data_path = root_path / Path(data_path) if data_path else None
+        triplestore_spec_path = root_path / Path(triplestore_spec_path) if triplestore_spec_path else None
+
         test_configs.append(TestConfig(spec_path=spec_path, data_path=data_path,
                                        triplestore_spec_path=triplestore_spec_path,
                                        pytest_path=pytest_path,
@@ -126,9 +132,9 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
 
 @dataclass
 class TestConfig:
-    spec_path: str
-    data_path: str
-    triplestore_spec_path: str
+    spec_path: Path
+    data_path: Path
+    triplestore_spec_path: Path
     pytest_path: str
     filter_on_tripleStore: str = None
 
@@ -183,8 +189,8 @@ class MustrdTestPlugin:
                                          unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
                         one_test_config.filter_on_tripleStore)))
             else:
-                specs = self.generate_tests_for_config({"spec_path": Path(one_test_config.spec_path),
-                                                        "data_path": Path(one_test_config.data_path)},
+                specs = self.generate_tests_for_config({"spec_path": one_test_config.spec_path,
+                                                        "data_path": one_test_config.data_path},
                                                        triple_stores, file_name)
                 self.unit_tests.extend(list(map(
                     lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
@@ -251,7 +257,7 @@ class MustrdTestPlugin:
     def get_triple_stores_from_file(self, test_config):
         if test_config.triplestore_spec_path:
             try:
-                triple_stores = get_triple_stores(get_triple_store_graph(Path(test_config.triplestore_spec_path),
+                triple_stores = get_triple_stores(get_triple_store_graph(test_config.triplestore_spec_path,
                                                                          self.secrets))
             except Exception as e:
                 print(f"""Triplestore configuration parsing failed {test_config.triplestore_spec_path}.
