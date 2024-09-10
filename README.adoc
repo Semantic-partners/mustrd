@@ -55,4 +55,8 @@ We invite you to try it, see where it doesn't fit, and raise an issue, or even b
 We're a specialist consultancy in Semantic Tech, we're putting this out in case it's useful, but if you need more support, kindly contact our business team on info@semanticpartners.com
 
 // tag::body[]
-include::src/README.adoc[tags=body]
+
+include::GETSTARTED.adoc[Get started]
+
+Developer doc:
+include::mustrd/README.adoc[tags=body]
