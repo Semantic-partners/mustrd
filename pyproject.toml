@@ -20,7 +20,7 @@ license = "MIT License"
 repository = "https://github.com/Semantic-partners/mustrd"
 
 [tool.poetry.dependencies]
-python = "^3.11.10"
+python = "^3.11"
 rdflib = "^6.3.2"
 pytest = "^7.2.0"
 pandas = "^1.5.2"
