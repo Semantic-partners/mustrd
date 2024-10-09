@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mustrd"
-version = "0.2.1"
+version = "0.2.6.1"
 description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucumber."
 authors = ["John Placek <john.placek@semanticpartners.com>",
     "Juliane Piñeiro-Winkler <juliane.pineiro-winkler@semanticpartners.com>",
@@ -15,7 +15,7 @@ classifiers = [
   "Topic :: Software Development :: Testing",
   "Topic :: Utilities",
 ]
-readme = "README.adoc"
+readme = "README.md"
 license = "MIT License"
 repository = "https://github.com/Semantic-partners/mustrd"
 
