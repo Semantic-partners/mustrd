@@ -32,7 +32,7 @@ from pytest import Session
 
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
-from mustrd.mustrd import get_triple_store_graph, get_triple_stores
+from mustrd.mustrd import write_result_diff_to_log, get_triple_store_graph, get_triple_stores
 from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
@@ -331,4 +331,6 @@ def run_test_spec(test_spec):
     if result_type == SpecSkipped:
         # FIXME: Better exception management
         pytest.skip("Unsupported configuration")
+    if result_type != SpecPassed:
+        write_result_diff_to_log(result)
     return result_type == SpecPassed
