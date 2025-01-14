@@ -37,7 +37,7 @@ from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs,
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
-
+import logging
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 mustrd_root = get_mustrd_root()
@@ -83,13 +83,22 @@ def pytest_addoption(parser):
 def pytest_configure(config) -> None:
     # Read configuration file
     if config.getoption("mustrd"):
-        test_configs = parse_config(config.getoption("configpath"))
-        config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
+        config_path = config.getoption("configpath")
+        if config_path is None:
+            pytest.exit("You must provide --config <configuration_file_path> ")
+        try:
+            test_configs = parse_config(config_path)
+            config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
                                                        test_configs, config.getoption("secrets")))
+        except FileNotFoundError as e:
+            pytest.exit(e)
+        except ValueError as e:
+            pytest.exit(e)
 
 
 def parse_config(config_path):
     test_configs = []
+    print(f"{config_path=}")
     config_graph = Graph().parse(config_path)
     shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestShapes.ttl")))
     ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdTestOntology.ttl")))
