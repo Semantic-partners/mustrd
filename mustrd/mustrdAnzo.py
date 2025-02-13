@@ -121,13 +121,12 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
     }}"""
     return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]['query']
 
-
 def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
     query = f"""SELECT ?param_query ?query_template WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
             ?stepUri    a <http://cambridgesemantics.com/ontologies/Graphmarts#Step> ;
-                        <http://cambridgesemantics.com/ontologies/Graphmarts#parametersTemplate> ?param_query ;
-                        <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
+   					    <http://cambridgesemantics.com/ontologies/Graphmarts#parametersTemplate> ?param_query ;
+					    <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
     return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]
@@ -142,11 +141,11 @@ SELECT ?query ?param_query ?query_template
                 anzo:orderedValue ?query_step .
   ?query_step graphmarts:enabled true ;
   OPTIONAL {{  ?query_step
-                graphmarts:parametersTemplate ?param_query ;
-                graphmarts:template ?query_template ;
+   				graphmarts:parametersTemplate ?param_query ;
+           		graphmarts:template ?query_template ;
       . }}
   OPTIONAL {{  ?query_step
-                graphmarts:transformQuery ?query ;
+   				graphmarts:transformQuery ?query ;
       . }}
   }}
   ORDER BY ?index"""

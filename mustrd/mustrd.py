@@ -587,7 +587,6 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
                 then = then[sorted_then_cols]
                 df = create_empty_dataframe_with_columns(then)
             df_diff = then.compare(df, result_names=("expected", "actual"))
-            print(df_diff.to_markdown())
 
         if df_diff.empty:
             if warning:
@@ -635,6 +634,30 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     return expected_results
 
+def write_result_diff_to_log(res):
+    if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(f"{Fore.BLUE} In Expected Not In Actual:")
+        log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+        log.info(f"{Fore.RED} in_actual_not_in_expected")
+        log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+        log.info(f"{Fore.GREEN} in_both")
+        log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+    if isinstance(res, SelectSpecFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(res.message)
+        log.info(res.table_comparison.to_markdown())
+    if isinstance(res, SpecPassedWithWarning):
+        log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+        log.info(res.warning)
+    if isinstance(res, TripleStoreConnectionError) or isinstance(res, SparqlExecutionError) or \
+            isinstance(res, SparqlParseFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(res.exception)
+    if isinstance(res, SpecSkipped):
+        log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+        log.info(res.message)
 
 def calculate_row_difference(df1: pandas.DataFrame,
                              df2: pandas.DataFrame) -> pandas.DataFrame:
@@ -702,7 +725,7 @@ def create_empty_dataframe_with_columns(df: pandas.DataFrame) -> pandas.DataFram
 
 
 def review_results(results: List[SpecResult], verbose: bool) -> None:
-    print("===== Result Overview =====")
+    log.info("===== Result Overview =====")
     # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
@@ -727,8 +750,8 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
                     for triple_store in triple_stores] for status in set(statuses)]
 
     # Display tables with tabulate
-    print(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
-    print(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
+    log.info(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
+    log.info(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
 
     pass_count = statuses.count(SpecPassed)
     warning_count = statuses.count(SpecPassedWithWarning)
@@ -744,34 +767,34 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
         overview_colour = Fore.GREEN
 
     logger_setup.flush()
-    print(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+    log.info(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
           f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
         for res in results:
             if isinstance(res, UpdateSpecFailure):
-                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                print(f"{Fore.BLUE} In Expected Not In Actual:")
-                print(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-                print()
-                print(f"{Fore.RED} in_actual_not_in_expected")
-                print(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-                print(f"{Fore.GREEN} in_both")
-                print(res.graph_comparison.in_both.serialize(format="ttl"))
+                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                log.info(f"{Fore.BLUE} In Expected Not In Actual:")
+                log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+                log.info()
+                log.info(f"{Fore.RED} in_actual_not_in_expected")
+                log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+                log.info(f"{Fore.GREEN} in_both")
+                log.info(res.graph_comparison.in_both.serialize(format="ttl"))
 
             if isinstance(res, SelectSpecFailure):
-                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                print(res.message)
-                print(res.table_comparison.to_markdown())
+                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                log.info(res.message)
+                log.info(res.table_comparison.to_markdown())
             if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
             if isinstance(res, SpecPassedWithWarning):
-                print(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-                print(res.warning)
+                log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+                log.info(res.warning)
             if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
                     isinstance(res, SparqlParseFailure):
-                print(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                print(res.exception)
+                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+                log.info(res.exception)
             if isinstance(res, SpecSkipped):
-                print(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
-                print(res.message)
+                log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+                log.info(res.message)
