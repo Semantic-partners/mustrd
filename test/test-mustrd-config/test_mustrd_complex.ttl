@@ -2,25 +2,25 @@
 @prefix triplestore:<https://mustrd.com/triplestore/> .
 
 :test_unit_rdflib11 a :MustrdTest;
-                :hasSpecPath "test/test-specs";
-                :hasDataPath "test/data";
+                :hasSpecPath "../test-specs";
+                :hasDataPath "../data";
                 :hasPytestPath "col1/test1/rdflib";
                 :filterOnTripleStore triplestore:RdfLib .
 
 :test_unit_rdflib12 a :MustrdTest;
-                :hasSpecPath "test/test-specs";
-                :hasDataPath "test/data";
+                :hasSpecPath "../test-specs";
+                :hasDataPath "../data";
                 :hasPytestPath "col1/test2/rdflib";
                 :filterOnTripleStore triplestore:RdfLib .
 
 :test_unit_rdflib21 a :MustrdTest;
-                :hasSpecPath "test/test-specs";
-                :hasDataPath "test/data";
+                :hasSpecPath "../test-specs";
+                :hasDataPath "../data";
                 :hasPytestPath "col2/test1/rdflib";
                 :filterOnTripleStore triplestore:RdfLib .
 
 :test_unit_rdflib22 a :MustrdTest;
-                :hasSpecPath "test/test-specs";
-                :hasDataPath "test/data";
+                :hasSpecPath "../test-specs";
+                :hasDataPath "../data";
                 :hasPytestPath "col2/test2/rdflib";
                 :filterOnTripleStore triplestore:RdfLib .
