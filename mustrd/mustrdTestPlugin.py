@@ -37,6 +37,8 @@ from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs,
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
+import json
+
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -76,6 +78,14 @@ def pytest_addoption(parser):
         metavar="Secrets",
         default=None,
         help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
+    )    
+    group.addoption(
+        "--collected",
+        action="store",
+        dest="collectedpath",
+        metavar="pathTocollectedtests",
+        default=None,
+        help="Path to a Json file containing all the collected tests",
     )
     return
 
@@ -85,7 +95,7 @@ def pytest_configure(config) -> None:
     if config.getoption("mustrd"):
         test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
-                                                       test_configs, config.getoption("secrets")))
+                                                       test_configs, config.getoption("secrets"), config.getoption("collectedpath")))
 
 
 def parse_config(config_path):
@@ -149,16 +159,18 @@ class MustrdTestPlugin:
     md_path: str
     test_configs: list
     secrets: str
+    collected_path: str
     unit_tests: Union[Specification, SpecSkipped]
     items: list
 
-    def __init__(self, md_path, test_configs, secrets):
+    def __init__(self, md_path, test_configs, secrets, collected_path):
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
+        self.collected_path = collected_path
         self.items = []
 
-    @pytest.hookimpl(tryfirst=True)
+    @pytest.hookimpl(hookwrapper=True)
     def pytest_collection(self, session):
         self.unit_tests = []
         args = session.config.args
@@ -195,6 +207,12 @@ class MustrdTestPlugin:
                 self.unit_tests.extend(list(map(
                     lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
 
+        yield        
+        if self.collected_path:
+            with open(self.collected_path, 'w') as file:
+                file.write(json.dumps([item.nodeid for item in session.items]))
+        
+        
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
             return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]

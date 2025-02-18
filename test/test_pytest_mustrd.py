@@ -26,9 +26,9 @@ from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
 
 
-def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
+def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None, collected_path: str = None):
     test_config = parse_config(config_path)
-    mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets)
+    mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets, collected_path)
     pytest.main([*args], plugins=[mustrd_plugin])
     return mustrd_plugin, test_config
 
