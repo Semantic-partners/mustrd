@@ -44,8 +44,6 @@ spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 mustrd_root = get_mustrd_root()
 
-MUSTRD_PYTEST_PATH = "mustrd_tests/"
-
 
 def pytest_addoption(parser):
     group = parser.getgroup("mustrd option")
@@ -78,7 +76,7 @@ def pytest_addoption(parser):
         metavar="Secrets",
         default=None,
         help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
-    )    
+    )
     group.addoption(
         "--collected",
         action="store",
@@ -95,7 +93,8 @@ def pytest_configure(config) -> None:
     if config.getoption("mustrd"):
         test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
-                                                       test_configs, config.getoption("secrets"), config.getoption("collectedpath")))
+                                                       test_configs, config.getoption("secrets"),
+                                                       config.getoption("collectedpath")))
 
 
 def parse_config(config_path):
@@ -170,20 +169,44 @@ class MustrdTestPlugin:
         self.collected_path = collected_path
         self.items = []
 
+    def parse_filter(self, filter_string, session):
+        # If argument is project path: there is filter: load everything
+        filter_exists = filter_string != str(session.path)
+        apply_filter_on_file = False
+        apply_filter_on_path = False
+        filter_on_path = None
+        filter_on_file = None
+        if filter_exists:
+            apply_filter_on_file = ".mustrd.ttl" in filter_string
+            apply_filter_on_path = not apply_filter_on_file or "/" in filter_string
+            if apply_filter_on_file and apply_filter_on_path:
+                filter_on_file = filter_string[filter_string.rindex("/"): filter_string.index(".mustrd.ttl")]
+                filter_on_path = filter_string[0: filter_string.rindex("/")]
+            elif apply_filter_on_file and not apply_filter_on_path:
+                filter_on_file = filter_string[0: filter_string.index(".mustrd.ttl")]
+            elif not apply_filter_on_file and apply_filter_on_path:
+                filter_on_path = filter_string
+        return filter_exists, apply_filter_on_path, apply_filter_on_file, filter_on_path, filter_on_file
+
     @pytest.hookimpl(hookwrapper=True)
     def pytest_collection(self, session):
         self.unit_tests = []
         args = session.config.args
         if len(args) > 0:
-            file_name = self.get_file_name_from_arg(args[0])
+            filter_string = args[0]
+            self.parse_filter(filter_string, session)
+
+            filter_exists, apply_filter_on_path, apply_filter_on_file, filter_on_path, filter_on_file = \
+                self.parse_filter(filter_string, session)
+
             # Filter test to collect only specified path
             config_to_collect = list(filter(lambda config:
                                             # Case we want to collect everything
-                                            MUSTRD_PYTEST_PATH not in args[0]
-                                            # Case we want to collect a test or sub test
-                                            or (config.pytest_path or "") in args[0]
+                                            not filter_exists
+                                            # Case we only filter on spec file
+                                            or (apply_filter_on_file and not apply_filter_on_path)
                                             # Case we want to collect a whole test folder
-                                            or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
+                                            or filter_on_path in config.pytest_path,
                                             self.test_configs))
 
             # Redirect everything to test_mustrd.py,
@@ -203,20 +226,14 @@ class MustrdTestPlugin:
             else:
                 specs = self.generate_tests_for_config({"spec_path": one_test_config.spec_path,
                                                         "data_path": one_test_config.data_path},
-                                                       triple_stores, file_name)
+                                                       triple_stores, filter_on_file)
                 self.unit_tests.extend(list(map(
                     lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
 
-        yield        
+        yield
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
                 file.write(json.dumps([item.nodeid for item in session.items]))
-        
-        
-    def get_file_name_from_arg(self, arg):
-        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
-            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]
-        return None
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_pycollect_makeitem(self, collector, name, obj):
@@ -225,9 +242,9 @@ class MustrdTestPlugin:
             items = report.get_result()
             new_results = []
             for item in items:
-                virtual_path = MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
-                item.fspath = Path(virtual_path)
-                item._nodeid = virtual_path + "::" + item.name
+                # virtual_path = MUSTRD_PYTEST_PATH + (item.callspec.params["unit_tests"].test_config.pytest_path or "default")
+                item.fspath = item.name
+                item._nodeid = item.name.split("[")[1].split("]")[0]
                 self.items.append(item)
                 new_results.append(item)
             return new_results
@@ -239,8 +256,8 @@ class MustrdTestPlugin:
                 # Create the test in itself
                 if self.unit_tests:
                     metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
-                                         ids=lambda test_param: (test_param.unit_test.spec_file_name or "") + "@" +
-                                         (test_param.test_config.pytest_path or ""))
+                                         ids=lambda test_param: (test_param.test_config.pytest_path or "") +
+                                         "/" + (test_param.unit_test.spec_file_name or ""))
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],

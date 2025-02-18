@@ -124,16 +124,16 @@ def test_collection_full():
 
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
-    node_id = "mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"
+    node_id = "rdflib/construct_spec.mustrd.ttl"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only", node_id)
     items = mustrd_plugin.items
-    assert list(map(lambda item: item.nodeid, items)) == ["mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"]
+    assert list(map(lambda item: item.nodeid, items)) == [node_id]
 
 
 def test_collection_path():
     path = "rdflib1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", "rdflib1")
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
@@ -142,7 +142,7 @@ def test_collection_path():
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", "col1/test1")
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
@@ -151,7 +151,7 @@ def test_collection_path2():
 def test_collection_path3():
     path = "col1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", "col1")
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 64
@@ -244,7 +244,7 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
 
 
 def get_node_id(ttl_file: str, path: str):
-    return f"mustrd_tests/{path}::test_unit[{ttl_file}@{path}]"
+    return f"{path}/{ttl_file}"
 
 
 def has_item(node_ids: list, ttl_file: str, path: str):
