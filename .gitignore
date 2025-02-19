@@ -168,3 +168,4 @@ mustrd.iml
 test/triplestore_config/*
 junit/*
 test/anzoConnectionConfig.ttl
+pytest.ini
