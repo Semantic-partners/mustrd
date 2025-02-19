@@ -85,6 +85,14 @@ def pytest_addoption(parser):
         default=None,
         help="Path to a Json file containing all the collected tests",
     )
+    group.addoption(
+        "--output",
+        action="store",
+        dest="outputpath",
+        metavar="pathToTestsOutput",
+        default=None,
+        help="Path to a Json file containing the results of the tests",
+    )
     return
 
 
@@ -94,7 +102,8 @@ def pytest_configure(config) -> None:
         test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
                                                        test_configs, config.getoption("secrets"),
-                                                       config.getoption("collectedpath")))
+                                                       config.getoption("collectedpath"),
+                                                       config.getoption("outputpath")))
 
 
 def parse_config(config_path):
@@ -159,14 +168,16 @@ class MustrdTestPlugin:
     test_configs: list
     secrets: str
     collected_path: str
+    output_path: str
     unit_tests: Union[Specification, SpecSkipped]
     items: list
 
-    def __init__(self, md_path, test_configs, secrets, collected_path):
+    def __init__(self, md_path, test_configs, secrets, collected_path = None, output_path = None):
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
         self.collected_path = collected_path
+        self.output_path = output_path
         self.items = []
 
     def parse_filter(self, filter_string, session):
@@ -326,34 +337,35 @@ class MustrdTestPlugin:
     # Take all the test results in session, parse them, split them in mustrd and standard pytest  and generate md file
     def pytest_sessionfinish(self, session: Session, exitstatus):
         # if md path has not been defined in argument, then do not generate md file
-        if not self.md_path:
-            return
+        if self.md_path:
+            test_results = []
+            for test_conf, result in session.results.items():
+                # Case auto generated tests
+                if test_conf.originalname != test_conf.name:
+                    module_name = test_conf.parent.name
+                    class_name = test_conf.originalname
+                    test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
+                    is_mustrd = True
+                # Case normal unit tests
+                else:
+                    module_name = test_conf.parent.parent.name
+                    class_name = test_conf.parent.name
+                    test_name = test_conf.originalname
+                    is_mustrd = False
 
-        test_results = []
-        for test_conf, result in session.results.items():
-            # Case auto generated tests
-            if test_conf.originalname != test_conf.name:
-                module_name = test_conf.parent.name
-                class_name = test_conf.originalname
-                test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
-                is_mustrd = True
-            # Case normal unit tests
-            else:
-                module_name = test_conf.parent.parent.name
-                class_name = test_conf.parent.name
-                test_name = test_conf.originalname
-                is_mustrd = False
+                test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
 
-            test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
+            result_list = ResultList(None, get_result_list(test_results,
+                                                        lambda result: result.type,
+                                                        lambda result: is_mustrd and result.test_name.split("@")[1]),
+                                    False)
 
-        result_list = ResultList(None, get_result_list(test_results,
-                                                       lambda result: result.type,
-                                                       lambda result: is_mustrd and result.test_name.split("@")[1]),
-                                 False)
-
-        md = result_list.render()
-        with open(self.md_path, 'w') as file:
-            file.write(md)
+            md = result_list.render()
+            with open(self.md_path, 'w') as file:
+                file.write(md)
+        if self.output_path:
+            with open(self.output_path, 'w') as file:
+                file.write(json.dumps({item.nodeid: item.outcome for item in session.results.values()}))
 
 
 # Function called in the test to actually run it
