@@ -365,7 +365,7 @@ class MustrdTestPlugin:
                 file.write(md)
         if self.output_path:
             with open(self.output_path, 'w') as file:
-                file.write(json.dumps({item.nodeid: {"status" : item.outcome, "stderr": item.capstderr} for item in session.results.values()}))
+                file.write(json.dumps({item.nodeid: {"status" : item.outcome, "stderr": item.capstderr, "stdout": item.capstdout} for item in session.results.values()}))
 
 
 # Function called in the test to actually run it
