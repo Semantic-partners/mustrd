@@ -692,6 +692,30 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     return expected_results
 
+def write_result_diff_to_log(res):
+    if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(f"{Fore.BLUE} In Expected Not In Actual:")
+        log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+        log.info(f"{Fore.RED} in_actual_not_in_expected")
+        log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+        log.info(f"{Fore.GREEN} in_both")
+        log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+    if isinstance(res, SelectSpecFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(res.message)
+        log.info(res.table_comparison.to_markdown())
+    if isinstance(res, SpecPassedWithWarning):
+        log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+        log.info(res.warning)
+    if isinstance(res, TripleStoreConnectionError) or isinstance(res, SparqlExecutionError) or \
+            isinstance(res, SparqlParseFailure):
+        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        log.info(res.exception)
+    if isinstance(res, SpecSkipped):
+        log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+        log.info(res.message)
 
 def calculate_row_difference(df1: pandas.DataFrame,
                              df2: pandas.DataFrame) -> pandas.DataFrame:

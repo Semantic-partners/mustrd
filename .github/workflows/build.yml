@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11.7"]
+        python-version: ["3.11.11"]
 
     steps:
       - uses: actions/checkout@v3
@@ -37,7 +37,7 @@ jobs:
         run:  poetry run pytest --mustrd --md=junit/github_job_summary.md --config=.github/test_config.ttl
       - name: Upload pytest test results
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
@@ -48,7 +48,7 @@ jobs:
         run: poetry run coverage html --directory=htmlcov --include=mustrd/*
         if: ${{ always() }}
       - name: Upload coverage HTML summary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-htmlcov
           path: htmlcov
