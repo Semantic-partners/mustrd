@@ -357,7 +357,7 @@ class MustrdTestPlugin:
 
             result_list = ResultList(None, get_result_list(test_results,
                                                         lambda result: result.type,
-                                                        lambda result: is_mustrd and result.test_name.split("@")[1]),
+                                                        lambda result: is_mustrd and result.test_name.split("/")[0]),
                                     False)
 
             md = result_list.render()
