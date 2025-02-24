@@ -28,6 +28,7 @@ from rdflib import Graph, ConjunctiveGraph, Literal, URIRef
 from requests import ConnectTimeout, Response, HTTPError, RequestException, ConnectionError
 from bs4 import BeautifulSoup
 import logging
+from .namespace import MUST
 
 
 # https://github.com/Semantic-partners/mustrd/issues/73
@@ -55,12 +56,12 @@ def execute_select(triple_store: dict,  when: str, bindings: dict = None) -> str
     try:
         if bindings:
             when = query_with_bindings(bindings, when)
-        when = when.replace("${fromSources}",
-                            f"FROM <{triple_store['input_graph']}>\nFROM <{triple_store['output_graph']}>").replace(
-                                "${targetGraph}", f"<{triple_store['output_graph']}>")
+        when = when.replace("${fromSources}", f"FROM <{triple_store['input_graph']}>\nFROM <{triple_store['output_graph']}>").replace(
+        "${targetGraph}", f"<{triple_store['output_graph']}>")
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
-                'skipCache': 'true'}
-
+                'default-graph-uri': triple_store['input_graph'],
+                'named-graph-uri': triple_store['input_graph'],
+                 'skipCache': 'true'}
         url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=application/sparql-results+json"
         return manage_anzo_response(requests.post(url=url,
                                                   auth=(triple_store['username'], triple_store['password']),
@@ -75,28 +76,30 @@ def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Grap
     input_graph = triple_store['input_graph']
     output_graph = triple_store['output_graph']
 
-    substituted_query = when.replace("${usingSources}",
-                                     f"""USING <{triple_store['input_graph']}>
-USING <{triple_store['output_graph']}>""").replace(
-                                         "${targetGraph}", f"<{output_graph}>")
-
-    data = {'datasourceURI': triple_store['gqe_uri'], 'update': substituted_query,
-            'default-graph-uri': input_graph, 'skipCache': 'true'}
+    substituted_query = when.replace("${usingSources}", f"USING <{triple_store['input_graph']}> \nUSING <{triple_store['output_graph']}>").replace(
+        "${targetGraph}", f"<{output_graph}>")
+   
+    data = {'datasourceURI': triple_store['gqe_uri'],
+            'update': substituted_query,
+            'using-graph-uri': [output_graph, input_graph],
+            'using-named-graph-uri': [output_graph, input_graph],
+            'skipCache': 'true'}
     url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
     response = manage_anzo_response(requests.post(url=url,
-                                                  auth=(triple_store['username'],
-                                                        triple_store['password']),
-                                                  data=data,
-                                                  verify=False))
-
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=data,
+            verify=False))
     logging.debug(f'response {response}')
     check_data = {'datasourceURI': triple_store['gqe_uri'], 'query': "construct {?s ?p ?o} { ?s ?p ?o }",
-                  'default-graph-uri': output_graph, 'skipCache': 'true'}
+                'default-graph-uri': output_graph,
+                'named-graph-uri': output_graph,
+                  'skipCache': 'true'}
     everything_response = manage_anzo_response(requests.post(url=url,
-                                                             auth=(triple_store['username'],
-                                                                   triple_store['password']),
-                                                             data=check_data,
-                                                             verify=False))
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=check_data,
+            verify=False))
     # todo deal with error responses
     new_graph = Graph().parse(data=everything_response)
     logging.debug(f"new_graph={new_graph.serialize(format='ttl')}")
@@ -108,15 +111,19 @@ def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> G
         if bindings:
             when = query_with_bindings(bindings, when)
         data = {'datasourceURI': triple_store['gqe_uri'], 'query': when,
-                'default-graph-uri': triple_store['input_graph'], 'skipCache': 'true'}
+                'default-graph-uri': triple_store['input_graph'],
+                'named-graph-uri': triple_store['input_graph'],
+                'skipCache': 'true'}
         url = f"https://{triple_store['url']}:{triple_store['port']}/sparql?format=ttl"
         response = requests.post(url=url,
-                                 auth=(triple_store['username'],
-                                       triple_store['password']),
-                                 data=data,
-                                 verify=False)
+            auth=(triple_store['username'],
+                triple_store['password']),
+            data=data,
+            verify=False)
         logging.debug(f'response {response}')
-        return Graph().parse(data=manage_anzo_response(response))
+        g = Graph().parse(data=manage_anzo_response(response))
+        logging.debug(f"Actual Result = {g.serialize(format='ttl')}")
+        return g
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout) as e:
         logging.error(f'response {e}')
         raise
@@ -172,14 +179,13 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
     return record_dictionaries[0].get(
         "query")
 
-
 def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
 
     query = f"""SELECT ?stepUri ?param_query ?query_template WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
             ?stepUri    a <http://cambridgesemantics.com/ontologies/Graphmarts#Step> ;
-                        <http://cambridgesemantics.com/ontologies/Graphmarts#parametersTemplate> ?param_query ;
-                        <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
+   					    <http://cambridgesemantics.com/ontologies/Graphmarts#parametersTemplate> ?param_query ;
+					    <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
     anzo_client = AnzoClient(triple_store['url'], triple_store['port'],
@@ -198,11 +204,11 @@ SELECT ?query ?param_query ?query_template
                 anzo:orderedValue ?query_step .
   ?query_step graphmarts:enabled true ;
   OPTIONAL {{  ?query_step
-                graphmarts:parametersTemplate ?param_query ;
-                graphmarts:template ?query_template ;
+   				graphmarts:parametersTemplate ?param_query ;
+           		graphmarts:template ?query_template ;
       . }}
   OPTIONAL {{  ?query_step
-                graphmarts:transformQuery ?query ;
+   				graphmarts:transformQuery ?query ;
       . }}
   }}
   ORDER BY ?index"""
@@ -222,9 +228,12 @@ def upload_given(triple_store: dict, given: Graph):
         clear_graph(triple_store, output_graph)
         serialized_given = given.serialize(format="nt")
         insert_query = f"INSERT DATA {{graph <{triple_store['input_graph']}>{{{serialized_given}}}}}"
-        data = {'datasourceURI': triple_store['gqe_uri'], 'update': insert_query}
+        data = {'datasourceURI': triple_store['gqe_uri'],
+                'update': insert_query,
+                'using-graph-uri': input_graph,
+                'using-named-graph-uri': input_graph}
         response = requests.post(url=f"https://{triple_store['url']}:{triple_store['port']}/sparql",
-                                 auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
+                                    auth=(triple_store['username'], triple_store['password']), data=data, verify=False)
         manage_anzo_response(response)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         raise
