@@ -350,18 +350,14 @@ class MustrdTestPlugin:
             for test_conf, result in session.results.items():
                 # Case auto generated tests
                 if test_conf.originalname != test_conf.name:
-                    module_name = test_conf.parent.name
-                    class_name = test_conf.originalname
-                    test_name = test_conf.name.replace(class_name, "").replace("[", "").replace("]", "")
+                    test_name = test_conf.nodeid
                     is_mustrd = True
                 # Case normal unit tests
                 else:
-                    module_name = test_conf.parent.parent.name
-                    class_name = test_conf.parent.name
                     test_name = test_conf.originalname
                     is_mustrd = False
 
-                test_results.append(TestResult(test_name, class_name, module_name, result.outcome, is_mustrd))
+                test_results.append(TestResult(test_name, result.outcome, is_mustrd))
 
             result_list = ResultList(None, get_result_list(test_results,
                                                         lambda result: result.type,

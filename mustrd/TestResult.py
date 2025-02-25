@@ -53,16 +53,12 @@ RESULT_LIST_LEAF_MD_TEMPLATE = "md_ResultList_leaf_template.jinja"
 @dataclass
 class TestResult:
     test_name: str
-    class_name: str
-    module_name: str
     status: str
     is_mustrd: bool
     type: str
 
-    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
+    def __init__(self, test_name: str, status: str, is_mustrd: bool):
         self.test_name = test_name
-        self.class_name = class_name
-        self.module_name = module_name
         self.status = status
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
