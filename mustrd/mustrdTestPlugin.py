@@ -161,7 +161,10 @@ class TestConfig:
 class TestParamWrapper:
     test_config: TestConfig
     unit_test: Union[Specification, SpecSkipped]
-
+    def get_node_id(self):
+        return (self.test_config.pytest_path or "") + "/" + (self.unit_test.spec_file_name or "")
+    def get_source_file_path(self):
+        return self.unit_test.spec_source_file
 
 class MustrdTestPlugin:
     md_path: str
@@ -244,7 +247,7 @@ class MustrdTestPlugin:
         yield
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
-                file.write(json.dumps([item.nodeid for item in session.items]))
+                file.write(json.dumps({test.get_node_id():{"fs_path":test.get_source_file_path()} for test in self.unit_tests}))
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_pycollect_makeitem(self, collector, name, obj):
@@ -267,8 +270,7 @@ class MustrdTestPlugin:
                 # Create the test in itself
                 if self.unit_tests:
                     metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
-                                         ids=lambda test_param: (test_param.test_config.pytest_path or "") +
-                                         "/" + (test_param.unit_test.spec_file_name or ""))
+                                         ids=lambda test_param: test_param.get_node_id())
             else:
                 metafunc.parametrize(metafunc.fixturenames[0],
                                      [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
