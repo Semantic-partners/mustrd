@@ -165,7 +165,11 @@ class TestParamWrapper:
         return (self.test_config.pytest_path or "") + "/" + (self.unit_test.spec_file_name or "")
     def get_source_file_path(self):
         return self.unit_test.spec_source_file
-
+    def get_message(self):
+        if isinstance(self.unit_test,SpecSkipped):
+            return self.unit_test.message
+        return None
+ 
 class MustrdTestPlugin:
     md_path: str
     test_configs: list
@@ -247,7 +251,9 @@ class MustrdTestPlugin:
         yield
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
-                file.write(json.dumps({test.get_node_id():{"fs_path":test.get_source_file_path()} for test in self.unit_tests}))
+                file.write(json.dumps({test.get_node_id():{"fs_path":test.get_source_file_path(),
+                                                           "collection_error":test.get_message()} 
+                                       for test in self.unit_tests}))
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_pycollect_makeitem(self, collector, name, obj):
