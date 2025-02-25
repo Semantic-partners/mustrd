@@ -358,7 +358,11 @@ def run_spec(spec: Specification) -> SpecResult:
     if spec.given:
         given_as_turtle = spec.given.serialize(format="turtle")
         log.debug(f"{given_as_turtle}")
-        upload_given(triple_store, spec.given)
+        try:
+            upload_given(triple_store, spec.given)
+        except Exception as e:
+            log.error(f"Error uploading given graph: {e}")
+            raise
     else:
         if triple_store['type'] == TRIPLESTORE.RdfLib:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
