@@ -213,7 +213,7 @@ must:RowShape
 
 must:OrderedRowShape
     a              sh:NodeShape ;
-    sh:targetClass must:Row ;
+    sh:targetClass must:OrderedRow ;
     sh:property    [ sh:path     sh:order ;
                      sh:minCount 2 ; ] ;
     sh:property    [ sh:path     must:hasBinding ;
