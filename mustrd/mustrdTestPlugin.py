@@ -252,7 +252,8 @@ class MustrdTestPlugin:
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
                 file.write(json.dumps({test.get_node_id():{"fs_path":test.get_source_file_path(),
-                                                           "collection_error":test.get_message()} 
+                                                           "collection_error":test.get_message(),
+                                                           "uri": str(test.unit_test.spec_uri)} 
                                        for test in self.unit_tests}))
 
     @pytest.hookimpl(hookwrapper=True)
