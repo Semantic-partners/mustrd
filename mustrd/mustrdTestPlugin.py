@@ -42,6 +42,8 @@ import json
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
+triple_store_config_path = "triplestore_config/triplestores.ttl"
+
 mustrd_root = get_mustrd_root()
 
 
@@ -125,16 +127,17 @@ def parse_config(config_path):
     for test_config_subject in config_graph.subjects(predicate=RDF.type, object=MUSTRDTEST.MustrdTest):
         spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasSpecPath, str)
         data_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasDataPath, str)
-        triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.triplestoreSpecPath, str)
         pytest_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasPytestPath, str)
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                           predicate=MUSTRDTEST.filterOnTripleStore))
+        
+        is_rdflib = filter_on_tripleStore==[TRIPLESTORE.RdfLib] or filter_on_tripleStore==[]
 
         # Root path is the mustrd test config path
         root_path = Path(config_path).parent
         spec_path = root_path / Path(spec_path) if spec_path else None
         data_path = root_path / Path(data_path) if data_path else None
-        triplestore_spec_path = root_path / Path(triplestore_spec_path) if triplestore_spec_path else None
+        triplestore_spec_path = root_path / Path(triple_store_config_path) if not is_rdflib else None
 
         test_configs.append(TestConfig(spec_path=spec_path, data_path=data_path,
                                        triplestore_spec_path=triplestore_spec_path,

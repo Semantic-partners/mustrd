@@ -121,6 +121,5 @@ class MUSTRDTEST(DefinedNamespace):
     MustrdTest: URIRef
     hasSpecPath: URIRef
     hasDataPath: URIRef
-    triplestoreSpecPath: URIRef
     hasPytestPath: URIRef
     filterOnTripleStore: URIRef
