@@ -100,8 +100,7 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_type = TRIPLESTORE.Anzo
         triple_store_uri = URIRef("https://mustrd.com/model/AnzoConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
-        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://example.com/anzo")))
-        triple_store_graph.add((triple_store_uri, TRIPLESTORE.port, Literal(8080)))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://anzo.example.com:8080")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("test_password")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.gqeURI, Literal("http://example.com/gqe")))
@@ -112,8 +111,7 @@ class TestGetTripleStores(unittest.TestCase):
 
         self.assertEqual(len(triple_stores), 1)
         self.assertEqual(triple_stores[0]["type"], TRIPLESTORE.Anzo)
-        self.assertEqual(triple_stores[0]["url"], Literal("http://example.com/anzo"))
-        self.assertEqual(triple_stores[0]["port"], Literal(8080))
+        self.assertEqual(triple_stores[0]["url"], Literal("http://anzo.example.com:8080"))
         self.assertEqual(triple_stores[0]["username"], "test_user")
         self.assertEqual(triple_stores[0]["password"], "test_password")
         self.assertEqual(triple_stores[0]["gqe_uri"], Literal("http://example.com/gqe"))
@@ -125,8 +123,7 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_type = TRIPLESTORE.GraphDb
         triple_store_uri = URIRef("https://mustrd.com/model/GraphDbConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
-        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://example.com/graphdb")))
-        triple_store_graph.add((triple_store_uri, TRIPLESTORE.port, Literal(8080)))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://graphdb.example.com:8080")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("test_password")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.repository, Literal("Test")))
@@ -136,8 +133,7 @@ class TestGetTripleStores(unittest.TestCase):
 
         self.assertEqual(len(triple_stores), 1)
         self.assertEqual(triple_stores[0]["type"], TRIPLESTORE.GraphDb)
-        self.assertEqual(triple_stores[0]["url"], Literal("http://example.com/graphdb"))
-        self.assertEqual(triple_stores[0]["port"], Literal(8080))
+        self.assertEqual(triple_stores[0]["url"], Literal("http://graphdb.example.com:8080"))
         self.assertEqual(triple_stores[0]["username"], "test_user")
         self.assertEqual(triple_stores[0]["password"], "test_password")
         self.assertEqual(triple_stores[0]["repository"], Literal("Test"))
