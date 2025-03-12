@@ -133,7 +133,7 @@ def test_collection_single():
 def test_collection_path():
     path = "rdflib1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", "rdflib1")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
@@ -142,7 +142,7 @@ def test_collection_path():
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", "col1/test1")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
@@ -151,7 +151,7 @@ def test_collection_path2():
 def test_collection_path3():
     path = "col1"
     mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", "col1")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 64
