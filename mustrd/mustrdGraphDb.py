@@ -49,7 +49,7 @@ def upload_given(triple_store: dict, given: Graph):
             graph = "default"
             if triple_store['input_graph']:
                 graph = urllib.parse.urlencode({'graph': triple_store['input_graph']})
-            url = f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}" \
+            url = f"{triple_store['url']}/repositories/{triple_store['repository']}" \
                   f"/rdf-graphs/service?{graph}"
             # graph store PUT drop silently the graph or default and upload the payload
             # https://www.w3.org/TR/sparql11-http-rdf-update/#http-put
@@ -82,7 +82,7 @@ def post_update_query(triple_store: dict, query: str, params: dict = None) -> st
     params = add_graph_to_params(params, triple_store["input_graph"])
     try:
         return manage_graphdb_response(requests.post(
-            url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}/statements",
+            url=f"{triple_store['url']}/repositories/{triple_store['repository']}/statements",
             data=query,
             params=params,
             auth=(triple_store['username'], triple_store['password']),
@@ -99,7 +99,7 @@ def post_query(triple_store: dict, query: str, accept: str, params: dict = None)
     params = add_graph_to_params(params, triple_store["input_graph"])
     try:
         return manage_graphdb_response(
-            requests.post(url=f"{triple_store['url']}:{triple_store['port']}/repositories/{triple_store['repository']}",
+            requests.post(url=f"{triple_store['url']}/repositories/{triple_store['repository']}",
                           data=query,
                           params=params,
                           auth=(triple_store['username'], triple_store['password']),

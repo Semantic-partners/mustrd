@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -54,6 +54,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
+from multimethods import MultiMethod
 
 log = logger_setup.setup_logger(__name__)
 
@@ -182,7 +183,7 @@ class UpdateSparqlQuery(SparqlAction):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/19
-
+# Validate the specs found in spec_path
 def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*")\
         -> Tuple[List, Graph, List]:
     spec_graph = Graph()
@@ -193,10 +194,12 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
     ttl_files.sort()
     log.info(f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
+    # For each spec file found in spec_path
     for file in ttl_files:
         error_messages = []
 
         log.info(f"Parse: {file}")
+        # Parse spec file and add error message if not conform to RDF standard
         try:
             file_graph = Graph().parse(file)
         except BadSyntax as e:
@@ -206,6 +209,7 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
             error_messages += [f"Could not extract spec from {file} due to exception of type "
                                f"{type(e).__name__} when parsing file"]
             continue
+
         # run shacl validation
         conforms, results_graph, results_text = validate(file_graph,
                                                          shacl_graph=shacl_graph,
@@ -218,6 +222,8 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                                                          advanced=True,
                                                          js=False,
                                                          debug=False)
+
+        # Add error message if not conform to spec shapes
         if not conforms:
             for msg in results_graph.objects(predicate=SH.resultMessage):
                 log.warning(f"{file_graph}")
@@ -225,45 +231,60 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 error_messages += [f"{msg} File: {file.name}"]
 
         # collect a list of uris of the tests in focus
+        # If focus is found, only the spec in the focus will be executed
         for focus_uri in file_graph.subjects(predicate=MUST.focus, object=Literal("true", datatype=XSD.boolean)):
             if focus_uri in focus_uris:
                 focus_uri = URIRef(str(focus_uri) + "_DUPLICATE")
             focus_uris.add(focus_uri)
 
-        # make sure there are no duplicate test IRIs in the files
-        for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
-            if subject_uri in subject_uris:
-                log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
-                error_messages += [f"Duplicate subject URI found in {file.name}."]
-                subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
-            if len(error_messages) > 0:
-                error_messages.sort()
-                error_message = "\n".join(msg for msg in error_messages)
-                invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name, Literal(file))
-                                  for triple_store in triple_stores]
-            else:
-                subject_uris.add(subject_uri)
-                this_spec_graph = Graph()
-                this_spec_graph.parse(file)
-                spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
-                for spec in spec_uris_in_this_file:
-                    this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                    this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-                spec_graph += this_spec_graph
+        add_spec_validation(file_graph, subject_uris, file, triple_stores, error_messages, invalid_specs, spec_graph)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
     if focus_uris:
-        invalid_focus_specs = []
-        for spec in invalid_specs:
-            if spec.spec_uri in focus_uris:
-                invalid_focus_specs += [spec]
-                focus_uris.remove(spec.spec_uri)
-        log.info(f"Collected {len(focus_uris)} focus test spec(s)")
+        invalid_focus_specs = get_invalid_focus_spec(focus_uris, invalid_specs)
         return focus_uris, spec_graph, invalid_focus_specs
     else:
         log.info(f"Collected {len(valid_spec_uris)} valid test spec(s)")
         return valid_spec_uris, spec_graph, invalid_specs
+
+
+def get_invalid_focus_spec(focus_uris: set, invalid_specs: list):
+    invalid_focus_specs = []
+    for spec in invalid_specs:
+        if spec.spec_uri in focus_uris:
+            invalid_focus_specs += [spec]
+            focus_uris.remove(spec.spec_uri)
+    log.info(f"Collected {len(focus_uris)} focus test spec(s)")
+    return invalid_focus_specs
+
+
+# Detect duplicate,
+# If no error: associate the spec configuration and the file where this conf is stored
+# If error, aggregate the messages and mark spec as skipped
+def add_spec_validation(file_graph: Graph, subject_uris: set, file: Path, triple_stores: List,
+                        error_messages: list, invalid_specs: list, spec_graph: Graph):
+
+    for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+        # If we already collected a URI, then we tag it as duplicate and it won't be executed
+        if subject_uri in subject_uris:
+            log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
+            error_messages += [f"Duplicate subject URI found in {file.name}."]
+            subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
+        if len(error_messages) == 0:
+            subject_uris.add(subject_uri)
+            this_spec_graph = Graph()
+            this_spec_graph.parse(file)
+            spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
+            for spec in spec_uris_in_this_file:
+                this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
+                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
+            spec_graph += this_spec_graph
+        else:
+            error_messages.sort()
+            error_message = "\n".join(msg for msg in error_messages)
+            invalid_specs += [SpecSkipped(subject_uri, triple_store["type"], error_message, file.name, Literal(file))
+                              for triple_store in triple_stores]
 
 
 def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[dict],
@@ -336,7 +357,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
         raise
 
 
-def check_result(spec, result):
+def check_result(spec: Specification, result: Union[str, Graph]):
     if isinstance(spec.then, TableThenSpec):
         return table_comparison(result, spec)
     else:
@@ -401,10 +422,12 @@ def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
         return Graph().parse(triple_store_graph_path).parse(secret_path)
 
 
+# Parse and validate triple store configuration
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
     shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl")))
     ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreOntology.ttl")))
+    # SHACL validation of triple store configuration
     conforms, results_graph, results_text = validate(
             data_graph=triple_store_graph,
             shacl_graph=shacl_graph,
@@ -421,51 +444,59 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         triple_store["uri"] = triple_store_config
         # Anzo graph via anzo
         if triple_store_type == TRIPLESTORE.Anzo:
-            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
-            try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
-                                                                        predicate=TRIPLESTORE.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
-                                                                        predicate=TRIPLESTORE.password))
-            except (FileNotFoundError, ValueError) as e:
-                triple_store["error"] = e
-            triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config,
-                                                               predicate=TRIPLESTORE.gqeURI)
-            triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=TRIPLESTORE.inputGraph)
-            triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                    predicate=TRIPLESTORE.outputGraph)
-            try:
-                check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
-            except ValueError as e:
-                triple_store["error"] = e
+            get_anzo_configuration(triple_store, triple_store_graph, triple_store_config)
         # GraphDB
         elif triple_store_type == TRIPLESTORE.GraphDb:
-            triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-            triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
-            try:
-                triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
-                                                                        predicate=TRIPLESTORE.username))
-                triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
-                                                                        predicate=TRIPLESTORE.password))
-            except (FileNotFoundError, ValueError) as e:
-                log.error(f"Credential retrieval failed {e}")
-                triple_store["error"] = e
-            triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
-                                                                  predicate=TRIPLESTORE.repository)
-            triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
-                                                                   predicate=TRIPLESTORE.inputGraph)
+            get_graphDB_configuration(triple_store, triple_store_graph, triple_store_config)
 
-            try:
-                check_triple_store_params(triple_store, ["url", "port", "repository"])
-            except ValueError as e:
-                triple_store["error"] = e
         elif triple_store_type != TRIPLESTORE.RdfLib:
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
 
         triple_stores.append(triple_store)
     return triple_stores
+
+
+def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
+    triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
+    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
+    try:
+        triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                predicate=TRIPLESTORE.username))
+        triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                predicate=TRIPLESTORE.password))
+    except (FileNotFoundError, ValueError) as e:
+        triple_store["error"] = e
+    triple_store["gqe_uri"] = triple_store_graph.value(subject=triple_store_config,
+                                                       predicate=TRIPLESTORE.gqeURI)
+    triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                           predicate=TRIPLESTORE.inputGraph)
+    triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                            predicate=TRIPLESTORE.outputGraph)
+    try:
+        check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+    except ValueError as e:
+        triple_store["error"] = e
+
+
+def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
+    triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
+    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
+    try:
+        triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                predicate=TRIPLESTORE.username))
+        triple_store["password"] = str(triple_store_graph.value(subject=triple_store_config,
+                                                                predicate=TRIPLESTORE.password))
+    except (FileNotFoundError, ValueError) as e:
+        log.error(f"Credential retrieval failed {e}")
+        triple_store["error"] = e
+    triple_store["repository"] = triple_store_graph.value(subject=triple_store_config,
+                                                          predicate=TRIPLESTORE.repository)
+    triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
+                                                           predicate=TRIPLESTORE.inputGraph)
+    try:
+        check_triple_store_params(triple_store, ["url", "port", "repository"])
+    except ValueError as e:
+        triple_store["error"] = e
 
 
 def check_triple_store_params(triple_store: dict, required_params: List[str]):
@@ -523,94 +554,119 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
-# https://github.com/Semantic-partners/mustrd/issues/110
-# https://github.com/Semantic-partners/mustrd/issues/52
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
     order_list = ["order by ?", "order by desc", "order by asc"]
     ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
+
+    # If sparql query doesn't contain order by clause, but order is define in then spec:
+    # Then ignore order in then spec and print a warning
+    if not ordered_result and spec.then.ordered:
+        warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
+        log.warning(warning)
+
+    # If sparql query contains an order by clause and then spec is not order:
+    # Spec is inconsistent
+    if ordered_result and not spec.then.ordered:
+        message = "Actual result is ordered, must:then must contain sh:order on every row."
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
+
+    # Convert results to dataframe
+    if is_json(result):
+        df = json_results_to_panda_dataframe(result)
+    else:
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, "Sparql result is not in JSON")
+
+    # Compare result with expected
+    df_diff, message = compare_table_results(df, spec)
+
+    if df_diff.empty:
+        if warning:
+            return SpecPassedWithWarning(spec.spec_uri, spec.triple_store["type"], warning)
+        else:
+            return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+    else:
+        log.error("\n" + df_diff.to_markdown())
+        log.error(message)
+        return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
+
+
+def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
+    return not resultDf.empty, not spec.then.value.empty
+
+
+compare_table_results = MultiMethod("compare_table_results", compare_table_results_dispatch)
+
+
+# Scenario 1: expected a result and got a result
+@compare_table_results.method((True, True))
+def _compare_results(resultDf: DataFrame, spec: Specification):
+    columns = list(resultDf.columns)
+    sorted_columns = sorted(columns)
     then = spec.then.value
-    try:
-        if is_json(result):
-            df = json_results_to_panda_dataframe(result)
-            columns = list(df.columns)
-        else:
-            raise ParseException
-        sorted_columns = sorted(columns)
-        sorted_then_cols = sorted(list(then))
-        if not df.empty:
+    sorted_then_cols = sorted(list(then))
+    order_list = ["order by ?", "order by desc", "order by asc"]
+    ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
 
+    if not ordered_result:
+        resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)
+        resultDf.reset_index(inplace=True, drop=True)
+
+    if len(columns) == len(then.columns):
+        if sorted_columns == sorted_then_cols:
+            then = then[columns]
             if not ordered_result:
-                df.sort_values(by=columns[::2], inplace=True)
-                df.reset_index(inplace=True, drop=True)
-                if spec.then.ordered:
-                    warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
-                    log.warning(warning)
-
-            # Scenario 1: expected no result but got a result
-            if then.empty:
-                message = f"""Expected 0 row(s) and 0 column(s),
-                got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"""
-                empty_then = create_empty_dataframe_with_columns(df)
-                df_diff = empty_then.compare(df, result_names=("expected", "actual"))
-
+                then.sort_values(by=columns[::2], inplace=True)
+                then.reset_index(drop=True, inplace=True)
+            if resultDf.shape == then.shape and (resultDf.columns == then.columns).all():
+                df_diff = then.compare(resultDf, result_names=("expected", "actual"))
             else:
-                # Scenario 2: expected a result and got a result
-                # pandas.set_option('display.max_columns', None)
-                message = f"Expected {then.shape[0]} row(s) and {round(then.shape[1] / 2)} column(s), " \
-                          f"got {df.shape[0]} row(s) and {round(df.shape[1] / 2)} column(s)"
-                if ordered_result is True and not spec.then.ordered:
-                    message += ". Actual result is ordered, must:then must contain sh:order on every row."
-                    return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], None, message)
-                else:
-                    if len(columns) == len(then.columns):
-                        if sorted_columns == sorted_then_cols:
-                            then = then[columns]
-                            if not ordered_result:
-                                then.sort_values(by=columns[::2], inplace=True)
-                                then.reset_index(drop=True, inplace=True)
-                            if df.shape == then.shape and (df.columns == then.columns).all():
-                                df_diff = then.compare(df, result_names=("expected", "actual"))
-                            else:
-                                df_diff = construct_df_diff(df, then)
-
-                        else:
-                            then = then[sorted_then_cols]
-                            df = df[sorted_columns]
-                            df_diff = construct_df_diff(df, then)
-                    else:
-
-                        then = then[sorted_then_cols]
-                        df = df[sorted_columns]
-                        df_diff = construct_df_diff(df, then)
+                df_diff = construct_df_diff(resultDf, then)
         else:
+            then = then[sorted_then_cols]
+            resultDf = resultDf[sorted_columns]
+            df_diff = construct_df_diff(resultDf, then)
+    else:
+        then = then[sorted_then_cols]
+        resultDf = resultDf[sorted_columns]
+        df_diff = construct_df_diff(resultDf, then)
 
-            if then.empty:
-                # Scenario 3: expected no result, got no result
-                message = "Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
-                df = pandas.DataFrame()
-            else:
-                # Scenario 4: expected a result, but got an empty result
-                message = f"""Expected {then.shape[0]} row(s)
-                              and {round(then.shape[1] / 2)} column(s), got 0 row(s) and 0 column(s)"""
-                then = then[sorted_then_cols]
-                df = create_empty_dataframe_with_columns(then)
-            df_diff = then.compare(df, result_names=("expected", "actual"))
+    message = build_summary_message(then.shape[0], round(then.shape[1] / 2), resultDf.shape[0], round(resultDf.shape[1] / 2))
+    return df_diff, message
 
-        if df_diff.empty:
-            if warning:
-                return SpecPassedWithWarning(spec.spec_uri, spec.triple_store["type"], warning)
-            else:
-                return SpecPassed(spec.spec_uri, spec.triple_store["type"])
-        else:
-            log.error("\n" + df_diff.to_markdown())
-            log.error(message)
-            return SelectSpecFailure(spec.spec_uri, spec.triple_store["type"], df_diff, message)
 
-    except ParseException as e:
-        return SparqlParseFailure(spec.spec_uri, spec.triple_store["type"], e)
-    except NotImplementedError as ex:
-        return SpecSkipped(spec.spec_uri, spec.triple_store["type"], ex)
+# Scenario 2: expected no result but got a result
+@compare_table_results.method((True, False))
+def _unexpected_results(resultDf: DataFrame, spec: Specification):
+    empty_then = create_empty_dataframe_with_columns(resultDf)
+    df_diff = empty_then.compare(resultDf, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(0, 0, resultDf.shape[0], round(resultDf.shape[1] / 2))
+
+
+# Scenario 3: expected a result, but got an empty result
+@compare_table_results.method((False, True))
+def _missing_results(resultDf: DataFrame, spec: Specification):
+    then = spec.then.value
+    then = then[sorted(list(then))]
+    df = create_empty_dataframe_with_columns(then)
+    df_diff = then.compare(df, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(then.shape[0], round(then.shape[1] / 2), 0, 0)
+
+
+# Scenario 4: expected no result, got no result
+@compare_table_results.method((False, False))
+def _no_results(resultDf: DataFrame, spec: Specification):
+    df = pandas.DataFrame()
+    df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
+
+    return df_diff, build_summary_message(0, 0, 0, 0)
+
+
+def build_summary_message(expected_rows, expected_columns, got_rows, got_columns):
+    return f"Expected {expected_rows} row(s) and {expected_columns} column(s), " \
+        f"got {got_rows} row(s) and {got_columns} column(s)"
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
@@ -777,33 +833,37 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     logger_setup.flush()
     log.info(f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
-          f"{overview_colour}{warning_count} passed with warnings =====")
+             f"{overview_colour}{warning_count} passed with warnings =====")
 
     if verbose and (fail_count or warning_count or skipped_count):
-        for res in results:
-            if isinstance(res, UpdateSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-                log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-                log.info()
-                log.info(f"{Fore.RED} in_actual_not_in_expected")
-                log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-                log.info(f"{Fore.GREEN} in_both")
-                log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+        display_verbose(results)
 
-            if isinstance(res, SelectSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(res.message)
-                log.info(res.table_comparison.to_markdown())
-            if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            if isinstance(res, SpecPassedWithWarning):
-                log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-                log.info(res.warning)
-            if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
-                    isinstance(res, SparqlParseFailure):
-                log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-                log.info(res.exception)
-            if isinstance(res, SpecSkipped):
-                log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
-                log.info(res.message)
+
+def display_verbose(results: List[SpecResult]):
+    for res in results:
+        if isinstance(res, UpdateSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(f"{Fore.BLUE} In Expected Not In Actual:")
+            log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+            log.info()
+            log.info(f"{Fore.RED} in_actual_not_in_expected")
+            log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+            log.info(f"{Fore.GREEN} in_both")
+            log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+        if isinstance(res, SelectSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(res.message)
+            log.info(res.table_comparison.to_markdown())
+        if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        if isinstance(res, SpecPassedWithWarning):
+            log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+            log.info(res.warning)
+        if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
+                isinstance(res, SparqlParseFailure):
+            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+            log.info(res.exception)
+        if isinstance(res, SpecSkipped):
+            log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+            log.info(res.message)
