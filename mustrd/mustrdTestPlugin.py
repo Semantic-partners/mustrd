@@ -216,7 +216,6 @@ class MustrdTestPlugin:
         args = session.config.args
         if len(args) > 0:
             filter_string = args[0]
-            self.parse_filter(filter_string, session)
 
             filter_exists, apply_filter_on_path, apply_filter_on_file, filter_on_path, filter_on_file = \
                 self.parse_filter(filter_string, session)
@@ -253,6 +252,7 @@ class MustrdTestPlugin:
                     lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
 
         yield
+        # After collection output the collected tests in a json file if collected_path is defined
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
                 file.write(json.dumps({test.get_node_id(): {"fs_path": test.get_source_file_path(),
@@ -372,6 +372,7 @@ class MustrdTestPlugin:
             md = result_list.render()
             with open(self.md_path, 'w') as file:
                 file.write(md)
+        # Write test results to file with std outputs
         if self.output_path:
             with open(self.output_path, 'w') as file:
                 file.write(json.dumps({item.nodeid: {"status": item.outcome,
