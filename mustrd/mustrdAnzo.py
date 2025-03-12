@@ -106,9 +106,11 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
             ?queryFolder a <http://www.cambridgesemantics.com/ontologies/QueryPlayground#QueryFolder>;
                         <http://purl.org/dc/elements/1.1/title> "{folder_name}"
     }}"""
-    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    result = json_to_dictlist(query_configuration(
+        anzo_config=triple_store, query=query))
     if len(result) == 0:
-        raise FileNotFoundError(f"Query {query_name} not found in folder {folder_name}")
+        raise FileNotFoundError(
+            f"Query {query_name} not found in folder {folder_name}")
     return result[0].get("query")
 
 
@@ -120,6 +122,7 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
     }}"""
     return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]['query']
+
 
 def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
     query = f"""SELECT ?param_query ?query_template WHERE {{
