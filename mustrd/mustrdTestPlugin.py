@@ -130,8 +130,8 @@ def parse_config(config_path):
         pytest_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasPytestPath, str)
         filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
                                                           predicate=MUSTRDTEST.filterOnTripleStore))
-        
-        is_rdflib = filter_on_tripleStore==[TRIPLESTORE.RdfLib] or filter_on_tripleStore==[]
+
+        is_rdflib = filter_on_tripleStore == [TRIPLESTORE.RdfLib] or filter_on_tripleStore == []
 
         # Root path is the mustrd test config path
         root_path = Path(config_path).parent
@@ -164,15 +164,19 @@ class TestConfig:
 class TestParamWrapper:
     test_config: TestConfig
     unit_test: Union[Specification, SpecSkipped]
+
     def get_node_id(self):
         return (self.test_config.pytest_path or "") + "/" + (self.unit_test.spec_file_name or "")
+
     def get_source_file_path(self):
         return self.unit_test.spec_source_file
+
     def get_message(self):
-        if isinstance(self.unit_test,SpecSkipped):
+        if isinstance(self.unit_test, SpecSkipped):
             return self.unit_test.message
         return None
- 
+
+
 class MustrdTestPlugin:
     md_path: str
     test_configs: list
@@ -182,7 +186,7 @@ class MustrdTestPlugin:
     unit_tests: Union[Specification, SpecSkipped]
     items: list
 
-    def __init__(self, md_path, test_configs, secrets, collected_path = None, output_path = None):
+    def __init__(self, md_path, test_configs, secrets, collected_path=None, output_path=None):
         self.md_path = md_path
         self.test_configs = test_configs
         self.secrets = secrets
@@ -254,9 +258,9 @@ class MustrdTestPlugin:
         yield
         if self.collected_path:
             with open(self.collected_path, 'w') as file:
-                file.write(json.dumps({test.get_node_id():{"fs_path":test.get_source_file_path(),
-                                                           "collection_error":test.get_message(),
-                                                           "uri": str(test.unit_test.spec_uri)} 
+                file.write(json.dumps({test.get_node_id(): {"fs_path": test.get_source_file_path(),
+                                                            "collection_error": test.get_message(),
+                                                            "uri": str(test.unit_test.spec_uri)}
                                        for test in self.unit_tests}))
 
     @pytest.hookimpl(hookwrapper=True)
@@ -364,16 +368,19 @@ class MustrdTestPlugin:
                 test_results.append(TestResult(test_name, result.outcome, is_mustrd))
 
             result_list = ResultList(None, get_result_list(test_results,
-                                                        lambda result: result.type,
-                                                        lambda result: is_mustrd and result.test_name.split("/")[0]),
-                                    False)
+                                                           lambda result: result.type,
+                                                           lambda result: is_mustrd and result.test_name.split("/")[0]),
+                                     False)
 
             md = result_list.render()
             with open(self.md_path, 'w') as file:
                 file.write(md)
         if self.output_path:
             with open(self.output_path, 'w') as file:
-                file.write(json.dumps({item.nodeid: {"status" : item.outcome, "stderr": item.capstderr, "stdout": item.capstdout} for item in session.results.values()}))
+                file.write(json.dumps({item.nodeid: {"status": item.outcome,
+                                                     "stderr": item.capstderr,
+                                                     "stdout": item.capstdout}
+                                       for item in session.results.values()}))
 
 
 # Function called in the test to actually run it

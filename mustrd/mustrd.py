@@ -697,6 +697,7 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     return expected_results
 
+
 def write_result_diff_to_log(res):
     if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
         log.error(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
@@ -721,6 +722,7 @@ def write_result_diff_to_log(res):
     if isinstance(res, SpecSkipped):
         log.error(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
         log.error(res.message)
+
 
 def calculate_row_difference(df1: pandas.DataFrame,
                              df2: pandas.DataFrame) -> pandas.DataFrame:
