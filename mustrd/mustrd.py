@@ -451,7 +451,6 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
 
 def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
     triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
         triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                 predicate=TRIPLESTORE.username))
@@ -466,14 +465,13 @@ def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple
     triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                             predicate=TRIPLESTORE.outputGraph)
     try:
-        check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+        check_triple_store_params(triple_store, ["url", "username", "password", "input_graph"])
     except ValueError as e:
         triple_store["error"] = e
 
 
 def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
     triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
         triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                 predicate=TRIPLESTORE.username))
@@ -487,7 +485,7 @@ def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, tri
     triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                            predicate=TRIPLESTORE.inputGraph)
     try:
-        check_triple_store_params(triple_store, ["url", "port", "repository"])
+        check_triple_store_params(triple_store, ["url", "repository"])
     except ValueError as e:
         triple_store["error"] = e
 
