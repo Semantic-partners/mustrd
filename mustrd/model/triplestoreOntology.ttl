@@ -26,8 +26,6 @@
 # 
 # https://mustrd.com/triplestore/password
 # 
-# https://mustrd.com/triplestore/port
-# 
 # https://mustrd.com/triplestore/repository
 # 
 # https://mustrd.com/triplestore/url
@@ -88,12 +86,6 @@ For those triple stores, this property must be mandatory""";
   rdfs:domain :ExternalTripleStore;
   rdfs:range xsd:string;
   rdfs:label "password" .
-
-:port a owl:DatatypeProperty;
-  rdfs:domain :ExternalTripleStore;
-  rdfs:range xsd:string;
-  rdfs:comment "Triple store port";
-  rdfs:label "port" .
 
 :repository a owl:DatatypeProperty;
   rdfs:domain :GraphDb;

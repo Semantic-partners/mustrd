@@ -12,9 +12,6 @@ triplestore:ExternalTripleStoreShape
     sh:property    [ sh:path     triplestore:url ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ],
-                    [ sh:path     triplestore:port ;
-                     sh:minCount 1 ; 
-                     sh:maxCount 1 ],
                     [ sh:path     triplestore:username ;
                      sh:maxCount 1 ],
                     [ sh:path     triplestore:password ;

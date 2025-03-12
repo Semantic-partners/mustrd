@@ -1,6 +1,16 @@
 src/__pycache__/__init__.cpython-311.pyc
 .DS_Store
 
+# clj
+.calva/
+.cpcache/
+.clj-kondo/
+.shadow-cljs/
+.cljs-lsp/
+.cljs/
+.cljs_nashorn/
+.cljs_repl/
+.cljs_node_repl/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -168,3 +178,4 @@ mustrd.iml
 test/triplestore_config/*
 junit/*
 test/anzoConnectionConfig.ttl
+pytest.ini
