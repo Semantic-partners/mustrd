@@ -1,0 +1,13 @@
+= How to build the docker image
+
+From the project root
+
+```cmd
+docker build -t my-cli-tool -f docker/Dockerfile .
+```
+
+Then create a tar file to make it easy for people to pick it up off this github repository.
+
+```cmd
+docker save -o mustrd.tar docker/mustrd
+```
