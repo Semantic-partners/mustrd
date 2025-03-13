@@ -244,9 +244,20 @@ class MustrdTestPlugin:
                     # this is creating the test items. it's driven by the test_unit magic
                     logging.debug(f"Metafunc: {metafunc} {dir(metafunc)}")
                     logging.debug(f"Metafunc.config: {metafunc.config}")
+                    # Create test IDs that include the full file path
+                    def make_test_id(test_param):
+                        spec_path = test_param.test_config.spec_path
+                        file_name = test_param.unit_test.spec_file_name
+                        full_path = os.path.abspath(os.path.join(spec_path, file_name))
+                        # Include both the file path and the test name for better navigation
+                        id=(os.path.join(str(test_param.test_config.spec_path), test_param.unit_test.spec_file_name))
+                    
+                        return f"{id}::{id}"
+
+                        # return f"{id}::{test_param.unit_test.spec_uri}"
+
                     metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
-                                         ids=lambda test_param: (os.path.join(str(test_param.test_config.spec_path), test_param.unit_test.spec_file_name))
-                    )
+                                         ids=make_test_id)
                     # metafunc.module.__file__ = str(test_param.test_config.spec_path)
                 else:
                     logger.debug(f"Skipping test generation (2) for {metafunc.fixturenames[0]}")
