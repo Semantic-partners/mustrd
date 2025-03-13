@@ -218,8 +218,9 @@ class MustrdTestPlugin:
         if config.getoption("mustrd"):
             mustrd_items = []
             for item in items:
-                logger.debug(f"Item {item=}")
+                logger.debug(f"pytest_collection_modifyitems.Item {item=}")
                 if item.fspath.ext == ".ttl" and "mustrd" in item.fspath.basename:
+                    item.name = "mustrd test: " + item.fspath.basename
                     mustrd_items.append(item)
             if mustrd_items:
                 items[:] = mustrd_items
@@ -240,9 +241,13 @@ class MustrdTestPlugin:
                 # Create the test in itself
                 if self.unit_tests:
                     logger.debug(f"Generating tests (2) for {metafunc.fixturenames[0]}")
+                    # this is creating the test items. it's driven by the test_unit magic
+                    logging.debug(f"Metafunc: {metafunc} {dir(metafunc)}")
+                    logging.debug(f"Metafunc.config: {metafunc.config}")
                     metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
-                                         ids=lambda test_param: (test_param.unit_test.spec_file_name or "") + "@" +
-                                         (test_param.test_config.pytest_path or ""))
+                                         ids=lambda test_param: (os.path.join(str(test_param.test_config.spec_path), test_param.unit_test.spec_file_name))
+                    )
+                    # metafunc.module.__file__ = str(test_param.test_config.spec_path)
                 else:
                     logger.debug(f"Skipping test generation (2) for {metafunc.fixturenames[0]}")
             else:
@@ -353,7 +358,8 @@ class MustrdFile(pytest.File):
 
 class MustrdItem(pytest.Item):
     def __init__(self, name, parent, test_config):
-        super().__init__(name, parent)
+        logging.info(f"Creating item: {name}")
+        super().__init__("haha" + name, parent)
         self.test_config = test_config
 
     def runtest(self):
