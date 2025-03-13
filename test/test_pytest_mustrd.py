@@ -24,9 +24,11 @@ SOFTWARE.
 import pytest
 from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
-
+import logging
+logger = logging.getLogger(__name__)
 
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
+    logger.info(f"run_mustrd:Running mustrd with config: {config_path}")
     test_config = parse_config(config_path)
     mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets)
     pytest.main([*args], plugins=[mustrd_plugin])
