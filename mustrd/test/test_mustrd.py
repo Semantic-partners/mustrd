@@ -7,7 +7,7 @@ def test_unit(unit_tests):
         test_unit.source_mapping = {}
 
     # Get the source file for this test
-    source_file = test_unit.source_mapping.get(unit_tests, None)
+    source_file = test_unit.source_mapping.get(unit_tests.id, None)
     if source_file:
         __tracebackhide__ = True
         # Set location for better test navigation
