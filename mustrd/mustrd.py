@@ -90,7 +90,7 @@ def debug_requests_off():
 debug_requests_off()
 
 
-@dataclass
+@dataclass(frozen=True)
 class Specification:
     spec_uri: URIRef
     triple_store: dict
