@@ -109,8 +109,8 @@ def parse_config(config_path):
         data_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasDataPath, str)
         triplestore_spec_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.triplestoreSpecPath, str)
         pytest_path = get_config_param(config_graph, test_config_subject, MUSTRDTEST.hasPytestPath, str)
-        filter_on_tripleStore = list(config_graph.objects(subject=test_config_subject,
-                                                          predicate=MUSTRDTEST.filterOnTripleStore))
+        filter_on_tripleStore = tuple(config_graph.objects(subject=test_config_subject,
+                                                           predicate=MUSTRDTEST.filterOnTripleStore))
 
         # Root path is the mustrd test config path
         root_path = Path(config_path).parent
@@ -130,7 +130,7 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
     return convert_function(raw_value) if raw_value else None
 
 
-@dataclass
+@dataclass(frozen=True)
 class TestConfig:
     spec_path: Path
     data_path: Path
@@ -139,8 +139,11 @@ class TestConfig:
     filter_on_tripleStore: str = None
 
 
-@dataclass
+from uuid import uuid4
+
+@dataclass(frozen=True)
 class TestParamWrapper:
+    id: str
     test_config: TestConfig
     unit_test: Union[Specification, SpecSkipped]
 
@@ -197,7 +200,7 @@ class MustrdTestPlugin:
             if one_test_config.filter_on_tripleStore and not triple_stores:
                 self.unit_tests.extend(list(map(
                     lambda triple_store:
-                        TestParamWrapper(test_config=one_test_config,
+                        TestParamWrapper(id=str(uuid4()), test_config=one_test_config,
                                          unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
                         one_test_config.filter_on_tripleStore)))
             else:
@@ -205,7 +208,7 @@ class MustrdTestPlugin:
                                                         "data_path": one_test_config.data_path},
                                                        triple_stores, file_name)
                 self.unit_tests.extend(list(map(
-                    lambda spec: TestParamWrapper(test_config=one_test_config, unit_test=spec), specs)))
+                    lambda spec: TestParamWrapper(id=str(uuid4()), test_config=one_test_config, unit_test=spec), specs)))
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
@@ -238,34 +241,48 @@ class MustrdTestPlugin:
         if len(metafunc.fixturenames) > 0:
             if metafunc.function.__name__ == "test_unit":
                 logger.debug(f"Generating tests for {metafunc.fixturenames[0]}")
-                # Create the test in itself
                 if self.unit_tests:
-                    logger.debug(f"Generating tests (2) for {metafunc.fixturenames[0]}")
-                    # this is creating the test items. it's driven by the test_unit magic
-                    logging.debug(f"Metafunc: {metafunc} {dir(metafunc)}")
-                    logging.debug(f"Metafunc.config: {metafunc.config}")
-                    # Create test IDs that include the full file path
                     def make_test_id(test_param):
-                        spec_path = test_param.test_config.spec_path
+                        # Get the absolute path to the .mustrd.ttl file
+                        spec_path = Path(test_param.test_config.spec_path)
                         file_name = test_param.unit_test.spec_file_name
-                        full_path = os.path.abspath(os.path.join(spec_path, file_name))
-                        # Include both the file path and the test name for better navigation
-                        id=(os.path.join(str(test_param.test_config.spec_path), test_param.unit_test.spec_file_name))
-                    
-                        return f"{id}::{id}"
+                        full_path = spec_path / file_name
+                        
+                        # Store the source location for VS Code navigation
+                        nodeid = f"{full_path}::{test_param.unit_test.spec_uri}"
+                        
+                        # Override the test item's location to point to the .mustrd.ttl file
+                        if hasattr(metafunc, '_items'):
+                            for item in metafunc._items:
+                                item.location = (str(full_path), 1, test_param.unit_test.spec_uri)
+                                item.nodeid = nodeid
+                                item._nodeid = nodeid
+                        
+                        # Return a simpler display name for the test
+                        return self.get_test_name(test_param.unit_test)
 
-                        # return f"{id}::{test_param.unit_test.spec_uri}"
+                    # Store file mapping for each test
+                    test_locations = {}
+                    for test in self.unit_tests:
+                        spec_path = Path(test.test_config.spec_path)
+                        file_name = test.unit_test.spec_file_name
+                        full_path = spec_path / file_name
+                        test_locations[test.id] = str(full_path)
 
-                    metafunc.parametrize(metafunc.fixturenames[0], self.unit_tests,
-                                         ids=make_test_id)
-                    # metafunc.module.__file__ = str(test_param.test_config.spec_path)
+                    metafunc.parametrize(
+                        metafunc.fixturenames[0],
+                        self.unit_tests,
+                        ids=make_test_id
+                    )
+
+                    # Set source mapping attribute
+                    if hasattr(metafunc.function, 'source_mapping'):
+                        metafunc.function.source_mapping.update(test_locations)
+                    else:
+                        metafunc.function.source_mapping = test_locations
+
                 else:
                     logger.debug(f"Skipping test generation (2) for {metafunc.fixturenames[0]}")
-            else:
-                logger.debug(f"Skipping test generation for {metafunc.fixturenames[0]}")
-                metafunc.parametrize(metafunc.fixturenames[0],
-                                     [SpecSkipped(MUST.TestSpec, None, "No triplestore found")],
-                                     ids=lambda x: "No configuration found for this test")
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):
@@ -290,7 +307,7 @@ class MustrdTestPlugin:
             triple_store = spec.triple_store['type']
         triple_store_name = triple_store.replace("https://mustrd.com/model/", "")
         test_name = spec.spec_uri.replace(spnamespace, "").replace("_", " ")
-        return triple_store_name + ": " + test_name
+        return spec.spec_file_name + " : " + triple_store_name + ": " + test_name
 
     # Get triple store configuration or default
     def get_triple_stores_from_file(self, test_config):
@@ -372,6 +389,7 @@ class MustrdItem(pytest.Item):
         logging.info(f"Creating item: {name}")
         super().__init__("haha" + name, parent)
         self.test_config = test_config
+        self.spec_path = str(test_config.spec_path)
 
     def runtest(self):
         logger.debug(f"Running test: {self.name}")
@@ -388,7 +406,9 @@ class MustrdItem(pytest.Item):
         return f"{self.name} failed: {excinfo.value}"
 
     def reportinfo(self):
-        return self.fspath, 0, f"mustrd test: {self.name}"
+        r = self.spec_path, 0, f"mustrd test: {self.name}"
+        logger.debug(f"Reporting info for {self.name} {r=}")
+        return r
 
 
 # Function called in the test to actually run it
