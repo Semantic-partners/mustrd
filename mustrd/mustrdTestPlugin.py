@@ -211,8 +211,8 @@ class MustrdTestPlugin:
                     lambda spec: TestParamWrapper(id=str(uuid4()), test_config=one_test_config, unit_test=spec), specs)))
 
     def get_file_name_from_arg(self, arg):
-        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl@" in arg:
-            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl@")]
+        if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
+            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl ")]
         return None
     
     @pytest.hookimpl(tryfirst=True)
