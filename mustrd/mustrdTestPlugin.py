@@ -170,7 +170,6 @@ class MustrdTestPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.debug("Starting test collection")
-        session.config.args = ['c:\\Users\\aymer\\git\\semantic-partners\\mustrd\\test\\test-mustrd-config\\test_mustrd_simple.ttl']
         self.unit_tests = []
         args = session.config.args
         if len(args) > 0:
