@@ -398,6 +398,7 @@ class MustrdItem(pytest.Item):
         logging.info(f"Creating item: {name}")
         super().__init__(name, parent)
         self.spec = spec
+        self.fspath = spec.spec_source_file
 
     def runtest(self):
         result = run_test_spec(self.spec)
