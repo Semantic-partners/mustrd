@@ -170,6 +170,7 @@ class MustrdTestPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.debug("Starting test collection")
+        session.config.args = ['c:\\Users\\aymer\\git\\semantic-partners\\mustrd\\test\\test-mustrd-config\\test_mustrd_simple.ttl']
         self.unit_tests = []
         args = session.config.args
         if len(args) > 0:
@@ -188,101 +189,103 @@ class MustrdTestPlugin:
 
             # Redirect everything to test_mustrd.py,
             # no need to filter on specified test: Only specified test will be collected anyway
-            session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
+            #session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
         else:
             config_to_collect = self.test_configs
 
         # Collecting only relevant tests
-        for one_test_config in config_to_collect:
-            logger.debug(f"Collecting tests for config: {one_test_config}")
-            triple_stores = self.get_triple_stores_from_file(one_test_config)
-
-            if one_test_config.filter_on_tripleStore and not triple_stores:
-                self.unit_tests.extend(list(map(
-                    lambda triple_store:
-                        TestParamWrapper(id=str(uuid4()), test_config=one_test_config,
-                                         unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
-                        one_test_config.filter_on_tripleStore)))
-            else:
-                specs = self.generate_tests_for_config({"spec_path": one_test_config.spec_path,
-                                                        "data_path": one_test_config.data_path},
-                                                       triple_stores, file_name)
-                self.unit_tests.extend(list(map(
-                    lambda spec: TestParamWrapper(id=str(uuid4()), test_config=one_test_config, unit_test=spec), specs)))
+        #for one_test_config in config_to_collect:
+        #    logger.debug(f"Collecting tests for config: {one_test_config}")
+        #    triple_stores = self.get_triple_stores_from_file(one_test_config)
+#
+        #    if one_test_config.filter_on_tripleStore and not triple_stores:
+        #        self.unit_tests.extend(list(map(
+        #            lambda triple_store:
+        #                TestParamWrapper(id=str(uuid4()), test_config=one_test_config,
+        #                                 unit_test=SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found")),
+        #                one_test_config.filter_on_tripleStore)))
+        #    else:
+        #        specs = self.generate_tests_for_config({"spec_path": one_test_config.spec_path,
+        #                                                "data_path": one_test_config.data_path},
+        #                                               triple_stores, file_name)
+        #        self.unit_tests.extend(list(map(
+        #            lambda spec: TestParamWrapper(id=str(uuid4()), test_config=one_test_config, unit_test=spec), specs)))
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
             return arg[arg.index("[") + 1: arg.index(".mustrd.ttl ")]
         return None
     
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_collection_modifyitems(self, config, items):
-        logger.debug("Starting test collection modification")
-        if config.getoption("mustrd"):
-            mustrd_items = []
-            for item in items:
-                logger.debug(f"pytest_collection_modifyitems.Item {item=}")
-                if item.fspath.ext == ".ttl" and "mustrd" in item.fspath.basename:
-                    item.name = "mustrd test: " + item.fspath.basename
-                    mustrd_items.append(item)
-            if mustrd_items:
-                items[:] = mustrd_items
-            else:
-                logger.debug("No mustrd items found, keeping all items")
+    #@pytest.hookimpl(tryfirst=True)
+    #def pytest_collection_modifyitems(self, config, items):
+    #    logger.debug("Starting test collection modification")
+    #    if config.getoption("mustrd"):
+    #        mustrd_items = []
+    #        for item in items:
+    #            logger.debug(f"pytest_collection_modifyitems.Item {item=}")
+    #            if item.fspath.ext == ".ttl" and "mustrd" in item.fspath.basename:
+    #                item.name = "mustrd test: " + item.fspath.basename
+    #                mustrd_items.append(item)
+    #        if mustrd_items:
+    #            items[:] = mustrd_items
+    #        else:
+    #            logger.debug("No mustrd items found, keeping all items")
 
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
         logger.debug(f"Collecting file: {path}")
         if path.ext == ".ttl" and "mustrd" in path.basename:
-            return MustrdFile.from_parent(parent, fspath=path)
+            mustrd_file = MustrdFile.from_parent(parent, fspath=path, mustrd_plugin = self)
+            mustrd_file.mustrd_plugin = self
+            return mustrd_file
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
-    def pytest_generate_tests(self, metafunc):
-        if len(metafunc.fixturenames) > 0:
-            if metafunc.function.__name__ == "test_unit":
-                logger.debug(f"Generating tests for {metafunc.fixturenames[0]}")
-                if self.unit_tests:
-                    def make_test_id(test_param):
-                        # Get the absolute path to the .mustrd.ttl file
-                        spec_path = Path(test_param.test_config.spec_path)
-                        file_name = test_param.unit_test.spec_file_name
-                        full_path = spec_path / file_name
-                        
-                        # Store the source location for VS Code navigation
-                        nodeid = f"{full_path}::{test_param.unit_test.spec_uri}"
-                        
-                        # Override the test item's location to point to the .mustrd.ttl file
-                        if hasattr(metafunc, '_items'):
-                            for item in metafunc._items:
-                                item.location = (str(full_path), 1, test_param.unit_test.spec_uri)
-                                item.nodeid = nodeid
-                                item._nodeid = nodeid
-                        
-                        # Return a simpler display name for the test
-                        return self.get_test_name(test_param.unit_test)
-
-                    # Store file mapping for each test
-                    test_locations = {}
-                    for test in self.unit_tests:
-                        spec_path = Path(test.test_config.spec_path)
-                        file_name = test.unit_test.spec_file_name
-                        full_path = spec_path / file_name
-                        test_locations[test.id] = str(full_path)
-
-                    metafunc.parametrize(
-                        metafunc.fixturenames[0],
-                        self.unit_tests,
-                        ids=make_test_id
-                    )
-
-                    # Set source mapping attribute
-                    if hasattr(metafunc.function, 'source_mapping'):
-                        metafunc.function.source_mapping.update(test_locations)
-                    else:
-                        metafunc.function.source_mapping = test_locations
-
-                else:
-                    logger.debug(f"Skipping test generation (2) for {metafunc.fixturenames[0]}")
+    #def pytest_generate_tests(self, metafunc):
+    #    if len(metafunc.fixturenames) > 0:
+    #        if metafunc.function.__name__ == "test_unit":
+    #            logger.debug(f"Generating tests for {metafunc.fixturenames[0]}")
+    #            if self.unit_tests:
+    #                def make_test_id(test_param):
+    #                    # Get the absolute path to the .mustrd.ttl file
+    #                    spec_path = Path(test_param.test_config.spec_path)
+    #                    file_name = test_param.unit_test.spec_file_name
+    #                    full_path = spec_path / file_name
+    #                    
+    #                    # Store the source location for VS Code navigation
+    #                    nodeid = f"{full_path}::{test_param.unit_test.spec_uri}"
+    #                    
+    #                    # Override the test item's location to point to the .mustrd.ttl file
+    #                    if hasattr(metafunc, '_items'):
+    #                        for item in metafunc._items:
+    #                            item.location = (str(full_path), 1, test_param.unit_test.spec_uri)
+    #                            item.nodeid = nodeid
+    #                            item._nodeid = nodeid
+    #                    
+    #                    # Return a simpler display name for the test
+    #                    return self.get_test_name(test_param.unit_test)
+#
+    #                # Store file mapping for each test
+    #                test_locations = {}
+    #                for test in self.unit_tests:
+    #                    spec_path = Path(test.test_config.spec_path)
+    #                    file_name = test.unit_test.spec_file_name
+    #                    full_path = spec_path / file_name
+    #                    test_locations[test.id] = str(full_path)
+#
+    #                metafunc.parametrize(
+    #                    metafunc.fixturenames[0],
+    #                    self.unit_tests,
+    #                    ids=make_test_id
+    #                )
+#
+    #                # Set source mapping attribute
+    #                if hasattr(metafunc.function, 'source_mapping'):
+    #                    metafunc.function.source_mapping.update(test_locations)
+    #                else:
+    #                    metafunc.function.source_mapping = test_locations
+#
+    #            else:
+    #                logger.debug(f"Skipping test generation (2) for {metafunc.fixturenames[0]}")
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):
@@ -378,35 +381,34 @@ class MustrdTestPlugin:
 
 
 class MustrdFile(pytest.File):
+    mustrd_plugin: MustrdTestPlugin
     def collect(self):
         logger.debug(f"Collecting tests from file: {self.fspath}")
         test_configs = parse_config(self.fspath)
         for test_config in test_configs:
-            yield MustrdItem.from_parent(self, name=test_config.pytest_path, test_config=test_config)
+            triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
+            specs = self.mustrd_plugin.generate_tests_for_config({"spec_path": test_config.spec_path,
+                                                    "data_path": test_config.data_path},
+                                                    triple_stores, None)
+            for spec in specs:
+                yield MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
 
 class MustrdItem(pytest.Item):
-    def __init__(self, name, parent, test_config):
+    def __init__(self, name, parent, spec):
         logging.info(f"Creating item: {name}")
-        super().__init__("haha" + name, parent)
-        self.test_config = test_config
-        self.spec_path = str(test_config.spec_path)
+        super().__init__(name, parent)
+        self.spec = spec
 
     def runtest(self):
-        logger.debug(f"Running test: {self.name}")
-        triple_stores = self.parent.config.pluginmanager.get_plugin("mustrd").get_triple_stores_from_file(self.test_config)
-        specs = self.parent.config.pluginmanager.get_plugin("mustrd").generate_tests_for_config(
-            {"spec_path": self.test_config.spec_path, "data_path": self.test_config.data_path},
-            triple_stores, None)
-        for spec in specs:
-            result = run_test_spec(spec)
-            if not result:
-                raise AssertionError(f"Test {self.name} failed")
+        result = run_test_spec(self.spec)
+        if not result:
+            raise AssertionError(f"Test {self.name} failed")
 
     def repr_failure(self, excinfo):
         return f"{self.name} failed: {excinfo.value}"
 
     def reportinfo(self):
-        r = self.spec_path, 0, f"mustrd test: {self.name}"
+        r = "", 0, f"mustrd test: {self.name}"
         logger.debug(f"Reporting info for {self.name} {r=}")
         return r
 
