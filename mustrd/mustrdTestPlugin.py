@@ -186,10 +186,6 @@ class MustrdTestPlugin:
                                             # Case we want to collect a whole test folder
                                             or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
                                             self.test_configs))
-
-            # Redirect everything to test_mustrd.py,
-            # no need to filter on specified test: Only specified test will be collected anyway
-            #session.config.args[0] = os.path.join(mustrd_root, "test/test_mustrd.py")
         else:
             config_to_collect = self.test_configs
 
