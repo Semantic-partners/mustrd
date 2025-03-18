@@ -138,9 +138,6 @@ class TestConfig:
     pytest_path: str
     filter_on_tripleStore: str = None
 
-
-from uuid import uuid4
-
 @dataclass(frozen=True)
 class TestParamWrapper:
     id: str
@@ -173,7 +170,10 @@ class MustrdTestPlugin:
         self.unit_tests = []
         args = session.config.args
         logger.info("Used arguments: " + str(args))
-        self.selected_tests = list(map(lambda arg: Path(arg.split("::")[0]).resolve(), session.config.args))
+        self.selected_tests = list(map(lambda arg: Path(arg.split("::")[0]).resolve(),
+                                       # By default the current directory is given as argument
+                                       # Remove it as it is not a test
+                                       filter(lambda arg: arg!=os.getcwd(), args)))
         session.config.args = [str(self.test_config_file.resolve())]
         #if len(args) > 0:
         #    file_name = self.get_file_name_from_arg(args[0])
@@ -388,13 +388,11 @@ class MustrdFile(pytest.File):
                                                     "data_path": test_config.data_path},
                                                     triple_stores, None)
             for spec in specs:
-                test = MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
                 # Check if the current test is in the selected tests in arguments
-                test.to_execute = spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests
-                yield test
+                if spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests or self.mustrd_plugin.selected_tests == []:
+                    yield MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
 
 class MustrdItem(pytest.Item):
-    to_execute:bool
     def __init__(self, name, parent, spec):
         logging.info(f"Creating item: {name}")
         super().__init__(name, parent)
@@ -402,12 +400,9 @@ class MustrdItem(pytest.Item):
         self.fspath = spec.spec_source_file
 
     def runtest(self):
-        if self.to_execute:
-            result = run_test_spec(self.spec)
-            if not result:
-                raise AssertionError(f"Test {self.name} failed")
-        else:
-            pytest.skip("Test not selected")
+        result = run_test_spec(self.spec)
+        if not result:
+            raise AssertionError(f"Test {self.name} failed")
 
     def repr_failure(self, excinfo):
         return f"{self.name} failed: {excinfo.value}"
