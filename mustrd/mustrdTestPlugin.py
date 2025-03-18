@@ -84,9 +84,8 @@ def pytest_addoption(parser):
 def pytest_configure(config) -> None:
     # Read configuration file
     if config.getoption("mustrd"):
-        test_configs = parse_config(config.getoption("configpath"))
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
-                                                       test_configs, config.getoption("secrets")))
+                                                       Path(config.getoption("configpath")), config.getoption("secrets")))
 
 
 def parse_config(config_path):
@@ -156,14 +155,15 @@ logger = logger_setup.setup_logger(__name__)
 
 class MustrdTestPlugin:
     md_path: str
-    test_configs: list
+    test_config_file: Path
+    selected_tests: list
     secrets: str
     unit_tests: Union[Specification, SpecSkipped]
     items: list
 
-    def __init__(self, md_path, test_configs, secrets):
+    def __init__(self, md_path, test_config_file, secrets):
         self.md_path = md_path
-        self.test_configs = test_configs
+        self.test_config_file = test_config_file
         self.secrets = secrets
         self.items = []
 
@@ -172,22 +172,24 @@ class MustrdTestPlugin:
         logger.info("Starting test collection")
         self.unit_tests = []
         args = session.config.args
-        logger.debug("Used arguments: " + str(args))
-        if len(args) > 0:
-            file_name = self.get_file_name_from_arg(args[0])
-            logger.debug(f"File name from args: {file_name}")
-            logger.debug(f"args: {args=}")
-            # Filter test to collect only specified path
-            config_to_collect = list(filter(lambda config:
-                                            # Case we want to collect everything
-                                            MUSTRD_PYTEST_PATH not in args[0]
-                                            # Case we want to collect a test or sub test
-                                            or (config.pytest_path or "") in args[0]
-                                            # Case we want to collect a whole test folder
-                                            or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
-                                            self.test_configs))
-        else:
-            config_to_collect = self.test_configs
+        logger.info("Used arguments: " + str(args))
+        self.selected_tests = list(map(lambda arg: arg.split("::")[0], session.config.args))
+        session.config.args = [str(self.test_config_file.resolve())]
+        #if len(args) > 0:
+        #    file_name = self.get_file_name_from_arg(args[0])
+        #    logger.debug(f"File name from args: {file_name}")
+        #    logger.debug(f"args: {args=}")
+        #    # Filter test to collect only specified path
+        #    config_to_collect = list(filter(lambda config:
+        #                                    # Case we want to collect everything
+        #                                    MUSTRD_PYTEST_PATH not in args[0]
+        #                                    # Case we want to collect a test or sub test
+        #                                    or (config.pytest_path or "") in args[0]
+        #                                    # Case we want to collect a whole test folder
+        #                                    or args[0].replace(f"./{MUSTRD_PYTEST_PATH}", "") in config.pytest_path,
+        #                                    self.test_configs))
+        #else:
+        #    config_to_collect = self.test_configs
 
         # Collecting only relevant tests
         #for one_test_config in config_to_collect:
@@ -230,10 +232,9 @@ class MustrdTestPlugin:
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
         logger.debug(f"Collecting file: {path}")
-        if path.ext == ".ttl" and "mustrd" in path.basename:
-            mustrd_file = MustrdFile.from_parent(parent, fspath=path, mustrd_plugin = self)
-            mustrd_file.mustrd_plugin = self
-            return mustrd_file
+        mustrd_file = MustrdFile.from_parent(parent, fspath=path, mustrd_plugin = self)
+        mustrd_file.mustrd_plugin = self
+        return mustrd_file
 
     # Hook called at collection time: reads the configuration of the tests, and generate pytests from it
     #def pytest_generate_tests(self, metafunc):
@@ -387,7 +388,9 @@ class MustrdFile(pytest.File):
                                                     "data_path": test_config.data_path},
                                                     triple_stores, None)
             for spec in specs:
-                yield MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
+                test = MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
+                
+                yield test
 
 class MustrdItem(pytest.Item):
     def __init__(self, name, parent, spec):
