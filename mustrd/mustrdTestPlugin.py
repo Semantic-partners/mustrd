@@ -30,6 +30,7 @@ from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
 from pytest import Session
 
+from mustrd import logger_setup
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import write_result_diff_to_log, get_triple_store_graph, get_triple_stores
@@ -151,8 +152,7 @@ class TestParamWrapper:
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logger_setup.setup_logger(__name__)
 
 class MustrdTestPlugin:
     md_path: str
@@ -169,9 +169,10 @@ class MustrdTestPlugin:
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
-        logger.debug("Starting test collection")
+        logger.info("Starting test collection")
         self.unit_tests = []
         args = session.config.args
+        logger.debug("Used arguments: " + str(args))
         if len(args) > 0:
             file_name = self.get_file_name_from_arg(args[0])
             logger.debug(f"File name from args: {file_name}")
