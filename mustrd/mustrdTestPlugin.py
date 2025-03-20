@@ -390,7 +390,9 @@ class MustrdFile(pytest.File):
             for spec in specs:
                 # Check if the current test is in the selected tests in arguments
                 if spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests or self.mustrd_plugin.selected_tests == []:
-                    yield MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
+                    item = MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
+                    self.mustrd_plugin.items.append(item)
+                    yield item
 
 class MustrdItem(pytest.Item):
     def __init__(self, name, parent, spec):
