@@ -40,10 +40,10 @@ def test_collection_full():
 
     # Get collected items
     items = mustrd_plugin.items
-    collected_nodes = list(map(lambda item: item.nodeid, items))
-    skipped_nodes = list(map(lambda item: item.nodeid,
+    collected_nodes = list(map(lambda item: item.name, items))
+    skipped_nodes = list(map(lambda item: item.name,
                              # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                             list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
 
     # Check that the items have been collected
@@ -123,10 +123,10 @@ def test_collection_full():
 
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
-    node_id = "mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only", node_id)
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only",
+                               f"test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
     items = mustrd_plugin.items
-    assert list(map(lambda item: item.nodeid, items)) == ["mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"]
+    assert list(map(lambda item: item.name, items)) == ["rdflib/construct_spec.mustrd.ttl"]
 
 
 def test_collection_path():
@@ -242,9 +242,5 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
                                     """).askAnswer
 
 
-def get_node_id(ttl_file: str, path: str):
-    return f"mustrd_tests/{path}::test_unit[{ttl_file}@{path}]"
-
-
 def has_item(node_ids: list, ttl_file: str, path: str):
-    return get_node_id(ttl_file, path) in node_ids
+    return f"{path}/{ttl_file}" in node_ids
