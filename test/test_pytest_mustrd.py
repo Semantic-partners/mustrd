@@ -132,28 +132,28 @@ def test_collection_single():
 def test_collection_path():
     path = "rdflib1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
 
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
 
 def test_collection_path3():
     path = "col1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 64
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 64
 
 
 def test_mustrd_config_duplicate():
