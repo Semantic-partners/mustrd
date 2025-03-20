@@ -83,7 +83,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config) -> None:
     # Read configuration file
-    if config.getoption("mustrd"):
+    if config.getoption("mustrd") and config.getoption("configpath"):
         config.pluginmanager.register(MustrdTestPlugin(config.getoption("mdpath"),
                                                        Path(config.getoption("configpath")), config.getoption("secrets")))
 
