@@ -158,6 +158,7 @@ class MustrdTestPlugin:
     unit_tests: Union[Specification, SpecSkipped]
     items: list
     path_filter: str
+    collect_error:BaseException
 
     def __init__(self, md_path, test_config_file, secrets):
         self.md_path = md_path
@@ -288,23 +289,29 @@ class MustrdTestPlugin:
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
     def collect(self):
-        logger.debug(f"Collecting tests from file: {self.fspath}")
-        test_configs = parse_config(self.fspath)
-        for test_config in test_configs:
-            # Skip if there is a path filter and it is not in the pytest path
-            if self.mustrd_plugin.path_filter is not None and self.mustrd_plugin.path_filter not in test_config.pytest_path:
-                continue
-            triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
-            specs = self.mustrd_plugin.generate_tests_for_config({"spec_path": test_config.spec_path,
-                                                    "data_path": test_config.data_path},
-                                                    triple_stores, None)
-            for spec in specs:
-                # Check if the current test is in the selected tests in arguments
-                if spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests \
-                    or self.mustrd_plugin.selected_tests == [] :
-                    item = MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
-                    self.mustrd_plugin.items.append(item)
-                    yield item
+        try:
+            logger.debug(f"Collecting tests from file: {self.fspath}")
+            test_configs = parse_config(self.fspath)
+            for test_config in test_configs:
+                # Skip if there is a path filter and it is not in the pytest path
+                if self.mustrd_plugin.path_filter is not None and self.mustrd_plugin.path_filter not in test_config.pytest_path:
+                    continue
+                triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
+                specs = self.mustrd_plugin.generate_tests_for_config({"spec_path": test_config.spec_path,
+                                                        "data_path": test_config.data_path},
+                                                        triple_stores, None)
+                for spec in specs:
+                    # Check if the current test is in the selected tests in arguments
+                    if spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests \
+                        or self.mustrd_plugin.selected_tests == [] :
+                        item = MustrdItem.from_parent(self, name=test_config.pytest_path + "/" + spec.spec_file_name, spec=spec)
+                        self.mustrd_plugin.items.append(item)
+                        yield item
+        except BaseException as e:
+            # Catch error here otherwise it will be lost
+            self.mustrd_plugin.collect_error = e
+            logger.error(f"Error during collection: {e}")
+            raise e
 
 class MustrdItem(pytest.Item):
     def __init__(self, name, parent, spec):
