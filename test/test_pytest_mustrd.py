@@ -210,9 +210,9 @@ def test_triplestore_config():
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
     items = mustrd_plugin.items
 
-    skipped_nodes = list(map(lambda item: item.nodeid,
+    skipped_nodes = list(map(lambda item: item.name,
                              # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                             list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
 
     assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")

@@ -297,9 +297,16 @@ class MustrdFile(pytest.File):
                 if self.mustrd_plugin.path_filter is not None and self.mustrd_plugin.path_filter not in test_config.pytest_path:
                     continue
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
-                specs = self.mustrd_plugin.generate_tests_for_config({"spec_path": test_config.spec_path,
-                                                        "data_path": test_config.data_path},
-                                                        triple_stores, None)
+                
+                if test_config.filter_on_tripleStore and not triple_stores:
+                    specs = list(map(
+                            lambda triple_store:
+                                SpecSkipped(MUST.TestSpec, triple_store, "No triplestore found"),
+                                test_config.filter_on_tripleStore))
+                else :
+                    specs = self.mustrd_plugin.generate_tests_for_config({"spec_path": test_config.spec_path,
+                                                                          "data_path": test_config.data_path},
+                                                                         triple_stores, None)
                 for spec in specs:
                     # Check if the current test is in the selected tests in arguments
                     if spec.spec_source_file.resolve() in self.mustrd_plugin.selected_tests \
