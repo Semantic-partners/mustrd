@@ -158,10 +158,8 @@ def test_collection_path3():
 
 def test_mustrd_config_duplicate():
     # Mustrd test generation should fail with ValueError if configuration is not conform
-    with pytest.raises(ValueError) as error:
-        run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only")
-    assert error
-    shacl_report_graph = error.value.args[1]
+    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only").collect_error
+    shacl_report_graph = error.args[1]
     # report = shacl_report_graph.serialize(None, format="ttl")
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
@@ -181,11 +179,9 @@ def test_mustrd_config_duplicate():
 
 
 def test_mustrd_missing_props():
-    # Mustrd test generation should fail with ValueError if configuration is not conform
-    with pytest.raises(ValueError) as error:
-        run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only")
-    assert error
-    shacl_report_graph = error.value.args[1]
+    # Mustrd test generation should fail with ValueError if configuration is not conform}
+    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only").collect_error
+    shacl_report_graph = error.args[1]
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
                                        "<https://mustrd.com/mustrdTest/test_unit>",
