@@ -836,7 +836,7 @@ def display_verbose(results: List[SpecResult]):
             log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
             log.info(f"{Fore.BLUE} In Expected Not In Actual:")
             log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-            log.info()
+            log.info("")
             log.info(f"{Fore.RED} in_actual_not_in_expected")
             log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
             log.info(f"{Fore.GREEN} in_both")

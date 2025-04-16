@@ -35,6 +35,7 @@ from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import write_result_diff_to_log, get_triple_store_graph, get_triple_stores
 from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs, SpecPassed, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
+from .mustrd import display_verbose
 from typing import Union
 from pyshacl import validate
 
@@ -326,6 +327,7 @@ def run_test_spec(test_spec):
     if isinstance(test_spec, SpecSkipped):
         pytest.skip(f"Invalid configuration, error : {test_spec.message}")
     result = run_spec(test_spec)
+    display_verbose([result])
 
     result_type = type(result)
     if result_type == SpecSkipped:
