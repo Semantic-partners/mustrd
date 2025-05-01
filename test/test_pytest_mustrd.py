@@ -22,29 +22,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import pytest
+from pathlib import Path
 from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
 
 
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
-    test_config = parse_config(config_path)
-    mustrd_plugin = MustrdTestPlugin(md_path, test_config, secrets)
+    mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets)
     pytest.main([*args], plugins=[mustrd_plugin])
-    return mustrd_plugin, test_config
+    return mustrd_plugin
 
 
 # test collection of all tests
 def test_collection_full():
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
-    assert len(test_config) == 1
-    pytest_path = test_config[0].pytest_path
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
+    pytest_path = "rdflib"
 
     # Get collected items
     items = mustrd_plugin.items
-    collected_nodes = list(map(lambda item: item.nodeid, items))
-    skipped_nodes = list(map(lambda item: item.nodeid,
+    collected_nodes = list(map(lambda item: item.name, items))
+    skipped_nodes = list(map(lambda item: item.name,
                              # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                             list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
 
     # Check that the items have been collected
@@ -124,45 +123,43 @@ def test_collection_full():
 
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
-    node_id = "mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only", node_id)
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only",
+                               f"test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
     items = mustrd_plugin.items
-    assert list(map(lambda item: item.nodeid, items)) == ["mustrd_tests/rdflib::test_unit[construct_spec.mustrd.ttl@rdflib]"]
+    assert list(map(lambda item: item.name, items)) == ["rdflib/construct_spec.mustrd.ttl"]
 
 
 def test_collection_path():
     path = "rdflib1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
 
 def test_collection_path2():
     path = "col1/test1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 32
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
 
 def test_collection_path3():
     path = "col1"
-    mustrd_plugin, test_config = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", f"./mustrd_tests/{path}")
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
+                                            "--collect-only", path)
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.nodeid, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.nodeid, mustrd_plugin.items))) == 64
+    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
+    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 64
 
 
 def test_mustrd_config_duplicate():
     # Mustrd test generation should fail with ValueError if configuration is not conform
-    with pytest.raises(ValueError) as error:
-        run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only")
-    assert error
-    shacl_report_graph = error.value.args[1]
+    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only").collect_error
+    shacl_report_graph = error.args[1]
     # report = shacl_report_graph.serialize(None, format="ttl")
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
@@ -182,11 +179,9 @@ def test_mustrd_config_duplicate():
 
 
 def test_mustrd_missing_props():
-    # Mustrd test generation should fail with ValueError if configuration is not conform
-    with pytest.raises(ValueError) as error:
-        run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only")
-    assert error
-    shacl_report_graph = error.value.args[1]
+    # Mustrd test generation should fail with ValueError if configuration is not conform}
+    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only").collect_error
+    shacl_report_graph = error.args[1]
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
                                        "<https://mustrd.com/mustrdTest/test_unit>",
@@ -212,12 +207,12 @@ def test_mustrd_missing_props():
 
 
 def test_triplestore_config():
-    mustrd_plugin, config = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
     items = mustrd_plugin.items
 
-    skipped_nodes = list(map(lambda item: item.nodeid,
+    skipped_nodes = list(map(lambda item: item.name,
                              # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.callspec.params["unit_tests"].unit_test,
+                             list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
 
     assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")
@@ -243,9 +238,5 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
                                     """).askAnswer
 
 
-def get_node_id(ttl_file: str, path: str):
-    return f"mustrd_tests/{path}::test_unit[{ttl_file}@{path}]"
-
-
 def has_item(node_ids: list, ttl_file: str, path: str):
-    return get_node_id(ttl_file, path) in node_ids
+    return f"{path}/{ttl_file}" in node_ids
