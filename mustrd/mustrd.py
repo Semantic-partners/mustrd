@@ -510,7 +510,7 @@ def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, tri
     triple_store["input_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                            predicate=TRIPLESTORE.inputGraph)
     try:
-        check_triple_store_params(triple_store, ["url", "port", "repository"])
+        check_triple_store_params(triple_store, ["url", "repository"])
     except ValueError as e:
         triple_store["error"] = e
 
