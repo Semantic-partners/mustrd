@@ -190,9 +190,11 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
     subject_uris = set()
     focus_uris = set()
     invalid_specs = []
-    ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
+    ttl_files = list(run_config['spec_path'].glob(
+        f'**/{file_name}.mustrd.ttl'))
     ttl_files.sort()
-    log.info(f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
+    log.info(
+        f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
     # For each spec file found in spec_path
     for file in ttl_files:
@@ -237,7 +239,8 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                 focus_uri = URIRef(str(focus_uri) + "_DUPLICATE")
             focus_uris.add(focus_uri)
 
-        add_spec_validation(file_graph, subject_uris, file, triple_stores, error_messages, invalid_specs, spec_graph)
+        add_spec_validation(file_graph, subject_uris, file,
+                            triple_stores, error_messages, invalid_specs, spec_graph)
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
@@ -268,17 +271,20 @@ def add_spec_validation(file_graph: Graph, subject_uris: set, file: Path, triple
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
         # If we already collected a URI, then we tag it as duplicate and it won't be executed
         if subject_uri in subject_uris:
-            log.warning(f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
+            log.warning(
+                f"Duplicate subject URI found: {file.name} {subject_uri}. File will not be parsed.")
             error_messages += [f"Duplicate subject URI found in {file.name}."]
             subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
         if len(error_messages) == 0:
             subject_uris.add(subject_uri)
             this_spec_graph = Graph()
             this_spec_graph.parse(file)
-            spec_uris_in_this_file = list(this_spec_graph.subjects(RDF.type, MUST.TestSpec))
+            spec_uris_in_this_file = list(
+                this_spec_graph.subjects(RDF.type, MUST.TestSpec))
             for spec in spec_uris_in_this_file:
                 this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
+                this_spec_graph.add(
+                    [spec, MUST.specFileName, Literal(file.name)])
             spec_graph += this_spec_graph
         else:
             error_messages.sort()
@@ -294,14 +300,16 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
     try:
         for triple_store in triple_stores:
             if "error" in triple_store:
-                log.error(f"{triple_store['error']}. No specs run for this triple store.")
+                log.error(
+                    f"{triple_store['error']}. No specs run for this triple store.")
                 skipped_results += [SpecSkipped(spec_uri, triple_store['type'], triple_store['error'],
                                                 get_spec_file(spec_uri, spec_graph)) for spec_uri in
                                     spec_uris]
             else:
                 for spec_uri in spec_uris:
                     try:
-                        specs += [get_spec(spec_uri, spec_graph, run_config, triple_store)]
+                        specs += [get_spec(spec_uri, spec_graph,
+                                           run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
                         skipped_results += [SpecSkipped(spec_uri, triple_store['type'],
                                                         e, get_spec_file(spec_uri, spec_graph))]
@@ -342,7 +350,8 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
                                                    mustrd_triple_store=mustrd_triple_store))
 
         spec_file_name = get_spec_file(spec_uri, spec_graph)
-        spec_file_path = Path(spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile, default=Path("default.mustrd.ttl")))
+        spec_file_path = Path(spec_graph.value(
+            subject=spec_uri, predicate=MUST.specSourceFile, default=Path("default.mustrd.ttl")))
         # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(spec_uri, mustrd_triple_store,
                              components[0].value, components[1], components[2], spec_file_name, spec_file_path)
@@ -375,7 +384,8 @@ def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
     # close_connection = True
-    log.debug(f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
+    log.debug(
+        f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
     if spec.given:
         given_as_turtle = spec.given.serialize(format="turtle")
         log.debug(f"{given_as_turtle}")
@@ -385,7 +395,8 @@ def run_spec(spec: Specification) -> SpecResult:
             return SpecSkipped(spec_uri, triple_store['type'], "Unable to run Inherited State tests on Rdflib")
     try:
         for when in spec.when:
-            log.info(f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}")
+            log.info(
+                f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}")
             try:
                 result = run_when(spec_uri, triple_store, when)
             except ParseException as e:
@@ -421,16 +432,18 @@ def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
 # Parse and validate triple store configuration
 def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
     triple_stores = []
-    shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl")))
-    ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/triplestoreOntology.ttl")))
+    shacl_graph = Graph().parse(
+        Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl")))
+    ont_graph = Graph().parse(
+        Path(os.path.join(get_mustrd_root(), "model/triplestoreOntology.ttl")))
     # SHACL validation of triple store configuration
     conforms, results_graph, results_text = validate(
-            data_graph=triple_store_graph,
-            shacl_graph=shacl_graph,
-            ont_graph=ont_graph,
-            advanced=True,
-            inference='none'
-        )
+        data_graph=triple_store_graph,
+        shacl_graph=shacl_graph,
+        ont_graph=ont_graph,
+        advanced=True,
+        inference='none'
+    )
     if not conforms:
         raise ValueError(f"Triple store configuration not conform to the shapes. SHACL report: {results_text}",
                          results_graph)
@@ -440,10 +453,12 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         triple_store["uri"] = triple_store_config
         # Anzo graph via anzo
         if triple_store_type == TRIPLESTORE.Anzo:
-            get_anzo_configuration(triple_store, triple_store_graph, triple_store_config)
+            get_anzo_configuration(
+                triple_store, triple_store_graph, triple_store_config)
         # GraphDB
         elif triple_store_type == TRIPLESTORE.GraphDb:
-            get_graphDB_configuration(triple_store, triple_store_graph, triple_store_config)
+            get_graphDB_configuration(
+                triple_store, triple_store_graph, triple_store_config)
 
         elif triple_store_type != TRIPLESTORE.RdfLib:
             triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
@@ -453,8 +468,10 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
 
 
 def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
-    triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url)
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
         triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                 predicate=TRIPLESTORE.username))
@@ -469,14 +486,17 @@ def get_anzo_configuration(triple_store: dict, triple_store_graph: Graph, triple
     triple_store["output_graph"] = triple_store_graph.value(subject=triple_store_config,
                                                             predicate=TRIPLESTORE.outputGraph)
     try:
-        check_triple_store_params(triple_store, ["url", "port", "username", "password", "input_graph"])
+        check_triple_store_params(
+            triple_store, ["url", "port", "username", "password", "input_graph"])
     except ValueError as e:
         triple_store["error"] = e
 
 
 def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef):
-    triple_store["url"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.url)
-    triple_store["port"] = triple_store_graph.value(subject=triple_store_config, predicate=TRIPLESTORE.port)
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url)
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port)
     try:
         triple_store["username"] = str(triple_store_graph.value(subject=triple_store_config,
                                                                 predicate=TRIPLESTORE.username))
@@ -496,14 +516,16 @@ def get_graphDB_configuration(triple_store: dict, triple_store_graph: Graph, tri
 
 
 def check_triple_store_params(triple_store: dict, required_params: List[str]):
-    missing_params = [param for param in required_params if triple_store.get(param) is None]
+    missing_params = [
+        param for param in required_params if triple_store.get(param) is None]
     if missing_params:
         raise ValueError(f"Cannot establish connection to {triple_store['type']}. "
                          f"Missing required parameter(s): {', '.join(missing_params)}.")
 
 
 def get_credential_from_file(triple_store_name: URIRef, credential: str, config_path: Literal) -> str:
-    log.info(f"get_credential_from_file {triple_store_name}, {credential}, {config_path}")
+    log.info(
+        f"get_credential_from_file {triple_store_name}, {credential}, {config_path}")
     if not config_path:
         raise ValueError(f"Cannot establish connection defined in {triple_store_name}. "
                          f"Missing required parameter: {credential}.")
@@ -542,7 +564,8 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
             else:
                 values.append(str(XSD.anyURI))
 
-        frames = pandas.concat(objs=[frames, pandas.DataFrame([values], columns=columns)], ignore_index=True)
+        frames = pandas.concat(objs=[frames, pandas.DataFrame(
+            [values], columns=columns)], ignore_index=True)
         frames.fillna('', inplace=True)
 
         if frames.size == 0:
@@ -553,7 +576,8 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
     order_list = ["order by ?", "order by desc", "order by asc"]
-    ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
+    ordered_result = any(
+        pattern in spec.when[0].value.lower() for pattern in order_list)
 
     # If sparql query doesn't contain order by clause, but order is define in then spec:
     # Then ignore order in then spec and print a warning
@@ -591,7 +615,8 @@ def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
     return not resultDf.empty, not spec.then.value.empty
 
 
-compare_table_results = MultiMethod("compare_table_results", compare_table_results_dispatch)
+compare_table_results = MultiMethod(
+    "compare_table_results", compare_table_results_dispatch)
 
 
 # Scenario 1: expected a result and got a result
@@ -602,7 +627,8 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
     then = spec.then.value
     sorted_then_cols = sorted(list(then))
     order_list = ["order by ?", "order by desc", "order by asc"]
-    ordered_result = any(pattern in spec.when[0].value.lower() for pattern in order_list)
+    ordered_result = any(
+        pattern in spec.when[0].value.lower() for pattern in order_list)
 
     if not ordered_result:
         resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)
@@ -615,7 +641,8 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
                 then.sort_values(by=columns[::2], inplace=True)
                 then.reset_index(drop=True, inplace=True)
             if resultDf.shape == then.shape and (resultDf.columns == then.columns).all():
-                df_diff = then.compare(resultDf, result_names=("expected", "actual"))
+                df_diff = then.compare(
+                    resultDf, result_names=("expected", "actual"))
             else:
                 df_diff = construct_df_diff(resultDf, then)
         else:
@@ -627,7 +654,8 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
         resultDf = resultDf[sorted_columns]
         df_diff = construct_df_diff(resultDf, then)
 
-    message = build_summary_message(then.shape[0], round(then.shape[1] / 2), resultDf.shape[0], round(resultDf.shape[1] / 2))
+    message = build_summary_message(then.shape[0], round(
+        then.shape[1] / 2), resultDf.shape[0], round(resultDf.shape[1] / 2))
     return df_diff, message
 
 
@@ -695,13 +723,16 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
 
     return expected_results
 
+
 def write_result_diff_to_log(res):
     if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
         log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
         log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-        log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+        log.info(
+            res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
         log.info(f"{Fore.RED} in_actual_not_in_expected")
-        log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+        log.info(
+            res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
         log.info(f"{Fore.GREEN} in_both")
         log.info(res.graph_comparison.in_both.serialize(format="ttl"))
 
@@ -710,7 +741,8 @@ def write_result_diff_to_log(res):
         log.info(res.message)
         log.info(res.table_comparison.to_markdown())
     if isinstance(res, SpecPassedWithWarning):
-        log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+        log.info(
+            f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
         log.info(res.warning)
     if isinstance(res, TripleStoreConnectionError) or isinstance(res, SparqlExecutionError) or \
             isinstance(res, SparqlParseFailure):
@@ -719,6 +751,7 @@ def write_result_diff_to_log(res):
     if isinstance(res, SpecSkipped):
         log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
         log.info(res.message)
+
 
 def calculate_row_difference(df1: pandas.DataFrame,
                              df2: pandas.DataFrame) -> pandas.DataFrame:
@@ -740,12 +773,16 @@ def construct_df_diff(df: pandas.DataFrame,
     modified_then = then
 
     if actual_columns.size > 0:
-        modified_then = modified_then.reindex(modified_then.columns.to_list() + actual_columns.to_list(), axis=1)
-        modified_then[actual_columns.to_list()] = modified_then[actual_columns.to_list()].fillna('')
+        modified_then = modified_then.reindex(
+            modified_then.columns.to_list() + actual_columns.to_list(), axis=1)
+        modified_then[actual_columns.to_list(
+        )] = modified_then[actual_columns.to_list()].fillna('')
 
     if expected_columns.size > 0:
-        modified_df = modified_df.reindex(modified_df.columns.to_list() + expected_columns.to_list(), axis=1)
-        modified_df[expected_columns.to_list()] = modified_df[expected_columns.to_list()].fillna('')
+        modified_df = modified_df.reindex(
+            modified_df.columns.to_list() + expected_columns.to_list(), axis=1)
+        modified_df[expected_columns.to_list(
+        )] = modified_df[expected_columns.to_list()].fillna('')
 
     modified_df = modified_df.reindex(modified_then.columns, axis=1)
 
@@ -769,13 +806,17 @@ def generate_row_diff(actual_rows: pandas.DataFrame, expected_rows: pandas.DataF
 
     if actual_rows.shape[0] > 0:
         empty_actual_copy = create_empty_dataframe_with_columns(actual_rows)
-        df_diff_actual_rows = empty_actual_copy.compare(actual_rows, result_names=("expected", "actual"))
+        df_diff_actual_rows = empty_actual_copy.compare(
+            actual_rows, result_names=("expected", "actual"))
 
     if expected_rows.shape[0] > 0:
-        empty_expected_copy = create_empty_dataframe_with_columns(expected_rows)
-        df_diff_expected_rows = expected_rows.compare(empty_expected_copy, result_names=("expected", "actual"))
+        empty_expected_copy = create_empty_dataframe_with_columns(
+            expected_rows)
+        df_diff_expected_rows = expected_rows.compare(
+            empty_expected_copy, result_names=("expected", "actual"))
 
-    df_diff_rows = pandas.concat([df_diff_actual_rows, df_diff_expected_rows], ignore_index=True)
+    df_diff_rows = pandas.concat(
+        [df_diff_actual_rows, df_diff_expected_rows], ignore_index=True)
     return df_diff_rows
 
 
@@ -790,15 +831,18 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
     # Init dictionaries
     status_dict = defaultdict(lambda: defaultdict(int))
     status_counts = defaultdict(lambda: defaultdict(int))
-    colours = {SpecPassed: Fore.GREEN, SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
+    colours = {SpecPassed: Fore.GREEN,
+               SpecPassedWithWarning: Fore.YELLOW, SpecSkipped: Fore.YELLOW}
     # Populate dictionaries from results
     for result in results:
         status_counts[result.triple_store][type(result)] += 1
         status_dict[result.spec_uri][result.triple_store] = type(result)
 
     # Get the list of statuses and list of unique triple stores
-    statuses = list(status for inner_dict in status_dict.values() for status in inner_dict.values())
-    triple_stores = list(set(status for inner_dict in status_dict.values() for status in inner_dict.keys()))
+    statuses = list(status for inner_dict in status_dict.values()
+                    for status in inner_dict.values())
+    triple_stores = list(set(status for inner_dict in status_dict.values()
+                         for status in inner_dict.keys()))
 
     # Convert dictionaries to list for tabulate
     table_rows = [[spec_uri] + [
@@ -811,8 +855,10 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
                     for triple_store in triple_stores] for status in set(statuses)]
 
     # Display tables with tabulate
-    log.info(tabulate(table_rows, headers=['Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
-    log.info(tabulate(status_rows, headers=['Status / triple stores'] + triple_stores, tablefmt="pretty"))
+    log.info(tabulate(table_rows, headers=[
+             'Spec Uris / triple stores'] + triple_stores, tablefmt="pretty"))
+    log.info(tabulate(status_rows, headers=[
+             'Status / triple stores'] + triple_stores, tablefmt="pretty"))
 
     pass_count = statuses.count(SpecPassed)
     warning_count = statuses.count(SpecPassedWithWarning)
@@ -840,10 +886,12 @@ def display_verbose(results: List[SpecResult]):
         if isinstance(res, UpdateSpecFailure):
             log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
             log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-            log.info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+            log.info(
+                res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
             log.info()
             log.info(f"{Fore.RED} in_actual_not_in_expected")
-            log.info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+            log.info(
+                res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
             log.info(f"{Fore.GREEN} in_both")
             log.info(res.graph_comparison.in_both.serialize(format="ttl"))
 
@@ -854,7 +902,8 @@ def display_verbose(results: List[SpecResult]):
         if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
             log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
         if isinstance(res, SpecPassedWithWarning):
-            log.info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+            log.info(
+                f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
             log.info(res.warning)
         if isinstance(res, TripleStoreConnectionError) or type(res, SparqlExecutionError) or \
                 isinstance(res, SparqlParseFailure):
