@@ -1,7 +1,9 @@
 {
-    "python.testing.pytestArgs": [
-        "test/"
-    ],
+    "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pytestArgs": [
+        "--mustrd",
+        "--config=test/test-mustrd-config/test_mustrd_simple.ttl"
+    ]
 }

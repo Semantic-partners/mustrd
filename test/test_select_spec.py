@@ -1722,7 +1722,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
+        assert then_result.message == "Actual result is ordered, must:then must contain sh:order on every row."
 
     def test_select_spec_not_all_ordered_fails(self):
 
@@ -1780,7 +1780,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
+        assert then_result.message == "Actual result is ordered, must:then must contain sh:order on every row."
 
     def test_select_spec_expected_fewer_rows_fails_ordered(self):
 
@@ -1838,7 +1838,7 @@ class TestRunSelectSpec:
         assert isinstance(then_result, SelectSpecFailure)
         assert isinstance(then_component, TableThenSpec)
         assert then_result.spec_uri == spec_uri
-        assert then_result.message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s). Actual result is ordered, must:then must contain sh:order on every row." # noqa
+        assert then_result.message == "Actual result is ordered, must:then must contain sh:order on every row."
 
     def test_select_given_file_then_file_spec_passes(self):
 

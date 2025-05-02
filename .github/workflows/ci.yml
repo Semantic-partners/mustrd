@@ -39,14 +39,14 @@ jobs:
       - name: Create coverage config file
         run: echo -e "[run]\nrelative_files = True" >> .coveragerc
       - name: Test with pytest
-        run: poetry run coverage run -m pytest test/ --doctest-modules --config=.github/test_config.ttl
+        run: poetry run coverage run -m pytest test/ --doctest-modules --config=pytest.ini
       - name: Coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Store Pull Request comment to be posted
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
         with:
           name: python-coverage-comment-action
