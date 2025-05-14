@@ -28,6 +28,7 @@ import logging
 from mustrd.anzo_utils import query_azg, query_graphmart
 from mustrd.anzo_utils import query_configuration, json_to_dictlist, ttl_to_graph
 
+log = logging.getLogger(__name__)
 
 def execute_select(triple_store: dict,  when: str, bindings: dict = None) -> str:
     try:
@@ -56,7 +57,9 @@ def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Grap
                                      f"""USING <{input_graph}>
 USING <{triple_store['output_graph']}>""").replace(
                                          "${targetGraph}", f"<{output_graph}>")
-
+    print('queryquery')
+    print(substituted_query)
+    log.info("substituted_query %s", substituted_query)
     response = query_azg(anzo_config=triple_store, query=substituted_query, is_update=True,
                          data_layers=input_graph, format="ttl")
     logging.debug(f'response {response}')
@@ -116,6 +119,7 @@ def get_query_from_querybuilder(triple_store: dict, folder_name: Literal, query_
 
 # https://github.com/Semantic-partners/mustrd/issues/102
 def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
+    log.info(f"get_query_from_step {query_step_uri} {triple_store}")
     query = f"""SELECT ?query WHERE {{
         BIND(<{query_step_uri}> as ?stepUri)
             ?stepUri a <http://cambridgesemantics.com/ontologies/Graphmarts#Step>;

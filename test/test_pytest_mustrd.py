@@ -25,7 +25,8 @@ import pytest
 from pathlib import Path
 from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
 from mustrd.mustrd import SpecSkipped
-
+import logging 
+log = logging.getLogger(__name__)
 
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
     mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets)
@@ -137,7 +138,6 @@ def test_collection_path():
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
-
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
@@ -146,6 +146,9 @@ def test_collection_path2():
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
+def test_wtgf():
+    glob = list(Path('/Users/lp524751/dev/gsk-tech/psctdi-projectone/mustrd-tests/config/dev/../../unit-tests').glob('**/*.mustrd.ttl'))
+    print(f"glob: {len(glob)}")
 
 def test_collection_path3():
     path = "col1"
