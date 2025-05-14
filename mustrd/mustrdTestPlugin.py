@@ -39,6 +39,7 @@ from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs,
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
+import pathlib
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -169,15 +170,16 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets):
+    def __init__(self, md_path, test_config_file, secrets, **kwargs):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.items = []
+        logger.debug(f"MustrdTestPlugin {kwargs=}")
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
-        logger.info("Starting test collection")
+        logger.info("Starting test collection 233")
         self.unit_tests = []
         args = session.config.args
         logger.info("Used arguments: " + str(args))
@@ -185,9 +187,11 @@ class MustrdTestPlugin:
                                        # By default the current directory is given as argument
                                        # Remove it as it is not a test
                                        filter(lambda arg: arg != os.getcwd() and "::" in arg, args)))
+        logger.info(f"selected_tests is: {self.selected_tests}")
 
         self.path_filter = args[0] if len(
             args) == 1 and args[0] != os.getcwd() and not "::" in args[0] else None
+        logger.info(f"path_filter is: {self.path_filter}")
 
         session.config.args = [str(self.test_config_file.resolve())]
 
@@ -198,19 +202,23 @@ class MustrdTestPlugin:
 
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
-        logger.debug(f"Collecting file: {path}")
+        logger.info(f"Collecting file: {path} {type(path)}")
         mustrd_file = MustrdFile.from_parent(
-            parent, fspath=path, mustrd_plugin=self)
+            parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):
-
+        logger.info(f"generate_tests_for_config {config=} {self=} {dir(self)}")
         shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/ontology.ttl")))
+        logger.info("Generating tests for config: " + str(config))
+        logger.info(f"selected_tests {self.selected_tests}" )
         valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(config, triple_stores,
-                                                                           shacl_graph, ont_graph, file_name or "*")
+                                                                           shacl_graph, ont_graph, 
+                                                                           file_name or "*",
+                                                                           selected_test_files=self.selected_tests)
 
         specs, skipped_spec_results = \
             get_specs(valid_spec_uris, spec_graph, triple_stores, config)
@@ -304,6 +312,10 @@ class MustrdTestPlugin:
 
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
+    
+    def __init__(self, *args,mustrd_plugin, **kwargs):
+        self.mustrd_plugin = mustrd_plugin
+        super(pytest.File, self).__init__(*args, **kwargs)
 
     def collect(self):
         try:
@@ -367,7 +379,7 @@ def run_test_spec(test_spec):
     if isinstance(test_spec, SpecSkipped):
         pytest.skip(f"Invalid configuration, error : {test_spec.message}")
     result = run_spec(test_spec)
-
+    logger.debug(f"Result of test {test_spec.spec_uri} is {result}")
     result_type = type(result)
     if result_type == SpecSkipped:
         # FIXME: Better exception management
