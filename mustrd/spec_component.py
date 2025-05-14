@@ -65,6 +65,7 @@ class WhenSpec(SpecComponent):
 class AnzoWhenSpec(WhenSpec):
     paramQuery: str = None
     queryTemplate: str = None
+    spec_component_details: any = None
 
 
 @dataclass
@@ -117,6 +118,8 @@ def parse_spec_component(subject: URIRef,
                 data_source_type=data_source_type,
                 run_config=run_config,
                 root_paths=get_components_roots(spec_graph, subject, run_config))
+            
+            # get_spec_component potentially talks to anzo for EVERY spec, massively slowing things down, can we defer it to run time? 
             spec_component = get_spec_component(spec_component_details)
             if isinstance(spec_component, list):
                 spec_components += spec_component
@@ -433,10 +436,11 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
                                                             predicate=MUST.graphmart)
         layer = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.layer)
-        spec_component.value = get_spec_component_from_graphmart(
-            triple_store=spec_component_details.mustrd_triple_store,
-            graphmart=graphmart,
-            layer=layer)
+        spec_component.spec_component_details = spec_component_details
+        # return get_spec_component_from_graphmart(
+        #     triple_store=spec_component_details.mustrd_triple_store,
+        #     graphmart=graphmart,
+        #     layer=layer)
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartDataset}")
 
@@ -468,14 +472,16 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
 
 @get_spec_component.method((MUST.AnzoGraphmartStepSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
-    spec_component = init_spec_component(spec_component_details.predicate)
+    spec_component = AnzoWhenSpec()
 
     # Get WHEN specComponent from query builder
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                                  predicate=MUST.anzoQueryStep)
-        spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
-                                                   query_step_uri=query_step_uri)
+        spec_component.spec_component_details = spec_component_details
+        spec_component.query_step_uri = query_step_uri
+        # spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
+        #                                            query_step_uri=query_step_uri)
     # If anzo specific function is called but no anzo defined
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
@@ -547,6 +553,7 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
 
 
 def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec: # noqa
+    log.info(f"init_spec_component {predicate} {triple_store_type}")
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
