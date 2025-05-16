@@ -185,28 +185,33 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # Validate the specs found in spec_path
-def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*", selected_test_files: List[str] = [])\
+def validate_specs(run_config: dict,
+                   triple_stores: List,
+                   shacl_graph: Graph,
+                   ont_graph: Graph,
+                   file_name: str = "*",
+                   selected_test_files: List[str] = [])\
         -> Tuple[List, Graph, List]:
     spec_graph = Graph()
     subject_uris = set()
     focus_uris = set()
     invalid_specs = []
     ttl_files = []
-    # ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
-    # log.info(
-    #     f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
     if not selected_test_files:
-        ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
+        ttl_files = list(run_config['spec_path'].glob(
+            f'**/{file_name}.mustrd.ttl'))
         log.info(
             f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
     else:
         ttl_files = selected_test_files
-        log.info(f"Using {selected_test_files} for test source")
+
+    log.info(f"Using {ttl_files} for test source")
     ttl_files.sort()
-    
+
     # For each spec file found in spec_path
     for file in ttl_files:
+        # file = file.resolve()
         error_messages = []
 
         log.info(f"Parse: {file}")
@@ -376,7 +381,8 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec: Specification, result: Union[str, Graph]):
-    log.debug(f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
+    log.debug(
+        f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
         log.debug(f"table_comparison")
         return table_comparison(result, spec)
@@ -386,14 +392,14 @@ def check_result(spec: Specification, result: Union[str, Graph]):
             log.debug(f"isomorphic {spec}")
             log.debug(f"{spec.spec_uri}")
             log.debug(f"{spec.triple_store}")
-            ret =  SpecPassed(spec.spec_uri, spec.triple_store["type"])
-            
+            ret = SpecPassed(spec.spec_uri, spec.triple_store["type"])
+
             return ret
         else:
             log.debug(f"not isomorphic")
             if spec.when[0].queryType == MUST.ConstructSparql:
                 log.debug(f"ConstructSpecFailure")
-                
+
                 return ConstructSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
             else:
                 log.debug(f"UpdateSpecFailure")
