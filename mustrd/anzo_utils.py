@@ -89,7 +89,7 @@ def manage_anzo_response(response: Response) -> str:
 def send_anzo_query(anzo_config, url, params, query, is_update=False):
     headers = {"Content-Type": f"application/sparql-{'update' if is_update else 'query' }"}
     logger.debug(f"send_anzo_query {url=} {query=} {is_update=}")
-    return manage_anzo_response(requests.post(url=url, params=params, data=query,
+    return manage_anzo_response(requests.post(url=url, params=params, data=query.encode('utf-8'),
                                               auth=(anzo_config['username'], anzo_config['password']),
                                               headers=headers, verify=False))
 
