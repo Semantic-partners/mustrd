@@ -109,6 +109,7 @@ def parse_spec_component(subject: URIRef,
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
         for data_source_type in data_source_types:
+            log.debug(f"parse_spec_component {spec_component_node} {data_source_type} {mustrd_triple_store=}")
             spec_component_details = SpecComponentDetails(
                 subject=subject,
                 predicate=predicate,
@@ -535,6 +536,7 @@ def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: S
         spec_component.value = query.get("query")
         spec_component.paramQuery = query.get("param_query")
         spec_component.queryTemplate = query.get("query_template")
+        spec_component.spec_component_details = spec_component_details
         if spec_component.value:
             spec_component.queryType = spec_component_details.spec_graph.value(
                 subject=spec_component_details.spec_component_node,
