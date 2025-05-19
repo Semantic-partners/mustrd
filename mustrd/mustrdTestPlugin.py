@@ -51,7 +51,8 @@ from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
 
-# import pathlib
+import pathlib
+import traceback
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -246,7 +247,7 @@ class MustrdTestPlugin:
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
         logger.debug(f"Collecting file: {path}")
-        mustrd_file = MustrdFile.from_parent(parent, fspath=path, mustrd_plugin=self)
+        mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
 
@@ -431,7 +432,7 @@ class MustrdFile(pytest.File):
                     )
                     self.mustrd_plugin.items.append(item)
                     yield item
-        except BaseException as e:
+        except Exception as e:
             # Catch error here otherwise it will be lost
             self.mustrd_plugin.collect_error = e
             logger.error(f"Error during collection: {e}")
@@ -451,8 +452,19 @@ class MustrdItem(pytest.Item):
             raise AssertionError(f"Test {self.name} failed")
 
     def repr_failure(self, excinfo):
-        return f"{self.name} failed: {excinfo.value}"
-
+        # excinfo.value is the exception instance
+        # You can add more context here
+        tb_lines = traceback.format_exception(excinfo.type, excinfo.value, excinfo.tb)
+        tb_str = "".join(tb_lines)
+        return (
+            f"{self.name} failed:\n"
+            f"Spec: {self.spec.spec_uri}\n"
+            f"File: {self.spec.spec_source_file}\n"
+            f"Dir: {dir(self.spec)}\n"
+            f"Error: {excinfo.value}\n"
+            f"Traceback:\n{tb_str}"
+        )
+    
     def reportinfo(self):
         r = "", 0, f"mustrd test: {self.name}"
         return r
@@ -468,5 +480,11 @@ def run_test_spec(test_spec):
         # FIXME: Better exception management
         pytest.skip("Unsupported configuration")
     if result_type != SpecPassed:
-        write_result_diff_to_log(result)
+        write_result_diff_to_log(result, logger.info)
+        log_lines = []
+        def log_to_string(message):
+            log_lines.append(message)
+        write_result_diff_to_log(result, log_to_string)
+        raise AssertionError("Test failed: " + "\n".join(log_lines))
+
     return result_type == SpecPassed

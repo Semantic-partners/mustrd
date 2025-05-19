@@ -2,7 +2,9 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
     "workbench.colorCustomizations": {
         "activityBar.background": "#183323",
         "titleBar.activeBackground": "#224831",

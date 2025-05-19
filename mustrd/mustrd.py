@@ -56,6 +56,7 @@ from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
 from multimethods import MultiMethod
 import logging
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -444,8 +445,12 @@ def run_spec(spec: Specification) -> SpecResult:
     except (TypeError, RequestException) as e:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
-    except e:
-        log.error(f"Unknown error {e}")
+    except Exception as e:
+        if e:
+            log.error(f"Unknown error {e}\n{traceback.format_exc()}")
+            raise
+        else:
+            log.error(f"Unknown error")
         return RuntimeError(spec_uri, triple_store["type"], e)
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
@@ -757,33 +762,33 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def write_result_diff_to_log(res):
+def write_result_diff_to_log(res, info):
     if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-        log.info(
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(f"{Fore.BLUE} In Expected Not In Actual:")
+        info(
             res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-        log.info(f"{Fore.RED} in_actual_not_in_expected")
-        log.info(
+        info(f"{Fore.RED} in_actual_not_in_expected")
+        info(
             res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-        log.info(f"{Fore.GREEN} in_both")
-        log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+        info(f"{Fore.GREEN} in_both")
+        info(res.graph_comparison.in_both.serialize(format="ttl"))
 
     if isinstance(res, SelectSpecFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(res.message)
-        log.info(res.table_comparison.to_markdown())
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(res.message)
+        info(res.table_comparison.to_markdown())
     if isinstance(res, SpecPassedWithWarning):
-        log.info(
+        info(
             f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-        log.info(res.warning)
+        info(res.warning)
     if isinstance(res, TripleStoreConnectionError) or isinstance(res, SparqlExecutionError) or \
             isinstance(res, SparqlParseFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(res.exception)
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(res.exception)
     if isinstance(res, SpecSkipped):
-        log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
-        log.info(res.message)
+        info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+        info(res.message)
 
 
 def calculate_row_difference(df1: pandas.DataFrame,
