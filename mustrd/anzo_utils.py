@@ -33,6 +33,7 @@ import logging
 
 logger = logging.getLogger()
 
+
 def query_azg(anzo_config: dict, query: str,
               format: str = "json", is_update: bool = False,
               data_layers: List[str] = None):
