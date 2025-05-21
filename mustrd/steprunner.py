@@ -99,7 +99,7 @@ def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSp
 
 @run_when.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
 def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    return execute_update_graphdb(triple_store, query, when.bindings)
+    return execute_update_graphdb(triple_store, when.value, when.bindings)
 
 
 @run_when.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
