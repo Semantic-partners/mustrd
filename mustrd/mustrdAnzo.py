@@ -30,6 +30,7 @@ from mustrd.anzo_utils import query_configuration, json_to_dictlist, ttl_to_grap
 
 log = logging.getLogger(__name__)
 
+
 def execute_select(triple_store: dict,  when: str, bindings: dict = None) -> str:
     try:
         if bindings:

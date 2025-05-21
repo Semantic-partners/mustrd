@@ -190,7 +190,7 @@ class MustrdTestPlugin:
         logger.info(f"selected_tests is: {self.selected_tests}")
 
         self.path_filter = args[0] if len(
-            args) == 1 and args[0] != os.getcwd() and not "::" in args[0] else None
+            args) == 1 and args[0] != os.getcwd() and "::" not in args[0] else None
         logger.info(f"path_filter is: {self.path_filter}")
 
         session.config.args = [str(self.test_config_file.resolve())]
@@ -214,9 +214,9 @@ class MustrdTestPlugin:
         shacl_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/mustrdShapes.ttl")))
         ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/ontology.ttl")))
         logger.info("Generating tests for config: " + str(config))
-        logger.info(f"selected_tests {self.selected_tests}" )
+        logger.info(f"selected_tests {self.selected_tests}")
         valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(config, triple_stores,
-                                                                           shacl_graph, ont_graph, 
+                                                                           shacl_graph, ont_graph,
                                                                            file_name or "*",
                                                                            selected_test_files=self.selected_tests)
 
@@ -312,8 +312,8 @@ class MustrdTestPlugin:
 
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
-    
-    def __init__(self, *args,mustrd_plugin, **kwargs):
+
+    def __init__(self, *args, mustrd_plugin, **kwargs):
         self.mustrd_plugin = mustrd_plugin
         super(pytest.File, self).__init__(*args, **kwargs)
 
