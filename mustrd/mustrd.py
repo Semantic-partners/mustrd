@@ -201,7 +201,8 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
         log.info(
             f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
     else:
-        ttl_files = list(filter(lambda path : path.resolve() in selected_test_files, run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl')))
+        ttl_files = list(filter(lambda path: path.resolve() in selected_test_files,
+                                run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl')))
         log.info(f"Using {selected_test_files} for test source")
     ttl_files.sort()
     
