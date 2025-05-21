@@ -323,7 +323,10 @@ class MustrdFile(pytest.File):
             test_configs = parse_config(self.fspath)
             for test_config in test_configs:
                 # Skip if there is a path filter and it is not in the pytest path
-                if self.mustrd_plugin.path_filter is not None and self.mustrd_plugin.path_filter not in test_config.pytest_path:
+                if (
+                    self.mustrd_plugin.path_filter is not None
+                    and self.mustrd_plugin.path_filter not in test_config.pytest_path
+                ):
                     continue
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(
                     test_config)
