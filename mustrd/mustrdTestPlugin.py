@@ -359,6 +359,7 @@ class MustrdItem(pytest.Item):
         super().__init__(name, parent)
         self.spec = spec
         self.fspath = spec.spec_source_file
+        self.originalname = name
 
     def runtest(self):
         result = run_test_spec(self.spec)
