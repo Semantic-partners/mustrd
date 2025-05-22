@@ -35,8 +35,8 @@ from rdflib.term import Node
 from rdflib.plugins.stores.memory import Memory
 
 from . import logger_setup
-from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step, get_spec_component_from_graphmart
-from .mustrdAnzo import get_query_from_querybuilder, get_query_from_step
+from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
+from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
 from .utils import get_mustrd_root
@@ -119,8 +119,9 @@ def parse_spec_component(subject: URIRef,
                 data_source_type=data_source_type,
                 run_config=run_config,
                 root_paths=get_components_roots(spec_graph, subject, run_config))
-            
-            # get_spec_component potentially talks to anzo for EVERY spec, massively slowing things down, can we defer it to run time? 
+
+            # get_spec_component potentially talks to anzo for EVERY spec, massively slowing things down
+            # can we defer it to run time?
             spec_component = get_spec_component(spec_component_details)
             if isinstance(spec_component, list):
                 spec_components += spec_component
@@ -433,15 +434,7 @@ def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecCompone
 
     if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
         # Get GIVEN or THEN from anzo graphmart
-        graphmart = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                            predicate=MUST.graphmart)
-        layer = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                        predicate=MUST.layer)
         spec_component.spec_component_details = spec_component_details
-        # return get_spec_component_from_graphmart(
-        #     triple_store=spec_component_details.mustrd_triple_store,
-        #     graphmart=graphmart,
-        #     layer=layer)
     else:
         raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartDataset}")
 
