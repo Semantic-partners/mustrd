@@ -33,6 +33,7 @@ import logging
 
 logger = logging.getLogger()
 
+
 def query_azg(anzo_config: dict, query: str,
               format: str = "json", is_update: bool = False,
               data_layers: List[str] = None):
@@ -41,7 +42,7 @@ def query_azg(anzo_config: dict, query: str,
         'format': format,
         'datasourceURI': anzo_config['gqe_uri'],
         'using-graph-uri' if is_update else 'default-graph-uri': data_layers,
-        'using-named-graph-uri' if is_update else'named-graph-uri': data_layers
+        'using-named-graph-uri' if is_update else 'named-graph-uri': data_layers
     }
     url = f"{anzo_config['url']}/sparql"
     return send_anzo_query(anzo_config, url=url, params=params, query=query, is_update=is_update)

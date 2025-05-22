@@ -24,7 +24,6 @@ SOFTWARE.
 
 import json
 
-from . import logger_setup
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
 from rdflib import Graph, URIRef
@@ -83,7 +82,7 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     log.info(f"_anzo_run_when_update {spec_uri} {triple_store} {when} {type(when)} {dir(when)}")
     query = get_query_from_step(triple_store=when.spec_component_details.mustrd_triple_store,
-                                                   query_step_uri=when.query_step_uri)
+                                query_step_uri=when.query_step_uri)
     log.info(f"query {query}")
     return execute_update_anzo(triple_store, query, when.bindings)
 
@@ -100,8 +99,7 @@ def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSp
 
 @run_when.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
 def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    
-    return execute_update_graphdb(triple_store, query, when.bindings)
+    return execute_update_graphdb(triple_store, when.value, when.bindings)
 
 
 @run_when.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
