@@ -32,11 +32,9 @@ from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component
 from mustrd.steprunner import run_when
-import logging
 
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
-
 
 
 class TestRunUpdateSpec:
@@ -89,7 +87,6 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        logger.info(f"run_when {spec_uri=} {when_component=}")
         when_result = run_when(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
