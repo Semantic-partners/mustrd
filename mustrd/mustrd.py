@@ -55,7 +55,6 @@ import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
 from multimethods import MultiMethod
-import logging
 import traceback
 
 log = logging.getLogger(__name__)
@@ -385,7 +384,7 @@ def check_result(spec: Specification, result: Union[str, Graph]):
     log.debug(
         f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
-        log.debug(f"table_comparison")
+        log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
         graph_compare = graph_comparison(spec.then.value, result)
@@ -397,20 +396,18 @@ def check_result(spec: Specification, result: Union[str, Graph]):
 
             return ret
         else:
-            log.debug(f"not isomorphic")
+            log.debug("not isomorphic")
             if spec.when[0].queryType == MUST.ConstructSparql:
-                log.debug(f"ConstructSpecFailure")
-
+                log.debug("ConstructSpecFailure")
                 return ConstructSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
             else:
-                log.debug(f"UpdateSpecFailure")
+                log.debug("UpdateSpecFailure")
                 return UpdateSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
 
 
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
-    # close_connection = True
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
     if spec.given:
@@ -446,11 +443,7 @@ def run_spec(spec: Specification) -> SpecResult:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
     except Exception as e:
-        if e:
-            log.error(f"Unknown error {e}\n{traceback.format_exc()}")
-            raise
-        else:
-            log.error(f"Unknown error")
+        log.error(f"Unknown error {e}")
         return RuntimeError(spec_uri, triple_store["type"], e)
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
