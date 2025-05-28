@@ -395,26 +395,24 @@ class MustrdFile(pytest.File):
         try:
             logger.debug(f"Collecting tests from file: {self.fspath}")
             test_configs = parse_config(self.fspath)
+            from collections import defaultdict
+            pytest_path_grouped = defaultdict(list)
             for test_config in test_configs:
-                # Skip if there is a path filter and it is not in the pytest path
                 if (
                     self.mustrd_plugin.path_filter is not None
                     and self.mustrd_plugin.path_filter not in test_config.pytest_path
                 ):
                     continue
-                triple_stores = self.mustrd_plugin.get_triple_stores_from_file(
-                    test_config
-                )
-
+                triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
                 if test_config.filter_on_tripleStore and not triple_stores:
-                    specs = list(
-                        map(
-                            lambda triple_store: SpecSkipped(
-                                MUST.TestSpec, triple_store, "No triplestore found"
-                            ),
-                            test_config.filter_on_tripleStore,
+                    specs = [
+                        SpecSkipped(
+                            MUST.TestSpec, triple_store, "No triplestore found",
+                            spec_file_name=str(test_config.spec_path.name) if test_config.spec_path else "unknown.mustrd.ttl",
+                            spec_source_file=test_config.spec_path if test_config.spec_path else Path("unknown.mustrd.ttl"),
                         )
-                    )
+                        for triple_store in test_config.filter_on_tripleStore
+                    ]
                 else:
                     specs = self.mustrd_plugin.generate_tests_for_config(
                         {
@@ -424,19 +422,42 @@ class MustrdFile(pytest.File):
                         triple_stores,
                         None,
                     )
+                pytest_path = getattr(test_config, "pytest_path", "unknown")
                 for spec in specs:
-                    item = MustrdItem.from_parent(
-                        self,
-                        name=test_config.pytest_path + "/" + spec.spec_file_name,
-                        spec=spec,
-                    )
-                    self.mustrd_plugin.items.append(item)
-                    yield item
+                    pytest_path_grouped[pytest_path].append(spec)
+
+            for pytest_path, specs_for_path in pytest_path_grouped.items():
+                logger.info(f"pytest_path group: {pytest_path} ({len(specs_for_path)} specs)")
+
+                yield MustrdPytestPathCollector.from_parent(
+                    self,
+                    name=str(pytest_path),
+                    pytest_path=pytest_path,
+                    specs=specs_for_path,
+                    mustrd_plugin=self.mustrd_plugin,
+                )
         except Exception as e:
-            # Catch error here otherwise it will be lost
             self.mustrd_plugin.collect_error = e
             logger.error(f"Error during collection: {e}")
             raise e
+
+
+class MustrdPytestPathCollector(pytest.Class):
+    def __init__(self, name, parent, pytest_path, specs, mustrd_plugin):
+        super().__init__(name, parent)
+        self.pytest_path = pytest_path
+        self.specs = specs
+        self.mustrd_plugin = mustrd_plugin
+
+    def collect(self):
+        for spec in self.specs:
+            item = MustrdItem.from_parent(
+                self,
+                name=spec.spec_file_name,
+                spec=spec,
+            )
+            self.mustrd_plugin.items.append(item)
+            yield item
 
 
 class MustrdItem(pytest.Item):
