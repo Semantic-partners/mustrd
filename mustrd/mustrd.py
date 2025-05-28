@@ -283,6 +283,10 @@ def add_spec_validation(file_graph: Graph, subject_uris: set, file: Path, triple
                         error_messages: list, invalid_specs: list, spec_graph: Graph):
 
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+        # Always add file name and source file to the graph for error reporting
+        file_graph.add([subject_uri, MUST.specSourceFile, Literal(str(file))])
+        file_graph.add([subject_uri, MUST.specFileName, Literal(file.name)])
+
         # If we already collected a URI, then we tag it as duplicate and it won't be executed
         if subject_uri in subject_uris:
             log.warning(
@@ -325,8 +329,11 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
                         specs += [get_spec(spec_uri, spec_graph,
                                            run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
+                        # Try to get file name/path from the graph, but fallback to "unknown"
+                        file_name = spec_graph.value(subject=spec_uri, predicate=MUST.specFileName) or "unknown"
+                        file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile) or "unknown"
                         skipped_results += [SpecSkipped(spec_uri, triple_store['type'],
-                                                        e, get_spec_file(spec_uri, spec_graph))]
+                                                        str(e), str(file_name), Path(file_path))]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -348,7 +355,14 @@ def run_specs(specs) -> List[SpecResult]:
 
 
 def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
-    return str(spec_graph.value(subject=spec_uri, predicate=MUST.specFileName, default="default.mustrd.ttl"))
+    file_name = spec_graph.value(subject=spec_uri, predicate=MUST.specFileName)
+    if file_name:
+        return str(file_name)
+    # fallback: try to get from MUST.specSourceFile
+    file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile)
+    if file_path:
+        return str(Path(file_path).name)
+    return "default.mustrd.ttl"
 
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
