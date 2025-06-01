@@ -548,7 +548,6 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
 
 
 def init_spec_component(predicate: URIRef, triple_store_type: URIRef = None) -> GivenSpec | WhenSpec | ThenSpec | TableThenSpec: # noqa
-    log.info(f"init_spec_component {predicate} {triple_store_type}")
     if predicate == MUST.given:
         spec_component = GivenSpec()
     elif predicate == MUST.when:
