@@ -461,6 +461,11 @@ sh:order rdf:type owl:DatatypeProperty ;
                          rdfs:isDefinedBy : ;
                          rdfs:label "AnzoGraphmartQueryDrivenTemplatedStepSparqlSource" .
 
+### https://mustrd.com/model/SpadeEdnGroupSource
+:SpadeEdnGroupSource rdf:type owl:Class ;
+    rdfs:subClassOf :SparqlSource ;
+    rdfs:comment "Allows reference to a spade.edn file, and a specific groupid (think Anzo layer), within that" ; 
+    rdfs:label "SpadeEdnGroupSource" .
 
 ###  https://mustrd.com/model/Then
 :Then rdf:type owl:Class ;
