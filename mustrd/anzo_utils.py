@@ -31,16 +31,18 @@ from requests import Response, HTTPError, RequestException
 from bs4 import BeautifulSoup
 import logging
 
+logger = logging.getLogger()
+
 
 def query_azg(anzo_config: dict, query: str,
               format: str = "json", is_update: bool = False,
               data_layers: List[str] = None):
     params = {
-        'skipCache': True,
+        'skipCache': 'true',
         'format': format,
         'datasourceURI': anzo_config['gqe_uri'],
-        'default-graph-uri': data_layers,
-        'named-graph-uri': data_layers
+        'using-graph-uri' if is_update else 'default-graph-uri': data_layers,
+        'using-named-graph-uri' if is_update else 'named-graph-uri': data_layers
     }
     url = f"{anzo_config['url']}/sparql"
     return send_anzo_query(anzo_config, url=url, params=params, query=query, is_update=is_update)
@@ -52,7 +54,7 @@ def query_graphmart(anzo_config: dict,
                     format: str = "json",
                     data_layers: List[str] = None):
     params = {
-        'skipCache': True,
+        'skipCache': 'true',
         'format': format,
         'default-graph-uri': data_layers,
         'named-graph-uri': data_layers
@@ -87,7 +89,8 @@ def manage_anzo_response(response: Response) -> str:
 
 def send_anzo_query(anzo_config, url, params, query, is_update=False):
     headers = {"Content-Type": f"application/sparql-{'update' if is_update else 'query' }"}
-    return manage_anzo_response(requests.post(url=url, params=params, data=query,
+    logger.debug(f"send_anzo_query {url=} {query=} {is_update=}")
+    return manage_anzo_response(requests.post(url=url, params=params, data=query.encode('utf-8'),
                                               auth=(anzo_config['username'], anzo_config['password']),
                                               headers=headers, verify=False))
 

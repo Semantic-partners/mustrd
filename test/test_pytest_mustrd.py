@@ -23,12 +23,15 @@ SOFTWARE.
 """
 import pytest
 from pathlib import Path
-from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
+from mustrd.mustrdTestPlugin import MustrdTestPlugin
 from mustrd.mustrd import SpecSkipped
+import logging
+log = logging.getLogger(__name__)
 
 
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
     mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets)
+    log.setLevel(logging.DEBUG)  # or logging.INFO, as desired
     pytest.main([*args], plugins=[mustrd_plugin])
     return mustrd_plugin
 
@@ -40,99 +43,93 @@ def test_collection_full():
 
     # Get collected items
     items = mustrd_plugin.items
-    collected_nodes = list(map(lambda item: item.name, items))
-    skipped_nodes = list(map(lambda item: item.name,
+    collected_nodes = set(map(lambda item: item.name, items))
+    skipped_nodes = set(map(lambda item: item.name,
                              # Filter on skipped items
                              list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
+    log.info(f"Collected nodes: {collected_nodes}")
+    
+    expected_collected = {
+        "construct_spec_from_folders.mustrd.ttl",
+        "construct_spec.mustrd.ttl",
+        "construct_spec_mulitline_result.mustrd.ttl",
+        "construct_spec_multiple_given_multile_then.mustrd.ttl",
+        "construct_spec_variable.mustrd.ttl",
+        "construct_spec_when_file_then_file.mustrd.ttl",
+        "delete_data_spec.mustrd.ttl",
+        "delete_insert_spec.mustrd.ttl",
+        "delete_insert_spec_with_optional.mustrd.ttl",
+        "delete_insert_spec_with_subselect.mustrd.ttl",
+        "delete_spec.mustrd.ttl",
+        "insert_data_spec.mustrd.ttl",
+        "insert_spec.mustrd.ttl",
+        "invalid_delete_insert_spec_with_table_result.mustrd.ttl",
+        "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl",
+        "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl",
+        "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl",
+        "invalid_select_spec_with_empty_graph_result.mustrd.ttl",
+        "invalid_select_spec_with_statement_dataset_result.mustrd.ttl",
+        "invalid_select_spec_with_table_dataset_given.mustrd.ttl",
+        "invalid_spec.mustrd.ttl",
+        "select_spec.mustrd.ttl",
+        "select_spec_empty_result.mustrd.ttl",
+        "select_spec_given_file.mustrd.ttl",
+        "select_spec_given_file_then_file.mustrd.ttl",
+        "select_spec_given_inherited_state.mustrd.ttl",
+        "select_spec_multiline_result.mustrd.ttl",
+        "select_spec_optional_result.mustrd.ttl",
+        "select_spec_ordered.mustrd.ttl",
+        "select_spec_variable.mustrd.ttl",
+        "select_spec_variable_datatypes.mustrd.ttl",
+        "select_spec2.mustrd.ttl",
+        # "spade_edn_group_source_then_file.mustrd.ttl",
+    }
 
-    # Check that the items have been collected
-    assert has_item(collected_nodes, "construct_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "construct_spec_from_folders.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "construct_spec_mulitline_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "construct_spec_multiple_given_multile_then.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "construct_spec_variable.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "construct_spec_when_file_then_file.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "delete_data_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "delete_insert_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "delete_insert_spec_with_optional.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "delete_insert_spec_with_subselect.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "delete_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "insert_data_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "insert_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_delete_insert_spec_with_table_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl", pytest_path) # noqa
-    assert has_item(collected_nodes, "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_select_spec_with_empty_graph_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_select_spec_with_statement_dataset_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_select_spec_with_table_dataset_given.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "invalid_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_empty_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_given_file.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_given_file_then_file.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_given_inherited_state.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_multiline_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_optional_result.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_ordered.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_variable.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec_variable_datatypes.mustrd.ttl", pytest_path)
-    assert has_item(collected_nodes, "select_spec2.mustrd.ttl", pytest_path)
+    expected_skipped = {
+        "invalid_delete_insert_spec_with_table_result.mustrd.ttl",
+        "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl",
+        "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl",
+        "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl",
+        "invalid_select_spec_with_empty_graph_result.mustrd.ttl",
+        "invalid_select_spec_with_statement_dataset_result.mustrd.ttl",
+        "invalid_select_spec_with_table_dataset_given.mustrd.ttl",
+        "select_spec2.mustrd.ttl",
+    }
 
-    # Check that the valid specs are not skipped
-    assert not has_item(skipped_nodes, "construct_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "construct_spec_mulitline_result.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "construct_spec_multiple_given_multile_then.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "construct_spec_variable.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "construct_spec_when_file_then_file.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "delete_data_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "delete_insert_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "delete_insert_spec_with_optional.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "delete_insert_spec_with_subselect.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "delete_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "insert_data_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "insert_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_empty_result.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_given_file.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_given_file_then_file.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_given_inherited_state.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_multiline_result.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_optional_result.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_ordered.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_variable.mustrd.ttl", pytest_path)
-    assert not has_item(skipped_nodes, "select_spec_variable_datatypes.mustrd.ttl", pytest_path)
+    expected_not_skipped = expected_collected - expected_skipped
 
-    # Check invalid spec are skipped
-    assert has_item(skipped_nodes, "invalid_delete_insert_spec_with_table_result.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_select_spec_with_empty_graph_result.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_select_spec_with_statement_dataset_result.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "invalid_select_spec_with_table_dataset_given.mustrd.ttl", pytest_path)
-    assert has_item(skipped_nodes, "select_spec2.mustrd.ttl", pytest_path)
+    # Assert all expected collected nodes are present
+    assert expected_collected <= collected_nodes, (
+        f"Missing collected: {expected_collected - collected_nodes}\n"
+        f"Unexpected collected: {collected_nodes - expected_collected}"
+    )
 
-    # FIXME: This is skipped is that normal?
-    # assert has_item(skipped_nodes, "construct_spec_from_folders.mustrd.ttl", pytest_path)
+    # Assert all expected skipped nodes are present in skipped_nodes
+    assert expected_skipped <= skipped_nodes, (
+        f"Missing skipped: {expected_skipped - skipped_nodes}\n"
+        f"Unexpected skipped: {skipped_nodes - expected_skipped}"
+    )
 
-    # FIXME: this should be skipped?
-    # assert has_item(skipped_nodes, "invalid_spec.mustrd.ttl", pytest_path)
+    # Assert that valid specs are not skipped
+    assert not (expected_not_skipped & skipped_nodes), (
+        f"Unexpectedly skipped: {expected_not_skipped & skipped_nodes}"
+    )
 
 
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only",
-                               f"test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
+                               "test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
     items = mustrd_plugin.items
-    assert list(map(lambda item: item.name, items)) == ["rdflib/construct_spec.mustrd.ttl"]
+    assert list(map(lambda item: item.name, items)) == ["construct_spec.mustrd.ttl"]
 
 
 def test_collection_path():
     path = "rdflib1"
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", path)
+    mustrd_plugin = run_0mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
+                               "--collect-only", path)
+    log.info(mustrd_plugin.items)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
@@ -141,7 +138,7 @@ def test_collection_path():
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", path)
+                               "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
@@ -150,10 +147,21 @@ def test_collection_path2():
 def test_collection_path3():
     path = "col1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", path)
+                               "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 64
+
+
+
+def test_run_spade_integration():
+    path = "spade-integration"
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_spade_integration.ttl", path)
+    # Assert that we only collected tests from the specified path
+    collected_names = set(item.name for item in mustrd_plugin.items)
+    expected_names = {f"{path}/spade_edn_group_source_then_file.mustrd.ttl"}
+    assert collected_names == expected_names
+
 
 
 def test_mustrd_config_duplicate():

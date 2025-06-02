@@ -1,0 +1,16 @@
+@prefix must:      <https://mustrd.com/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+test-data:spade_edn_group_test
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:SpadeEdnGroupSource  ;
+                 must:file "./simple.spade.edn" ;
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then  [ a must:FileDataset ;
+                                   must:file "../../test/data/thenSuccess.nt" ] .

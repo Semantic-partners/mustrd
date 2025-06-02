@@ -29,6 +29,7 @@ from mustrd.anzo_utils import query_azg, query_graphmart
 from mustrd.anzo_utils import query_configuration, json_to_dictlist, ttl_to_graph
 
 
+
 def execute_select(triple_store: dict,  when: str, bindings: dict = None) -> str:
     try:
         if bindings:
@@ -39,7 +40,7 @@ def execute_select(triple_store: dict,  when: str, bindings: dict = None) -> str
                             f"FROM <{triple_store['input_graph']}>\nFROM <{triple_store['output_graph']}>").replace(
                                 "${targetGraph}", f"<{triple_store['output_graph']}>")
         # TODO: manage results here
-        return query_azg(anzo_config=triple_store, query=when)
+        return query_azg(anzo_config=triple_store, query=when, data_layers=[triple_store['input_graph']])
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         raise
 
@@ -58,7 +59,7 @@ USING <{triple_store['output_graph']}>""").replace(
                                          "${targetGraph}", f"<{output_graph}>")
 
     response = query_azg(anzo_config=triple_store, query=substituted_query, is_update=True,
-                         data_layers=input_graph, format="ttl")
+                         data_layers=[input_graph, output_graph], format="ttl")
     logging.debug(f'response {response}')
     # TODO: deal with error responses
     new_graph = ttl_to_graph(query_azg(anzo_config=triple_store, query="construct {?s ?p ?o} { ?s ?p ?o }",
