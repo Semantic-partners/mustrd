@@ -150,7 +150,7 @@ def test_collection_path2():
 
 
 def test_wtgf():
-    glob = list(Path('/Users/username123/dev/***REMOVED***-tech/psctdi-projectone/mustrd-tests/config/dev/../../unit-tests')
+    glob = list(Path('/Users/username123/dev/client-tech/psctdi-projectone/mustrd-tests/config/dev/../../unit-tests')
                 .glob('**/*.mustrd.ttl'))
     print(f"glob: {len(glob)}")
 
