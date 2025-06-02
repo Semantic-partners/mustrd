@@ -3,7 +3,12 @@
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestArgs": [
+        // "mustrd/test",
         "--mustrd",
-        "--config=test/test-mustrd-config/test_mustrd_simple.ttl"
+        "--log-cli-level=DEBUG",
+        "--config=test/test_config_local.ttl",
+        "-v",
+        "test",
+
     ]
 }
