@@ -4,4 +4,5 @@
 :test_unit_rdflib a :MustrdTest;
                 :hasSpecPath "../test/test-specs";
                 :hasDataPath "../test/data";
+                :hasPytestPath "test";
                 :filterOnTripleStore triplestore:RdfLib .

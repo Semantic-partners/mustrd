@@ -24,14 +24,13 @@ SOFTWARE.
 
 import json
 
-from . import logger_setup
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
 from rdflib import Graph, URIRef
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
 from .mustrdRdfLib import execute_update as execute_update_rdflib
-from .mustrdAnzo import upload_given as upload_given_anzo
+from .mustrdAnzo import get_query_from_step, upload_given as upload_given_anzo
 from .mustrdAnzo import execute_update as execute_update_anzo
 from .mustrdAnzo import execute_construct as execute_construct_anzo
 from .mustrdAnzo import execute_select as execute_select_anzo
@@ -40,8 +39,9 @@ from .mustrdGraphDb import execute_update as execute_update_graphdb
 from .mustrdGraphDb import execute_construct as execute_construct_graphdb
 from .mustrdGraphDb import execute_select as execute_select_graphdb
 from .spec_component import AnzoWhenSpec, WhenSpec
+import logging
 
-log = logger_setup.setup_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
@@ -71,7 +71,7 @@ def _upload_given_anzo(triple_store: dict, given: Graph):
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
     query_type = when.queryType
-    log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
+    log.info(f"1234dispatch_run_when to SPARQL type {query_type} to {ts}")
     return ts, query_type
 
 
@@ -80,7 +80,11 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 
 @run_when.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
-    return execute_update_anzo(triple_store, when.value, when.bindings)
+    log.info(f"_anzo_run_when_update {spec_uri} {triple_store} {when} {type(when)} {dir(when)}")
+    query = get_query_from_step(triple_store=when.spec_component_details.mustrd_triple_store,
+                                query_step_uri=when.query_step_uri)
+    log.info(f"query {query}")
+    return execute_update_anzo(triple_store, query, when.bindings)
 
 
 @run_when.method((TRIPLESTORE.Anzo, MUST.ConstructSparql))
@@ -152,6 +156,7 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 
 @run_when.method(Default)
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    log.error(f"run_when not implemented for {spec_uri} {triple_store} {when}")
     if when.queryType == MUST.AskSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL ASK not implemented.")
         msg = "SPARQL ASK not implemented."
