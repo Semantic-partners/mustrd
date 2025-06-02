@@ -259,13 +259,24 @@ class MustrdTestPlugin:
             file_name or "*",
             selected_test_files=self.selected_tests,
         )
+        # Convert invalid specs to SpecInvalid instead of SpecSkipped
+        invalid_specs = [
+            SpecInvalid(
+                spec.spec_uri,
+                spec.triple_store,
+                spec.message,
+                spec.spec_file_name,
+                spec.spec_source_file
+            ) for spec in invalid_spec_results
+        ]
+
 
         specs, skipped_spec_results = get_specs(
             valid_spec_uris, spec_graph, triple_stores, config
         )
 
         # Return normal specs + skipped results
-        return specs + skipped_spec_results + invalid_spec_results
+        return specs + skipped_spec_results + invalid_specs
 
     # Function called to generate the name of the test
     def get_test_name(self, spec):
@@ -373,6 +384,13 @@ class MustrdTestPlugin:
         with open(self.md_path, "w") as file:
             file.write(md)
 
+@dataclass(frozen=True)
+class SpecInvalid:
+    spec_uri: str
+    triple_store: str
+    message: str
+    spec_file_name: str = None
+    spec_source_file: Path = None
 
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
@@ -404,16 +422,7 @@ class MustrdFile(pytest.File):
                 ):
                     continue
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
-                if test_config.filter_on_tripleStore and not triple_stores:
-                    specs = [
-                        SpecSkipped(
-                            MUST.TestSpec, triple_store, "No triplestore found",
-                            spec_file_name=str(test_config.spec_path.name) if test_config.spec_path else "unknown.mustrd.ttl",
-                            spec_source_file=test_config.spec_path if test_config.spec_path else Path("unknown.mustrd.ttl"),
-                        )
-                        for triple_store in test_config.filter_on_tripleStore
-                    ]
-                else:
+                try:
                     specs = self.mustrd_plugin.generate_tests_for_config(
                         {
                             "spec_path": test_config.spec_path,
@@ -422,6 +431,18 @@ class MustrdFile(pytest.File):
                         triple_stores,
                         None,
                     )
+                except Exception as e:
+                    logger.error(f"Error generating tests: {e}")
+                    specs = [
+                        SpecInvalid(
+                            MUST.TestSpec,
+                            triple_store["uri"] if isinstance(triple_store, dict) else triple_store,
+                            f"Test generation failed: {str(e)}",
+                            spec_file_name=str(test_config.spec_path.name) if test_config.spec_path else "unknown.mustrd.ttl",
+                            spec_source_file=self.path if test_config.spec_path else Path("unknown.mustrd.ttl"),
+                        )
+                        for triple_store in (triple_stores or test_config.filter_on_tripleStore)
+                    ]
                 pytest_path = getattr(test_config, "pytest_path", "unknown")
                 for spec in specs:
                     pytest_path_grouped[pytest_path].append(spec)
@@ -498,6 +519,8 @@ def run_test_spec(test_spec):
         pytest.skip(f"Invalid configuration, error : {test_spec.message}")
     result = run_spec(test_spec)
     result_type = type(result)
+    if isinstance(test_spec, SpecInvalid):
+        raise ValueError(f"Invalid test specification: {test_spec.message} {test_spec}")
     if result_type == SpecSkipped:
         # FIXME: Better exception management
         pytest.skip("Unsupported configuration")
