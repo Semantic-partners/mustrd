@@ -7,6 +7,7 @@
         "--mustrd",
         "--log-cli-level=DEBUG",
         "--config=test/test_config_local.ttl",
+        "--config=test/test_config_local_expected_failures.ttl",
         "-v",
         "test",
 

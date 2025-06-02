@@ -395,6 +395,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec: Specification, result: Union[str, Graph]):
+    
     log.debug(
         f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
@@ -422,6 +423,14 @@ def check_result(spec: Specification, result: Union[str, Graph]):
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
+
+    if not isinstance(spec, Specification):
+        log.warning(f"check_result called with non-Specification: {type(spec)}")
+        return spec
+        # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
+    
+    log.debug(
+        f"run_spec {spec=}")
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
     if spec.given:
