@@ -2,7 +2,7 @@
 @prefix triplestore:<https://mustrd.com/triplestore/> .
 
 :test_unit_rdflib a :MustrdTest;
-                :hasSpecPath "../test/test-specs";
-                :hasDataPath "../test/data";
-                :hasPytestPath "test";
+                :hasSpecPath "../test-specs/spade-integration";
+                :hasDataPath "../data";
+                :hasPytestPath "rdflib";
                 :filterOnTripleStore triplestore:RdfLib .

@@ -179,3 +179,4 @@ test/triplestore_config/*
 junit/*
 test/anzoConnectionConfig.ttl
 pytest.ini
+test/*nogit.py

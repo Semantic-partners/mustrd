@@ -249,5 +249,14 @@ must:AnzoGraphmartQueryDrivenTemplatedStepSparqlSourceShape
                      sh:minCount    1 ;
                      sh:maxCount    1 ; ]  .
 
-
-
+must:SpadeEdnGroupSourceShape
+    a              sh:NodeShape ;
+    sh:targetClass must:SpadeEdnGroupSource ;
+    sh:property    [ sh:path     must:file ;
+                     sh:message "A SpadeEdnGroupSource must have a file property pointing to the spade.edn config." ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] ;
+    sh:property    [ sh:path     must:groupId ;
+                     sh:message "A SpadeEdnGroupSource must have a groupId property referencing the group in the EDN file." ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ; ] .
