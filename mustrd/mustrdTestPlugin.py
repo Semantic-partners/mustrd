@@ -1,27 +1,3 @@
-"""
-MIT License
-
-Copyright (c) 2023 Semantic Partners Ltd
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
 import logging
 from dataclasses import dataclass
 import pytest
@@ -220,24 +196,35 @@ class MustrdTestPlugin:
         self.unit_tests = []
         args = session.config.args
         logger.info("Used arguments: " + str(args))
+        
+        # Split args into mustrd and regular pytest args
+        mustrd_args = [arg for arg in args if ".mustrd.ttl" in arg]
+        pytest_args = [arg for arg in args if arg != os.getcwd() and ".mustrd.ttl" not in arg]
+        
         self.selected_tests = list(
             map(
                 lambda arg: Path(arg.split("::")[0]),
-                # By default the current directory is given as argument
-                # Remove it as it is not a test
-                filter(lambda arg: arg != os.getcwd() and "::" in arg, args),
+                mustrd_args
             )
         )
         logger.info(f"selected_tests is: {self.selected_tests}")
 
         self.path_filter = (
-            args[0]
-            if len(args) == 1 and args[0] != os.getcwd() and not "::" in args[0]
+            pytest_args[0]
+            if len(pytest_args) == 1 and not "::" in pytest_args[0]
             else None
         )
         logger.info(f"path_filter is: {self.path_filter}")
+        
+        # Only modify args if we have mustrd tests to run
+        if self.selected_tests:
+            # Keep original pytest args and add config file for mustrd
+            session.config.args = pytest_args + [str(self.test_config_file.resolve())]
+        else:
+            # Keep original args unchanged for regular pytest
+            session.config.args = args
 
-        session.config.args = [str(self.test_config_file.resolve())]
+        logger.info(f"Final session.config.args: {session.config.args}")
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
@@ -247,6 +234,9 @@ class MustrdTestPlugin:
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
         logger.debug(f"Collecting file: {path}")
+        # Only collect .ttl files that are mustrd suite config files
+        if not str(path).endswith('.ttl'):
+            return None
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
@@ -388,12 +378,22 @@ class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
 
     def __init__(self, *args, mustrd_plugin, **kwargs):
+        logger.debug(f"Creating MustrdFile with args: {args}, kwargs: {kwargs}")
         self.mustrd_plugin = mustrd_plugin
         super(pytest.File, self).__init__(*args, **kwargs)
 
     def collect(self):
         try:
-            logger.debug(f"Collecting tests from file: {self.fspath}")
+            logger.info(f"Collecting tests from file: {self.fspath}")
+            logger.info(f"Collecting tests from file (self.path): {self.path}")
+            logger.info(f"{self.mustrd_plugin.test_config_file=}")
+            # if not str(self.fspath).endswith(".ttl"):
+            #     return []
+            # Only process the specific mustrd config file we were given
+            # if str(self.fspath) != str(self.mustrd_plugin.test_config_file):
+            #     logger.info(f"Skipping non-config file: {self.fspath}")
+            #     return []
+                
             test_configs = parse_config(self.fspath)
             from collections import defaultdict
             pytest_path_grouped = defaultdict(list)
