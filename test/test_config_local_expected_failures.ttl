@@ -1,0 +1,10 @@
+@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix triplestore:<https://mustrd.com/triplestore/> .
+
+
+:test_unit_rdflib_expected_fails a :MustrdTest;
+                :hasSpecPath "test-specs/expected-failures";
+                :hasDataPath "data";
+                :hasPytestPath "testcollection1/rdflib/expected-failures";
+                :filterOnTripleStore triplestore:RdfLib .
+
