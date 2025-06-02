@@ -127,7 +127,7 @@ def test_collection_single():
 
 def test_collection_path():
     path = "rdflib1"
-    mustrd_plugin = run_0mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
                                "--collect-only", path)
     log.info(mustrd_plugin.items)
     # Assert that we only collected tests from the specified path
