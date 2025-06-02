@@ -35,6 +35,7 @@ def setup_logger(name: str) -> logging.Logger:
     log = logging.getLogger(name)
     log.setLevel(LOG_LEVEL)
     
+
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setLevel(logging.ERROR)
     log.addHandler(stderr_handler)

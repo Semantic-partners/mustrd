@@ -56,7 +56,7 @@ from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
 from multimethods import MultiMethod
 
-log = logger_setup.setup_logger(__name__)
+log = logging.getLogger(__name__)
 
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
@@ -184,17 +184,22 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # Validate the specs found in spec_path
-def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*")\
-        -> Tuple[List, Graph, List]:
+def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*",
+                   selected_test_files: List[str] = []) -> Tuple[List, Graph, List]:
     spec_graph = Graph()
     subject_uris = set()
     focus_uris = set()
     invalid_specs = []
-    ttl_files = list(run_config['spec_path'].glob(
-        f'**/{file_name}.mustrd.ttl'))
+    ttl_files = []
+
+    if not selected_test_files:
+        ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
+        log.info(
+            f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
+    else:
+        ttl_files = selected_test_files
+        log.info(f"Using {selected_test_files} for test source")
     ttl_files.sort()
-    log.info(
-        f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
 
     # For each spec file found in spec_path
     for file in ttl_files:
@@ -367,23 +372,32 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec: Specification, result: Union[str, Graph]):
+    log.debug(f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
+        log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
         graph_compare = graph_comparison(spec.then.value, result)
         if isomorphic(result, spec.then.value):
-            return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+            log.debug(f"isomorphic {spec}")
+            log.debug(f"{spec.spec_uri}")
+            log.debug(f"{spec.triple_store}")
+            ret = SpecPassed(spec.spec_uri, spec.triple_store["type"])
+
+            return ret
         else:
+            log.debug("not isomorphic")
             if spec.when[0].queryType == MUST.ConstructSparql:
+                log.debug("ConstructSpecFailure")
                 return ConstructSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
             else:
+                log.debug("UpdateSpecFailure")
                 return UpdateSpecFailure(spec.spec_uri, spec.triple_store["type"], graph_compare)
 
 
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
-    # close_connection = True
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
     if spec.given:
@@ -399,9 +413,14 @@ def run_spec(spec: Specification) -> SpecResult:
                 f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}")
             try:
                 result = run_when(spec_uri, triple_store, when)
+                log.info(
+                    f"run {when.queryType} spec {spec_uri} on {triple_store['type']} {result=}")
             except ParseException as e:
+                log.error(
+                    f"parseException {e}")
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
+                log.error(f"NotImplementedError {ex}")
                 return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
@@ -413,7 +432,9 @@ def run_spec(spec: Specification) -> SpecResult:
     except (TypeError, RequestException) as e:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
-
+    except Exception as e:
+        log.error(f"Unknown error {e}")
+        return RuntimeError(spec_uri, triple_store["type"], e)
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:

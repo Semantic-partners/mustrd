@@ -5,5 +5,10 @@
     "python.testing.pytestArgs": [
         "--mustrd",
         "--config=test/test-mustrd-config/test_mustrd_simple.ttl"
-    ]
+    ],
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#183323",
+        "titleBar.activeBackground": "#224831",
+        "titleBar.activeForeground": "#F6FBF8"
+    }
 }

@@ -23,8 +23,10 @@ SOFTWARE.
 """
 import pytest
 from pathlib import Path
-from mustrd.mustrdTestPlugin import MustrdTestPlugin, parse_config
+from mustrd.mustrdTestPlugin import MustrdTestPlugin
 from mustrd.mustrd import SpecSkipped
+import logging
+log = logging.getLogger(__name__)
 
 
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
@@ -124,7 +126,7 @@ def test_collection_full():
 # Test that we collect one test if we give one nodeid
 def test_collection_single():
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only",
-                               f"test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
+                               "test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
     items = mustrd_plugin.items
     assert list(map(lambda item: item.name, items)) == ["rdflib/construct_spec.mustrd.ttl"]
 
@@ -132,7 +134,7 @@ def test_collection_single():
 def test_collection_path():
     path = "rdflib1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                            "--collect-only", path)
+                               "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
@@ -141,16 +143,22 @@ def test_collection_path():
 def test_collection_path2():
     path = "col1/test1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", path)
+                               "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
 
 
+def test_wtgf():
+    glob = list(Path('/Users/username123/dev/***REMOVED***-tech/psctdi-projectone/mustrd-tests/config/dev/../../unit-tests')
+                .glob('**/*.mustrd.ttl'))
+    print(f"glob: {len(glob)}")
+
+
 def test_collection_path3():
     path = "col1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                                            "--collect-only", path)
+                               "--collect-only", path)
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 64
