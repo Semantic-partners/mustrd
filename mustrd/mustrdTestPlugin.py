@@ -39,12 +39,8 @@ from mustrd.mustrd import Specification, SpecSkipped, validate_specs, get_specs,
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
 from typing import Union
 from pyshacl import validate
-<<<<<<< HEAD
-import logging
-=======
 import pathlib
 
->>>>>>> 03fe3f98f54b21b0e7a973317aa001f9b0b6b6fb
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
 mustrd_root = get_mustrd_root()
@@ -96,10 +92,6 @@ def pytest_configure(config) -> None:
 
 def parse_config(config_path):
     test_configs = []
-<<<<<<< HEAD
-    print(f"{config_path=}")
-=======
->>>>>>> 03fe3f98f54b21b0e7a973317aa001f9b0b6b6fb
     config_graph = Graph().parse(config_path)
     shacl_graph = Graph().parse(
         Path(os.path.join(mustrd_root, "model/mustrdTestShapes.ttl")))
@@ -178,27 +170,16 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-<<<<<<< HEAD
-    def __init__(self, md_path, test_config_file, secrets):
-=======
     def __init__(self, md_path, test_config_file, secrets, **kwargs):
->>>>>>> 03fe3f98f54b21b0e7a973317aa001f9b0b6b6fb
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.items = []
-<<<<<<< HEAD
-
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_collection(self, session):
-        logger.info("Starting test collection")
-=======
         logger.debug(f"MustrdTestPlugin {kwargs=}")
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.info("Starting test collection 233")
->>>>>>> 03fe3f98f54b21b0e7a973317aa001f9b0b6b6fb
         self.unit_tests = []
         args = session.config.args
         logger.info("Used arguments: " + str(args))
