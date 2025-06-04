@@ -4,5 +4,5 @@
 :test_unit_rdflib a :MustrdTest;
                 :hasSpecPath "../test-specs/spade-integration";
                 :hasDataPath "../data";
-                :hasPytestPath "rdflib";
+                :hasPytestPath "spade-integration";
                 :filterOnTripleStore triplestore:RdfLib .

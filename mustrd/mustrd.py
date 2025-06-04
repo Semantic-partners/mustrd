@@ -238,7 +238,10 @@ def validate_specs(run_config: dict,
                                                          advanced=True,
                                                          js=False,
                                                          debug=False)
-
+        if str(file.name).endswith("_duplicate"):
+            log.debug(f"Validation of {file.name} against SHACL shapes: {conforms}")
+            log.debug(f"{results_graph.serialize(format='turtle')}")
+        # log.debug(f"SHACL validation results: {results_text}")
         # Add error message if not conform to spec shapes
         if not conforms:
             for msg in results_graph.objects(predicate=SH.resultMessage):
@@ -454,7 +457,8 @@ def run_spec(spec: Specification) -> SpecResult:
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
                 log.error(f"NotImplementedError {ex}")
-                return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
+                raise ex
+                # return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
@@ -466,8 +470,8 @@ def run_spec(spec: Specification) -> SpecResult:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
     except Exception as e:
-        log.error(f"Unknown error {e}")
-        return RuntimeError(spec_uri, triple_store["type"], e)
+        log.error(f"Unexpected error {e}")
+        return RuntimeError(spec_uri, triple_store["type"], f"{type(e).__name__}: {e}")
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:

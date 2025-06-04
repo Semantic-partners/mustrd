@@ -1,6 +1,7 @@
 @prefix : <https://mustrd.com/mustrdTest/> .
 @prefix triplestore:<https://mustrd.com/triplestore/> .
 
+# this file is used to test the error handling of duplicate test units in the configuration see test_pytest_mustrd.py:test_mustrd_config_duplicate_should_fail_shacl_tests
 :test_unit a :MustrdTest;
                 :hasSpecPath "../test1", "../test2";
                 :hasDataPath "../data1", "../data2";

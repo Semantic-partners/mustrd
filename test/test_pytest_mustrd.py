@@ -1,31 +1,10 @@
-"""
-MIT License
-
-Copyright (c) 2023 Semantic Partners Ltd
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
 import pytest
 from pathlib import Path
 from mustrd.mustrdTestPlugin import MustrdTestPlugin
 from mustrd.mustrd import SpecSkipped
 import logging
+from pyshacl import validate
+
 log = logging.getLogger(__name__)
 
 
@@ -177,21 +156,21 @@ def test_run_spade_integration():
         "test/test-mustrd-config/test_mustrd_spade_integration.ttl", f"--pytest-path={path}")
     # Assert that we only collected tests from the specified path
     collected_names = set(item.name for item in mustrd_plugin.items)
-    expected_names = {f"{path}/spade_edn_group_source_then_file.mustrd.ttl"}
+    expected_names = {f"spade_edn_group_source_then_file.mustrd.ttl"}
     assert collected_names == expected_names
 
 
-def test_mustrd_config_duplicate():
-    # Mustrd test generation should fail with ValueError if configuration is not conform
+def test_mustrd_config_duplicate_should_fail_shacl_tests():
+    # Mustrd test generation should fail with ValueError if configuration does not conform to the SHACL schema
     error = run_mustrd(
         "test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only").collect_error
     shacl_report_graph = error.args[1]
     # report = shacl_report_graph.serialize(None, format="ttl")
-    assert shacl_report_graph
+    assert shacl_report_graph, "SHACL report graph should not be empty"
     assert found_error_in_shacl_report(shacl_report_graph,
                                        "<https://mustrd.com/mustrdTest/test_unit>",
                                        "<https://mustrd.com/mustrdTest/hasSpecPath>",
-                                       "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>")
+                                       "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>"), shacl_report_graph.serialize(format="ttl")
 
     assert found_error_in_shacl_report(shacl_report_graph,
                                        "<https://mustrd.com/mustrdTest/test_unit>",
@@ -237,7 +216,8 @@ def test_triplestore_config():
     mustrd_plugin = run_mustrd(
         "test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
     items = mustrd_plugin.items
-
+    errors = getattr(mustrd_plugin, 'collect_error', None)
+    log.info(f"Errors: {errors}")
     skipped_nodes = list(map(lambda item: item.name,
                              # Filter on skipped items
                              list(filter(lambda item: isinstance(item.spec,
