@@ -43,7 +43,6 @@ jobs:
       - name: Test mustrd.ttl with the mustrd plugin
         run: |
           # install our working copy of mustrd as a local package, and run the tests as a mustrdPlugin
-          pip install -e .
           poetry run --mustrd --config=test/test_config_local.ttl",
       - name: Coverage comment
         id: coverage_comment
