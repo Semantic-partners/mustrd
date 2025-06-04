@@ -246,6 +246,9 @@ class MustrdTestPlugin:
         # Only collect .ttl files that are mustrd suite config files
         if not str(path).endswith('.ttl'):
             return None
+        if Path(path).resolve() != Path(self.test_config_file).resolve():
+                logger.info(f"Skipping non-config file: {path} {self.test_config_file=}")
+                return None
         
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
@@ -413,6 +416,7 @@ class MustrdFile(pytest.File):
     def collect(self):
         try:
             logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
+            # Only process the specific mustrd config file we were given
             
             # if not str(self.fspath).endswith(".ttl"):
             #     return []
@@ -421,7 +425,7 @@ class MustrdFile(pytest.File):
             #     logger.info(f"Skipping non-config file: {self.fspath}")
             #     return []
                 
-            test_configs = parse_config(self.fspath)
+            test_configs = parse_config(self.path)
             from collections import defaultdict
             pytest_path_grouped = defaultdict(list)
             for test_config in test_configs:
@@ -470,7 +474,7 @@ class MustrdFile(pytest.File):
                 )
         except Exception as e:
             self.mustrd_plugin.collect_error = e
-            logger.error(f"Error during collection: {e}")
+            logger.error(f"Error during collection {self.path}: {type(e)} {e} {traceback.format_exc()}")
             raise e
 
 

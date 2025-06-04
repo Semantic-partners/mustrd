@@ -4,11 +4,11 @@
 :test_unit_rdflib a :MustrdTest;
                 :hasSpecPath "test-specs/expected-success";
                 :hasDataPath "data";
-                :hasPytestPath "testcollection1/rdflib";
+                :hasPytestPath "testcollection1/rdflib/expected-success";
                 :filterOnTripleStore triplestore:RdfLib .
 
 :test_unit_gdb a :MustrdTest;
-                :hasSpecPath "test-specs";
+                :hasSpecPath "test-specs/expected-success";
                 :hasDataPath "data";
                 :triplestoreSpecPath "triplestore_config/tripleStores.ttl";
                 :hasPytestPath "testcollection1/gdb";
