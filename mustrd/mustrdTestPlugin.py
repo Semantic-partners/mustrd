@@ -412,9 +412,7 @@ class MustrdFile(pytest.File):
 
     def collect(self):
         try:
-            logger.info(f"Collecting tests from file: {self.fspath}")
-            logger.info(f"Collecting tests from file (self.path): {self.path}")
-            logger.info(f"{self.mustrd_plugin.test_config_file=}")
+            logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
             
             # if not str(self.fspath).endswith(".ttl"):
             #     return []
@@ -429,7 +427,7 @@ class MustrdFile(pytest.File):
             for test_config in test_configs:
                 if (
                     self.mustrd_plugin.path_filter is not None
-                    and self.mustrd_plugin.path_filter != test_config.pytest_path
+                    and not str(test_config.pytest_path).startswith(str(self.mustrd_plugin.path_filter))
                 ):
                     logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
                     continue
@@ -516,8 +514,7 @@ class MustrdItem(pytest.Item):
             f"{self.name} failed:\n"
             f"Spec: {self.spec.spec_uri}\n"
             f"File: {self.spec.spec_source_file}\n"
-            f"Dir: {dir(self.spec)}\n"
-            f"Error: {excinfo.value}\n"
+            f"Error: \n{excinfo.value}\n"
             f"Traceback:\n{tb_str}"
         )
     
