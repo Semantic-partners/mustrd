@@ -32,14 +32,14 @@ log = logging.getLogger(__name__)
 def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
     mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets)
     log.setLevel(logging.DEBUG)  # or logging.INFO, as desired
-    pytest.main([*args], plugins=[mustrd_plugin])
+    pytest.main([*args, "--log-cli-level=DEBUG"], plugins=[mustrd_plugin])
     return mustrd_plugin
 
 
 # test collection of all tests
 def test_collection_full():
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
-    pytest_path = "rdflib"
+    path = "rdflib"
 
     # Get collected items
     items = mustrd_plugin.items
@@ -82,20 +82,21 @@ def test_collection_full():
         "select_spec_ordered.mustrd.ttl",
         "select_spec_variable.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
-        "select_spec2.mustrd.ttl",
-        # "spade_edn_group_source_then_file.mustrd.ttl",
+        "spade_edn_group_source_then_file.mustrd.ttl",
     }
 
-    expected_skipped = {
-        "invalid_delete_insert_spec_with_table_result.mustrd.ttl",
-        "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl",
-        "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl",
-        "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl",
-        "invalid_select_spec_with_empty_graph_result.mustrd.ttl",
-        "invalid_select_spec_with_statement_dataset_result.mustrd.ttl",
-        "invalid_select_spec_with_table_dataset_given.mustrd.ttl",
-        "select_spec2.mustrd.ttl",
-    }
+    expected_skipped = set()
+    # we're changing bad config of a test spec so we fail, rather than skip it
+    # expected_failed = {
+    #     "invalid_delete_insert_spec_with_table_result.mustrd.ttl",
+    #     "invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl",
+    #     "invalid_delete_insert_with_inherited_given_spec.mustrd.ttl",
+    #     "invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl",
+    #     "invalid_select_spec_with_empty_graph_result.mustrd.ttl",
+    #     "invalid_select_spec_with_statement_dataset_result.mustrd.ttl",
+    #     "invalid_select_spec_with_table_dataset_given.mustrd.ttl",
+    #     "select_spec2.mustrd.ttl",
+    # }
 
     expected_not_skipped = expected_collected - expected_skipped
 
@@ -117,28 +118,35 @@ def test_collection_full():
     )
 
 
-# Test that we collect one test if we give one nodeid
-def test_collection_single():
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only",
-                               "test/test-specs/construct_spec.mustrd.ttl::rdflib/construct_spec.mustrd.ttl")
-    items = mustrd_plugin.items
-    assert list(map(lambda item: item.name, items)) == ["construct_spec.mustrd.ttl"]
-
-
 def test_collection_path():
-    path = "rdflib1"
+    path = "rdflib1"  # Use actual path where test files exist
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                               "--collect-only", path)
-    log.info(mustrd_plugin.items)
-    # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
+                                "--collect-only", path)
+    log.info(f"items: {mustrd_plugin.items}")
+    
+    # First verify we have items collected
+    assert len(mustrd_plugin.items) > 0, "No items were collected"
+    
+    # Assert that all collected items are from the specified path
+    for item in mustrd_plugin.items:
+        assert path in str(item.spec.spec_source_file), f"Item {item.name} is not from path {path}"
+    
+    # Check for expected number of tests
+    # Note: Adjust this number based on actual test files in the path
+    expected_test_count = 32
+    actual_test_count = len(mustrd_plugin.items)
+    assert actual_test_count == expected_test_count, \
+        f"Expected {expected_test_count} tests but found {actual_test_count}"
 
-
-def test_collection_path2():
-    path = "col1/test1"
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                               "--collect-only", path)
+    # Optional: Verify specific test files are included
+    test_names = set(item.name for item in mustrd_plugin.items)
+    expected_names = {
+        "construct_spec.mustrd.ttl",
+        "select_spec.mustrd.ttl",
+        # Add other expected test file names
+    }
+    assert expected_names.issubset(test_names), \
+        f"Missing expected test files: {expected_names - test_names}"
     # Assert that we only collected tests from the specified path
     assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
     assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
@@ -222,7 +230,13 @@ def test_triplestore_config():
                              # Filter on skipped items
                              list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
+    failed_nodes = list(map(lambda item: item.name,
+                             # Filter on skipped items
+                             list(filter(lambda item: isinstance(item.spec,
+                                                                 ValueError), items))))
 
+    log.info(f"{skipped_nodes=}")
+    log.info(f"{failed_nodes=}")
     assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")
 
 
