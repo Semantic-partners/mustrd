@@ -69,6 +69,14 @@ def pytest_addoption(parser):
         default=None,
         help="Give the secrets by command line in order to be able to store secrets safely in CI tools",
     )
+    group.addoption(
+        "--pytest-path",
+        action="store",
+        dest="pytest_path",
+        metavar="PytestPath",
+        default=None,
+        help="Filter tests based on the pytest_path property in .mustrd.ttl files.",
+    )
     return
 
 
@@ -204,16 +212,13 @@ class MustrdTestPlugin:
         self.selected_tests = list(
             map(
                 lambda arg: Path(arg.split("::")[0]),
-                mustrd_args
+                mustrd_args 
             )
         )
         logger.info(f"selected_tests is: {self.selected_tests}")
 
-        self.path_filter = (
-            pytest_args[0]
-            if len(pytest_args) == 1 and not "::" in pytest_args[0]
-            else None
-        )
+        self.path_filter = session.config.getoption("pytest_path") or None
+
         logger.info(f"path_filter is: {self.path_filter}")
         logger.info(f"Args: {args}")
         logger.info(f"Mustrd Args: {mustrd_args}")
@@ -424,7 +429,7 @@ class MustrdFile(pytest.File):
             for test_config in test_configs:
                 if (
                     self.mustrd_plugin.path_filter is not None
-                    and self.mustrd_plugin.path_filter not in test_config.pytest_path
+                    and self.mustrd_plugin.path_filter != test_config.pytest_path
                 ):
                     logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
                     continue
