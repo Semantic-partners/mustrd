@@ -71,7 +71,7 @@ def _upload_given_anzo(triple_store: dict, given: Graph):
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
     query_type = when.queryType
-    log.info(f"1234dispatch_run_when to SPARQL type {query_type} to {ts}")
+    log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
     return ts, query_type
 
 
@@ -80,10 +80,15 @@ run_when = MultiMethod('run_when', dispatch_run_when)
 
 @run_when.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
-    log.info(f"_anzo_run_when_update {spec_uri} {triple_store} {when} {type(when)} {dir(when)}")
-    query = get_query_from_step(triple_store=when.spec_component_details.mustrd_triple_store,
-                                query_step_uri=when.query_step_uri)
-    log.info(f"query {query}")
+    log.debug(f"_anzo_run_when_update {spec_uri} {triple_store} {when} {type(when)}")
+    if when.value is None:
+        # fetch the query from the query step on anzo
+        query = get_query_from_step(triple_store=when.spec_component_details.mustrd_triple_store,
+                                                    query_step_uri=when.query_step_uri)
+    else: 
+        # we must already have the query
+        query = when.value
+    log.debug(f"_anzo_run_when_update.query {query}")
     return execute_update_anzo(triple_store, query, when.bindings)
 
 

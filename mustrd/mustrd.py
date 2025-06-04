@@ -55,6 +55,7 @@ import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when
 from multimethods import MultiMethod
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -184,8 +185,13 @@ class UpdateSparqlQuery(SparqlAction):
 
 # https://github.com/Semantic-partners/mustrd/issues/19
 # Validate the specs found in spec_path
-def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, ont_graph: Graph, file_name: str = "*",
-                   selected_test_files: List[str] = []) -> Tuple[List, Graph, List]:
+def validate_specs(run_config: dict,
+                   triple_stores: List,
+                   shacl_graph: Graph,
+                   ont_graph: Graph,
+                   file_name: str = "*",
+                   selected_test_files: List[str] = [])\
+        -> Tuple[List, Graph, List]:
     spec_graph = Graph()
     subject_uris = set()
     focus_uris = set()
@@ -193,16 +199,19 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
     ttl_files = []
 
     if not selected_test_files:
-        ttl_files = list(run_config['spec_path'].glob(f'**/{file_name}.mustrd.ttl'))
+        ttl_files = list(run_config['spec_path'].glob(
+            f'**/{file_name}.mustrd.ttl'))
         log.info(
             f"Found {len(ttl_files)} {file_name}.mustrd.ttl files in {run_config['spec_path']}")
     else:
         ttl_files = selected_test_files
-        log.info(f"Using {selected_test_files} for test source")
+
+    log.info(f"Using {ttl_files} for test source")
     ttl_files.sort()
 
     # For each spec file found in spec_path
     for file in ttl_files:
+        # file = file.resolve()
         error_messages = []
 
         log.info(f"Parse: {file}")
@@ -229,7 +238,10 @@ def validate_specs(run_config: dict, triple_stores: List, shacl_graph: Graph, on
                                                          advanced=True,
                                                          js=False,
                                                          debug=False)
-
+        if str(file.name).endswith("_duplicate"):
+            log.debug(f"Validation of {file.name} against SHACL shapes: {conforms}")
+            log.debug(f"{results_graph.serialize(format='turtle')}")
+        # log.debug(f"SHACL validation results: {results_text}")
         # Add error message if not conform to spec shapes
         if not conforms:
             for msg in results_graph.objects(predicate=SH.resultMessage):
@@ -274,6 +286,10 @@ def add_spec_validation(file_graph: Graph, subject_uris: set, file: Path, triple
                         error_messages: list, invalid_specs: list, spec_graph: Graph):
 
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
+        # Always add file name and source file to the graph for error reporting
+        file_graph.add([subject_uri, MUST.specSourceFile, Literal(str(file))])
+        file_graph.add([subject_uri, MUST.specFileName, Literal(file.name)])
+
         # If we already collected a URI, then we tag it as duplicate and it won't be executed
         if subject_uri in subject_uris:
             log.warning(
@@ -316,8 +332,11 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
                         specs += [get_spec(spec_uri, spec_graph,
                                            run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
+                        # Try to get file name/path from the graph, but fallback to "unknown"
+                        file_name = spec_graph.value(subject=spec_uri, predicate=MUST.specFileName) or "unknown"
+                        file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile) or "unknown"
                         skipped_results += [SpecSkipped(spec_uri, triple_store['type'],
-                                                        e, get_spec_file(spec_uri, spec_graph))]
+                                                        str(e), str(file_name), Path(file_path))]
 
     except (BadSyntax, FileNotFoundError) as e:
         template = "An exception of type {0} occurred when trying to parse the triple store configuration file. " \
@@ -339,7 +358,14 @@ def run_specs(specs) -> List[SpecResult]:
 
 
 def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
-    return str(spec_graph.value(subject=spec_uri, predicate=MUST.specFileName, default="default.mustrd.ttl"))
+    file_name = spec_graph.value(subject=spec_uri, predicate=MUST.specFileName)
+    if file_name:
+        return str(file_name)
+    # fallback: try to get from MUST.specSourceFile
+    file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile)
+    if file_path:
+        return str(Path(file_path).name)
+    return "default.mustrd.ttl"
 
 
 def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_triple_store: dict = None) -> Specification:
@@ -372,7 +398,9 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec: Specification, result: Union[str, Graph]):
-    log.debug(f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
+    
+    log.debug(
+        f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
         log.debug("table_comparison")
         return table_comparison(result, spec)
@@ -398,6 +426,14 @@ def check_result(spec: Specification, result: Union[str, Graph]):
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
+
+    if not isinstance(spec, Specification):
+        log.warning(f"check_result called with non-Specification: {type(spec)}")
+        return spec
+        # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
+    
+    log.debug(
+        f"run_spec {spec=}")
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}")
     if spec.given:
@@ -421,7 +457,8 @@ def run_spec(spec: Specification) -> SpecResult:
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
                 log.error(f"NotImplementedError {ex}")
-                return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
+                raise ex
+                # return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
@@ -433,8 +470,8 @@ def run_spec(spec: Specification) -> SpecResult:
         log.error(f"{type(e)} {e}")
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
     except Exception as e:
-        log.error(f"Unknown error {e}")
-        return RuntimeError(spec_uri, triple_store["type"], e)
+        log.error(f"Unexpected error {e}")
+        return RuntimeError(spec_uri, triple_store["type"], f"{type(e).__name__}: {e}")
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
@@ -745,33 +782,33 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def write_result_diff_to_log(res):
+def write_result_diff_to_log(res, info):
     if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-        log.info(
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(f"{Fore.BLUE} In Expected Not In Actual:")
+        info(
             res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-        log.info(f"{Fore.RED} in_actual_not_in_expected")
-        log.info(
+        info(f"{Fore.RED} in_actual_not_in_expected")
+        info(
             res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-        log.info(f"{Fore.GREEN} in_both")
-        log.info(res.graph_comparison.in_both.serialize(format="ttl"))
+        info(f"{Fore.GREEN} in_both")
+        info(res.graph_comparison.in_both.serialize(format="ttl"))
 
     if isinstance(res, SelectSpecFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(res.message)
-        log.info(res.table_comparison.to_markdown())
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(res.message)
+        info(res.table_comparison.to_markdown())
     if isinstance(res, SpecPassedWithWarning):
-        log.info(
+        info(
             f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-        log.info(res.warning)
+        info(res.warning)
     if isinstance(res, TripleStoreConnectionError) or isinstance(res, SparqlExecutionError) or \
             isinstance(res, SparqlParseFailure):
-        log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        log.info(res.exception)
+        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+        info(res.exception)
     if isinstance(res, SpecSkipped):
-        log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
-        log.info(res.message)
+        info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+        info(res.message)
 
 
 def calculate_row_difference(df1: pandas.DataFrame,
