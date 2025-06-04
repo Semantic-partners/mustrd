@@ -247,7 +247,7 @@ class MustrdTestPlugin:
         if not str(path).endswith('.ttl'):
             return None
         if Path(path).resolve() != Path(self.test_config_file).resolve():
-                logger.info(f"Skipping non-config file: {path} {self.test_config_file=}")
+                logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
                 return None
         
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
