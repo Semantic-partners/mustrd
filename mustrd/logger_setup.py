@@ -34,6 +34,7 @@ LOG_FORMAT = '%(log_color)s%(levelname)s:%(name)s:%(white)s%(message)s'
 def setup_logger(name: str) -> logging.Logger:
     log = logging.getLogger(name)
     log.setLevel(LOG_LEVEL)
+    
 
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setLevel(logging.ERROR)
