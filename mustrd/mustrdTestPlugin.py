@@ -193,9 +193,9 @@ class MustrdTestPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.info("Starting test collection")
+        
         self.unit_tests = []
         args = session.config.args
-        logger.info("Used arguments: " + str(args))
         
         # Split args into mustrd and regular pytest args
         mustrd_args = [arg for arg in args if ".mustrd.ttl" in arg]
@@ -215,7 +215,11 @@ class MustrdTestPlugin:
             else None
         )
         logger.info(f"path_filter is: {self.path_filter}")
-        
+        logger.info(f"Args: {args}")
+        logger.info(f"Mustrd Args: {mustrd_args}")
+        logger.info(f"Pytest Args: {pytest_args}")
+        logger.info(f"Path Filter: {self.path_filter}")
+
         # Only modify args if we have mustrd tests to run
         if self.selected_tests:
             # Keep original pytest args and add config file for mustrd
@@ -237,6 +241,7 @@ class MustrdTestPlugin:
         # Only collect .ttl files that are mustrd suite config files
         if not str(path).endswith('.ttl'):
             return None
+        
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
@@ -405,6 +410,7 @@ class MustrdFile(pytest.File):
             logger.info(f"Collecting tests from file: {self.fspath}")
             logger.info(f"Collecting tests from file (self.path): {self.path}")
             logger.info(f"{self.mustrd_plugin.test_config_file=}")
+            
             # if not str(self.fspath).endswith(".ttl"):
             #     return []
             # Only process the specific mustrd config file we were given
@@ -420,7 +426,9 @@ class MustrdFile(pytest.File):
                     self.mustrd_plugin.path_filter is not None
                     and self.mustrd_plugin.path_filter not in test_config.pytest_path
                 ):
+                    logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
                     continue
+                
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
                 try:
                     specs = self.mustrd_plugin.generate_tests_for_config(
@@ -432,7 +440,7 @@ class MustrdFile(pytest.File):
                         None,
                     )
                 except Exception as e:
-                    logger.error(f"Error generating tests: {e}")
+                    logger.error(f"Error generating tests: {e}\n{traceback.format_exc()}")
                     specs = [
                         SpecInvalid(
                             MUST.TestSpec,
@@ -483,7 +491,7 @@ class MustrdPytestPathCollector(pytest.Class):
 
 class MustrdItem(pytest.Item):
     def __init__(self, name, parent, spec):
-        logging.info(f"Creating item: {name}")
+        logging.debug(f"Creating item: {name}")
         super().__init__(name, parent)
         self.spec = spec
         self.fspath = spec.spec_source_file
