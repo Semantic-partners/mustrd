@@ -41,7 +41,7 @@ jobs:
       - name: Test with pytest
         run: poetry run coverage run -m pytest test/ --doctest-modules --config=pytest.ini
       - name: Test mustrd.ttl with the mustrd plugin
-        run:  
+        run: |
           # install our working copy of mustrd as a local package, and run the tests as a mustrdPlugin
           pip install -e .
           poetry run --mustrd --config=test/test_config_local.ttl",
