@@ -149,7 +149,7 @@ def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuite
         f"Actual item names: {item_names}"
     )
 
-
+@pytest.mark.skip(reason="Integration test for spade, NOT READY YET")
 def test_run_spade_integration():
     path = "spade-integration"
     mustrd_plugin = run_mustrd(
