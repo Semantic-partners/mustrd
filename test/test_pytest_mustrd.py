@@ -121,7 +121,7 @@ def test_collection_full():
 def test_collection_path():
     path = "rdflib1"  # Use actual path where test files exist
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                "--collect-only", path)
+                                "--collect-only", f"--pytest-path={path}")
     log.info(f"items: {mustrd_plugin.items}")
     
     # First verify we have items collected
