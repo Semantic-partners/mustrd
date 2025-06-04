@@ -38,18 +38,19 @@ def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None
 
 # test collection of all tests
 def test_collection_full():
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
+    mustrd_plugin = run_mustrd(
+        "test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only")
     path = "rdflib"
 
     # Get collected items
     items = mustrd_plugin.items
     collected_nodes = set(map(lambda item: item.name, items))
     skipped_nodes = set(map(lambda item: item.name,
-                             # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.spec,
-                                                                 SpecSkipped), items))))
+                            # Filter on skipped items
+                            list(filter(lambda item: isinstance(item.spec,
+                                                                SpecSkipped), items))))
     log.info(f"Collected nodes: {collected_nodes}")
-    
+
     expected_collected = {
         "construct_spec_from_folders.mustrd.ttl",
         "construct_spec.mustrd.ttl",
@@ -119,62 +120,71 @@ def test_collection_full():
 
 
 def test_collection_path():
-    path = "rdflib1"  # Use actual path where test files exist
+    path = "rdflib1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_double.ttl",
-                                "--collect-only", f"--pytest-path={path}")
-    log.info(f"items: {mustrd_plugin.items}")
-    
-    # First verify we have items collected
-    assert len(mustrd_plugin.items) > 0, "No items were collected"
-    
-    # Assert that all collected items are from the specified path
-    for item in mustrd_plugin.items:
-        assert path in str(item.spec.spec_source_file), f"Item {item.name} is not from path {path}"
-    
-    # Check for expected number of tests
-    # Note: Adjust this number based on actual test files in the path
-    expected_test_count = 32
-    actual_test_count = len(mustrd_plugin.items)
-    assert actual_test_count == expected_test_count, \
-        f"Expected {expected_test_count} tests but found {actual_test_count}"
+                               "--collect-only", f"--pytest-path={path}")
 
-    # Optional: Verify specific test files are included
-    test_names = set(item.name for item in mustrd_plugin.items)
-    expected_names = {
-        "construct_spec.mustrd.ttl",
-        "select_spec.mustrd.ttl",
-        # Add other expected test file names
-    }
-    assert expected_names.issubset(test_names), \
-        f"Missing expected test files: {expected_names - test_names}"
+    item_names = set([item.name for item in mustrd_plugin.items])
+    logging.info(f"Collected item names: {item_names}")
+    expected_item_names = {'delete_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl',
+                           'select_spec_variable.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'delete_insert_spec.mustrd.ttl',
+                           'delete_insert_spec_with_subselect.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl',
+                           'construct_spec_when_file_then_file.mustrd.ttl', 'select_spec_given_file.mustrd.ttl',
+                           'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec.mustrd.ttl',
+                           'construct_spec_multiple_given_multile_then.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl',
+                           'delete_data_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'construct_spec.mustrd.ttl',
+                           'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_variable.mustrd.ttl'}
+    assert item_names == expected_item_names, (
+        f"Expected item names: {expected_item_names}\n"
+        f"Actual item names: {item_names}"
+    )
+
+
+def test_collection_pytest_path_is_a_startsWithCheck():
+    path = "col1/test1"
+    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
+                               "--collect-only", f"--pytest-path={path}")
+
+    item_names = sorted([item.name for item in mustrd_plugin.items])
+    logging.info(f"expected_item_names = {item_names}")
+    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
+                           'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl']
     # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 32
+    assert item_names == expected_item_names, (
+        f"Expected item names: {expected_item_names}\n"
+        f"Actual item names: {item_names}"
+    )
 
 
-def test_collection_path3():
+def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuites():
     path = "col1"
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
-                               "--collect-only", path)
-    # Assert that we only collected tests from the specified path
-    assert len(list(filter(lambda item: path not in item.name, mustrd_plugin.items))) == 0
-    assert len(list(filter(lambda item: path in item.name, mustrd_plugin.items))) == 64
+                               "--collect-only", f"--pytest-path={path}")
 
+    item_names = sorted([item.name for item in mustrd_plugin.items])
+    logging.info(f"expected_item_names = {item_names}")
+    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
+                           'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl']
+    assert item_names == expected_item_names, (
+        f"Expected item names: {expected_item_names}\n"
+        f"Actual item names: {item_names}"
+    )
 
 
 def test_run_spade_integration():
     path = "spade-integration"
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_spade_integration.ttl", path)
+    mustrd_plugin = run_mustrd(
+        "test/test-mustrd-config/test_mustrd_spade_integration.ttl", f"--pytest-path={path}")
     # Assert that we only collected tests from the specified path
     collected_names = set(item.name for item in mustrd_plugin.items)
     expected_names = {f"{path}/spade_edn_group_source_then_file.mustrd.ttl"}
     assert collected_names == expected_names
 
 
-
 def test_mustrd_config_duplicate():
     # Mustrd test generation should fail with ValueError if configuration is not conform
-    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only").collect_error
+    error = run_mustrd(
+        "test/test-mustrd-config/test_mustrd_error_duplicates.ttl", "--collect-only").collect_error
     shacl_report_graph = error.args[1]
     # report = shacl_report_graph.serialize(None, format="ttl")
     assert shacl_report_graph
@@ -196,7 +206,8 @@ def test_mustrd_config_duplicate():
 
 def test_mustrd_missing_props():
     # Mustrd test generation should fail with ValueError if configuration is not conform}
-    error = run_mustrd("test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only").collect_error
+    error = run_mustrd(
+        "test/test-mustrd-config/test_mustrd_error_missing_prop.ttl", "--collect-only").collect_error
     shacl_report_graph = error.args[1]
     assert shacl_report_graph
     assert found_error_in_shacl_report(shacl_report_graph,
@@ -223,7 +234,8 @@ def test_mustrd_missing_props():
 
 
 def test_triplestore_config():
-    mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
+    mustrd_plugin = run_mustrd(
+        "test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")
     items = mustrd_plugin.items
 
     skipped_nodes = list(map(lambda item: item.name,
@@ -231,9 +243,9 @@ def test_triplestore_config():
                              list(filter(lambda item: isinstance(item.spec,
                                                                  SpecSkipped), items))))
     failed_nodes = list(map(lambda item: item.name,
-                             # Filter on skipped items
-                             list(filter(lambda item: isinstance(item.spec,
-                                                                 ValueError), items))))
+                            # Filter on skipped items
+                            list(filter(lambda item: isinstance(item.spec,
+                                                                ValueError), items))))
 
     log.info(f"{skipped_nodes=}")
     log.info(f"{failed_nodes=}")
