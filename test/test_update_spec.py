@@ -33,7 +33,6 @@ from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component
 from mustrd.steprunner import run_when
 
-
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 

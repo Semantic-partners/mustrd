@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mustrd"
-version = "0.2.6.4"
+version = "0.3.0.0"
 description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucumber."
 authors = ["John Placek <john.placek@semanticpartners.com>",
     "Juliane Piñeiro-Winkler <juliane.pineiro-winkler@semanticpartners.com>",
@@ -23,7 +23,11 @@ repository = "https://github.com/Semantic-partners/mustrd"
 python = "^3.11"
 rdflib = "^7.1.3"
 pytest = "^7.2.0"
+<<<<<<< HEAD
+pandas = "^2.0"
+=======
 pandas = "^1.5.2"
+>>>>>>> 03fe3f98f54b21b0e7a973317aa001f9b0b6b6fb
 numpy = "~1.26.0"
 multimethods-py = "^0.5.3"
 colorlog = "^6.7.0"
