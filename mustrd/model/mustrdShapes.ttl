@@ -140,14 +140,19 @@ must:OrderedTableDatasetShape
 must:FileDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:FileDataset ;
-         sh:property [ sh:path must:file ;
-                        sh:datatype xsd:string ;
-                        sh:minCount 0 ;
-                        sh:maxCount 1 ; ] ;
-         sh:property [ sh:path must:fileurl ;
-                        sh:nodeKind sh:IRI ;
-                        sh:minCount 0 ;
-                        sh:maxCount 1 ; ] 
+    sh:or (
+		[
+			sh:path must:file ;
+            sh:datatype xsd:string ;
+			sh:maxCount 1 ;
+		]
+		[
+			sh:path must:fileurl ;
+            sh:nodeKind sh:IRI ;
+			sh:minCount 1 ;
+			sh:maxCount 1 ;
+		]
+	)
      .
 
 must:StatementShape
