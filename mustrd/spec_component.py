@@ -325,8 +325,11 @@ def get_file_or_fileurl(spec_component_details):
         )
         if file_path is not None and str(file_path).startswith("file://"):
             # Remove the 'file://' scheme to get the local path
+            # we do it this quick and dirty way because the urlparse library assumes absolute paths, and strips our leading ./
+            # need to confirm this approach is windows safe. 
+
             new_path = str(file_path)[7:]
-            log.info(f"converted {file_path=} to {new_path=}")
+            log.debug(f"converted {file_path=} to {new_path=}")
             file_path = new_path
     if file_path is None:
         # shacl validation will catch this, but we want to raise a more specific error
