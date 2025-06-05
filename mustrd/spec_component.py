@@ -40,6 +40,7 @@ from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
 from .utils import get_mustrd_root
+from urllib.parse import urlparse
 
 log = logger_setup.setup_logger(__name__)
 
@@ -308,9 +309,29 @@ def _get_spec_component_filedatasource(spec_component_details: SpecComponentDeta
 
 
 def load_spec_component(spec_component_details, spec_component):
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
+    file_path = get_file_or_fileurl(spec_component_details)
+    file_path = Path(str(file_path))
     return load_dataset_from_file(get_file_absolute_path(spec_component_details, file_path), spec_component)
+
+def get_file_or_fileurl(spec_component_details):
+    file_path = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.file
+    )
+    if file_path is None:
+        file_path = spec_component_details.spec_graph.value(
+            subject=spec_component_details.spec_component_node,
+            predicate=MUST.fileurl
+        )
+        if file_path is not None and str(file_path).startswith("file://"):
+            # Remove the 'file://' scheme to get the local path
+            new_path = str(file_path)[7:]
+            log.info(f"converted {file_path=} to {new_path=}")
+            file_path = new_path
+    if file_path is None:
+        # shacl validation will catch this, but we want to raise a more specific error
+        raise ValueError("Neither MUST.file nor MUST.fileurl found for the spec component node")
+    return file_path
 
 
 def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
@@ -343,9 +364,9 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
 def _get_spec_component_filedatasource_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
     spec_component = init_spec_component(spec_component_details.predicate)
-
-    file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.file)))
+    file_path = get_file_or_fileurl(spec_component_details)
+    # file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+    #                                                              predicate=MUST.file)))
     spec_component.value = get_spec_component_from_file(get_file_absolute_path(spec_component_details, file_path))
 
     spec_component.queryType = spec_component_details.spec_graph.value(

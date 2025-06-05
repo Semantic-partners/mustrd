@@ -146,7 +146,7 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/file
 :file rdf:type owl:DatatypeProperty ;
-      rdfs:comment "Relative or absolute path to local file" ;
+      rdfs:comment "Relative or absolute path to local file as a string, or a file:// url" ;
       rdfs:label "file" .
 
 
@@ -158,7 +158,6 @@ sh:order rdf:type owl:DatatypeProperty ;
 
 ###  https://mustrd.com/model/fileurl
 :fileurl rdf:type owl:DatatypeProperty ;
-         rdfs:domain :FileSparqlSource ;
          rdfs:comment "a full or relatively qualified file:// url. Relative to what? We haven't thought that through, yet." ;
          rdfs:isDefinedBy : ;
          rdfs:label "fileUrl" .
