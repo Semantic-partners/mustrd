@@ -109,6 +109,7 @@ def test_collection_path():
                            'select_spec_variable.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'delete_insert_spec.mustrd.ttl',
                            'delete_insert_spec_with_subselect.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl',
                            'construct_spec_when_file_then_file.mustrd.ttl', 'select_spec_given_file.mustrd.ttl',
+                           'construct_spec_when_file_then_file_as_uris.mustrd.ttl',
                            'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec.mustrd.ttl',
                            'construct_spec_multiple_given_multile_then.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl',
                            'delete_data_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'construct_spec.mustrd.ttl',
@@ -126,7 +127,10 @@ def test_collection_pytest_path_is_a_startsWithCheck():
 
     item_names = sorted([item.name for item in mustrd_plugin.items])
     logging.info(f"expected_item_names = {item_names}")
-    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
+    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl',
+                           'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl',
+                           'construct_spec_when_file_then_file_as_uris.mustrd.ttl',
+                           'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
                            'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl']
     # Assert that we only collected tests from the specified path
     assert item_names == expected_item_names, (
@@ -140,14 +144,15 @@ def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuite
     mustrd_plugin = run_mustrd("test/test-mustrd-config/test_mustrd_complex.ttl",
                                "--collect-only", f"--pytest-path={path}")
 
-    item_names = sorted([item.name for item in mustrd_plugin.items])
+    item_names = sorted({item.name for item in mustrd_plugin.items})
     logging.info(f"expected_item_names = {item_names}")
-    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
-                           'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl']
+    expected_item_names = ['construct_spec.mustrd.ttl', 'construct_spec_from_folders.mustrd.ttl', 'construct_spec_mulitline_result.mustrd.ttl', 'construct_spec_multiple_given_multile_then.mustrd.ttl', 'construct_spec_variable.mustrd.ttl', 'construct_spec_when_file_then_file.mustrd.ttl', 'construct_spec_when_file_then_file_as_uris.mustrd.ttl', 'delete_data_spec.mustrd.ttl', 'delete_insert_spec.mustrd.ttl', 'delete_insert_spec_with_optional.mustrd.ttl', 'delete_insert_spec_with_subselect.mustrd.ttl', 'delete_spec.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'insert_spec.mustrd.ttl', 'invalid_delete_insert_spec_with_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl', 'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
+                           'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl', 'invalid_select_spec_with_empty_graph_result.mustrd.ttl', 'invalid_select_spec_with_statement_dataset_result.mustrd.ttl', 'invalid_select_spec_with_table_dataset_given.mustrd.ttl', 'invalid_spec.mustrd.ttl', 'select_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_given_file.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl', 'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec_variable.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'spade_edn_group_source_then_file.mustrd.ttl']
     assert item_names == expected_item_names, (
         f"Expected item names: {expected_item_names}\n"
         f"Actual item names: {item_names}"
     )
+
 
 @pytest.mark.skip(reason="Integration test for spade, NOT READY YET")
 def test_run_spade_integration():
@@ -212,7 +217,7 @@ def test_mustrd_missing_props():
                                            "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>")
 
 
-@pytest.mark.skip(reason="Not clear what this was trying to test. Looks like it's expect the graphdb tests to be skipped, but they are not."    )
+@pytest.mark.skip(reason="Not clear what this was trying to test. Looks like it's expect the graphdb tests to be skipped, but they are not.")
 def test_triplestore_config():
     mustrd_plugin = run_mustrd(
         "test/test-mustrd-config/test_mustrd_triplestore.ttl", "--collect-only")

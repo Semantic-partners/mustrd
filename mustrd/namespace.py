@@ -45,6 +45,7 @@ class MUST(DefinedNamespace):
     then: URIRef
     dataSource: URIRef
     file: URIRef
+    fileurl: URIRef
     fileName: URIRef
     queryFolder: URIRef
     queryName: URIRef

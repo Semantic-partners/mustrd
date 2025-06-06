@@ -1,0 +1,19 @@
+@prefix must: <https://mustrd.com/model/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# we want to support that the <file://./path/to/file> is useable. Gives better experience with mentor than "./path/to/file"
+test-data:a_complete_construct_scenario_when_file_then_file_as_uris
+    a          must:TestSpec ;
+    rdfs:description "Tests that we can reference files as URIs in the must:when and must:then parts of a test spec." ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:FileSparqlSource  ;
+                    must:fileurl <file://./../../data/construct.rq> ;
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then  [ a must:FileDataset ;
+                    must:fileurl <file://./../../data/thenSuccess.nt> ] .

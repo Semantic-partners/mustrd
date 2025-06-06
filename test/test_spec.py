@@ -15,6 +15,7 @@ TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
 log = logging.getLogger(__name__)
 
+
 class TestRunSpec:
     given_sub_pred_obj = """
     @prefix test-data: <https://semanticpartners.com/data/test/> .
@@ -277,7 +278,8 @@ class TestRunSpec:
                                               run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
+        specification = Specification(
+            spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
         logging.info(f"Result: {result} {type(result)}")
@@ -318,9 +320,9 @@ class TestRunSpec:
                                               run_config=None,
                                               mustrd_triple_store=self.triple_store)
 
-        specification = Specification(spec_uri, self.triple_store, state, when_component, then_component)
+        specification = Specification(
+            spec_uri, self.triple_store, state, when_component, then_component)
 
         result = run_spec(specification)
         # don't love the args[2] magic here. open to suggestions for improvement
         assert result.args[2] == "NotImplementedError: https://mustrd.com/model/DeleteSparql is not a valid SPARQL query type."
-
