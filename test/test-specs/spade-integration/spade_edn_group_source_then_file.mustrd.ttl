@@ -13,4 +13,4 @@ test-data:spade_edn_group_test
                  must:file "./simple.spade.edn" ;
                  must:queryType must:ConstructSparql  ; ] ;
     must:then  [ a must:FileDataset ;
-                                   must:file "../../test/data/thenSuccess.nt" ] .
+                                   must:fileurl <file://./../../data/thenSuccess.nt> ] .
