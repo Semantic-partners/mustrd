@@ -1,27 +1,3 @@
-"""
-MIT License
-
-Copyright (c) 2023 Semantic Partners Ltd
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
 import os
 from typing import Tuple, List, Union
 
@@ -239,7 +215,8 @@ def validate_specs(run_config: dict,
                                                          js=False,
                                                          debug=False)
         if str(file.name).endswith("_duplicate"):
-            log.debug(f"Validation of {file.name} against SHACL shapes: {conforms}")
+            log.debug(
+                f"Validation of {file.name} against SHACL shapes: {conforms}")
             log.debug(f"{results_graph.serialize(format='turtle')}")
         # log.debug(f"SHACL validation results: {results_text}")
         # Add error message if not conform to spec shapes
@@ -333,8 +310,10 @@ def get_specs(spec_uris: List[URIRef], spec_graph: Graph, triple_stores: List[di
                                            run_config, triple_store)]
                     except (ValueError, FileNotFoundError, ConnectionError) as e:
                         # Try to get file name/path from the graph, but fallback to "unknown"
-                        file_name = spec_graph.value(subject=spec_uri, predicate=MUST.specFileName) or "unknown"
-                        file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile) or "unknown"
+                        file_name = spec_graph.value(
+                            subject=spec_uri, predicate=MUST.specFileName) or "unknown"
+                        file_path = spec_graph.value(
+                            subject=spec_uri, predicate=MUST.specSourceFile) or "unknown"
                         skipped_results += [SpecSkipped(spec_uri, triple_store['type'],
                                                         str(e), str(file_name), Path(file_path))]
 
@@ -362,7 +341,8 @@ def get_spec_file(spec_uri: URIRef, spec_graph: Graph):
     if file_name:
         return str(file_name)
     # fallback: try to get from MUST.specSourceFile
-    file_path = spec_graph.value(subject=spec_uri, predicate=MUST.specSourceFile)
+    file_path = spec_graph.value(
+        subject=spec_uri, predicate=MUST.specSourceFile)
     if file_path:
         return str(Path(file_path).name)
     return "default.mustrd.ttl"
@@ -398,7 +378,7 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
 
 
 def check_result(spec: Specification, result: Union[str, Graph]):
-    
+
     log.debug(
         f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}")
     if isinstance(spec.then, TableThenSpec):
@@ -428,10 +408,11 @@ def run_spec(spec: Specification) -> SpecResult:
     triple_store = spec.triple_store
 
     if not isinstance(spec, Specification):
-        log.warning(f"check_result called with non-Specification: {type(spec)}")
+        log.warning(
+            f"check_result called with non-Specification: {type(spec)}")
         return spec
         # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
-    
+
     log.debug(
         f"run_spec {spec=}")
     log.debug(
