@@ -1,0 +1,23 @@
+# Use an official Python image as base
+FROM python:3.11
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy your CLI utility
+COPY ./mustrd .
+
+# Copy requirements.txt from the project root
+COPY ../requirements.txt /app/
+
+# Install required Python packages
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 🔹 Explicitly install mustrd plugin for pytest
+RUN pip install mustrd
+
+# Show installed pytest plugins for debugging
+RUN pytest --version && pytest --help
+
+# Use ENTRYPOINT as a list to pass all command-line arguments correctly
+ENTRYPOINT ["pytest", "--mustrd"]

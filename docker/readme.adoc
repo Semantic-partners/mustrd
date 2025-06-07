@@ -1,0 +1,7 @@
+= How to build the docker image
+
+From the project root
+
+```cmd
+docker build -t mustrd -f docker/Dockerfile .
+```
