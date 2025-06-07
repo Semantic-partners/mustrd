@@ -27,3 +27,5 @@ As the project is actually built from the requirements.txt file at the project r
 
 `poetry export -f requirements.txt --without-hashes > requirements.txt`
 
+We also recommend pairing MustRD with the VS Code plugin [faubulous.mentor](https://marketplace.visualstudio.com/items?itemName=faubulous.mentor) to enhance your development experience and streamline working with SPARQL and RDF specifications.
+
