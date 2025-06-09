@@ -51,3 +51,5 @@ def setup_logger(name: str) -> logging.Logger:
 def flush():
     logging.shutdown()
     sys.stdout.flush()
+
+logging.getLogger("edn_format").setLevel(logging.WARNING)
