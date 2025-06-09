@@ -368,8 +368,9 @@ def get_spec(spec_uri: URIRef, spec_graph: Graph, run_config: dict, mustrd_tripl
                              components[0].value, components[1], components[2], spec_file_name, spec_file_path)
 
     except (ValueError, FileNotFoundError) as e:
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-        message = template.format(type(e).__name__, e.args)
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}\nStacktrace:\n{2}"
+        stacktrace = traceback.format_exc()
+        message = template.format(type(e).__name__, e.args, stacktrace)
         log.exception(message)
         raise
     except ConnectionError as e:
@@ -443,8 +444,9 @@ def run_spec(spec: Specification) -> SpecResult:
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-        message = template.format(type(e).__name__, e.args)
+        stacktrace = traceback.format_exc()
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}\nStacktrace:\n{2}"
+        message = template.format(type(e).__name__, e.args, stacktrace)
         log.error(message)
         return TripleStoreConnectionError(spec_uri, triple_store["type"], message)
     except (TypeError, RequestException) as e:

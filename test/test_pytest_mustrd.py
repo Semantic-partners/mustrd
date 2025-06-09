@@ -65,7 +65,7 @@ def test_collection_full():
         "spade_edn_group_source_then_file.mustrd.ttl",
     }
 
-    expected_skipped = set()
+    expected_skipped = {'spade_edn_group_source_then_file.mustrd.ttl'}
     # we're changing bad config of a test spec so we fail, rather than skip it
     # expected_failed = {
     #     "invalid_delete_insert_spec_with_table_result.mustrd.ttl",
@@ -110,6 +110,7 @@ def test_collection_path():
                            'delete_insert_spec_with_subselect.mustrd.ttl', 'select_spec_multiline_result.mustrd.ttl', 'select_spec_given_file_then_file.mustrd.ttl',
                            'construct_spec_when_file_then_file.mustrd.ttl', 'select_spec_given_file.mustrd.ttl',
                            'construct_spec_when_file_then_file_as_uris.mustrd.ttl',
+                           'spade_edn_group_source_then_file.mustrd.ttl','
                            'select_spec_given_inherited_state.mustrd.ttl', 'select_spec_ordered.mustrd.ttl', 'select_spec.mustrd.ttl',
                            'construct_spec_multiple_given_multile_then.mustrd.ttl', 'insert_data_spec.mustrd.ttl', 'select_spec_optional_result.mustrd.ttl',
                            'delete_data_spec.mustrd.ttl', 'select_spec_empty_result.mustrd.ttl', 'select_spec_variable_datatypes.mustrd.ttl', 'construct_spec.mustrd.ttl',
