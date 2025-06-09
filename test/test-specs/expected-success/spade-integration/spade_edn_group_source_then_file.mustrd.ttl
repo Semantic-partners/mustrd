@@ -10,8 +10,8 @@ test-data:spade_edn_group_test
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:SpadeEdnGroupSource  ;
-                 must:file <file://./simple_spade-1.spade.edn> ;
-                 must:groupId "group-1" ;
+                 must:fileurl <file://./simple_spade-1.spade.edn> ;
+                 must:groupId ":group-1" ;
                  # i think spade doesn't current require the queryType for a step in the config. 
                  # you could conceivably have a step that is not a SPARQL query, but just a file to read.
                  # or an ASK query. But for now we will always assume sparql, and CONSTRUCT.
