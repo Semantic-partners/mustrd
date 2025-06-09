@@ -1,4 +1,3 @@
-@prefix file: <> .
 @prefix must: <https://mustrd.com/model/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .

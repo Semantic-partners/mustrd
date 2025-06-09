@@ -172,14 +172,25 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
             edn_data = loads(edn_file.read())  # Parse EDN using edn_format
     except Exception as e:
         log.error(f"Failed to read EDN file {edn_file_path}: {e}")
-        raise
+        raise FileNotFoundError(f"EDN file not found or invalid: {edn_file_path}")
 
     log.info(f"Parsed EDN data: {edn_data}")
-    # Execute steps defined in the EDN file
     results = []
-    for group in edn_data.get(Keyword('step-groups'), []):
+
+    # Process step groups
+    step_groups = edn_data.get(Keyword('step-groups'), None)
+    if not step_groups:
+        log.warning(f"No step groups found in EDN file {edn_file_path}")
+        return results
+
+    for group in step_groups:
         log.debug(f"Processing group: {group}")
-        for step in group.get(Keyword('steps'), []):
+        steps = group.get(Keyword('steps'), [])
+        if not steps:
+            log.warning(f"No steps found in group: {group}")
+            continue
+
+        for step in steps:
             log.debug(f"Processing step: {step}")
             step_type = step.get(Keyword('type'))
             step_file = step.get(Keyword('filepath'))
@@ -189,7 +200,6 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
                     with open(step_file, 'r') as sparql_file:
                         sparql_query = sparql_file.read()
 
-                    # Initialize WhenSpec attributes
                     step_when_spec = SpadeEdnGroupSourceWhenSpec(
                         file=step_file,
                         value=sparql_query,
@@ -198,13 +208,14 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
                     )
 
                     log.debug(f"Dispatching run_when for step: {step_when_spec}")
-                    
                     query_result = run_when(spec_uri, triple_store, step_when_spec)
                     log.info(f"Executed SPARQL query from {step_file}: {query_result}")
                     results.append(query_result)
+                except FileNotFoundError:
+                    log.error(f"SPARQL file not found: {step_file}")
+                    raise FileNotFoundError(f"SPARQL file not found: {step_file}")
                 except Exception as e:
                     log.error(f"Failed to execute SPARQL query from {step_file}: {e}")
-                    raise
 
     log.debug(f"Final results: {results}")
     return results
@@ -225,4 +236,6 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
         msg = f"{when.queryType} is not a valid SPARQL query type."
     raise NotImplementedError(msg)
+
+log.debug(f"run_when registry: {run_when} {dir(run_when)}")
 

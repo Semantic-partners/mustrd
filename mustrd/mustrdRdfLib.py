@@ -26,23 +26,14 @@ from pyparsing import ParseException
 from rdflib import Graph
 from requests import RequestException
 import logging
-import json
 
 
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     try:
-        log = logging.getLogger(__name__)
-        log.debug(f"Executing SPARQL query: {when}")
-        query_result = given.query(when, initBindings=bindings)
-        log.debug(f"Query result vars: {query_result.vars}")
-        results = []
-        for row in query_result:
-            results.append({var: value.n3() for var, value in zip(query_result.vars, row)})
-        return json.dumps(results)
+        return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
     except ParseException:
         raise
     except Exception as e:
-        log.error(f"Error during SPARQL query execution: {e}")
         raise RequestException(e)
 
 

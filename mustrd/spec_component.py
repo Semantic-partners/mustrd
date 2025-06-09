@@ -33,6 +33,7 @@ from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util, Conjunctive
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
 from rdflib.plugins.stores.memory import Memory
+import edn_format
 
 from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
@@ -738,3 +739,28 @@ def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph
 }}"""
     is_ordered = spec_graph.query(ask_select_ordered)
     return is_ordered.askAnswer
+
+
+@get_spec_component.method((MUST.SpadeEdnGroupSource, MUST.when))
+def _get_spec_component_spade_edn_group_source_when(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    spec_component = init_spec_component(spec_component_details.predicate)
+
+    # Retrieve the file path for the EDN file
+    file_path = get_file_or_fileurl(spec_component_details)
+    absolute_file_path = get_file_absolute_path(spec_component_details, file_path)
+
+    # Parse the EDN file
+    try:
+        edn_content = Path(absolute_file_path).read_text()
+        spec_component.value = edn_format.loads(edn_content)
+    except FileNotFoundError:
+        raise ValueError(f"EDN file not found: {absolute_file_path}")
+    except edn_format.EDNDecodeError as e:
+        raise ValueError(f"Failed to parse EDN file {absolute_file_path}: {e}")
+
+    spec_component.queryType = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.queryType
+    )
+
+    return spec_component

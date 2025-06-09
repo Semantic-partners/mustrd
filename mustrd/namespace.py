@@ -38,7 +38,8 @@ class MUST(DefinedNamespace):
     AnzoQueryDrivenUpdateSparql: URIRef
     AskSparql: URIRef
     DescribeSparql: URIRef
-
+    SpadeEdnGroupSource: URIRef
+    
     # Specification properties
     given: URIRef
     when: URIRef
