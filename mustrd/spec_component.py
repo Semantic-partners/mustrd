@@ -752,12 +752,47 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
     # Parse the EDN file
     try:
         edn_content = Path(absolute_file_path).read_text()
-        spec_component.value = edn_format.loads(edn_content)
+        edn_data = edn_format.loads(edn_content)
     except FileNotFoundError:
         raise ValueError(f"EDN file not found: {absolute_file_path}")
     except edn_format.EDNDecodeError as e:
         raise ValueError(f"Failed to parse EDN file {absolute_file_path}: {e}")
 
+    # Retrieve and normalize the group ID
+    group_id = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.groupId
+    )
+
+    if not group_id:
+        raise ValueError("groupId is missing for SpadeEdnGroupSource")
+
+    # Check if group_id starts with ':' and treat it as a keyword only in that case
+    if str(group_id).startswith(':'):
+        group_id = str(group_id).lstrip(':')
+        from edn_format import Keyword
+        group_id = Keyword(group_id)
+    else:
+        group_id = str(group_id)
+
+    # Extract the relevant group data
+    # The EDN data is expected to have a "step-groups" key containing a list of groups
+    step_groups = edn_data.get(Keyword("step-groups"), [])
+    log.info(f"Step groups found in EDN file {absolute_file_path}: {step_groups}")
+    log.info(f"Looking for group ID: {group_id} {type(group_id)=}")
+    group_data = None
+    for item in step_groups:
+        item_group = item.get(Keyword("group-id"))
+        log.info(f"Checking item {item} with group_id {item_group=} {type(item)}")
+        if item_group == group_id:
+            group_data = item
+            break
+    if not group_data:
+        raise ValueError(f"Group ID {group_id} not found in EDN file {absolute_file_path}")
+
+    spec_component.file = str(absolute_file_path)
+    spec_component.groupId = group_id
+    spec_component.value = group_data
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType

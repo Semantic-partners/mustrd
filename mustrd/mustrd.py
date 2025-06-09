@@ -197,7 +197,7 @@ def validate_specs(run_config: dict,
         except BadSyntax as e:
             template = "An exception of type {0} occurred when trying to parse a spec file. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
-            log.error(message)
+            log.error(message, exc_info=True)
             error_messages += [f"Could not extract spec from {file} due to exception of type "
                                f"{type(e).__name__} when parsing file"]
             continue
