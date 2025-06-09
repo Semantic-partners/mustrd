@@ -25,20 +25,34 @@ SOFTWARE.
 from pyparsing import ParseException
 from rdflib import Graph
 from requests import RequestException
+import logging
+import json
 
 
 def execute_select(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> str:
     try:
-        return given.query(when, initBindings=bindings).serialize(format="json").decode("utf-8")
+        log = logging.getLogger(__name__)
+        log.debug(f"Executing SPARQL query: {when}")
+        query_result = given.query(when, initBindings=bindings)
+        log.debug(f"Query result vars: {query_result.vars}")
+        results = []
+        for row in query_result:
+            results.append({var: value.n3() for var, value in zip(query_result.vars, row)})
+        return json.dumps(results)
     except ParseException:
         raise
     except Exception as e:
+        log.error(f"Error during SPARQL query execution: {e}")
         raise RequestException(e)
 
 
 def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     try:
-        return given.query(when, initBindings=bindings).graph
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Executing CONSTRUCT query: {when} with bindings: {bindings}")
+        result_graph = given.query(when, initBindings=bindings).graph
+        logger.debug(f"CONSTRUCT query executed successfully, resulting graph has {len(result_graph)} triples.")
+        return result_graph
     except ParseException:
         raise
     except Exception as e:

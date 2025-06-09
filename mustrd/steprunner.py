@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 import json
+import os
 
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
@@ -38,8 +39,9 @@ from .mustrdGraphDb import upload_given as upload_given_graphdb
 from .mustrdGraphDb import execute_update as execute_update_graphdb
 from .mustrdGraphDb import execute_construct as execute_construct_graphdb
 from .mustrdGraphDb import execute_select as execute_select_graphdb
-from .spec_component import AnzoWhenSpec, WhenSpec
+from .spec_component import AnzoWhenSpec, WhenSpec, SpadeEdnGroupSourceWhenSpec
 import logging
+from edn_format import loads, Keyword
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +73,7 @@ def _upload_given_anzo(triple_store: dict, given: Graph):
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
     query_type = when.queryType
-    log.info(f"dispatch_run_when to SPARQL type {query_type} to {ts}")
+    log.info(f"dispatch_run_when: spec_uri={spec_uri}, SPARQL type={query_type}, triple_store type={ts}")
     return ts, query_type
 
 
@@ -159,6 +161,55 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
         return result
 
 
+@run_when.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
+def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+    log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
+
+    # Parse the .spade.edn file
+    edn_file_path = when.file
+    try:
+        with open(edn_file_path, 'r') as edn_file:
+            edn_data = loads(edn_file.read())  # Parse EDN using edn_format
+    except Exception as e:
+        log.error(f"Failed to read EDN file {edn_file_path}: {e}")
+        raise
+
+    log.info(f"Parsed EDN data: {edn_data}")
+    # Execute steps defined in the EDN file
+    results = []
+    for group in edn_data.get(Keyword('step-groups'), []):
+        log.debug(f"Processing group: {group}")
+        for step in group.get(Keyword('steps'), []):
+            log.debug(f"Processing step: {step}")
+            step_type = step.get(Keyword('type'))
+            step_file = step.get(Keyword('filepath'))
+
+            if step_type == Keyword('sparql-file'):
+                try:
+                    with open(step_file, 'r') as sparql_file:
+                        sparql_query = sparql_file.read()
+
+                    # Initialize WhenSpec attributes
+                    step_when_spec = SpadeEdnGroupSourceWhenSpec(
+                        file=step_file,
+                        value=sparql_query,
+                        queryType=MUST.ConstructSparql,
+                        bindings=None
+                    )
+
+                    log.debug(f"Dispatching run_when for step: {step_when_spec}")
+                    
+                    query_result = run_when(spec_uri, triple_store, step_when_spec)
+                    log.info(f"Executed SPARQL query from {step_file}: {query_result}")
+                    results.append(query_result)
+                except Exception as e:
+                    log.error(f"Failed to execute SPARQL query from {step_file}: {e}")
+                    raise
+
+    log.debug(f"Final results: {results}")
+    return results
+
+
 @run_when.method(Default)
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     log.error(f"run_when not implemented for {spec_uri} {triple_store} {when}")
@@ -174,3 +225,4 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
         msg = f"{when.queryType} is not a valid SPARQL query type."
     raise NotImplementedError(msg)
+

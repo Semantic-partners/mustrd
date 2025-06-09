@@ -70,6 +70,12 @@ class AnzoWhenSpec(WhenSpec):
 
 
 @dataclass
+class SpadeEdnGroupSourceWhenSpec(WhenSpec):
+    file: str = None
+    groupId: str = None
+
+
+@dataclass
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
@@ -566,6 +572,14 @@ def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: S
 
 @get_spec_component.method(Default)
 def _get_spec_component_default(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    valid_combinations = [key for key in get_spec_component.methods.keys() if key != Default]
+
+    if (spec_component_details.data_source_type, spec_component_details.predicate) not in valid_combinations:
+        valid_types = ', '.join([f"({data_source_type}, {predicate})" for data_source_type, predicate in valid_combinations])
+        raise ValueError(
+            f"Invalid combination of data source type ({spec_component_details.data_source_type}) and "
+            f"spec component ({spec_component_details.predicate}). Valid combinations are: {valid_types}"
+        )
     raise ValueError(
         f"Invalid combination of data source type ({spec_component_details.data_source_type}) and "
         f"spec component ({spec_component_details.predicate})")
@@ -658,7 +672,7 @@ def get_spec_from_table(subject: URIRef,
         columns.add(row.variable.value + "_datatype")
     # add an additional column for the sort order (if any) of the results
     columns.add("order")
-    # create an empty dataframe to populate with the results
+    # create an empty dataframe to populate with the results data
     df = pandas.DataFrame(index=list(index), columns=list(columns))
     # fill the dataframe with the results data
     for row in expected_results:
