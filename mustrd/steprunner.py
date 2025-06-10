@@ -73,14 +73,14 @@ def _upload_given_anzo(triple_store: dict, given: Graph):
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
     query_type = when.queryType
-    log.info(f"dispatch_run_when: spec_uri={spec_uri}, SPARQL type={query_type}, triple_store type={ts}")
+    log.info(f"dispatch_run_when: spec_uri={spec_uri}, ({ts},{query_type})")
     return ts, query_type
 
 
-run_when = MultiMethod('run_when', dispatch_run_when)
+run_when_impl = MultiMethod('run_when', dispatch_run_when)
 
 
-@run_when.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
+@run_when_impl.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
 def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     log.debug(f"_anzo_run_when_update {spec_uri} {triple_store} {when} {type(when)}")
     if when.value is None:
@@ -94,47 +94,47 @@ def _anzo_run_when_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSp
     return execute_update_anzo(triple_store, query, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.Anzo, MUST.ConstructSparql))
+@run_when_impl.method((TRIPLESTORE.Anzo, MUST.ConstructSparql))
 def _anzo_run_when_construct(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_construct_anzo(triple_store, when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.Anzo, MUST.SelectSparql))
+@run_when_impl.method((TRIPLESTORE.Anzo, MUST.SelectSparql))
 def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_select_anzo(triple_store, when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
+@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
 def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_update_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
+@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
 def _graphdb_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_construct_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.GraphDb, MUST.SelectSparql))
+@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.SelectSparql))
 def _graphdb_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_graphdb(triple_store, when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.RdfLib, MUST.UpdateSparql))
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.UpdateSparql))
 def _rdflib_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_update_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.RdfLib, MUST.ConstructSparql))
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.ConstructSparql))
 def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_construct_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.RdfLib, MUST.SelectSparql))
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SelectSparql))
 def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
-@run_when.method((TRIPLESTORE.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
+@run_when_impl.method((TRIPLESTORE.Anzo, MUST.AnzoQueryDrivenUpdateSparql))
 def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     # run the parameters query to obtain the values for the template step and put them into a dictionary
     query_parameters = json.loads(execute_select_anzo(triple_store, when.paramQuery, None))
@@ -161,67 +161,50 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
         return result
 
 
-@run_when.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
+@run_when_impl.method((TRIPLESTORE.Anzo, MUST.SpadeEdnGroupSource))
 def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
-    # Parse the .spade.edn file
-    edn_file_path = when.file
-    try:
-        with open(edn_file_path, 'r') as edn_file:
-            edn_data = loads(edn_file.read())  # Parse EDN using edn_format
-    except Exception as e:
-        log.error(f"Failed to read EDN file {edn_file_path}: {e}")
-        raise FileNotFoundError(f"EDN file not found or invalid: {edn_file_path}")
-
-    log.info(f"Parsed EDN data: {edn_data}")
     results = []
 
-    # Process step groups
-    step_groups = edn_data.get(Keyword('step-groups'), None)
-    if not step_groups:
-        log.warning(f"No step groups found in EDN file {edn_file_path}")
-        return results
-
-    for group in step_groups:
-        log.debug(f"Processing group: {group}")
-        steps = group.get(Keyword('steps'), [])
-        if not steps:
-            log.warning(f"No steps found in group: {group}")
-            continue
-
-        for step in steps:
-            log.debug(f"Processing step: {step}")
-            step_type = step.get(Keyword('type'))
-            step_file = step.get(Keyword('filepath'))
-
-            if step_type == Keyword('sparql-file'):
-                try:
-                    with open(step_file, 'r') as sparql_file:
-                        sparql_query = sparql_file.read()
-
-                    step_when_spec = SpadeEdnGroupSourceWhenSpec(
-                        file=step_file,
-                        value=sparql_query,
-                        queryType=MUST.ConstructSparql,
-                        bindings=None
-                    )
-
-                    log.debug(f"Dispatching run_when for step: {step_when_spec}")
-                    query_result = run_when(spec_uri, triple_store, step_when_spec)
-                    log.info(f"Executed SPARQL query from {step_file}: {query_result}")
-                    results.append(query_result)
-                except FileNotFoundError:
-                    log.error(f"SPARQL file not found: {step_file}")
-                    raise FileNotFoundError(f"SPARQL file not found: {step_file}")
-                except Exception as e:
-                    log.error(f"Failed to execute SPARQL query from {step_file}: {e}")
+    # Iterate over the list of WhenSpec objects in `when.value`
+    for step_when_spec in when.value:
+        try:
+            log.info(f"Dispatching run_when for step: {step_when_spec}")
+            query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
+            log.info(f"Executed SPARQL query: {query_result}")
+            results.append(query_result)
+        except Exception as e:
+            log.error(f"Failed to execute SPARQL query: {e}")
 
     log.debug(f"Final results: {results}")
     return results
 
 
-@run_when.method(Default)
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
+def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+    log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
+
+    merged_graph = Graph()
+
+    # Iterate over the list of WhenSpec objects in `when.value`
+    for step_when_spec in when.value:
+        try:
+            if step_when_spec.queryType == MUST.ConstructSparql:
+                log.info(f"Dispatching run_when for ConstructSparql step: {step_when_spec}")
+                query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
+                log.info(f"Executed SPARQL query: {query_result}")
+                merged_graph += query_result  # Merge the resulting graph
+            else:
+                log.warning(f"Unsupported queryType: {step_when_spec.queryType}")
+        except Exception as e:
+            log.error(f"Failed to execute SPARQL query: {e}")
+
+    log.debug(f"Final merged graph has {len(merged_graph)} triples.")
+    return merged_graph
+
+
+@run_when_impl.method(Default)
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     log.error(f"run_when not implemented for {spec_uri} {triple_store} {when}")
     if when.queryType == MUST.AskSparql:
@@ -237,5 +220,5 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
         msg = f"{when.queryType} is not a valid SPARQL query type."
     raise NotImplementedError(msg)
 
-log.debug(f"run_when registry: {run_when} {dir(run_when)}")
+log.debug(f"run_when registry: {run_when_impl} {dir(run_when_impl)}")
 

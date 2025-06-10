@@ -29,9 +29,10 @@ from collections import defaultdict
 from pyshacl import validate
 import logging
 from http.client import HTTPConnection
-from .steprunner import upload_given, run_when
+from .steprunner import upload_given, run_when_impl
 from multimethods import MultiMethod
 import traceback
+from functools import wraps
 
 log = logging.getLogger(__name__)
 
@@ -430,7 +431,7 @@ def run_spec(spec: Specification) -> SpecResult:
             log.info(
                 f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}")
             try:
-                result = run_when(spec_uri, triple_store, when)
+                result = run_when_impl(spec_uri, triple_store, when)
                 log.info(
                     f"run {when.queryType} spec {spec_uri} on {triple_store['type']} {result=}")
             except ParseException as e:
@@ -445,15 +446,15 @@ def run_spec(spec: Specification) -> SpecResult:
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
         stacktrace = traceback.format_exc()
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}\nStacktrace:\n{2}"
-        message = template.format(type(e).__name__, e.args, stacktrace)
-        log.error(message)
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(e).__name__, e.args)
+        log.error(message, exc_info=True)
         return TripleStoreConnectionError(spec_uri, triple_store["type"], message)
     except (TypeError, RequestException) as e:
-        log.error(f"{type(e)} {e}")
+        log.error(f"{type(e)} {e}", exc_info=True)
         return SparqlExecutionError(spec_uri, triple_store["type"], e)
     except Exception as e:
-        log.error(f"Unexpected error {e}")
+        log.error(f"Unexpected error {e}", exc_info=True)
         return RuntimeError(spec_uri, triple_store["type"], f"{type(e).__name__}: {e}")
     # https://github.com/Semantic-partners/mustrd/issues/78
     # finally:
@@ -953,3 +954,17 @@ def display_verbose(results: List[SpecResult]):
         if isinstance(res, SpecSkipped):
             log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
             log.info(res.message)
+
+
+# Preserve the original run_when_impl multimethod
+original_run_when_impl = run_when_impl
+
+# Wrapper function for logging inputs and outputs of run_when
+def run_when_with_logging(*args, **kwargs):
+    log.debug(f"run_when called with args: {args}, kwargs: {kwargs}")
+    result = original_run_when_impl(*args, **kwargs)  # Call the original multimethod
+    log.debug(f"run_when returned: {result}")
+    return result
+
+# Replace the original run_when_impl with the wrapped version
+run_when_impl = run_when_with_logging

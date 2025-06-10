@@ -613,6 +613,8 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
 
 @get_spec_component.method((MUST.SpadeEdnGroupSource, MUST.when))
 def _get_spec_component_spadeednsource_when(spec_component_details: SpecComponentDetails) -> SpadeEdnGroupSourceWhenSpec:
+    from edn_format import Keyword
+
     spec_component = SpadeEdnGroupSourceWhenSpec()
     spec_component.file = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
@@ -626,6 +628,35 @@ def _get_spec_component_spadeednsource_when(spec_component_details: SpecComponen
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType
     )
+
+    # Initialize `value` by parsing the `file` attribute if available
+    if spec_component.file:
+        try:
+            with open(spec_component.file, "r") as edn_file:
+                edn_content = edn_file.read()
+                parsed_edn = edn_format.loads(edn_content)
+
+                # Extract group data based on group ID
+                step_groups = parsed_edn.get(Keyword("step-groups"), [])
+                group_data = next((item for item in step_groups if item.get(Keyword("group-id")) == spec_component.groupId), None)
+
+                if not group_data:
+                    raise ValueError(f"Group ID {spec_component.groupId} not found in EDN file {spec_component.file}")
+
+                # Create a list of WhenSpec objects
+                when_specs = []
+                for step in group_data.get(Keyword("steps"), []):
+                    step_type = step.get(Keyword("type"))
+                    step_file = step.get(Keyword("filepath"))
+
+                    if step_type == Keyword("sparql-file"):
+                        when_specs.append(WhenSpec(value=step_file, queryType=MUST.ConstructSparql))
+
+                spec_component.value = when_specs
+        except Exception as e:
+            log.error(f"Failed to parse EDN file {spec_component.file}: {e}")
+            spec_component.value = None
+
     return spec_component
 
 
@@ -795,7 +826,6 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
     if not group_id:
         raise ValueError("groupId is missing for SpadeEdnGroupSource")
 
-    # Check if group_id starts with ':' and treat it as a keyword only in that case
     if str(group_id).startswith(':'):
         group_id = str(group_id).lstrip(':')
         from edn_format import Keyword
@@ -804,27 +834,38 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
         group_id = str(group_id)
 
     # Extract the relevant group data
-    # The EDN data is expected to have a "step-groups" key containing a list of groups
     step_groups = edn_data.get(Keyword("step-groups"), [])
-    log.info(f"Step groups found in EDN file {absolute_file_path}: {step_groups}")
-    log.info(f"Looking for group ID: {group_id} {type(group_id)=}")
-    group_data = None
-    for item in step_groups:
-        item_group = item.get(Keyword("group-id"))
-        log.info(f"Checking item {item} with group_id {item_group=} {type(item)}")
-        if item_group == group_id:
-            group_data = item
-            break
+    group_data = next((item for item in step_groups if item.get(Keyword("group-id")) == group_id), None)
+
     if not group_data:
         raise ValueError(f"Group ID {group_id} not found in EDN file {absolute_file_path}")
 
+    # Create a list of WhenSpec objects
+    when_specs = []
+    for step in group_data.get(Keyword("steps"), []):
+        step_type = step.get(Keyword("type"))
+        step_file = step.get(Keyword("filepath"))
+
+        if step_type == Keyword("sparql-file"):
+            try:
+                with open(step_file, 'r') as sparql_file:
+                    sparql_query = sparql_file.read()
+
+                # Assume the individuals are ConstructSparql queries
+                # won't be true for ASK, but good for now.
+                when_spec = WhenSpec(
+                    value=sparql_query,
+                    queryType=MUST.ConstructSparql, 
+                    bindings=None
+                )
+                when_specs.append(when_spec)
+            except FileNotFoundError:
+                raise ValueError(f"SPARQL file not found: {step_file}")
+
     spec_component.file = str(absolute_file_path)
     spec_component.groupId = group_id
-    spec_component.value = group_data
-    spec_component.queryType = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.queryType
-    )
+    spec_component.value = when_specs
+    spec_component.queryType = MUST.SpadeEdnGroupSource  # Correct query type
 
     return spec_component
 

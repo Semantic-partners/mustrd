@@ -1,0 +1,22 @@
+@prefix must: <https://mustrd.com/model/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:spade_edn_group_test_2
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when   [ a must:SpadeEdnGroupSource  ;
+                 must:fileurl <file://./simple_spade-2.spade.edn> ;
+                 must:groupId ":group-1" ;
+                 # i think spade doesn't current require the queryType for a step in the config. 
+                 # you could conceivably have a step that is not a SPARQL query, but just a file to read.
+                 # or an ASK query. But for now we will always assume sparql, and CONSTRUCT.
+                 must:queryType must:ConstructSparql  ; ] ;
+    must:then   [ a must:FileDataset ;
+                                   must:fileurl <file://./../../data/thenSuccess.nt> ],
+                [ a must:FileDataset ;
+                                must:fileurl <file://./spade-example/expected-pizza.ttl> ] .

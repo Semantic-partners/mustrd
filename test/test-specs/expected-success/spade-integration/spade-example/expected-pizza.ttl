@@ -1,0 +1,5 @@
+@prefix ns1: <file://./construct-2.rq#> .
+
+ns1:Alice ns1:knows ns1:Bob .
+
+ns1:Bob ns1:likes ns1:Pizza .

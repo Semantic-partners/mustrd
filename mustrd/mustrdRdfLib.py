@@ -41,6 +41,8 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
     try:
         logger = logging.getLogger(__name__)
         logger.debug(f"Executing CONSTRUCT query: {when} with bindings: {bindings}")
+
+
         result_graph = given.query(when, initBindings=bindings).graph
         logger.debug(f"CONSTRUCT query executed successfully, resulting graph has {len(result_graph)} triples.")
         return result_graph
