@@ -968,3 +968,4 @@ def run_when_with_logging(*args, **kwargs):
 
 # Replace the original run_when_impl with the wrapped version
 run_when_impl = run_when_with_logging
+run_when = run_when_impl
