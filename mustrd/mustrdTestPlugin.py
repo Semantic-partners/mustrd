@@ -529,21 +529,37 @@ class MustrdItem(pytest.Item):
 
 # Function called in the test to actually run it
 def run_test_spec(test_spec):
+    logger = logging.getLogger("mustrd.test")
+    logger.info(f"Running test spec: {getattr(test_spec, 'spec_uri', test_spec)}")
     if isinstance(test_spec, SpecSkipped):
+        logger.warning(f"Test skipped: {test_spec.message}")
         pytest.skip(f"Invalid configuration, error : {test_spec.message}")
-    result = run_spec(test_spec)
-    result_type = type(result)
+    try:
+        result = run_spec(test_spec)
+        logger.info(f"Result type: {type(result)} for spec: {getattr(test_spec, 'spec_uri', test_spec)}")
+    except Exception as e:
+        logger.error(f"Exception in run_spec for {getattr(test_spec, 'spec_uri', test_spec)}: {e}")
+        logger.error(traceback.format_exc())
+        raise  # re-raise so pytest sees the error
+
     if isinstance(test_spec, SpecInvalid):
+        logger.error(f"Invalid test specification: {test_spec.message} {test_spec}")
         raise ValueError(f"Invalid test specification: {test_spec.message} {test_spec}")
-    if result_type == SpecSkipped:
-        # FIXME: Better exception management
+    if type(result) == SpecSkipped:
+        logger.warning("Test skipped due to unsupported configuration")
         pytest.skip("Unsupported configuration")
-    if result_type != SpecPassed:
+    if type(result) != SpecPassed:
         write_result_diff_to_log(result, logger.info)
         log_lines = []
         def log_to_string(message):
             log_lines.append(message)
-        write_result_diff_to_log(result, log_to_string)
+        try:
+            write_result_diff_to_log(result, log_to_string)
+        except Exception as e:
+            logger.error(f"Exception in write_result_diff_to_log: {e}")
+            logger.error(traceback.format_exc())
+        logger.error(f"Test failed: {log_lines}")
         raise AssertionError("Test failed: " + "\n".join(log_lines))
 
-    return result_type == SpecPassed
+    logger.info(f"Test PASSED: {getattr(test_spec, 'spec_uri', test_spec)}")
+    return type(result) == SpecPassed

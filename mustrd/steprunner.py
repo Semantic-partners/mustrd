@@ -165,20 +165,27 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
-    results = []
-
+    merged_result = None
     # Iterate over the list of WhenSpec objects in `when.value`
     for step_when_spec in when.value:
         try:
             log.info(f"Dispatching run_when for step: {step_when_spec}")
             query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
             log.info(f"Executed SPARQL query: {query_result}")
-            results.append(query_result)
+            # Merge results if possible (e.g., for Graphs), else just keep last non-None
+            if merged_result is None:
+                merged_result = query_result
+            else:
+                try:
+                    merged_result += query_result  # For graph-like objects
+                except Exception:
+                    # If not mergeable, just keep the last result
+                    merged_result = query_result
         except Exception as e:
             log.error(f"Failed to execute SPARQL query: {e}")
 
-    log.debug(f"Final results: {results}")
-    return results
+    log.debug(f"Final merged result: {merged_result}")
+    return merged_result
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))

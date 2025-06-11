@@ -4,5 +4,10 @@
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestArgs": [
         "--mustrd",  "--config=test/test_config_local.ttl" , "--log-cli-level=DEBUG"
-    ]
+    ],
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#183323",
+        "titleBar.activeBackground": "#224831",
+        "titleBar.activeForeground": "#F6FBF8"
+    }
 }
