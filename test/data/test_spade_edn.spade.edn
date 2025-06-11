@@ -1,7 +1,7 @@
 
     {:step-groups [
         {:steps [
-            {:type :sparql-file, :filepath "./test/data/construct.rq", }
+            {:type :sparql-file, :filepath "./test/data/insert.rq", }
         ]}
     ]}
     

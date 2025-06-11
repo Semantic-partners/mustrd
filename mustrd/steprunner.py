@@ -190,8 +190,8 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
     # Iterate over the list of WhenSpec objects in `when.value`
     for step_when_spec in when.value:
         try:
-            if step_when_spec.queryType == MUST.ConstructSparql:
-                log.info(f"Dispatching run_when for ConstructSparql step: {step_when_spec}")
+            if step_when_spec.queryType == MUST.UpdateSparql:
+                log.info(f"Dispatching run_when for UpdateSparql step: {step_when_spec}")
                 query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
                 log.info(f"Executed SPARQL query: {query_result}")
                 merged_graph += query_result  # Merge the resulting graph

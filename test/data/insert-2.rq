@@ -1,0 +1,7 @@
+prefix : <file://./insert-2.rq#>
+
+insert {
+    :Alice :knows :Bob .
+    :Bob :likes :Pizza .
+} where {
+}

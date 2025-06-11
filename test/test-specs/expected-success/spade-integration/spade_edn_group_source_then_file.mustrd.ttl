@@ -14,7 +14,7 @@ test-data:spade_edn_group_test
                  must:groupId ":group-1" ;
                  # i think spade doesn't current require the queryType for a step in the config. 
                  # you could conceivably have a step that is not a SPARQL query, but just a file to read.
-                 # or an ASK query. But for now we will always assume sparql, and CONSTRUCT.
-                 must:queryType must:ConstructSparql  ; ] ;
+                 # or an ASK query. But for now we will always assume sparql, and INSERT.
+                 must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a must:FileDataset ;
-                                   must:fileurl <file://./../../data/thenSuccess.nt> ] .
+                                   must:fileurl <file://./thenSuccessWithSource.nt> ] .

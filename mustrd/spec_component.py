@@ -650,7 +650,7 @@ def _get_spec_component_spadeednsource_when(spec_component_details: SpecComponen
                     step_file = step.get(Keyword("filepath"))
 
                     if step_type == Keyword("sparql-file"):
-                        when_specs.append(WhenSpec(value=step_file, queryType=MUST.ConstructSparql))
+                        when_specs.append(WhenSpec(value=step_file, queryType=MUST.InsertSparql))
 
                 spec_component.value = when_specs
         except Exception as e:
@@ -855,7 +855,7 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
                 # won't be true for ASK, but good for now.
                 when_spec = WhenSpec(
                     value=sparql_query,
-                    queryType=MUST.ConstructSparql, 
+                    queryType=MUST.UpdateSparql, 
                     bindings=None
                 )
                 when_specs.append(when_spec)

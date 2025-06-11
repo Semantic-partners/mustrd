@@ -1,4 +1,4 @@
-@prefix ns1: <file://./construct-2.rq#> .
+@prefix ns1: <file://./insert-2.rq#> .
 
 ns1:Alice ns1:knows ns1:Bob .
 
