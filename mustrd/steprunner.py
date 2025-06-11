@@ -185,12 +185,17 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
 def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
+    edn_file_dir = os.path.dirname(when.file)  # Get the directory of the EDN file
     merged_graph = Graph()
 
     # Iterate over the list of WhenSpec objects in `when.value`
     for step_when_spec in when.value:
         try:
             if step_when_spec.queryType == MUST.UpdateSparql:
+                # Resolve file paths relative to the EDN file
+                if hasattr(step_when_spec, 'filepath'):
+                    step_when_spec.filepath = os.path.join(edn_file_dir, step_when_spec.filepath)
+
                 log.info(f"Dispatching run_when for UpdateSparql step: {step_when_spec}")
                 query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
                 log.info(f"Executed SPARQL query: {query_result}")
