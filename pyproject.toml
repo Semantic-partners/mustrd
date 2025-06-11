@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mustrd"
-version = "0.3.0.0"
+version = "0.3.1a0"
 description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucumber."
 authors = ["John Placek <john.placek@semanticpartners.com>",
     "Juliane Piñeiro-Winkler <juliane.pineiro-winkler@semanticpartners.com>",
@@ -39,6 +39,7 @@ flake8 = "7.0.0"
 coverage = "7.4.3"
 colorama = "0.4.6"
 Jinja2 = "3.1.5"
+edn-format = "^0.7.5"
 
 
 [tool.poetry.dev-dependencies]

@@ -38,7 +38,8 @@ class MUST(DefinedNamespace):
     AnzoQueryDrivenUpdateSparql: URIRef
     AskSparql: URIRef
     DescribeSparql: URIRef
-
+    SpadeEdnGroupSource: URIRef
+    
     # Specification properties
     given: URIRef
     when: URIRef
@@ -125,3 +126,10 @@ class MUSTRDTEST(DefinedNamespace):
     triplestoreSpecPath: URIRef
     hasPytestPath: URIRef
     filterOnTripleStore: URIRef
+
+from rdflib import Namespace
+
+MUST = Namespace("https://mustrd.com/model/")
+
+# Add SpadeEdnGroupSource to the namespace
+MUST.SpadeEdnGroupSource = MUST["SpadeEdnGroupSource"]

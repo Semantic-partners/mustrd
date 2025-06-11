@@ -241,8 +241,8 @@ class TestRunSpec:
                                  spec_graph=spec_graph,
                                  run_config=None,
                                  mustrd_triple_store=self.triple_store)
-        assert str(error_message.value) == \
-            f"Invalid combination of data source type ({MUST.TableDataset}) and spec component ({MUST.given})"
+        assert "Invalid combination of data source type" in str(error_message.value)
+        assert "Valid combinations are:" in str(error_message.value)
 
     def test_invalid_query_type_ask_error(self):
         state = Graph()

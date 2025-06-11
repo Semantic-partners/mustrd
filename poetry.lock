@@ -248,6 +248,23 @@ files = [
 toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
 
 [[package]]
+name = "edn-format"
+version = "0.7.5"
+description = "EDN format reader and writer in Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "edn_format-0.7.5-py3-none-any.whl", hash = "sha256:3752c6bd50d39c60f767da9fde7619133a8b3f9217dcdcbd52b9e2e1b7bbb045"},
+    {file = "edn_format-0.7.5.tar.gz", hash = "sha256:05a4b3078def5e4bb07ed58fb48c2aef52f3db019489dc2845808a5ae990c80e"},
+]
+
+[package.dependencies]
+ply = ">=3.10"
+pyRFC3339 = ">=0.2"
+pytz = ">=2016.10"
+
+[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 description = "An implementation of lxml.xmlfile for the standard library"
@@ -643,6 +660,18 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "ply"
+version = "3.11"
+description = "Python Lex & Yacc"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "ply-3.11-py2.py3-none-any.whl", hash = "sha256:096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"},
+    {file = "ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3"},
+]
+
+[[package]]
 name = "prettytable"
 version = "3.14.0"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
@@ -698,6 +727,18 @@ files = [
 
 [package.extras]
 diagrams = ["jinja2", "railroad-diagrams"]
+
+[[package]]
+name = "pyrfc3339"
+version = "2.0.1"
+description = "Generate and parse RFC 3339 timestamps"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pyRFC3339-2.0.1-py3-none-any.whl", hash = "sha256:30b70a366acac3df7386b558c21af871522560ed7f3f73cf344b8c2cbb8b0c9d"},
+    {file = "pyrfc3339-2.0.1.tar.gz", hash = "sha256:e47843379ea35c1296c3b6c67a948a1a490ae0584edfcbdea0eaffb5dd29960b"},
+]
 
 [[package]]
 name = "pyshacl"
@@ -991,4 +1032,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "d60ff3bfea962b1aeb7ed761590a7a2e49c9acbbf23c477835ed5fdcc3492afc"
+content-hash = "20ed8e036b5e7da1aebcb311f3c714ae1fc1dc1f20df8e0814038df8051f5b36"

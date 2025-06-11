@@ -31,7 +31,7 @@ from mustrd.mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, Spe
 from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component
-from mustrd.steprunner import run_when
+from mustrd.steprunner import run_when_impl
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -86,7 +86,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
@@ -126,7 +126,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
         assert then_result == expected_result
@@ -174,7 +174,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -214,7 +214,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -259,7 +259,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -308,7 +308,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
@@ -367,7 +367,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
@@ -430,7 +430,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
@@ -493,7 +493,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
@@ -555,7 +555,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         assert then_result.spec_uri == spec_uri
@@ -640,7 +640,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -700,7 +700,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -746,7 +746,7 @@ class TestRunUpdateSpec:
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
         try:
-            when_result = run_when(spec_uri, self.triple_store, when_component[0])
+            when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         except ParseException as e:
             when_result = SparqlParseFailure(spec_uri, self.triple_store["type"], e)
         if isinstance(when_result, SparqlParseFailure):
@@ -806,7 +806,7 @@ class TestRunUpdateSpec:
 
         self.triple_store["given"] = given
         spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        when_result = run_when_impl(spec_uri, self.triple_store, when_component[0])
         then_result = check_result(spec, when_result)
 
         expected_result = SpecPassed(spec_uri, self.triple_store["type"])
@@ -850,7 +850,7 @@ class TestRunUpdateSpec:
 
         triple_store["given"] = given
         try:
-            when_result = run_when(spec_uri, triple_store, when_component[0])
+            when_result = run_when_impl(spec_uri, triple_store, when_component[0])
         except NotImplementedError as ex:
             when_result = SpecSkipped(spec_uri, triple_store, ex.args[0])
         expected_result = SpecSkipped(spec_uri,

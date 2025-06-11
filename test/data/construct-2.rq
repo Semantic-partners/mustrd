@@ -1,0 +1,7 @@
+prefix : <file://./construct-2.rq#>
+
+construct {
+    :Alice :knows :Bob .
+    :Bob :likes :Pizza .
+} where {
+}
