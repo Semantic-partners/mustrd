@@ -6,134 +6,144 @@
 
 MustRD is a framework for testing SPARQL queries against RDF datasets. It supports embedded RDFLib and external triplestores like Anzo and GraphDB. This documentation provides a comprehensive guide to using MustRD effectively.
 
+It is a pytest plugin, and can be activated by adding `--mustrd` to the pytest command line.
+
 == Getting Started
 
 === Project Setup
 
-Instantiate the project https://github.com/Semantic-partners/mustrd-template[mustrd-template]. It contains the basic configuration to get MustRD running.
+You need a Python virtual environment (version [3.11, 3.12)) with MustRD installed.
 
-Clone the created repo locally.
+[source]
+----
+source .venv/bin/activate
+pip install mustrd
+----
+
+Examples of how to configure MustRD for VS Code can be found in the README.md file.
 
 === Initial Configuration
 
-If you just want to use embedded RDFLib, you don't need to change anything.
+If you only need embedded RDFLib, no additional configuration is required.
 
-If you want to use an external triplestore such as Anzo or GraphDB, you have to tell MustRD how to connect.
+For external triplestores such as Anzo or GraphDB, you must specify the connection details.
 
-The default triplestore config file is https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores.ttl[here].
+Examples of configuration files are available in the MustRD repository: https://github.com/Semantic-partners/mustrd/blob/master/test/test-mustrd-config/test_mustrd_simple.ttl
 
-You can store your passwords in another https://github.com/Semantic-partners/mustrd-template/blob/main/test/triplestore_config/triplestores_secrets.ttl[file] at the same location and same name suffixed with "_secrets".
+If your triplestore (e.g., Anzo or GraphDB) requires authentication, credentials should be stored in a separate file to avoid committing sensitive information to version control. The secrets file must have the same name as the triplestore configuration file, with the suffix `_secrets`. For example, if your triplestore configuration file is `/test/triplestore_config/triplestores.ttl`, the secrets file should be `/test/triplestore_config/triplestores_secrets.ttl`.
 
 == Configuration
 
 === Triple Store Configuration
 
-For example, passwords of triplestores configured in `/test/triplestore_config/triplestores.ttl` have to be stored in the file `/test/triplestore_config/triplestores_secrets.ttl`.
+Passwords for triplestores configured in `/test/triplestore_config/triplestores.ttl` must be stored in `/test/triplestore_config/triplestores_secrets.ttl`.
 
-By default, `.gitignore` is configured so you don't commit the secrets files, while the triplestore configuration files will be committed. Be sure to store your secrets in the separated `_secrets` file.
+By default, `.gitignore` is set up to prevent secrets files from being committed, while allowing triplestore configuration files to be committed. Ensure that secrets are stored in the `_secrets` file.
 
-To associate a triplestore configuration and its secrets, use the same subject in the configuration and secret file, like it is done in the example.
+To associate a triplestore configuration with its secrets, use the same subject in both files, as shown in the example.
 
-Triplestore configuration can be placed anywhere, inside or outside of your project, but it has to be referenced in the test configuration.
+Triplestore configurations can be placed anywhere, inside or outside your project, but they must be referenced in the test configuration.
 
-All the triplestores defined must contain a `url` and a `port`.
+All triplestores must include a `url` property.
 
-Depending on the triplestore, other properties can be mandatory as well:
+Additional mandatory properties depend on the triplestore:
 
-For Anzo:
+==== For Anzo:
 
-* `gqeURI` is necessary to identify on which AnzoGraph the queries will be executed.
-* `inputGraph` and `outputGraph` are also mandatory because graphs cannot be created simply on insert in Anzo. You have to create a graphmart, layers in it, and activate the graphmart. We cannot, for the moment, automatically create a testing graphmart and layers.
+* `gqeURI` is required to identify the AnzoGraph where queries will be executed.
+* `inputGraph` and `outputGraph` are mandatory because graphs cannot be created automatically on insert in Anzo. You must create a graphmart, add layers to it, and activate the graphmart.
 
-For GraphDB:
+==== For GraphDB:
 
-* Only `repository` is mandatory. If `inputGraph` is not defined, then all graphs of the repository will be queried.
+* Only `repository` is mandatory. If `inputGraph` is not defined, all graphs in the repository will be queried.
 
 === Test Configuration
 
-In the template project, the default test configuration is located https://github.com/Semantic-partners/mustrd-template/blob/main/test/mustrd_configuration.ttl[here].
+The default test configuration is located in the MustRD template project: https://github.com/Semantic-partners/mustrd-template/blob/main/test/mustrd_configuration.ttl
 
-In that file you can define different test that mustrd will run when you give that file as parameter of mustrd pytest plugin
+In this file, you can define various tests for MustRD to run when provided as a parameter to the MustRD pytest plugin.
 
-For each test, you can configure :
+For each test, you can configure:
 
-* `hasSpecPath`: Folder where your mustrd spec are (looks in subfolders as well).
-* `hasDataPath`: Folder where your input/output data is
-* `hasPytestPath `: Path in the test hierarchy
-* `triplestoreSpecPath`: Where your external triplestore configuration file is located
-* `filterOnTripleStore`: List of triplestore defined in the triplestore configuration file (or RdfLib) that has to be used to run that test.
+* `hasSpecPath`: Folder containing MustRD specs (searches subfolders).
+* `hasDataPath`: Folder for input/output data.
+* `hasPytestPath`: Path in the test hierarchy.
+* `triplestoreSpecPath`: Location of the external triplestore configuration file.
+* `filterOnTripleStore`: List of triplestores defined in the configuration file (or RDFLib) to be used for the test.
 
-For example:
+Example:
 
-```
+----
 :test_anzo a :MustrdTest;
             :hasSpecPath "test/test_examples/";
             :hasDataPath "test/test_data";
             :hasPytestPath "anzo";
             :triplestoreSpecPath "test/triplestore_config/triplestores.ttl";
             :filterOnTripleStore triplestore:anzo_test .
-```
+----
 
-This will run the tests contained in all the specs located in `[project_root]/test/test_examples/`, using the data located in `[project_root]/test/test_data`, against the triplestore defined as `triplestore:anzo_test` in the file `[project_root]/test/triplestore_config/triplestores.ttl`.
+This configuration runs tests in `[project_root]/test/test_examples/`, using data from `[project_root]/test/test_data`, against the triplestore `triplestore:anzo_test` defined in `[project_root]/test/triplestore_config/triplestores.ttl`.
 
-If needed, the secrets have to be located in `[project_root]/test/triplestore_config/triplestores_secrets.ttl`
+If required, secrets must be located in `[project_root]/test/triplestore_config/triplestores_secrets.ttl`.
 
-== Run the tests
+== Run the Tests
 
-Once you have defined your triplestore(s) and your mustrd test(s), you can already run the mustrd-template's default test specs to be sure you configured everything well.
+After defining your triplestore(s) and MustRD test(s), you can run the default test specs in the MustRD template to verify your configuration.
 
-For that, open a command line and go to your repo's root folder.
+Navigate to your repository's root folder and execute:
 
-Then execute the following command:
-
-```
+[source]
+----
 poetry run pytest --mustrd --config=test/mustrd_configuration.ttl --md=render/github_job_summary.md
-```
+----
 
-which means that you use poetry to run pytest, using the mustrd pytest plugin.
+This command uses poetry to run pytest with the MustRD plugin.
 
-To the mustrd pytest plugin, you give the parameter:
+Parameters for the MustRD pytest plugin:
 
-* config: Mustrd test config that you configured in <<Edit Test configuration>> 
+* `config`: MustRD test configuration file.
+* `md`: Output location for the test execution summary.
 
-* md: Where test execution summary will output
+Once the default tests are running successfully, you can define your own tests.
 
-Now that you could run the default tests, you probably want to define your own tests!
+== Creating Your Own Test Specifications
 
-== Creating your own Test Specifications
-
-If you have got this far then you are probably ready to create your own specifications to test your application SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure one or more alternatives. The instructions for this are included in <<Edit the triple store configuration>>.
+If you've reached this point, you're ready to create your own specifications to test your application's SPARQL queries. These will be executed against the default RDFLib triplestore unless you configure alternatives. Instructions for this are included in <<Edit the triple store configuration>>.
 
 === Paths
-All paths are consired relative. That way mustrd tests can be versionned and shared easily.
-To get absolute path from relative path in a spec file, we prefix it with the first existing result in:
 
-. Path where the spec is located
-. spec_path defined in mustrd test configuration files or cmd line argument
-. data_path defined in mustrd test configuration files or cmd line argument
-. Mustrd folder: In case of default resources packaged with mustrd source (will be in venv when mustrd is called as library)
-We intentionally use the same method to build paths in all spec components to avoid confusion.
+All paths are considered relative, allowing MustRD tests to be versioned and shared easily.
+
+To convert relative paths to absolute paths in a spec file, prefix them with the first existing result from:
+
+. Path where the spec is located.
+. `spec_path` defined in MustRD test configuration files or command-line arguments.
+. `data_path` defined in MustRD test configuration files or command-line arguments.
+. MustRD folder: Default resources packaged with MustRD source (in the virtual environment when MustRD is used as a library).
+
+The same method is used to build paths across all spec components to avoid confusion.
 
 === Givens
-These are used to specify the dataset against which the SPARQL statement will be run.
-They can be generated from external sources such as an existing graph, or a file or folder containing serialised RDF. It is also possible to specify the dataset as reified RDF directly in the test step. Currently tabular data sources such as csv files or TableDatasets are not supported.
-Multiple given statements can be supplied and data is combined into a single dataset for the test.
 
-* *InheritedDataset* - This is where no data is specified but the existing data in the target graph is retained rather than being replaced with a defined set. This can be used to chain tests together or to perform checks on application data.
+These specify the dataset against which the SPARQL statement will be run. Datasets can be generated from external sources such as an existing graph, a file or folder containing serialized RDF, or reified RDF directly in the test step. Currently, tabular data sources like CSV files or TableDatasets are not supported.
+
+Multiple given statements can be supplied, combining data into a single dataset for the test.
+
+* *InheritedDataset*: Retains existing data in the target graph rather than replacing it with a defined set. Useful for chaining tests or checking application data.
 ----
     must:given [ a must:InheritedDataset ] ;
 ----
-* *FileDataset* - The dataset is a local file containing serialised RDF. The formats supported are the same as those for the RDFLib Graph().parse function i.e. Turtle (.ttl), NTriples (.nt), N3 (.n3), RDF/XML (.xml) and TriX. The data is used to replace any existing content in the target graph for the test.
+* *FileDataset*: Local file containing serialized RDF. Supported formats include Turtle (.ttl), NTriples (.nt), N3 (.n3), RDF/XML (.xml), and TriX. Replaces existing content in the target graph.
 ----
     must:given [ a must:FileDataset ;
                  must:file "test/data/given.ttl" . ] ;
 ----
-* *FolderDataset* - Very similar to the file dataset except that the location of the file is passed to the test specification as an argument from the caller. i.e. the -g option on the command line.
+* *FolderDataset*: Similar to FileDataset but the file location is passed as an argument from the caller (e.g., `-g` option on the command line).
 ----
     must:given [ a must:FolderDataset ;
                  must:fileName "given.ttl" ] ;
 ----
-* *StatementsDataset* - The dataset is defined within the test in the form of reified RDF statements. e.g.
+* *StatementsDataset*: Dataset defined within the test as reified RDF statements.
 ----
     must:given [ a must:StatementsDataset ;
                  must:hasStatement [ a rdf:Statement ;
@@ -141,7 +151,7 @@ Multiple given statements can be supplied and data is combined into a single dat
                                      rdf:predicate test-data:pred ;
                                      rdf:object    test-data:obj ; ] ; ] ;
 ----
-* *AnzoGraphmartDataset* - The dataset is contained in an Anzo graphmart and needs to be retrieved from there. The Anzo instance containing the dataset needs to be indicated in the configuration file as documented in <<Edit the triple store configuration>>.
+* *AnzoGraphmartDataset*: Dataset contained in an Anzo graphmart. The Anzo instance must be specified in the configuration file.
 ----
     must:given [ a must:AnzoGraphmartDataset ;
                  must:graphmart "http://cambridgesemantics.com/Graphmart/43445aeadf674e09818c81cf7049e46a";
