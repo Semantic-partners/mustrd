@@ -149,7 +149,7 @@ def upload_given(triple_store: dict, given: Graph):
 def clear_graph(triple_store: dict, graph_uri: str):
     try:
         clear_query = f"CLEAR GRAPH <{graph_uri}>"
-        # query_azg(anzo_config=triple_store, query=clear_query, is_update=True)
+        query_azg(anzo_config=triple_store, query=clear_query, is_update=True)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         logging.error(f"Failed to clear graph {graph_uri} in triple store {triple_store['name']}")
         raise
