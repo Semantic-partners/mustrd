@@ -33,6 +33,7 @@ from .steprunner import upload_given, run_when_impl
 from multimethods import MultiMethod
 import traceback
 from functools import wraps
+from mustrd.shared_utils import create_dynamic_resources
 
 log = logging.getLogger(__name__)
 
@@ -1185,3 +1186,35 @@ def run_when_with_logging(*args, **kwargs):
 # Replace the original run_when_impl with the wrapped version
 run_when_impl = run_when_with_logging
 run_when = run_when_impl
+
+
+def create_dynamic_resources(test_name: str) -> dict:
+    """
+    Dynamically create graphmart and input/output layers for a test.
+    If `.mustrd_lock` exists, use its contents instead.
+    """
+    lock_file_path = ".mustrd_lock"
+
+    if os.path.exists(lock_file_path):
+        resources = {}
+        with open(lock_file_path, "r") as lock_file:
+            for line in lock_file:
+                key, value = line.strip().split(":", 1)
+                resources[key] = value
+        return resources
+
+    graphmart_iri = f"https://mustrd.com/graphmart/{test_name}"
+    input_layer_iri = f"https://mustrd.com/layer/{test_name}/input"
+    output_layer_iri = f"https://mustrd.com/layer/{test_name}/output"
+
+    # Record resources in `.mustrd_lock` file
+    with open(lock_file_path, "a") as lock_file:
+        lock_file.write(f"graphmart:{graphmart_iri}\n")
+        lock_file.write(f"input_layer:{input_layer_iri}\n")
+        lock_file.write(f"output_layer:{output_layer_iri}\n")
+
+    return {
+        "graphmart": graphmart_iri,
+        "input_layer": input_layer_iri,
+        "output_layer": output_layer_iri
+    }

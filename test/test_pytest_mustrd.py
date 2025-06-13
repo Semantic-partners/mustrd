@@ -8,8 +8,8 @@ from pyshacl import validate
 log = logging.getLogger(__name__)
 
 
-def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None):
-    mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets)
+def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None, create_graphmart: bool = False):
+    mustrd_plugin = MustrdTestPlugin(md_path, Path(config_path), secrets, create_graphmart=create_graphmart)
     log.setLevel(logging.DEBUG)  # or logging.INFO, as desired
     pytest.main([*args, "--log-cli-level=DEBUG"], plugins=[mustrd_plugin])
     return mustrd_plugin

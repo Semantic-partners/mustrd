@@ -27,6 +27,8 @@ from requests import ConnectTimeout, HTTPError, ConnectionError
 import logging
 from mustrd.anzo_utils import query_azg, query_graphmart
 from mustrd.anzo_utils import query_configuration, json_to_dictlist, ttl_to_graph
+from mustrd.shared_utils import create_dynamic_resources
+import requests
 
 
 
@@ -184,3 +186,60 @@ def clear_graph(triple_store: dict, graph_uri: str):
         query_azg(anzo_config=triple_store, query=clear_query, is_update=True)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout):
         raise
+
+def initialize_dynamic_anzo_resources(test_name: str, triple_store: dict):
+    """
+    Initialize dynamic graphmart and layers for Anzo triple store.
+    """
+    resources = create_dynamic_resources(test_name)
+    triple_store['graphmart'] = resources['graphmart']
+    triple_store['input_graph'] = resources['input_layer']
+    triple_store['output_graph'] = resources['output_layer']
+    logging.info(f"Initialized dynamic resources for test '{test_name}': {resources}")
+
+def initialize_dynamic_resources_if_enabled(test_name: str, triple_store: dict, create_graphmart: bool):
+    """
+    Conditionally initialize dynamic graphmart and layers based on the --create-graphmart option.
+    """
+    if create_graphmart:
+        initialize_dynamic_anzo_resources(test_name, triple_store)
+
+def setup_test_environment(test_name: str, triple_store: dict, create_graphmart: bool):
+    """
+    Setup the test environment, including conditional dynamic resource initialization.
+    """
+    initialize_dynamic_resources_if_enabled(test_name, triple_store, create_graphmart)
+    logging.info(f"Test environment setup complete for test '{test_name}'")
+
+def create_graphmart_and_layers(triple_store: dict, graphmart: str, input_layer: str, output_layer: str):
+    """
+    Create graphmart and layers in Anzo via REST API.
+    """
+    base_url = triple_store['url']
+    auth = (triple_store['username'], triple_store['password'])
+
+    # Create graphmart
+    graphmart_payload = {
+        "name": graphmart,
+        "description": "Graphmart created dynamically for testing",
+        "layers": [
+            {
+                "name": input_layer,
+                "description": "Input layer dynamically created",
+                "enabled": True
+            },
+            {
+                "name": output_layer,
+                "description": "Output layer dynamically created",
+                "enabled": True
+            }
+        ]
+    }
+    graphmart_url = f"{base_url}/api/graphmart"  # Updated for 5.4.2 format
+
+    response = requests.put(graphmart_url, json=graphmart_payload, auth=auth)  # Changed to PUT
+
+    if response.status_code == 200:
+        logging.info(f"Graphmart '{graphmart}' and layers created successfully.")
+    else:
+        logging.error(f"Failed to create graphmart '{graphmart}'. Status: {response.status_code}, Response: {response.text}")
