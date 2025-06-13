@@ -848,7 +848,9 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
 
         if step_type == Keyword("sparql-file"):
             try:
-                with open(step_file, 'r') as sparql_file:
+                # Resolve the file path relative to the EDN file's location
+                resolved_step_file = Path(absolute_file_path).parent / step_file
+                with open(resolved_step_file, 'r') as sparql_file:
                     sparql_query = sparql_file.read()
 
                 # Assume the individuals are ConstructSparql queries
@@ -860,7 +862,7 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
                 )
                 when_specs.append(when_spec)
             except FileNotFoundError:
-                raise ValueError(f"SPARQL file not found: {step_file}")
+                raise ValueError(f"SPARQL file not found: {resolved_step_file}")
 
     spec_component.file = str(absolute_file_path)
     spec_component.groupId = group_id

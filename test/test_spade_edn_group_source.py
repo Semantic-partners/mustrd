@@ -1,3 +1,4 @@
+import os
 import pytest
 from rdflib import Graph, URIRef
 from mustrd.steprunner import _spade_edn_group_source
@@ -11,21 +12,20 @@ def test_spade_edn_group_source():
         "given": Graph()
     }
     spec_uri = URIRef("http://example.com/test-spec")
-    
+
     # Add sample RDF data to the given graph
     triples = """
     @prefix test-data: <https://semanticpartners.com/data/test/> .
     test-data:sub test-data:pred test-data:obj .
     """
     triple_store["given"].parse(data=triples, format="ttl")
-    
 
     edn_file_path = "./test/data/test_spade_edn.edn"
     # Create a temporary EDN file
     edn_content = """
     {:step-groups [
         {:steps [
-            {:type :sparql-file, :filepath "./test/data/insert.rq"}
+            {:type :sparql-file, :filepath "insert.rq"}
         ]}
     ]}
     """
@@ -45,14 +45,13 @@ def test_spade_edn_group_source():
         ]
     )
 
-   
-    
     # Run the method
     result = _spade_edn_group_source(spec_uri, triple_store, when_spec)
-    
 
-    
-    print(result.serialize(format="nt").decode("utf-8") if hasattr(result.serialize(format="nt"), "decode") else result.serialize(format="nt"))
+    # Verify that the file path was resolved correctly
+    expected_filepath = os.path.join(os.path.dirname(edn_file_path), "insert.rq")
+    assert when_spec.file == edn_file_path, "File path was not resolved correctly"
+
     # Assert the result
     # Serialize the first graph in result to n-triples and compare with expected
     expected_nt = "<https://semanticpartners.com/data/test/obj> <https://semanticpartners.com/data/test/sub> <https://semanticpartners.com/data/test/pred> .\n"
@@ -63,7 +62,6 @@ def test_spade_edn_group_source():
     assert expected_nt in actual_nt
 
     # Clean up temporary file
-    import os
     os.remove(edn_file_path)
 
 if __name__ == "__main__":
