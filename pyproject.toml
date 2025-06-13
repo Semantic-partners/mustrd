@@ -1,6 +1,6 @@
 [project]
 name = "mustrd"
-version = "0.3.1a5"
+version = "0.3.1a10"
 description = "A Spec By Example framework for RDF and SPARQL, Inspired by Cucumber."
 authors = [
     { name = "John Placek", email = "john.placek@semanticpartners.com" },
