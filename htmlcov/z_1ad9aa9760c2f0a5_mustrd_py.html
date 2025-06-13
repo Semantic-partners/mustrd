@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for mustrd/mustrd.py: 73%</title>
+    <title>Coverage for mustrd/mustrd.py: 75%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
     <link rel="stylesheet" href="style_cb_8e611ae1.css" type="text/css">
     <script src="coverage_html_cb_6fb7b396.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>mustrd/mustrd.py</b>:
-            <span class="pc_cov">73%</span>
+            <span class="pc_cov">75%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">597 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">438<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">159<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">448<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">149<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_1ad9aa9760c2f0a5_mustrdAnzo_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.8.2">coverage.py v7.8.2</a>,
-            created at 2025-06-12 08:55 +0000
+            created at 2025-06-13 16:10 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -428,21 +428,21 @@
     <p class="run"><span class="n"><a id="t346" href="#t346">346</a></span><span class="t">                        <span class="nam">specs</span> <span class="op">+=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t347" href="#t347">347</a></span><span class="t">                            <span class="nam">get_spec</span><span class="op">(</span><span class="nam">spec_uri</span><span class="op">,</span> <span class="nam">spec_graph</span><span class="op">,</span> <span class="nam">run_config</span><span class="op">,</span> <span class="nam">triple_store</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t348" href="#t348">348</a></span><span class="t">                        <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t349" href="#t349">349</a></span><span class="t">                    <span class="key">except</span> <span class="op">(</span><span class="nam">ValueError</span><span class="op">,</span> <span class="nam">FileNotFoundError</span><span class="op">,</span> <span class="nam">ConnectionError</span><span class="op">)</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t349" href="#t349">349</a></span><span class="t">                    <span class="key">except</span> <span class="op">(</span><span class="nam">ValueError</span><span class="op">,</span> <span class="nam">FileNotFoundError</span><span class="op">,</span> <span class="nam">ConnectionError</span><span class="op">)</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t350" href="#t350">350</a></span><span class="t">                        <span class="com"># Try to get file name/path from the graph, but fallback to "unknown"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t351" href="#t351">351</a></span><span class="t">                        <span class="nam">file_name</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t351" href="#t351">351</a></span><span class="t">                        <span class="nam">file_name</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t352" href="#t352">352</a></span><span class="t">                            <span class="nam">spec_graph</span><span class="op">.</span><span class="nam">value</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t353" href="#t353">353</a></span><span class="t">                                <span class="nam">subject</span><span class="op">=</span><span class="nam">spec_uri</span><span class="op">,</span> <span class="nam">predicate</span><span class="op">=</span><span class="nam">MUST</span><span class="op">.</span><span class="nam">specFileName</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t354" href="#t354">354</a></span><span class="t">                            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t355" href="#t355">355</a></span><span class="t">                            <span class="key">or</span> <span class="str">"unknown"</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t356" href="#t356">356</a></span><span class="t">                        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t357" href="#t357">357</a></span><span class="t">                        <span class="nam">file_path</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t357" href="#t357">357</a></span><span class="t">                        <span class="nam">file_path</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t358" href="#t358">358</a></span><span class="t">                            <span class="nam">spec_graph</span><span class="op">.</span><span class="nam">value</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t359" href="#t359">359</a></span><span class="t">                                <span class="nam">subject</span><span class="op">=</span><span class="nam">spec_uri</span><span class="op">,</span> <span class="nam">predicate</span><span class="op">=</span><span class="nam">MUST</span><span class="op">.</span><span class="nam">specSourceFile</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t360" href="#t360">360</a></span><span class="t">                            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t361" href="#t361">361</a></span><span class="t">                            <span class="key">or</span> <span class="str">"unknown"</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t362" href="#t362">362</a></span><span class="t">                        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t363" href="#t363">363</a></span><span class="t">                        <span class="nam">skipped_results</span> <span class="op">+=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t363" href="#t363">363</a></span><span class="t">                        <span class="nam">skipped_results</span> <span class="op">+=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t364" href="#t364">364</a></span><span class="t">                            <span class="nam">SpecSkipped</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t365" href="#t365">365</a></span><span class="t">                                <span class="nam">spec_uri</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t366" href="#t366">366</a></span><span class="t">                                <span class="nam">triple_store</span><span class="op">[</span><span class="str">"type"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
@@ -524,14 +524,14 @@
     <p class="pln"><span class="n"><a id="t442" href="#t442">442</a></span><span class="t">            <span class="nam">spec_file_path</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t443" href="#t443">443</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t444" href="#t444">444</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t445" href="#t445">445</a></span><span class="t">    <span class="key">except</span> <span class="op">(</span><span class="nam">ValueError</span><span class="op">,</span> <span class="nam">FileNotFoundError</span><span class="op">)</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t446" href="#t446">446</a></span><span class="t">        <span class="nam">template</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t445" href="#t445">445</a></span><span class="t">    <span class="key">except</span> <span class="op">(</span><span class="nam">ValueError</span><span class="op">,</span> <span class="nam">FileNotFoundError</span><span class="op">)</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t446" href="#t446">446</a></span><span class="t">        <span class="nam">template</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t447" href="#t447">447</a></span><span class="t">            <span class="str">"An exception of type {0} occurred. Arguments:\n{1!r}\nStacktrace:\n{2}"</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t448" href="#t448">448</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t449" href="#t449">449</a></span><span class="t">        <span class="nam">stacktrace</span> <span class="op">=</span> <span class="nam">traceback</span><span class="op">.</span><span class="nam">format_exc</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t450" href="#t450">450</a></span><span class="t">        <span class="nam">message</span> <span class="op">=</span> <span class="nam">template</span><span class="op">.</span><span class="nam">format</span><span class="op">(</span><span class="nam">type</span><span class="op">(</span><span class="nam">e</span><span class="op">)</span><span class="op">.</span><span class="nam">__name__</span><span class="op">,</span> <span class="nam">e</span><span class="op">.</span><span class="nam">args</span><span class="op">,</span> <span class="nam">stacktrace</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t451" href="#t451">451</a></span><span class="t">        <span class="nam">log</span><span class="op">.</span><span class="nam">exception</span><span class="op">(</span><span class="nam">message</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t452" href="#t452">452</a></span><span class="t">        <span class="key">raise</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t449" href="#t449">449</a></span><span class="t">        <span class="nam">stacktrace</span> <span class="op">=</span> <span class="nam">traceback</span><span class="op">.</span><span class="nam">format_exc</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t450" href="#t450">450</a></span><span class="t">        <span class="nam">message</span> <span class="op">=</span> <span class="nam">template</span><span class="op">.</span><span class="nam">format</span><span class="op">(</span><span class="nam">type</span><span class="op">(</span><span class="nam">e</span><span class="op">)</span><span class="op">.</span><span class="nam">__name__</span><span class="op">,</span> <span class="nam">e</span><span class="op">.</span><span class="nam">args</span><span class="op">,</span> <span class="nam">stacktrace</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t451" href="#t451">451</a></span><span class="t">        <span class="nam">log</span><span class="op">.</span><span class="nam">exception</span><span class="op">(</span><span class="nam">message</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t452" href="#t452">452</a></span><span class="t">        <span class="key">raise</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t453" href="#t453">453</a></span><span class="t">    <span class="key">except</span> <span class="nam">ConnectionError</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t454" href="#t454">454</a></span><span class="t">        <span class="nam">log</span><span class="op">.</span><span class="nam">error</span><span class="op">(</span><span class="nam">e</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t455" href="#t455">455</a></span><span class="t">        <span class="key">raise</span>&nbsp;</span><span class="r"></span></p>
@@ -1276,7 +1276,7 @@
             <a class="nav" href="z_1ad9aa9760c2f0a5_mustrdAnzo_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.8.2">coverage.py v7.8.2</a>,
-            created at 2025-06-12 08:55 +0000
+            created at 2025-06-13 16:10 +0000
         </p>
     </div>
 </footer>
