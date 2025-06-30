@@ -548,13 +548,38 @@ def run_spec(spec: Specification) -> SpecResult:
 
 
 def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
+    graph = Graph()
+    # Parse the main triple store graph file
+    try:
+        graph.parse(triple_store_graph_path)
+    except Exception as e:
+        log.error(f"Failed to parse triple store graph file '{triple_store_graph_path}': {e}")
+        raise
+
+    # Parse secrets, either from string or from file
     if secrets:
-        return Graph().parse(triple_store_graph_path).parse(data=secrets)
+        log.info("Parsing secrets from provided string (--secrets option)")
+        log.info("" + secrets)
+        try:
+            graph.parse(data=secrets)
+        except Exception as e:
+            log.error(f"Failed to parse secrets data for triple store graph: {e}")
+            raise
     else:
-        secret_path = triple_store_graph_path.parent / Path(
+        secret_path = triple_store_graph_path.with_name(
             triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
         )
-        return Graph().parse(triple_store_graph_path).parse(secret_path)
+        log.info("Parsing secrets from secrets file: " + str(secret_path))
+        if secret_path.exists():
+            try:
+                graph.parse(secret_path)
+            except Exception as e:
+                log.error(f"Failed to parse secrets file '{secret_path}': {e}")
+                raise
+        else:
+            log.info(f"No secrets file found at '{secret_path}', continuing without it.")
+
+    return graph
 
 
 # Parse and validate triple store configuration
