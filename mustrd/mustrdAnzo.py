@@ -98,8 +98,11 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
             ?stepUri a <http://cambridgesemantics.com/ontologies/Graphmarts#Step>;
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
     }}"""
-    return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]['query']
-
+    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    if len(result) == 0:
+        raise FileNotFoundError(
+            f"Querynot found for step {query_step_uri}")
+    return result[0].get("query")
 
 def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
     query = f"""SELECT ?param_query ?query_template WHERE {{
@@ -109,8 +112,11 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
                         <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
-    return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]
-
+    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    if len(result) == 0:
+        raise FileNotFoundError(
+            f"Templated query not found for {query_step_uri}")
+    return result[0]
 
 def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):
     query = f"""PREFIX graphmarts: <http://cambridgesemantics.com/ontologies/Graphmarts#>
@@ -129,8 +135,11 @@ SELECT ?query ?param_query ?query_template
       . }}
   }}
   ORDER BY ?index"""
-    return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
-
+    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    if len(result) == 0:
+        raise FileNotFoundError(
+            f"Queries not found for graphmart layer {graphmart_layer_uri}")
+    return result
 
 def upload_given(triple_store: dict, given: Graph):
     logging.debug(f"upload_given {triple_store} {given}")
