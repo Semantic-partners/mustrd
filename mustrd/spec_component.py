@@ -179,6 +179,8 @@ def get_file_absolute_path(spec_component_details: SpecComponentDetails, relativ
 
 
 def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
+    if not spec_components:
+        raise ValueError("spec_components list is empty")
     # Get the type of the first object in the list
     spec_type = type(spec_components[0])
     # Loop through the remaining objects in the list and check their types
