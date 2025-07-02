@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Coverage for mustrd/mustrd.py: 75%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
-    <link rel="stylesheet" href="style_cb_8e611ae1.css" type="text/css">
+    <link rel="stylesheet" href="style_cb_81f8c14c.css" type="text/css">
     <script src="coverage_html_cb_6fb7b396.js" defer></script>
 </head>
 <body class="pyfile">
@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_1ad9aa9760c2f0a5_mustrdAnzo_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.8.2">coverage.py v7.8.2</a>,
-            created at 2025-06-13 16:10 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.9.1">coverage.py v7.9.1</a>,
+            created at 2025-07-02 08:44 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -989,8 +989,8 @@
     <p class="mis show_mis"><span class="n"><a id="t907" href="#t907">907</a></span><span class="t">    <span class="nam">then_query</span> <span class="op">=</span> <span class="fst">f"""</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t908" href="#t908">908</a></span><span class="t"><span class="fst">    prefix rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#></span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t909" href="#t909">909</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t910" href="#t910">910</a></span><span class="t"><span class="fst">    CONSTRUCT {</span> <span class="fst"> ?s ?p ?o }</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t911" href="#t911">911</a></span><span class="t"><span class="fst">    {</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t910" href="#t910">910</a></span><span class="t"><span class="fst">    CONSTRUCT {{</span><span class="fst"> ?s ?p ?o }}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t911" href="#t911">911</a></span><span class="t"><span class="fst">    {{</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t912" href="#t912">912</a></span><span class="t"><span class="fst">        &lt;</span><span class="op">{</span><span class="nam">spec_uri</span><span class="op">}</span><span class="fst">> &lt;</span><span class="op">{</span><span class="nam">MUST</span><span class="op">.</span><span class="nam">then</span><span class="op">}</span><span class="fst">></span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t913" href="#t913">913</a></span><span class="t"><span class="fst">            a &lt;</span><span class="op">{</span><span class="nam">MUST</span><span class="op">.</span><span class="nam">StatementsDataset</span><span class="op">}</span><span class="fst">> ;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t914" href="#t914">914</a></span><span class="t"><span class="fst">            &lt;</span><span class="op">{</span><span class="nam">MUST</span><span class="op">.</span><span class="nam">hasStatement</span><span class="op">}</span><span class="fst">> [</span>&nbsp;</span><span class="r"></span></p>
@@ -999,7 +999,7 @@
     <p class="pln"><span class="n"><a id="t917" href="#t917">917</a></span><span class="t"><span class="fst">                rdf:predicate ?p ;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t918" href="#t918">918</a></span><span class="t"><span class="fst">                rdf:object ?o ;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t919" href="#t919">919</a></span><span class="t"><span class="fst">            ] ; ]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t920" href="#t920">920</a></span><span class="t"><span class="fst">    }</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t920" href="#t920">920</a></span><span class="t"><span class="fst">    }}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t921" href="#t921">921</a></span><span class="t"><span class="fst">    </span><span class="fst">"""</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t922" href="#t922">922</a></span><span class="t">    <span class="nam">expected_results</span> <span class="op">=</span> <span class="nam">spec_graph</span><span class="op">.</span><span class="nam">query</span><span class="op">(</span><span class="nam">then_query</span><span class="op">)</span><span class="op">.</span><span class="nam">graph</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t923" href="#t923">923</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -1275,8 +1275,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_1ad9aa9760c2f0a5_mustrdAnzo_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.8.2">coverage.py v7.8.2</a>,
-            created at 2025-06-13 16:10 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.9.1">coverage.py v7.9.1</a>,
+            created at 2025-07-02 08:44 +0000
         </p>
     </div>
 </footer>
