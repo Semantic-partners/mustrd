@@ -675,7 +675,7 @@ def get_spec_component_from_file(path: Path) -> str:
         raise ValueError(f"Path {path} is a directory, expected a file")
 
     try:
-        content = path.read_text()
+        content = path.read_text(encoding='utf-8')
     except FileNotFoundError:
         raise
     return str(content)
