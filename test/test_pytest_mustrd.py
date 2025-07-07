@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from mustrd.mustrdTestPlugin import MustrdTestPlugin
-from mustrd.mustrd import SpecSkipped
+from mustrd.mustrd import SpecInvalid
 import logging
 from pyshacl import validate
 
@@ -29,7 +29,7 @@ def test_collection_full():
         map(
             lambda item: item.name,
             # Filter on skipped items
-            list(filter(lambda item: isinstance(item.spec, SpecSkipped), items)),
+            list(filter(lambda item: isinstance(item.spec, SpecInvalid), items)),
         )
     )
     log.info(f"Collected nodes: {collected_nodes}")
@@ -336,7 +336,7 @@ def test_triplestore_config():
         map(
             lambda item: item.name,
             # Filter on skipped items
-            list(filter(lambda item: isinstance(item.spec, SpecSkipped), items)),
+            list(filter(lambda item: isinstance(item.spec, SpecInvalid), items)),
         )
     )
     failed_nodes = list(

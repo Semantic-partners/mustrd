@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 import pytest
 import os
-from pathlib import Path, PosixPath
+from pathlib import Path
 from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
 from pytest import Session
@@ -11,21 +11,16 @@ from mustrd import logger_setup
 from mustrd.TestResult import ResultList, TestResult, get_result_list
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
+    validate_specs,
+    get_specs,
+    SpecPassed,
+    run_spec,
     write_result_diff_to_log,
     get_triple_store_graph,
     get_triple_stores,
     SpecInvalid
 )
-from mustrd.mustrd import (
-    Specification,
-    SpecSkipped,
-    validate_specs,
-    get_specs,
-    SpecPassed,
-    run_spec,
-)
 from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
-from typing import Union
 from pyshacl import validate
 
 import pathlib
@@ -172,13 +167,6 @@ class TestConfig:
     filter_on_tripleStore: str = None
 
 
-@dataclass(frozen=True)
-class TestParamWrapper:
-    id: str
-    test_config: TestConfig
-    unit_test: Union[Specification, SpecSkipped]
-
-
 # Configure logging
 logger = logger_setup.setup_logger(__name__)
 
@@ -188,7 +176,6 @@ class MustrdTestPlugin:
     test_config_file: Path
     selected_tests: list
     secrets: str
-    unit_tests: Union[Specification, SpecSkipped]
     items: list
     path_filter: str
     collect_error: BaseException
@@ -202,18 +189,17 @@ class MustrdTestPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.info("Starting test collection")
-        
-        self.unit_tests = []
+
         args = session.config.args
-        
+
         # Split args into mustrd and regular pytest args
         mustrd_args = [arg for arg in args if ".mustrd.ttl" in arg]
         pytest_args = [arg for arg in args if arg != os.getcwd() and ".mustrd.ttl" not in arg]
-        
+
         self.selected_tests = list(
             map(
                 lambda arg: Path(arg.split("::")[0]),
-                mustrd_args 
+                mustrd_args
             )
         )
         logger.info(f"selected_tests is: {self.selected_tests}")
@@ -238,7 +224,7 @@ class MustrdTestPlugin:
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
-            return arg[arg.index("[") + 1 : arg.index(".mustrd.ttl ")]
+            return arg[arg.index("[") + 1: arg.index(".mustrd.ttl ")]
         return None
 
     @pytest.hookimpl
@@ -248,9 +234,9 @@ class MustrdTestPlugin:
         if not str(path).endswith('.ttl'):
             return None
         if Path(path).resolve() != Path(self.test_config_file).resolve():
-                logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
-                return None
-        
+            logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
+            return None
+
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
@@ -280,18 +266,6 @@ class MustrdTestPlugin:
 
         # Return normal specs + skipped results
         return specs + skipped_spec_results + invalid_specs
-
-    # Function called to generate the name of the test
-    def get_test_name(self, spec):
-        # FIXME: SpecSkipped should have the same structure?
-        if isinstance(spec, SpecSkipped):
-            triple_store = spec.triple_store
-        else:
-            triple_store = spec.triple_store["type"]
-
-        triple_store_name = triple_store.replace("https://mustrd.com/model/", "")
-        test_name = spec.spec_uri.replace(spnamespace, "").replace("_", " ")
-        return spec.spec_file_name + " : " + triple_store_name + ": " + test_name
 
     # Get triple store configuration or default
     def get_triple_stores_from_file(self, test_config):
@@ -387,6 +361,7 @@ class MustrdTestPlugin:
         with open(self.md_path, "w") as file:
             file.write(md)
 
+
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
 
@@ -399,14 +374,14 @@ class MustrdFile(pytest.File):
         try:
             logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
             # Only process the specific mustrd config file we were given
-            
+
             # if not str(self.fspath).endswith(".ttl"):
             #     return []
             # Only process the specific mustrd config file we were given
             # if str(self.fspath) != str(self.mustrd_plugin.test_config_file):
             #     logger.info(f"Skipping non-config file: {self.fspath}")
             #     return []
-                
+
             test_configs = parse_config(self.path)
             from collections import defaultdict
             pytest_path_grouped = defaultdict(list)
@@ -417,7 +392,7 @@ class MustrdFile(pytest.File):
                 ):
                     logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
                     continue
-                
+
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
                 try:
                     specs = self.mustrd_plugin.generate_tests_for_config(
@@ -503,7 +478,7 @@ class MustrdItem(pytest.Item):
             f"Error: \n{excinfo.value}\n"
             f"Traceback:\n{tb_str}"
         )
-    
+
     def reportinfo(self):
         r = "", 0, f"mustrd test: {self.name}"
         return r
@@ -513,9 +488,6 @@ class MustrdItem(pytest.Item):
 def run_test_spec(test_spec):
     logger = logging.getLogger("mustrd.test")
     logger.info(f"Running test spec: {getattr(test_spec, 'spec_uri', test_spec)}")
-    if isinstance(test_spec, SpecSkipped):
-        logger.warning(f"Test skipped: {test_spec.message}")
-        pytest.fail(f"Invalid configuration, error : {test_spec.message}")
     try:
         result = run_spec(test_spec)
         logger.info(f"Result type: {type(result)} for spec: {getattr(test_spec, 'spec_uri', test_spec)}")
@@ -526,13 +498,11 @@ def run_test_spec(test_spec):
 
     if isinstance(test_spec, SpecInvalid):
         logger.error(f"Invalid test specification: {test_spec.message} {test_spec}")
-        raise ValueError(f"Invalid test specification: {test_spec.message} {test_spec}")
-    if type(result) == SpecSkipped:
-        logger.warning("Test skipped due to unsupported configuration")
-        pytest.fail("Unsupported configuration")
-    if type(result) != SpecPassed:
+        pytest.fail(f"Invalid test specification: {test_spec.message} {test_spec}")
+    if not isinstance(result, SpecPassed):
         write_result_diff_to_log(result, logger.info)
         log_lines = []
+
         def log_to_string(message):
             log_lines.append(message)
         try:
@@ -544,4 +514,4 @@ def run_test_spec(test_spec):
         raise AssertionError("Test failed: " + "\n".join(log_lines))
 
     logger.info(f"Test PASSED: {getattr(test_spec, 'spec_uri', test_spec)}")
-    return type(result) == SpecPassed
+    return isinstance(result, SpecPassed)
