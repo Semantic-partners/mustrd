@@ -141,6 +141,13 @@ class SpecSkipped(SpecResult):
 
 
 @dataclass
+class SpecInvalid(SpecResult):
+    message: str
+    spec_file_name: str = "default.mustrd.ttl"
+    spec_source_file: Path = Path("default.mustrd.ttl")
+
+
+@dataclass
 class SparqlAction:
     query: str
 
@@ -310,7 +317,7 @@ def add_spec_validation(
             error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
             invalid_specs += [
-                SpecSkipped(
+                SpecInvalid(
                     subject_uri, triple_store["type"], error_message, file.name, file
                 )
                 for triple_store in triple_stores
@@ -324,15 +331,15 @@ def get_specs(
     run_config: dict,
 ):
     specs = []
-    skipped_results = []
+    invalid_spec = []
     try:
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(
                     f"{triple_store['error']}. No specs run for this triple store."
                 )
-                skipped_results += [
-                    SpecSkipped(
+                invalid_spec += [
+                    SpecInvalid(
                         spec_uri,
                         triple_store["type"],
                         triple_store["error"],
@@ -360,8 +367,8 @@ def get_specs(
                             )
                             or "unknown"
                         )
-                        skipped_results += [
-                            SpecSkipped(
+                        invalid_spec += [
+                            SpecInvalid(
                                 spec_uri,
                                 triple_store["type"],
                                 str(e),
@@ -380,7 +387,7 @@ def get_specs(
         log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
-    return specs, skipped_results
+    return specs, invalid_spec
 
 
 def run_specs(specs) -> List[SpecResult]:

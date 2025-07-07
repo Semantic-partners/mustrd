@@ -14,6 +14,7 @@ from mustrd.mustrd import (
     write_result_diff_to_log,
     get_triple_store_graph,
     get_triple_stores,
+    SpecInvalid
 )
 from mustrd.mustrd import (
     Specification,
@@ -264,7 +265,7 @@ class MustrdTestPlugin:
         logger.debug("Generating tests for config: " + str(config))
         logger.debug(f"selected_tests {self.selected_tests}")
 
-        valid_spec_uris, spec_graph, invalid_spec_results = validate_specs(
+        valid_spec_uris, spec_graph, invalid_specs = validate_specs(
             config,
             triple_stores,
             shacl_graph,
@@ -272,17 +273,6 @@ class MustrdTestPlugin:
             file_name or "*",
             selected_test_files=self.selected_tests,
         )
-        # Convert invalid specs to SpecInvalid instead of SpecSkipped
-        invalid_specs = [
-            SpecInvalid(
-                spec.spec_uri,
-                spec.triple_store,
-                spec.message,
-                spec.spec_file_name,
-                spec.spec_source_file
-            ) for spec in invalid_spec_results
-        ]
-
 
         specs, skipped_spec_results = get_specs(
             valid_spec_uris, spec_graph, triple_stores, config
@@ -396,14 +386,6 @@ class MustrdTestPlugin:
         md = result_list.render()
         with open(self.md_path, "w") as file:
             file.write(md)
-
-@dataclass(frozen=True)
-class SpecInvalid:
-    spec_uri: str
-    triple_store: str
-    message: str
-    spec_file_name: str = None
-    spec_source_file: Path = None
 
 class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
@@ -533,7 +515,7 @@ def run_test_spec(test_spec):
     logger.info(f"Running test spec: {getattr(test_spec, 'spec_uri', test_spec)}")
     if isinstance(test_spec, SpecSkipped):
         logger.warning(f"Test skipped: {test_spec.message}")
-        pytest.skip(f"Invalid configuration, error : {test_spec.message}")
+        pytest.fail(f"Invalid configuration, error : {test_spec.message}")
     try:
         result = run_spec(test_spec)
         logger.info(f"Result type: {type(result)} for spec: {getattr(test_spec, 'spec_uri', test_spec)}")
@@ -547,7 +529,7 @@ def run_test_spec(test_spec):
         raise ValueError(f"Invalid test specification: {test_spec.message} {test_spec}")
     if type(result) == SpecSkipped:
         logger.warning("Test skipped due to unsupported configuration")
-        pytest.skip("Unsupported configuration")
+        pytest.fail("Unsupported configuration")
     if type(result) != SpecPassed:
         write_result_diff_to_log(result, logger.info)
         log_lines = []
