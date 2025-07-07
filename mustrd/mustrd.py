@@ -204,6 +204,12 @@ def validate_specs(
                 f"Could not extract spec from {file} due to exception of type "
                 f"{type(e).__name__} when parsing file"
             ]
+            invalid_specs += [
+                SpecInvalid(
+                    "urn:invalid_spec_file", triple_store["type"], message, file.name, file
+                )
+                for triple_store in triple_stores
+            ]
             continue
 
         # run shacl validation
