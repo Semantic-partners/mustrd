@@ -125,7 +125,6 @@ def test_collection_path():
         "select_spec_given_file.mustrd.ttl",
         "construct_spec_when_file_then_file_as_uris.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        "select_spec_given_inherited_state.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec.mustrd.ttl",
         "construct_spec_multiple_given_multile_then.mustrd.ttl",
