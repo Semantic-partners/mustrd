@@ -77,6 +77,12 @@ def pytest_addoption(parser):
         default=None,
         help="Filter tests based on the pytest_path property in .mustrd.ttl files.",
     )
+    group.addoption(
+        "--ignore-focus",
+        action="store_true",
+        dest="ignore_focus",
+        help="Activate/deactivate focus: if --ignore-focus is set, focus will be ignored.",
+    )
     return
 
 
@@ -88,6 +94,7 @@ def pytest_configure(config) -> None:
                 config.getoption("mdpath"),
                 Path(config.getoption("configpath")),
                 config.getoption("secrets"),
+                config.getoption("ignore_focus"),
             )
         )
 
@@ -192,10 +199,11 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets):
+    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
+        self.ignore_focus = ignore_focus
         self.items = []
 
     @pytest.hookimpl(tryfirst=True)
@@ -271,6 +279,7 @@ class MustrdTestPlugin:
             ont_graph,
             file_name or "*",
             selected_test_files=self.selected_tests,
+            ignore_focus=self.ignore_focus,
         )
         # Convert invalid specs to SpecInvalid instead of SpecSkipped
         invalid_specs = [

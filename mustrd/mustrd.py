@@ -169,6 +169,7 @@ def validate_specs(
     ont_graph: Graph,
     file_name: str = "*",
     selected_test_files: List[str] = [],
+    ignore_focus: bool = False,
 ) -> Tuple[List, Graph, List]:
     spec_graph = Graph()
     subject_uris = set()
@@ -252,7 +253,7 @@ def validate_specs(
 
     valid_spec_uris = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
 
-    if focus_uris:
+    if focus_uris and not ignore_focus:
         invalid_focus_specs = get_invalid_focus_spec(focus_uris, invalid_specs)
         return focus_uris, spec_graph, invalid_focus_specs
     else:
