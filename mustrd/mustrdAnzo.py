@@ -98,7 +98,29 @@ def get_query_from_step(triple_store: dict, query_step_uri: URIRef) -> str:
             ?stepUri a <http://cambridgesemantics.com/ontologies/Graphmarts#Step>;
                      <http://cambridgesemantics.com/ontologies/Graphmarts#transformQuery> ?query
     }}"""
-    return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]['query']
+    
+    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    
+    if not result:
+        # Check if the step exists at all
+        existence_query = f"""ASK WHERE {{
+            <{query_step_uri}> ?p ?o
+        }}"""
+        try:
+            exists_result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=existence_query))
+            step_exists = exists_result and exists_result[0].get('ASK', False)
+        except Exception:
+            step_exists = False
+        
+        if not step_exists:
+            raise ValueError(f"Query step <{query_step_uri}> does not exist in Anzo triplestore. "
+                           f"Check if the step URI is correct or consider using must:FileSparqlSource instead. "
+                           f"Example: [ a must:FileSparqlSource ; must:fileurl <file://path/to/query.sparql> ; must:queryType must:UpdateSparql ]")
+        else:
+            raise ValueError(f"Query step <{query_step_uri}> exists but is missing required properties. "
+                           f"Expected: rdf:type = Graphmarts#Step and Graphmarts#transformQuery property.")
+    
+    return result[0]['query']
 
 
 def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) -> dict:
@@ -109,7 +131,13 @@ def get_queries_from_templated_step(triple_store: dict, query_step_uri: URIRef) 
                         <http://cambridgesemantics.com/ontologies/Graphmarts#template> ?query_template .
     }}
     """
-    return json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))[0]
+    result = json_to_dictlist(query_configuration(anzo_config=triple_store, query=query))
+    
+    if not result:
+        raise ValueError(f"Templated query step <{query_step_uri}> does not exist or is missing required properties. "
+                        f"Expected: rdf:type = Graphmarts#Step with parametersTemplate and template properties.")
+    
+    return result[0]
 
 
 def get_queries_for_layer(triple_store: dict, graphmart_layer_uri: URIRef):

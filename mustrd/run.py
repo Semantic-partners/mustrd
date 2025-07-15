@@ -23,14 +23,14 @@ SOFTWARE.
 """
 
 import argparse
-import logger_setup
+from . import logger_setup
 import sys
 import os
 from rdflib import Graph
 from .mustrd import get_triple_store_graph, run_specs, get_triple_stores, review_results, validate_specs, get_specs
 from pathlib import Path
 from .namespace import TRIPLESTORE
-from .utils import get_project_root
+from .utils import get_mustrd_root
 log = logger_setup.setup_logger(__name__)
 
 
@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-g", "--given", help="Override path for given files", default=None)
     parser.add_argument("-w", "--when", help="Override path for when files", default=None)
     parser.add_argument("-t", "--then", help="Override path for then files", default=None)
+    parser.add_argument("--validate-only", help="Only validate specs, don't run them", action='store_true')
 
     return parser.parse_args()
 
@@ -50,7 +51,7 @@ def parse_args() -> argparse.Namespace:
 # https://github.com/Semantic-partners/mustrd/issues/108
 def main(argv):
     # Given_path = when_path = then_path = None
-    project_root = get_project_root()
+    project_root = get_mustrd_root()
     run_config = {}
     args = parse_args()
     run_config["spec_path"] = Path(args.put)
@@ -96,6 +97,44 @@ def main(argv):
     specs, skipped_spec_results = \
         get_specs(valid_spec_uris, spec_graph, triple_stores, run_config)
 
+    # Handle validate-only mode
+    if args.validate_only:
+        log.info("Running validation-only mode")
+        
+        # Import validate_test_spec directly
+        from .mustrd import validate_test_spec
+        
+        validation_results = []
+        
+        for spec in specs:
+            try:
+                # Use the spec_graph from the spec if available, otherwise fall back to the main spec_graph
+                graph_to_validate = getattr(spec, 'spec_graph', spec_graph)
+                warnings, errors = validate_test_spec(graph_to_validate, spec.spec_uri)
+                
+                print(f"\n=== Validation Results for {spec.spec_uri} ===")
+                
+                if warnings:
+                    print("WARNINGS:")
+                    for warning in warnings:
+                        print(f"  ⚠️  {warning}")
+                
+                if errors:
+                    print("ERRORS:")
+                    for error in errors:
+                        print(f"  ❌ {error}")
+                
+                if not warnings and not errors:
+                    print("  ✅ No validation issues found")
+                    
+            except Exception as e:
+                print(f"  🔥 Validation failed: {e}")
+        
+        print(f"\n=== Summary ===")
+        print(f"Validated {len(specs)} test specs")
+        print("Use --verbose for more detailed logging")
+        return
+    
     results = invalid_spec_results + skipped_spec_results + run_specs(specs)
 
     review_results(results, verbose)

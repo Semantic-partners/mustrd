@@ -77,6 +77,12 @@ def pytest_addoption(parser):
         default=None,
         help="Filter tests based on the pytest_path property in .mustrd.ttl files.",
     )
+    group.addoption(
+        "--mustrd-validate",
+        action="store_true",
+        dest="mustrd_validate",
+        help="Show detailed validation warnings for mustrd specs.",
+    )
     return
 
 

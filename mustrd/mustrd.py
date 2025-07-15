@@ -77,6 +77,7 @@ class Specification:
     then: ThenSpec
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
+    spec_graph: Graph = None  # Store the original spec graph for validation
 
 
 @dataclass
@@ -440,6 +441,7 @@ def get_spec(
             components[2],
             spec_file_name,
             spec_file_path,
+            spec_graph,  # Include the original spec graph for validation
         )
 
     except (ValueError, FileNotFoundError) as e:
@@ -495,6 +497,29 @@ def run_spec(spec: Specification) -> SpecResult:
         return spec
         # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
 
+    # Add validation before running the spec
+    try:
+        # Use the spec_graph from the spec if available, otherwise skip validation with a warning
+        if hasattr(spec, 'spec_graph') and getattr(spec, 'spec_graph', None) is not None:
+            warnings, errors = validate_test_spec(spec.spec_graph, spec_uri)
+            
+            # Log warnings
+            for warning in warnings:
+                log.warning(f"Spec validation warning for {spec_uri}: {warning}")
+            
+            # Log errors and potentially fail early
+            for error in errors:
+                log.error(f"Spec validation error for {spec_uri}: {error}")
+            
+            # For now, just log errors but don't fail - in future versions this could be configurable
+            if errors:
+                log.warning(f"Spec {spec_uri} has validation errors but will continue execution")
+        else:
+            log.debug(f"Spec {spec_uri} does not have spec_graph available for validation")
+    
+    except Exception as e:
+        log.warning(f"Failed to validate spec {spec_uri}: {e}")
+
     log.debug(f"run_spec {spec=}")
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
@@ -516,12 +541,13 @@ def run_spec(spec: Specification) -> SpecResult:
                 f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}"
             )
             try:
-                result = run_when_impl(spec_uri, triple_store, when)
+                result = run_when_impl(spec_uri, triple_store, when, spec)
                 log.info(
                     f"run {when.queryType} spec {spec_uri} on {triple_store['type']} {result=}"
                 )
             except ParseException as e:
-                log.error(f"parseException {e}")
+                file_info = f" (file: {spec.spec_source_file})" if hasattr(spec, 'spec_source_file') else ""
+                log.error(f"parseException {e}{file_info}")
                 return SparqlParseFailure(spec_uri, triple_store["type"], e)
             except NotImplementedError as ex:
                 log.error(f"NotImplementedError {ex}")
@@ -1185,7 +1211,7 @@ def display_verbose(results: List[SpecResult]):
             log.info(res.warning)
         if (
             isinstance(res, TripleStoreConnectionError)
-            or type(res, SparqlExecutionError)
+            or isinstance(res, SparqlExecutionError)
             or isinstance(res, SparqlParseFailure)
         ):
             log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
@@ -1200,13 +1226,120 @@ original_run_when_impl = run_when_impl
 
 
 # Wrapper function for logging inputs and outputs of run_when
-def run_when_with_logging(*args, **kwargs):
-    log.debug(f"run_when called with args: {args}, kwargs: {kwargs}")
-    result = original_run_when_impl(*args, **kwargs)  # Call the original multimethod
-    log.debug(f"run_when returned: {result}")
-    return result
+def run_when_with_logging(spec_uri, triple_store, when, spec=None):
+    
+    # Enhanced logging for different step types
+    if hasattr(when, 'anzoQueryStep'):
+        log.info(f"Executing AnzoGraphmartStepSparqlSource for spec {spec_uri}")
+        log.info(f"Using Anzo query step: {when.anzoQueryStep}")
+        log.warning(f"If this fails with 'list index out of range', the query step may not exist in Anzo. "
+                   f"Consider using FileSparqlSource instead.")
+    elif hasattr(when, 'fileurl') or hasattr(when, 'file'):
+        file_ref = getattr(when, 'fileurl', getattr(when, 'file', 'unknown'))
+        log.info(f"Executing FileSparqlSource for spec {spec_uri}")
+        log.info(f"Using file-based SPARQL: {file_ref}")
+    else:
+        log.info(f"Executing {when.__class__.__name__} for spec {spec_uri}")
+    
+    log.debug(f"run_when called with args: {(spec_uri, triple_store, when)}")
+    
+    # Get file info for error reporting
+    file_info = ""
+    if spec and hasattr(spec, 'spec_source_file'):
+        file_info = f" (file: {spec.spec_source_file})"
+    
+    try:
+        result = original_run_when_impl(spec_uri, triple_store, when)  # Call the original multimethod
+        log.debug(f"run_when returned: {result}")
+        return result
+    except IndexError as e:
+        if "list index out of range" in str(e):
+            log.error(f"IndexError caught - likely missing Anzo query step or empty result set{file_info}.")
+            log.error(f"Check if the referenced query step exists in the triplestore.")
+            if hasattr(when, 'anzoQueryStep'):
+                log.error(f"Problematic query step URI: {when.anzoQueryStep}")
+                log.error(f"Suggestion: Verify this step exists in Anzo or use FileSparqlSource instead.")
+        raise
+    except Exception as e:
+        log.error(f"Unexpected error in run_when for spec {spec_uri}{file_info}: {type(e).__name__}: {e}")
+        raise
 
 
 # Replace the original run_when_impl with the wrapped version
 run_when_impl = run_when_with_logging
 run_when = run_when_impl
+
+
+def validate_test_spec(spec_graph: Graph, spec_uri: URIRef) -> Tuple[List[str], List[str]]:
+    """Validate a test spec before execution to catch common issues early.
+    
+    Returns:
+        Tuple of (warnings, errors) - lists of validation messages
+    """
+    warnings = []
+    errors = []
+    
+    # Check for AnzoGraphmartStepSparqlSource usage
+    anzo_steps = list(spec_graph.objects(None, MUST.anzoQueryStep))
+    for step_uri in anzo_steps:
+        warnings.append(f"Using AnzoGraphmartStepSparqlSource with step {step_uri}. "
+                       f"If this step doesn't exist in Anzo, consider using FileSparqlSource for local development. "
+                       f"Example: [ a must:FileSparqlSource ; must:fileurl <file://path/to/query.sparql> ; must:queryType must:UpdateSparql ]")
+    
+    # Check file paths exist for FileDataset and FileSparqlSource
+    file_urls = []
+    
+    # Collect file URLs from FileDataset
+    for dataset in spec_graph.subjects(RDF.type, MUST.FileDataset):
+        file_urls.extend(spec_graph.objects(dataset, MUST.fileurl))
+        file_urls.extend(spec_graph.objects(dataset, MUST.file))
+    
+    # Collect file URLs from FileSparqlSource
+    for source in spec_graph.subjects(RDF.type, MUST.FileSparqlSource):
+        file_urls.extend(spec_graph.objects(source, MUST.fileurl))
+        file_urls.extend(spec_graph.objects(source, MUST.file))
+    
+    for file_url in file_urls:
+        file_url_str = str(file_url)
+        if file_url_str.startswith('file://'):
+            # Convert file:// URL to path and check existence
+            file_path = file_url_str[7:]  # Remove 'file://' prefix
+            
+            # Handle relative paths - they should be relative to the spec file
+            if not os.path.isabs(file_path):
+                # Check if this looks like a problematic relative path
+                # Standard mustrd patterns are expected and don't need warnings:
+                # - ./data/... (test data files)  
+                # - ../../../graphmart-config/... (shared config files)
+                if (file_path.startswith('./data/') or 
+                    file_path.startswith('../../../graphmart-config/') or
+                    file_path.startswith('./../../../graphmart-config/')):
+                    # These are expected patterns in mustrd tests, don't warn
+                    pass
+                elif '/' not in file_path:
+                    # File in same directory without ./ prefix might be unintentional
+                    warnings.append(f"File path '{file_path}' appears to be relative. "
+                                   f"Consider using './data/{file_path}' if it's in the data directory.")
+                else:
+                    # Other relative paths might need attention
+                    warnings.append(f"Relative file path detected: {file_path}. "
+                                   f"Ensure the path is correct relative to the test spec file.")
+            elif not os.path.exists(file_path):
+                errors.append(f"File does not exist: {file_path}")
+    
+    # Check for required properties
+    test_specs = list(spec_graph.subjects(RDF.type, MUST.TestSpec))
+    for test_spec in test_specs:
+        # Check for must:given
+        if not list(spec_graph.objects(test_spec, MUST.given)):
+            errors.append(f"Test spec {test_spec} is missing must:given property")
+        
+        # Check for must:when
+        if not list(spec_graph.objects(test_spec, MUST.when)):
+            errors.append(f"Test spec {test_spec} is missing must:when property")
+        
+        # Check for must:then
+        if not list(spec_graph.objects(test_spec, MUST.then)):
+            errors.append(f"Test spec {test_spec} is missing must:then property")
+    
+    return warnings, errors
