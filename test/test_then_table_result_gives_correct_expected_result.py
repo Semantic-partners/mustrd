@@ -41,7 +41,7 @@ class TestRunSelectSpec:
         spec = """
         @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix sh:        <http://www.w3.org/ns/shacl#> .
-        @prefix must:      <https://mustrd.com/model/> .
+        @prefix must:      <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
