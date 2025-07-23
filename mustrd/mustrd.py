@@ -134,7 +134,7 @@ class TripleStoreConnectionError(SpecResult):
 
 
 @dataclass
-class SpecSkipped(SpecResult):
+class SpecInvalid(SpecResult):
     message: str
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
@@ -204,6 +204,12 @@ def validate_specs(
             error_messages += [
                 f"Could not extract spec from {file} due to exception of type "
                 f"{type(e).__name__} when parsing file"
+            ]
+            invalid_specs += [
+                SpecInvalid(
+                    "urn:invalid_spec_file", triple_store["type"], message, file.name, file
+                )
+                for triple_store in triple_stores
             ]
             continue
 
@@ -311,7 +317,7 @@ def add_spec_validation(
             error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
             invalid_specs += [
-                SpecSkipped(
+                SpecInvalid(
                     subject_uri, triple_store["type"], error_message, file.name, file
                 )
                 for triple_store in triple_stores
@@ -325,15 +331,15 @@ def get_specs(
     run_config: dict,
 ):
     specs = []
-    skipped_results = []
+    invalid_spec = []
     try:
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(
                     f"{triple_store['error']}. No specs run for this triple store."
                 )
-                skipped_results += [
-                    SpecSkipped(
+                invalid_spec += [
+                    SpecInvalid(
                         spec_uri,
                         triple_store["type"],
                         triple_store["error"],
@@ -361,8 +367,8 @@ def get_specs(
                             )
                             or "unknown"
                         )
-                        skipped_results += [
-                            SpecSkipped(
+                        invalid_spec += [
+                            SpecInvalid(
                                 spec_uri,
                                 triple_store["type"],
                                 str(e),
@@ -381,7 +387,7 @@ def get_specs(
         log.error("No specifications will be run.")
 
     log.info(f"Extracted {len(specs)} specifications that will be run")
-    return specs, skipped_results
+    return specs, invalid_spec
 
 
 def run_specs(specs) -> List[SpecResult]:
@@ -506,7 +512,7 @@ def run_spec(spec: Specification) -> SpecResult:
         upload_given(triple_store, spec.given)
     else:
         if triple_store["type"] == TRIPLESTORE.RdfLib:
-            return SpecSkipped(
+            return SpecInvalid(
                 spec_uri,
                 triple_store["type"],
                 "Unable to run Inherited State tests on Rdflib",
@@ -527,7 +533,6 @@ def run_spec(spec: Specification) -> SpecResult:
             except NotImplementedError as ex:
                 log.error(f"NotImplementedError {ex}")
                 raise ex
-                # return SpecSkipped(spec_uri, triple_store["type"], ex.args[0])
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
@@ -949,8 +954,8 @@ def write_result_diff_to_log(res, info):
     ):
         info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
         info(res.exception)
-    if isinstance(res, SpecSkipped):
-        info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+    if isinstance(res, SpecInvalid):
+        info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
         info(res.message)
 
 
@@ -1047,7 +1052,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
     colours = {
         SpecPassed: Fore.GREEN,
         SpecPassedWithWarning: Fore.YELLOW,
-        SpecSkipped: Fore.YELLOW,
+        SpecInvalid: Fore.RED,
     }
     # Populate dictionaries from results
     for result in results:
@@ -1104,12 +1109,12 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     pass_count = statuses.count(SpecPassed)
     warning_count = statuses.count(SpecPassedWithWarning)
-    skipped_count = statuses.count(SpecSkipped)
+    invalid_count = statuses.count(SpecInvalid)
     fail_count = len(
         list(
             filter(
                 lambda status: status
-                not in [SpecPassed, SpecPassedWithWarning, SpecSkipped],
+                not in [SpecPassed, SpecPassedWithWarning, SpecInvalid],
                 statuses,
             )
         )
@@ -1117,18 +1122,18 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
     if fail_count:
         overview_colour = Fore.RED
-    elif warning_count or skipped_count:
+    elif warning_count or invalid_count:
         overview_colour = Fore.YELLOW
     else:
         overview_colour = Fore.GREEN
 
     logger_setup.flush()
     log.info(
-        f"{overview_colour}===== {fail_count} failures, {skipped_count} skipped, {Fore.GREEN}{pass_count} passed, "
+        f"{overview_colour}===== {fail_count} failures, {invalid_count} invalid, {Fore.GREEN}{pass_count} passed, "
         f"{overview_colour}{warning_count} passed with warnings ====="
     )
 
-    if verbose and (fail_count or warning_count or skipped_count):
+    if verbose and (fail_count or warning_count or invalid_count):
         display_verbose(results)
 
 
@@ -1166,8 +1171,8 @@ def display_verbose(results: List[SpecResult]):
         ):
             log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
             log.info(res.exception)
-        if isinstance(res, SpecSkipped):
-            log.info(f"{Fore.YELLOW}Skipped {res.spec_uri} {res.triple_store}")
+        if isinstance(res, SpecInvalid):
+            log.info(f"{Fore.YELLOW}Invalid {res.spec_uri} {res.triple_store}")
             log.info(res.message)
 
 

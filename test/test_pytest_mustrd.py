@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from mustrd.mustrdTestPlugin import MustrdTestPlugin
-from mustrd.mustrd import SpecSkipped
+from mustrd.mustrd import SpecInvalid
 import logging
 from pyshacl import validate
 
@@ -25,11 +25,11 @@ def test_collection_full():
     # Get collected items
     items = mustrd_plugin.items
     collected_nodes = set(map(lambda item: item.name, items))
-    skipped_nodes = set(
+    invalid_nodes = set(
         map(
             lambda item: item.name,
-            # Filter on skipped items
-            list(filter(lambda item: isinstance(item.spec, SpecSkipped), items)),
+            # Filter on invalid items
+            list(filter(lambda item: isinstance(item.spec, SpecInvalid), items)),
         )
     )
     log.info(f"Collected nodes: {collected_nodes}")
@@ -41,6 +41,7 @@ def test_collection_full():
         "construct_spec_multiple_given_multile_then.mustrd.ttl",
         "construct_spec_variable.mustrd.ttl",
         "construct_spec_when_file_then_file.mustrd.ttl",
+        "construct_spec_when_file_then_file_as_uris.mustrd.ttl",
         "delete_data_spec.mustrd.ttl",
         "delete_insert_spec.mustrd.ttl",
         "delete_insert_spec_with_optional.mustrd.ttl",
@@ -67,28 +68,37 @@ def test_collection_full():
         "select_spec_variable.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
     }
 
-    expected_skipped = set()
+    expected_invalid = {
+        "invalid_spec.mustrd.ttl",
+        'invalid_select_spec_multiple_givens_for_inherited_state.mustrd.ttl',
+        'invalid_select_spec_with_statement_dataset_result.mustrd.ttl',
+        'invalid_delete_insert_spec_with_table_result.mustrd.ttl',
+        'invalid_delete_insert_with_inherited_given_and_empty_table_result.mustrd.ttl',
+        'invalid_select_spec_with_table_dataset_given.mustrd.ttl',
+        'invalid_select_spec_with_empty_graph_result.mustrd.ttl',
+        'invalid_delete_insert_with_inherited_given_spec.mustrd.ttl',
+    }
 
-    expected_not_skipped = expected_collected - expected_skipped
+    expected_not_invalid = expected_collected - expected_invalid
 
     # Assert all expected collected nodes are present
     assert expected_collected <= collected_nodes, (
         f"Missing collected: {expected_collected - collected_nodes}\n"
         f"Unexpected collected: {collected_nodes - expected_collected}"
     )
-
-    # Assert all expected skipped nodes are present in skipped_nodes
-    assert expected_skipped <= skipped_nodes, (
-        f"Missing skipped: {expected_skipped - skipped_nodes}\n"
-        f"Unexpected skipped: {skipped_nodes - expected_skipped}"
+    # Assert all expected invalid nodes are present in invalid_nodes
+    assert expected_invalid <= invalid_nodes, (
+        f"Missing invalid: {expected_invalid - invalid_nodes}\n"
+        f"Unexpected invalid: {invalid_nodes - expected_invalid}"
     )
 
-    # Assert that valid specs are not skipped
+    # Assert that valid specs are not marked as invalid
     assert not (
-        expected_not_skipped & skipped_nodes
-    ), f"Unexpectedly skipped: {expected_not_skipped & skipped_nodes}"
+        expected_not_invalid & invalid_nodes
+    ), f"Unexpectedly invalid: {expected_not_invalid & invalid_nodes}"
 
 
 def test_collection_path():
@@ -115,7 +125,6 @@ def test_collection_path():
         "select_spec_given_file.mustrd.ttl",
         "construct_spec_when_file_then_file_as_uris.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        "select_spec_given_inherited_state.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec.mustrd.ttl",
         "construct_spec_multiple_given_multile_then.mustrd.ttl",
@@ -332,24 +341,24 @@ def test_triplestore_config():
     items = mustrd_plugin.items
     errors = getattr(mustrd_plugin, "collect_error", None)
     log.info(f"Errors: {errors}")
-    skipped_nodes = list(
+    invalid_nodes = list(
         map(
             lambda item: item.name,
-            # Filter on skipped items
-            list(filter(lambda item: isinstance(item.spec, SpecSkipped), items)),
+            # Filter on invalid items
+            list(filter(lambda item: isinstance(item.spec, SpecInvalid), items)),
         )
     )
     failed_nodes = list(
         map(
             lambda item: item.name,
-            # Filter on skipped items
+            # Filter on invalid items
             list(filter(lambda item: isinstance(item.spec, ValueError), items)),
         )
     )
 
-    log.info(f"{skipped_nodes=}")
+    log.info(f"{invalid_nodes=}")
     log.info(f"{failed_nodes=}")
-    assert has_item(skipped_nodes, "default.mustrd.ttl", "gdb")
+    assert has_item(invalid_nodes, "default.mustrd.ttl", "gdb")
 
 
 # Returns true if a the report contains a node with the right constraint validation type on the path

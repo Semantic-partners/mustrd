@@ -5,7 +5,7 @@ from rdflib import Graph, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
-from mustrd.mustrd import Specification, SpecSkipped, run_spec
+from mustrd.mustrd import Specification, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import parse_spec_component, ThenSpec
 

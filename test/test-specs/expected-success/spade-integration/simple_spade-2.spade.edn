@@ -2,8 +2,8 @@
     {:step-groups [
                    {:group-id :group-1
                     :steps [
-                            {:type :sparql-file, :filepath "./test/data/insert.rq",} 
-                            {:type :sparql-file, :filepath "./test/data/insert-2.rq"}]}]}
+                            {:type :sparql-file, :filepath "./../../../../test/data/insert.rq",} 
+                            {:type :sparql-file, :filepath "./../../../../test/data/insert-2.rq"}]}]}
         
     
     

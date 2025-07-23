@@ -26,7 +26,7 @@ from rdflib import Graph
 from rdflib.namespace import Namespace
 from rdflib.compare import isomorphic
 
-from mustrd.mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, SpecSkipped, \
+from mustrd.mustrd import SpecPassed, UpdateSpecFailure, SparqlParseFailure, SpecInvalid, \
     Specification, check_result
 from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
@@ -852,8 +852,8 @@ class TestRunUpdateSpec:
         try:
             when_result = run_when_impl(spec_uri, triple_store, when_component[0])
         except NotImplementedError as ex:
-            when_result = SpecSkipped(spec_uri, triple_store, ex.args[0])
-        expected_result = SpecSkipped(spec_uri,
+            when_result = SpecInvalid(spec_uri, triple_store, ex.args[0])
+        expected_result = SpecInvalid(spec_uri,
                                       triple_store,
                                       f"{when_component[0].queryType} not implemented for {triple_store['type']}")
         assert when_result == expected_result
