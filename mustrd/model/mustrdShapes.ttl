@@ -169,7 +169,7 @@ must:SparqlSourceShape
     a              sh:NodeShape ;
     sh:targetClass must:SparqlSource ;
     sh:property    [ sh:path     must:queryType ;
-                     sh:in ( must:SelectSparql  must:ConstructSparql must:UpdateSparql) ;
+                     sh:in ( must:SelectSparql  must:ConstructSparql must:UpdateSparql must:AnzoQueryDrivenUpdateSparql) ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ; ] .
 
