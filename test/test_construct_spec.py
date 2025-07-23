@@ -53,7 +53,7 @@ class TestRunConstructSpec:
         run_config = {}
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -94,7 +94,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
 
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -160,7 +160,7 @@ class TestRunConstructSpec:
         construct_query = "construct { ?s ?p ?o } { ?s ?p ?o }"
         given = Graph().parse(data=triples, format="ttl")
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -215,7 +215,7 @@ class TestRunConstructSpec:
         construct_query = "construct { ?s ?p ?o } { ?s ?p ?o }"
         given = Graph().parse(data=triples, format="ttl")
         spec = f"""
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -284,7 +284,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
 
         spec = f"""
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -326,7 +326,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         construct_query = "construct { ?s ?p ?o } { ?s ?p ?o }"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -384,7 +384,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
 
         spec = f"""
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -455,7 +455,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=triples, format="ttl")
         construct_query = "construct { ?o ?p ?s } { ?s ?p ?o }"
         spec = f"""
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -511,7 +511,7 @@ class TestRunConstructSpec:
         given = Graph().parse(data=triples, format="ttl")
         construct_query = "CONSTRUCT{ ?o ?p ?s } { ?s ?p ?o }"
         spec = f"""
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -575,7 +575,7 @@ class TestRunConstructSpec:
         construct_query = "construct ?s ?p ?o where { typo }"
         spec = f"""
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_failing_construct_spec
@@ -629,7 +629,7 @@ class TestRunConstructSpec:
 
         spec_graph = Graph()
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -676,7 +676,7 @@ class TestRunConstructSpec:
                       'spec_path': spec_path,
                       'given_path': "data/given.ttl"}
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -739,7 +739,7 @@ class TestRunConstructSpec:
                       # FIXME: spec_path seems mandatory, is that normal?
                       'spec_path': Path("test/")}
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 

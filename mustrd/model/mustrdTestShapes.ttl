@@ -1,8 +1,8 @@
-@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix : <https://mustrd.org/mustrdTest/> .
 @prefix sh:        <http://www.w3.org/ns/shacl#> .
 @prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
-@prefix triplestore: <https://mustrd.com/triplestore/> .
-@base <https://mustrd.com/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+@base <https://mustrd.org/mustrdTest/> .
 
 
 

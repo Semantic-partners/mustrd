@@ -64,11 +64,11 @@ class TestGetTripleStores(unittest.TestCase):
         self.config_file = tempfile.NamedTemporaryFile(delete=False)
 
         config_data = {
-            "https://mustrd.com/model/AnzoConfig1": {
+            "https://mustrd.org/model/AnzoConfig1": {
                 "username": "test_user",
                 "password": "test_password"
             },
-            "https://mustrd.com/model/GraphDbConfig1": {
+            "https://mustrd.org/model/GraphDbConfig1": {
                 "username": "test_user",
                 "password": "test_password"
             }
@@ -98,7 +98,7 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
         triple_store_type = TRIPLESTORE.Anzo
-        triple_store_uri = URIRef("https://mustrd.com/model/AnzoConfig1")
+        triple_store_uri = URIRef("https://mustrd.org/model/AnzoConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://anzo.example.com:8080")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))
@@ -121,7 +121,7 @@ class TestGetTripleStores(unittest.TestCase):
         triple_store_graph = Graph()
         rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
         triple_store_type = TRIPLESTORE.GraphDb
-        triple_store_uri = URIRef("https://mustrd.com/model/GraphDbConfig1")
+        triple_store_uri = URIRef("https://mustrd.org/model/GraphDbConfig1")
         triple_store_graph.add((triple_store_uri, rdf_type, triple_store_type))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://graphdb.example.com:8080")))
         triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("test_user")))

@@ -21,7 +21,7 @@ class RunGeneralTests(unittest.TestCase):
 
         # Create the test TTL file
         self.test_ttl_file = self.spec_path / "test_file.ttl"
-        ttl_content = '''@prefix must:      <https://mustrd.com/model/> .
+        ttl_content = '''@prefix must:      <https://mustrd.org/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 @prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 

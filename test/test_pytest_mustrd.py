@@ -273,22 +273,22 @@ def test_mustrd_config_duplicate_should_fail_shacl_tests():
     assert shacl_report_graph, "SHACL report graph should not be empty"
     assert found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasSpecPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasSpecPath>",
         "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>",
     ), shacl_report_graph.serialize(format="ttl")
 
     assert found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasDataPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasDataPath>",
         "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>",
     )
 
     assert found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasPytestPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasPytestPath>",
         "<http://www.w3.org/ns/shacl#MaxCountConstraintComponent>",
     )
 
@@ -302,31 +302,31 @@ def test_mustrd_missing_props():
     assert shacl_report_graph
     assert found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasSpecPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasSpecPath>",
         "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>",
     )
 
     assert found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasDataPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasDataPath>",
         "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>",
     )
 
     # hasPytestPath has a default value, no value should be accepted
     assert not found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/hasPytestPath>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/hasPytestPath>",
         "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>",
     )
 
     #  has a default value, no value should be accepted
     assert not found_error_in_shacl_report(
         shacl_report_graph,
-        "<https://mustrd.com/mustrdTest/test_unit>",
-        "<https://mustrd.com/mustrdTest/filterOnTripleStore>",
+        "<https://mustrd.org/mustrdTest/test_unit>",
+        "<https://mustrd.org/mustrdTest/filterOnTripleStore>",
         "<http://www.w3.org/ns/shacl#MinCountConstraintComponent>",
     )
 
@@ -365,7 +365,7 @@ def test_triplestore_config():
 def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type):
     return shacl_report_graph.query(
         f"""
-                                    PREFIX : <https://mustrd.com/mustrdTest/>
+                                    PREFIX : <https://mustrd.org/mustrdTest/>
                                     PREFIX sh: <http://www.w3.org/ns/shacl#>
 
                                     ASK {{

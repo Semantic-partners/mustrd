@@ -4,11 +4,11 @@
 @prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix ex:        <http://www.example.org/#> .
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
-@prefix must:      <https://mustrd.com/model/> .
+@prefix must:      <https://mustrd.org/model/> .
 
 must:
     sh:declare [ sh:prefix    "must" ;
-                 sh:namespace "https://mustrd.com/model/"^^xsd:anyURI ; ] .
+                 sh:namespace "https://mustrd.org/model/"^^xsd:anyURI ; ] .
 
 
 must:TestSpecShape
