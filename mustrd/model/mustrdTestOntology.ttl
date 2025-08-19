@@ -1,13 +1,13 @@
-@prefix : <https://mustrd.com/mustrdTest/> .
+@prefix : <https://mustrd.org/mustrdTest/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix triplestore:      <https://mustrd.com/triplestore/> .
-@base <https://mustrd.com/mustrdTest/> .
+@prefix triplestore:      <https://mustrd.org/triplestore/> .
+@base <https://mustrd.org/mustrdTest/> .
 
-<https://mustrd.com/mustrdTest/> rdf:type owl:Ontology ;
+<https://mustrd.org/mustrdTest/> rdf:type owl:Ontology ;
                                           owl:imports triplestore: ;
                                           rdfs:comment "Model user input to generate mustrd pytests" ;
                                           rdfs:label "Mustrd test ontology" .
@@ -16,7 +16,7 @@
 #    Object Properties
 #################################################################
 
-###  https://mustrd.com/mustrdTest/filterOnTripleStore
+###  https://mustrd.org/mustrdTest/filterOnTripleStore
 :filterOnTripleStore rdf:type owl:ObjectProperty ;
                      rdfs:domain :MustrdTest ;
                      rdfs:range triplestore:TripleStore .
@@ -26,13 +26,13 @@
 #    Data properties
 #################################################################
 
-###  https://mustrd.com/mustrdTest/hasDataPath
+###  https://mustrd.org/mustrdTest/hasDataPath
 :hasDataPath rdf:type owl:DatatypeProperty ;
              rdfs:domain :MustrdTest ;
              rdfs:range xsd:string .
 
 
-###  https://mustrd.com/mustrdTest/hasSpecPath
+###  https://mustrd.org/mustrdTest/hasSpecPath
 :hasSpecPath rdf:type owl:DatatypeProperty ;
              rdfs:domain :MustrdTest ;
              rdfs:range xsd:string .
@@ -42,7 +42,7 @@
 #    Classes
 #################################################################
 
-###  https://mustrd.com/mustrdTest/MustrdTest
+###  https://mustrd.org/mustrdTest/MustrdTest
 :MustrdTest rdf:type owl:Class ;
             rdfs:comment "Contains user input to parameter a mustrd pytest" ;
             rdfs:label "Mustrd test" .

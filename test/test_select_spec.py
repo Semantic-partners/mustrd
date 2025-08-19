@@ -26,7 +26,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_first_spec
@@ -74,7 +74,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_failing_spec
@@ -139,7 +139,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_failing_spec
@@ -204,7 +204,7 @@ class TestRunSelectSpec:
 
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_failing_spec
@@ -272,7 +272,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -328,7 +328,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_first_spec
@@ -389,7 +389,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_first_spec
@@ -453,7 +453,7 @@ class TestRunSelectSpec:
 
         spec = """
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_first_spec
@@ -496,7 +496,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -542,7 +542,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -604,7 +604,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -662,7 +662,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -720,7 +720,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec
@@ -783,7 +783,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -838,7 +838,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -897,7 +897,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -957,7 +957,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1017,7 +1017,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1095,7 +1095,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1173,7 +1173,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec
@@ -1226,7 +1226,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1283,7 +1283,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1347,7 +1347,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1409,7 +1409,7 @@ class TestRunSelectSpec:
 
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1470,7 +1470,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec
@@ -1528,7 +1528,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec
@@ -1585,7 +1585,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1651,7 +1651,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1709,7 +1709,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1767,7 +1767,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_failing_spec
@@ -1824,7 +1824,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec
@@ -1868,7 +1868,7 @@ class TestRunSelectSpec:
         given = Graph().parse(data=triples, format="ttl")
         spec = """
             @prefix sh: <http://www.w3.org/ns/shacl#> .
-            @prefix must: <https://mustrd.com/model/> .
+            @prefix must: <https://mustrd.org/model/> .
             @prefix test-data: <https://semanticpartners.com/data/test/> .
 
             test-data:my_first_spec

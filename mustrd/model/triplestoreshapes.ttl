@@ -4,7 +4,7 @@
 @prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix ex:        <http://www.example.org/#> .
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
-@prefix triplestore:      <https://mustrd.com/triplestore/> .
+@prefix triplestore:      <https://mustrd.org/triplestore/> .
 
 triplestore:ExternalTripleStoreShape
     a              sh:NodeShape ;

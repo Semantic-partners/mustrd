@@ -49,7 +49,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "insert { ?o ?p ?s } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -96,7 +96,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "delete { ?s ?p ?o } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -136,7 +136,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = """PREFIX t:<https://semanticpartners.com/data/test/> insert data {t:subject t:predicate t:object}"""
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -184,7 +184,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = """PREFIX t:<https://semanticpartners.com/data/test/>  delete data {t:sub t:pred t:obj}"""
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -225,7 +225,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -270,7 +270,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "insert { ?o ?p ?s } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -337,7 +337,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "delete { ?s ?p ?obj } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -396,7 +396,7 @@ class TestRunUpdateSpec:
         query = """PREFIX t:<https://semanticpartners.com/data/test/> insert data {t:subject t:predicate t:object}"""
 
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -459,7 +459,7 @@ class TestRunUpdateSpec:
         query = """PREFIX t:<https://semanticpartners.com/data/test/>  delete data {t:sub t:pred t:obj}"""
 
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -521,7 +521,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=self.given_sub_pred_obj, format="ttl")
         query = "delete {?s ?p ?o} insert { ?o ?p ?s } where {?s ?p ?o}"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -588,7 +588,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=triples, format="ttl")
         query = "insert { ?s ?p ?o ; ?pred ?obj . } where { ?s ?p ?o OPTIONAL { ?s ?pred ?obj } }"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -656,7 +656,7 @@ class TestRunUpdateSpec:
         query = "delete{ ?s ?p ?o }insert{?s <https://semanticpartners.com/data/test/predicate> ?o}where{?s ?p ?o}"
 
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -711,7 +711,7 @@ class TestRunUpdateSpec:
         query = "insert ?s ?p ?o where { typo }"
         spec = f"""
         @prefix sh: <http://www.w3.org/ns/shacl#> .
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
 
         test-data:my_failing_spec
@@ -765,7 +765,7 @@ class TestRunUpdateSpec:
         given = Graph().parse(data=triples, format="ttl")
         query = "delete { ?s ?p ?o } insert { ?o ?p ?s } where { ?s ?p ?o }"
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -818,7 +818,7 @@ class TestRunUpdateSpec:
         query = "insert { ?o ?p ?s } where {?s ?p ?o}"
 
         spec = f"""
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
