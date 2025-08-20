@@ -32,21 +32,27 @@ LOG_FORMAT = '%(log_color)s%(levelname)s:%(name)s:%(white)s%(message)s'
 
 
 def setup_logger(name: str) -> logging.Logger:
-    log = logging.getLogger(name)
-    log.setLevel(LOG_LEVEL)
-    
+    logger = logging.getLogger(name)
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    return logger
 
-    stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setLevel(logging.ERROR)
-    log.addHandler(stderr_handler)
-
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(LOG_LEVEL)
-    ch.setFormatter(ColoredFormatter(LOG_FORMAT))
-    log.addHandler(ch)
-
-    return log
-
+# Ensure the root logger captures all logs
+root_logger = logging.getLogger()
+if not root_logger.hasHandlers():
+    root_handler = logging.StreamHandler()
+    root_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+    )
+    root_handler.setFormatter(root_formatter)
+    root_logger.addHandler(root_handler)
+root_logger.setLevel(logging.DEBUG)
 
 def flush():
     logging.shutdown()

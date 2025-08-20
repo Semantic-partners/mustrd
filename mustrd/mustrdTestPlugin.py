@@ -1,11 +1,13 @@
 import logging
 from dataclasses import dataclass
+import pprint
 import pytest
 import os
 from pathlib import Path
 from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
 from pytest import Session
+from collections import defaultdict
 
 from mustrd import logger_setup
 from mustrd.TestResult import ResultList, TestResult, get_result_list
@@ -373,18 +375,10 @@ class MustrdFile(pytest.File):
     def collect(self):
         try:
             logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
-            # Only process the specific mustrd config file we were given
-
-            # if not str(self.fspath).endswith(".ttl"):
-            #     return []
-            # Only process the specific mustrd config file we were given
-            # if str(self.fspath) != str(self.mustrd_plugin.test_config_file):
-            #     logger.info(f"Skipping non-config file: {self.fspath}")
-            #     return []
 
             test_configs = parse_config(self.path)
-            from collections import defaultdict
-            pytest_path_grouped = defaultdict(list)
+            nested_grouped = defaultdict(lambda: defaultdict(dict))  # Adjusted to support deeper nesting
+
             for test_config in test_configs:
                 if (
                     self.mustrd_plugin.path_filter is not None
@@ -415,30 +409,118 @@ class MustrdFile(pytest.File):
                         )
                         for triple_store in (triple_stores or test_config.filter_on_tripleStore)
                     ]
-                pytest_path = getattr(test_config, "pytest_path", "unknown")
+
+                # Process each spec's source file path to build the correct nested structure
                 for spec in specs:
-                    pytest_path_grouped[pytest_path].append(spec)
+                    nested_structure = build_nested_structure(spec.spec_source_file, self.path)
+                    logger.debug(f"Nested structure for {pprint.pformat(spec.spec_source_file)}: {pprint.pformat(nested_structure)}")
 
-            for pytest_path, specs_for_path in pytest_path_grouped.items():
-                logger.info(f"pytest_path group: {pytest_path} ({len(specs_for_path)} specs)")
+                    current_level = nested_grouped
+                    # Navigate through the directory structure except the last one
+                    for i, level in enumerate(nested_structure):
+                        logger.debug(f"Processing level {i}: {level}, current structure: {current_level}")
+                        
+                        # Get or create the current level's content
+                        if level not in current_level:
+                            if i == len(nested_structure) - 1:  # Last level - should be a list
+                                current_level[level] = []
+                            else:  # Intermediate level - should be a dict
+                                current_level[level] = defaultdict(lambda: defaultdict(dict))
+                        elif i < len(nested_structure) - 1:  # Not at last level but exists
+                            if isinstance(current_level[level], list):
+                                # Convert list to dict and preserve files
+                                existing_files = current_level[level]
+                                current_level[level] = defaultdict(lambda: defaultdict(dict))
+                                current_level[level]['__files__'] = existing_files
+                        
+                        # If this is the last level, add the spec to the list
+                        if i == len(nested_structure) - 1:
+                            if isinstance(current_level[level], dict):
+                                # Has subdirectories, store under __files__
+                                if '__files__' not in current_level[level]:
+                                    current_level[level]['__files__'] = []
+                                current_level[level]['__files__'].append(spec)
+                            else:
+                                # No subdirectories, just append to list
+                                current_level[level].append(spec)
+                        else:
+                            # Move to next level if not at the end
+                            current_level = current_level[level]
+                            logger.debug(f"Moving to next level: {current_level}")
+                    
+                    # Already added spec in the loop above
+                    
+                    logger.debug(f"Final structure at this point: {pprint.pformat(nested_grouped)}")
 
-                yield MustrdPytestPathCollector.from_parent(
-                    self,
-                    name=str(pytest_path),
-                    pytest_path=pytest_path,
-                    specs=specs_for_path,
-                    mustrd_plugin=self.mustrd_plugin,
-                )
+                logger.debug(f"Updated nested_grouped structure: {pprint.pformat(nested_grouped)}")
+
+            for folder, subfolders in nested_grouped.items():
+                logger.debug(f"Creating collector for folder: {folder} with subfolders: {subfolders}")
+                yield self._create_nested_collectors(folder, subfolders)
         except Exception as e:
             self.mustrd_plugin.collect_error = e
             logger.error(f"Error during collection {self.path}: {type(e)} {e} {traceback.format_exc()}")
             raise e
 
+    def _create_nested_collectors(self, name, subfolders):
+        if isinstance(subfolders, list):
+            # If subfolders is a list, it contains specs
+            return MustrdSubfolderCollector.from_parent(
+                self,
+                name=name,
+                subfolder=name,
+                specs=subfolders,
+                mustrd_plugin=self.mustrd_plugin,
+            )
+        else:
+            # If subfolders is a dict, it might contain both files and directories
+            # First check for files at this level
+            files = subfolders.get('__files__', [])
+            if files and len(subfolders) == 1:  # Only has __files__
+                return MustrdSubfolderCollector.from_parent(
+                    self,
+                    name=name,
+                    subfolder=name,
+                    specs=files,
+                    mustrd_plugin=self.mustrd_plugin,
+                )
+            
+            # Create a folder collector that will handle both files and subdirs
+            return MustrdFolderCollector.from_parent(
+                self,
+                name=name,
+                folder=name,
+                subfolders=subfolders,
+                mustrd_plugin=self.mustrd_plugin,
+            )
 
-class MustrdPytestPathCollector(pytest.Class):
-    def __init__(self, name, parent, pytest_path, specs, mustrd_plugin):
+class MustrdFolderCollector(pytest.Class):
+    def __init__(self, name, parent, folder, subfolders, mustrd_plugin):
         super().__init__(name, parent)
-        self.pytest_path = pytest_path
+        self.folder = folder
+        self.subfolders = subfolders
+        self.mustrd_plugin = mustrd_plugin
+
+    def collect(self):
+        # First yield any files at this level
+        if '__files__' in self.subfolders:
+            yield MustrdSubfolderCollector.from_parent(
+                self.parent,
+                name=self.folder,
+                subfolder=self.folder,
+                specs=self.subfolders['__files__'],
+                mustrd_plugin=self.mustrd_plugin,
+            )
+        
+        # Then yield all subdirectories
+        for subfolder, specs_or_subfolders in self.subfolders.items():
+            if subfolder != '__files__':  # Skip the files we already processed
+                yield self.parent._create_nested_collectors(subfolder, specs_or_subfolders)
+
+class MustrdSubfolderCollector(pytest.Class):
+    def __init__(self, name, parent, subfolder, specs, mustrd_plugin):
+        super().__init__(name, parent)
+        self.subfolder = subfolder
         self.specs = specs
         self.mustrd_plugin = mustrd_plugin
 
@@ -515,3 +597,38 @@ def run_test_spec(test_spec):
 
     logger.info(f"Test PASSED: {getattr(test_spec, 'spec_uri', test_spec)}")
     return isinstance(result, SpecPassed)
+
+def build_nested_structure(path, config_path):
+    """Build a nested structure of directories relative to the config file."""
+    try:
+        logger.info(f"Building nested structure for path: {path} with config_path: {config_path}")
+        # Convert both paths to absolute Path objects
+        path = Path(path).resolve()
+        config_parent = Path(config_path).parent.resolve()
+        
+        # Always try to make the path relative to config parent first
+        try:
+            rel_path = path.relative_to(config_parent)
+            logger.debug(f"Successfully made path relative to config parent: {rel_path}")
+        except ValueError:
+            # If we can't make it relative to config parent, use the actual path
+            rel_path = path
+        
+        # Get all directory parts (exclude the file name if it's a file)
+        if path.is_file():
+            path_parts = path.parent.parts
+        else:
+            path_parts = path.parts
+            
+        # Remove drive or root prefix if present
+        if Path(path).is_absolute():
+            path_parts = path_parts[1:]
+            
+        # Filter out empty parts and create tuple
+        parts = tuple(part for part in path_parts if part != '')
+        logger.debug(f"Final directory structure: {parts}")
+        return parts
+    except Exception as e:
+        logger.error(f"Error building nested structure: {e}")
+        # In case of any errors, return just the immediate parent directory name
+        return (str(Path(path).parent.name),)
