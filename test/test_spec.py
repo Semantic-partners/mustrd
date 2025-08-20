@@ -32,7 +32,7 @@ class TestRunSpec:
     def test_no_rdf_type_error(self):
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -58,7 +58,7 @@ class TestRunSpec:
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -83,7 +83,7 @@ class TestRunSpec:
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -108,7 +108,7 @@ class TestRunSpec:
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -133,7 +133,7 @@ class TestRunSpec:
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -157,7 +157,7 @@ class TestRunSpec:
         run_config = {'spec_path': "/"}
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -185,7 +185,7 @@ class TestRunSpec:
 
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -214,7 +214,7 @@ class TestRunSpec:
     def test_invalid_data_source_predicate_combination_error(self):
         spec_graph = Graph()
         spec = """
-        @prefix must: <https://mustrd.com/model/> .
+        @prefix must: <https://mustrd.org/model/> .
         @prefix test-data: <https://semanticpartners.com/data/test/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -250,7 +250,7 @@ class TestRunSpec:
 
         spec_graph = Graph()
         spec = """
-                @prefix must: <https://mustrd.com/model/> .
+                @prefix must: <https://mustrd.org/model/> .
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -292,7 +292,7 @@ class TestRunSpec:
 
         spec_graph = Graph()
         spec = """
-                @prefix must: <https://mustrd.com/model/> .
+                @prefix must: <https://mustrd.org/model/> .
                 @prefix test-data: <https://semanticpartners.com/data/test/> .
                 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
@@ -325,4 +325,4 @@ class TestRunSpec:
 
         result = run_spec(specification)
         # don't love the args[2] magic here. open to suggestions for improvement
-        assert result.args[2] == "NotImplementedError: https://mustrd.com/model/DeleteSparql is not a valid SPARQL query type."
+        assert result.args[2] == "NotImplementedError: https://mustrd.org/model/DeleteSparql is not a valid SPARQL query type."

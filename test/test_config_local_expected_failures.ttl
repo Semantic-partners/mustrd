@@ -1,5 +1,5 @@
-@prefix : <https://mustrd.com/mustrdTest/> .
-@prefix triplestore:<https://mustrd.com/triplestore/> .
+@prefix : <https://mustrd.org/mustrdTest/> .
+@prefix triplestore:<https://mustrd.org/triplestore/> .
 
 
 :test_unit_rdflib_expected_fails a :MustrdTest;

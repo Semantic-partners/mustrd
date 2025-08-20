@@ -28,7 +28,7 @@ from rdflib.namespace import DefinedNamespace, Namespace
 
 # Namespace for the test specifications
 class MUST(DefinedNamespace):
-    _NS = Namespace("https://mustrd.com/model/")
+    _NS = Namespace("https://mustrd.org/model/")
 
     # Specification classes
     TestSpec: URIRef
@@ -100,7 +100,7 @@ class MUST(DefinedNamespace):
 
 # Namespace for triplestores
 class TRIPLESTORE(DefinedNamespace):
-    _NS = Namespace("https://mustrd.com/triplestore/")
+    _NS = Namespace("https://mustrd.org/triplestore/")
     RdfLib: URIRef
     GraphDb: URIRef
     Anzo: URIRef
@@ -119,7 +119,7 @@ class TRIPLESTORE(DefinedNamespace):
 
 # namespace for pytest_mustrd config
 class MUSTRDTEST(DefinedNamespace):
-    _NS = Namespace("https://mustrd.com/mustrdTest/")
+    _NS = Namespace("https://mustrd.org/mustrdTest/")
     MustrdTest: URIRef
     hasSpecPath: URIRef
     hasDataPath: URIRef
@@ -129,7 +129,7 @@ class MUSTRDTEST(DefinedNamespace):
 
 from rdflib import Namespace
 
-MUST = Namespace("https://mustrd.com/model/")
+MUST = Namespace("https://mustrd.org/model/")
 
 # Add SpadeEdnGroupSource to the namespace
 MUST.SpadeEdnGroupSource = MUST["SpadeEdnGroupSource"]

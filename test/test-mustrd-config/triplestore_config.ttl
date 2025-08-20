@@ -1,4 +1,4 @@
-@prefix :<https://mustrd.com/triplestore/> .
+@prefix :<https://mustrd.org/triplestore/> .
 :GraphDb_local  a :GraphDb ;
         :url "http://localhost";
         :url "http://127.0.0.1";

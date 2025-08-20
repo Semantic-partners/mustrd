@@ -844,10 +844,10 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
     when_specs = []
     for step in group_data.get(Keyword("steps"), []):
         step_type = step.get(Keyword("type"))
-        step_file = step.get(Keyword("filepath"))
 
         if step_type == Keyword("sparql-file"):
             try:
+                step_file = step.get(Keyword("filepath"))
                 # Resolve the file path relative to the EDN file's location
                 resolved_step_file = Path(absolute_file_path).parent / step_file
                 with open(resolved_step_file, 'r') as sparql_file:
@@ -857,12 +857,22 @@ def _get_spec_component_spade_edn_group_source_when(spec_component_details: Spec
                 # won't be true for ASK, but good for now.
                 when_spec = WhenSpec(
                     value=sparql_query,
-                    queryType=MUST.UpdateSparql, 
+                    queryType=MUST.UpdateSparql,
                     bindings=None
                 )
-                when_specs.append(when_spec)
             except FileNotFoundError:
                 raise ValueError(f"SPARQL file not found: {resolved_step_file}")
+        elif step_type == Keyword("sparql-template-file"):
+            when_spec = AnzoWhenSpec(
+                queryTemplate=get_spec_component_from_file(Path(absolute_file_path).parent / step.get(Keyword("template-filepath"))),
+                paramQuery=get_spec_component_from_file(Path(absolute_file_path).parent / step.get(Keyword("parameters-filepath"))),
+                spec_component_details=spec_component_details
+            )
+            when_spec.queryType = MUST.AnzoQueryDrivenUpdateSparql
+        else:
+            raise ValueError(f"Unsupported step type in EDN file: {step_type}")
+
+        when_specs.append(when_spec)
 
     spec_component.file = str(absolute_file_path)
     spec_component.groupId = group_id
