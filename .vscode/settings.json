@@ -3,7 +3,7 @@
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestArgs": [
-        "--mustrd", "--ignore-focus",  "--config=test/test_config_local.ttl" , "--log-cli-level=DEBUG"
+        "--mustrd",  "--config=test/test_config_local.ttl" , "--log-cli-level=DEBUG", "--log-format=%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
     ],
     "workbench.colorCustomizations": {
         "activityBar.background": "#183323",

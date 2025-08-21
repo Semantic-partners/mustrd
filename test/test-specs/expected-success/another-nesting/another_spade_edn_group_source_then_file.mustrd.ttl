@@ -1,0 +1,22 @@
+@prefix must: <https://mustrd.com/model/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:spade_edn_group_test_nested_another
+    a          must:TestSpec ;
+    rdfs:description "Test spec for Spade EDN group source with nested folder structure" ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a rdf:Statement ;
+                                                     rdf:subject   test-data:sub ;
+                                                     rdf:predicate test-data:pred ;
+                                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:SpadeEdnGroupSource  ;
+                 must:fileurl <file://./../spade-integration/simple_spade-1.spade.edn> ;
+                 must:groupId ":group-1" ;
+                 # i think spade doesn't current require the queryType for a step in the config. 
+                 # you could conceivably have a step that is not a SPARQL query, but just a file to read.
+                 # or an ASK query. But for now we will always assume sparql, and INSERT.
+                 must:queryType must:UpdateSparql  ; ] ;
+    must:then  [ a must:FileDataset ;
+                                   must:fileurl <file://./../spade-integration/thenSuccessWithSource.nt> ] .
