@@ -372,10 +372,10 @@ class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
 
     def __init__(self, *args, mustrd_plugin, **kwargs):
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug(f"Creating MustrdFile with args: {args}, kwargs: {kwargs}")
         self.mustrd_plugin = mustrd_plugin
         super(pytest.File, self).__init__(*args, **kwargs)
-        self.logger = mustrd_plugin.logger
-        self.logger.debug(f"Creating MustrdFile with args: {args}, kwargs: {kwargs}")
 
     def collect(self):
         try:
@@ -467,10 +467,9 @@ class MustrdItem(pytest.Item):
         self.spec = spec
         self.fspath = spec.spec_source_file
         self.originalname = name
-        self.logger = parent.mustrd_plugin.logger
 
     def runtest(self):
-        result = run_test_spec(self.spec, self.logger)
+        result = run_test_spec(self.spec)
         if not result:
             raise AssertionError(f"Test {self.name} failed")
 
@@ -493,7 +492,8 @@ class MustrdItem(pytest.Item):
 
 
 # Function called in the test to actually run it
-def run_test_spec(test_spec, logger):
+def run_test_spec(test_spec):
+    logger = logging.getLogger(__name__)
     logger.info(f"Running test spec: {getattr(test_spec, 'spec_uri', test_spec)}")
     try:
         result = run_spec(test_spec)

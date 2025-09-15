@@ -30,7 +30,7 @@ from colorlog import ColoredFormatter
 LOG_FORMAT = '%(log_color)s%(levelname)s:%(name)s:%(white)s%(message)s'
 
 
-def setup_logger(name: str, log_level: str = logging.INFO) -> logging.Logger:
+def setup_logger(name: str, log_level=logging.INFO) -> logging.Logger:
     log = logging.getLogger(name)
     log.setLevel(log_level)
     
