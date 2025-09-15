@@ -174,10 +174,6 @@ class TestConfig:
     filter_on_tripleStore: str = None
 
 
-# Configure logging
-logger = logger_setup.setup_logger(__name__)
-
-
 class MustrdTestPlugin:
     md_path: str
     test_config_file: Path
@@ -187,16 +183,17 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False):
+    def __init__(self, md_path, test_config_file, secrets, log_level, ignore_focus=False):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.items = []
+        self.logger = logger_setup.setup_logger(__name__, log_level)
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
-        logger.info("Starting test collection")
+        self.logger.info("Starting test collection")
 
         args = session.config.args
 
@@ -210,15 +207,15 @@ class MustrdTestPlugin:
                 mustrd_args
             )
         )
-        logger.info(f"selected_tests is: {self.selected_tests}")
+        self.logger.info(f"selected_tests is: {self.selected_tests}")
 
         self.path_filter = session.config.getoption("pytest_path") or None
 
-        logger.info(f"path_filter is: {self.path_filter}")
-        logger.info(f"Args: {args}")
-        logger.info(f"Mustrd Args: {mustrd_args}")
-        logger.info(f"Pytest Args: {pytest_args}")
-        logger.info(f"Path Filter: {self.path_filter}")
+        self.logger.info(f"path_filter is: {self.path_filter}")
+        self.logger.info(f"Args: {args}")
+        self.logger.info(f"Mustrd Args: {mustrd_args}")
+        self.logger.info(f"Pytest Args: {pytest_args}")
+        self.logger.info(f"Path Filter: {self.path_filter}")
 
         # Only modify args if we have mustrd tests to run
         if self.selected_tests:
@@ -228,7 +225,7 @@ class MustrdTestPlugin:
             # Keep original args unchanged for regular pytest
             session.config.args = args
 
-        logger.info(f"Final session.config.args: {session.config.args}")
+        self.logger.info(f"Final session.config.args: {session.config.args}")
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
@@ -237,12 +234,12 @@ class MustrdTestPlugin:
 
     @pytest.hookimpl
     def pytest_collect_file(self, parent, path):
-        logger.debug(f"Collecting file: {path}")
+        self.logger.debug(f"Collecting file: {path}")
         # Only collect .ttl files that are mustrd suite config files
         if not str(path).endswith('.ttl'):
             return None
         if Path(path).resolve() != Path(self.test_config_file).resolve():
-            logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
+            self.logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
             return None
 
         mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
@@ -251,13 +248,13 @@ class MustrdTestPlugin:
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):
-        logger.debug(f"generate_tests_for_config {config=} {self=} {dir(self)}")
+        self.logger.debug(f"generate_tests_for_config {config=} {self=} {dir(self)}")
         shacl_graph = Graph().parse(
             Path(os.path.join(mustrd_root, "model/mustrdShapes.ttl"))
         )
         ont_graph = Graph().parse(Path(os.path.join(mustrd_root, "model/ontology.ttl")))
-        logger.debug("Generating tests for config: " + str(config))
-        logger.debug(f"selected_tests {self.selected_tests}")
+        self.logger.debug("Generating tests for config: " + str(config))
+        self.logger.debug(f"selected_tests {self.selected_tests}")
 
         valid_spec_uris, spec_graph, invalid_specs = validate_specs(
             config,
@@ -375,20 +372,21 @@ class MustrdFile(pytest.File):
     mustrd_plugin: MustrdTestPlugin
 
     def __init__(self, *args, mustrd_plugin, **kwargs):
-        logger.debug(f"Creating MustrdFile with args: {args}, kwargs: {kwargs}")
         self.mustrd_plugin = mustrd_plugin
         super(pytest.File, self).__init__(*args, **kwargs)
+        self.logger = mustrd_plugin.logger
+        self.logger.debug(f"Creating MustrdFile with args: {args}, kwargs: {kwargs}")
 
     def collect(self):
         try:
-            logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
+            self.logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
             # Only process the specific mustrd config file we were given
 
             # if not str(self.fspath).endswith(".ttl"):
             #     return []
             # Only process the specific mustrd config file we were given
             # if str(self.fspath) != str(self.mustrd_plugin.test_config_file):
-            #     logger.info(f"Skipping non-config file: {self.fspath}")
+            #     self.logger.info(f"Skipping non-config file: {self.fspath}")
             #     return []
 
             test_configs = parse_config(self.path)
@@ -399,7 +397,7 @@ class MustrdFile(pytest.File):
                     self.mustrd_plugin.path_filter is not None
                     and not str(test_config.pytest_path).startswith(str(self.mustrd_plugin.path_filter))
                 ):
-                    logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
+                    self.logger.info(f"Skipping test config due to path filter: {test_config.pytest_path=} {self.mustrd_plugin.path_filter=}")
                     continue
 
                 triple_stores = self.mustrd_plugin.get_triple_stores_from_file(test_config)
@@ -413,7 +411,7 @@ class MustrdFile(pytest.File):
                         None,
                     )
                 except Exception as e:
-                    logger.error(f"Error generating tests: {e}\n{traceback.format_exc()}")
+                    self.logger.error(f"Error generating tests: {e}\n{traceback.format_exc()}")
                     specs = [
                         SpecInvalid(
                             MUST.TestSpec,
@@ -429,7 +427,7 @@ class MustrdFile(pytest.File):
                     pytest_path_grouped[pytest_path].append(spec)
 
             for pytest_path, specs_for_path in pytest_path_grouped.items():
-                logger.info(f"pytest_path group: {pytest_path} ({len(specs_for_path)} specs)")
+                self.logger.info(f"pytest_path group: {pytest_path} ({len(specs_for_path)} specs)")
 
                 yield MustrdPytestPathCollector.from_parent(
                     self,
@@ -440,7 +438,7 @@ class MustrdFile(pytest.File):
                 )
         except Exception as e:
             self.mustrd_plugin.collect_error = e
-            logger.error(f"Error during collection {self.path}: {type(e)} {e} {traceback.format_exc()}")
+            self.logger.error(f"Error during collection {self.path}: {type(e)} {e} {traceback.format_exc()}")
             raise e
 
 
@@ -469,9 +467,10 @@ class MustrdItem(pytest.Item):
         self.spec = spec
         self.fspath = spec.spec_source_file
         self.originalname = name
+        self.logger = parent.mustrd_plugin.logger
 
     def runtest(self):
-        result = run_test_spec(self.spec)
+        result = run_test_spec(self.spec, self.logger)
         if not result:
             raise AssertionError(f"Test {self.name} failed")
 
@@ -494,8 +493,7 @@ class MustrdItem(pytest.Item):
 
 
 # Function called in the test to actually run it
-def run_test_spec(test_spec):
-    logger = logging.getLogger("mustrd.test")
+def run_test_spec(test_spec, logger):
     logger.info(f"Running test spec: {getattr(test_spec, 'spec_uri', test_spec)}")
     try:
         result = run_spec(test_spec)

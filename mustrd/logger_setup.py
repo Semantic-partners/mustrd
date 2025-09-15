@@ -27,13 +27,12 @@ import sys
 from colorlog import ColoredFormatter
 
 
-LOG_LEVEL = logging.INFO
 LOG_FORMAT = '%(log_color)s%(levelname)s:%(name)s:%(white)s%(message)s'
 
 
-def setup_logger(name: str) -> logging.Logger:
+def setup_logger(name: str, log_level: str) -> logging.Logger:
     log = logging.getLogger(name)
-    log.setLevel(LOG_LEVEL)
+    log.setLevel(log_level)
     
 
     stderr_handler = logging.StreamHandler(sys.stderr)
@@ -41,7 +40,7 @@ def setup_logger(name: str) -> logging.Logger:
     log.addHandler(stderr_handler)
 
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(LOG_LEVEL)
+    ch.setLevel(log_level)
     ch.setFormatter(ColoredFormatter(LOG_FORMAT))
     log.addHandler(ch)
 
