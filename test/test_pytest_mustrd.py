@@ -18,7 +18,7 @@ def run_mustrd(config_path: str, *args, md_path: str = None, secrets: str = None
 # test collection of all tests
 def test_collection_full():
     mustrd_plugin = run_mustrd(
-        "test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only"
+        "test/test-mustrd-config/test_mustrd_simple.ttl", "--collect-only", "--log_level=DEBUG"
     )
     path = "rdflib"
 
