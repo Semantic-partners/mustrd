@@ -42,8 +42,9 @@ from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
 from .utils import get_mustrd_root
 from urllib.parse import urlparse
+import logging
 
-log = logger_setup.setup_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 @dataclass
