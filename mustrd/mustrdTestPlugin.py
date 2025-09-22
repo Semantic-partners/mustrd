@@ -174,8 +174,9 @@ class TestConfig:
     filter_on_tripleStore: str = None
 
 
-# Configure logging
-logger = logger_setup.setup_logger(__name__)
+# Configure logging - do not use setup_logger in the pytest plugin, 
+# the CLI args to pytest (e.g. --log-cli-level) are overriden by it
+logger = logging.getLogger(__name__)
 
 
 class MustrdTestPlugin:
