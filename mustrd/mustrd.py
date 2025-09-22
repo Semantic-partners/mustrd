@@ -333,6 +333,7 @@ def get_specs(
     specs = []
     invalid_spec = []
     try:
+        log.info(f"Triple stores: {triple_stores}")
         for triple_store in triple_stores:
             if "error" in triple_store:
                 log.error(

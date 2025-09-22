@@ -268,7 +268,7 @@ class MustrdTestPlugin:
             selected_test_files=self.selected_tests,
             ignore_focus=self.ignore_focus,
         )
-
+        logger.info(f"Valid spec URIs: {valid_spec_uris}")
         specs, skipped_spec_results = get_specs(
             valid_spec_uris, spec_graph, triple_stores, config
         )
