@@ -520,12 +520,12 @@ def run_spec(spec: Specification) -> SpecResult:
             )
     try:
         for when in spec.when:
-            log.info(
+            log.debug(
                 f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}"
             )
             try:
                 result = run_when_impl(spec_uri, triple_store, when)
-                log.info(
+                log.debug(
                     f"run {when.queryType} spec {spec_uri} on {triple_store['type']} {result=}"
                 )
             except ParseException as e:
@@ -698,7 +698,7 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
 def get_credential_from_file(
     triple_store_name: URIRef, credential: str, config_path: Literal
 ) -> str:
-    log.info(
+    log.debug(
         f"get_credential_from_file {triple_store_name}, {credential}, {config_path}"
     )
     if not config_path:
@@ -707,7 +707,7 @@ def get_credential_from_file(
             f"Missing required parameter: {credential}."
         )
     path = Path(config_path)
-    log.info(f"get_credential_from_file {path}")
+    log.debug(f"get_credential_from_file {path}")
 
     if not os.path.isfile(path):
         log.error(f"couldn't find {path}")

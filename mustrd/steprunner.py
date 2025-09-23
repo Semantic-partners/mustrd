@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
     ts = triple_store['type']
-    log.info(f"dispatch_upload_given to {ts}")
+    log.debug(f"dispatch_upload_given to {ts}")
     return ts
 
 
@@ -49,7 +49,7 @@ def _upload_given_anzo(triple_store: dict, given: Graph):
 def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     ts = triple_store['type']
     query_type = when.queryType
-    log.info(f"dispatch_run_when: spec_uri={spec_uri}, ({ts},{query_type})")
+    log.debug(f"dispatch_run_when: spec_uri={spec_uri}, ({ts},{query_type})")
     return ts, query_type
 
 
@@ -139,15 +139,15 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.SpadeEdnGroupSource))
 def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
-    log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
+    log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     merged_result = None
     # Iterate over the list of WhenSpec objects in `when.value`
     for step_when_spec in when.value:
         try:
-            log.info(f"Dispatching run_when for step: {step_when_spec}")
+            log.debug(f"Dispatching run_when for step: {step_when_spec}")
             query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
-            log.info(f"Executed SPARQL query: {query_result}")
+            log.debug(f"Executed SPARQL query: {query_result}")
             # Merge results if possible (e.g., for Graphs), else just keep last non-None
             if merged_result is None:
                 merged_result = query_result
@@ -166,7 +166,7 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
 def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
-    log.info(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
+    log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     edn_file_dir = os.path.dirname(when.file)  # Get the directory of the EDN file
     merged_graph = Graph()
@@ -179,9 +179,9 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
                 if hasattr(step_when_spec, 'filepath'):
                     step_when_spec.filepath = os.path.join(edn_file_dir, step_when_spec.filepath)
 
-                log.info(f"Dispatching run_when for UpdateSparql step: {step_when_spec}")
+                log.debug(f"Dispatching run_when for UpdateSparql step: {step_when_spec}")
                 query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
-                log.info(f"Executed SPARQL query: {query_result}")
+                log.debug(f"Executed SPARQL query: {query_result}")
                 merged_graph += query_result  # Merge the resulting graph
             else:
                 log.warning(f"Unsupported queryType: {step_when_spec.queryType}")
