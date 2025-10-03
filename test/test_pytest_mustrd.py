@@ -62,10 +62,12 @@ def test_collection_full():
         "select_spec_given_file.mustrd.ttl",
         "select_spec_given_file_then_file.mustrd.ttl",
         "select_spec_given_inherited_state.mustrd.ttl",
+        "select_spec_has_binding_with_query_file.mustrd.ttl",
         "select_spec_multiline_result.mustrd.ttl",
         "select_spec_optional_result.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec_variable.mustrd.ttl",
+        "select_spec_variable_casing.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
         "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
@@ -124,12 +126,14 @@ def test_collection_path():
         "construct_spec_when_file_then_file.mustrd.ttl",
         "select_spec_given_file.mustrd.ttl",
         "construct_spec_when_file_then_file_as_uris.mustrd.ttl",
+        "select_spec_has_binding_with_query_file.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec.mustrd.ttl",
         "construct_spec_multiple_given_multile_then.mustrd.ttl",
         "insert_data_spec.mustrd.ttl",
         "select_spec_optional_result.mustrd.ttl",
+        "select_spec_variable_casing.mustrd.ttl",
         "delete_data_spec.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
         "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl",
@@ -183,13 +187,15 @@ def test_collection_pytest_path_is_a_startsWithCheck():
         "select_spec_given_file.mustrd.ttl",
         "select_spec_given_file_then_file.mustrd.ttl",
         "select_spec_given_inherited_state.mustrd.ttl",
+        "select_spec_has_binding_with_query_file.mustrd.ttl",
         "select_spec_multiline_result.mustrd.ttl",
         "select_spec_optional_result.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec_variable.mustrd.ttl",
+        "select_spec_variable_casing.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        'spade_edn_group_source_with_two_steps_then_file.mustrd.ttl'
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
     ]
     # Assert that we only collected tests from the specified path
     assert item_names == expected_item_names, (
@@ -236,13 +242,15 @@ def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuite
         "select_spec_given_file.mustrd.ttl",
         "select_spec_given_file_then_file.mustrd.ttl",
         "select_spec_given_inherited_state.mustrd.ttl",
+        "select_spec_has_binding_with_query_file.mustrd.ttl",
         "select_spec_multiline_result.mustrd.ttl",
         "select_spec_optional_result.mustrd.ttl",
         "select_spec_ordered.mustrd.ttl",
         "select_spec_variable.mustrd.ttl",
+        "select_spec_variable_casing.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        'spade_edn_group_source_with_two_steps_then_file.mustrd.ttl'
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
     ]
     assert item_names == expected_item_names, (
         f"Expected item names: {expected_item_names}\n"

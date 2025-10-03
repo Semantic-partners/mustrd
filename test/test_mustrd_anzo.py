@@ -72,3 +72,30 @@ def test_get_queries_from_templated_step():
 def test_get_queries_for_layer():
     response = mustrdAnzo.get_queries_for_layer(triple_store=anzo_config, graphmart_layer_uri=anzo_config['input_graph'])
     print(f"Response: {response}")
+
+
+def test_query_with_bindings():
+    from rdflib import URIRef
+    query = """SELECT * WHERE {
+    ?s ?p ?o .
+    ?s a ?type .
+    }"""
+    bindings = {'type': URIRef("http://example.org/TypeA")}
+    # note the dedented text here because of the way query_with_bindings reformats the query
+    expected = """SELECT * WHERE {
+VALUES ?type {<http://example.org/TypeA>}
+?s ?p ?o .
+    ?s a ?type .
+    }"""
+    actual = mustrdAnzo.query_with_bindings(bindings=bindings, when=query)
+    assert actual == expected
+
+def test_query_with_bindings_no_where():
+    from rdflib import URIRef
+    query = """SELECT * {
+    ?s ?p ?o .
+    ?s a ?type .
+    }"""
+    bindings = {'type': URIRef("http://example.org/TypeA")}
+    with pytest.raises(ValueError):
+        mustrdAnzo.query_with_bindings(bindings=bindings, when=query)

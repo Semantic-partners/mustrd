@@ -58,9 +58,12 @@ def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> G
 def query_with_bindings(bindings: dict, when: str) -> str:
     values = ""
     for key, value in bindings.items():
-        values += f"VALUES ?{key} {{{value.n3()}}} "
-    split_query = when.lower().split("where {", 1)
-    return f"{split_query[0].strip()} WHERE {{ {values} {split_query[1].strip()}"
+        values += f"VALUES ?{key} {{{value.n3()}}}\n"
+    where_index = when.lower().find("where {")
+    if where_index == -1:
+        raise ValueError("No WHERE clause found in the query to bind values to.")
+    split_query = [when[:where_index], when[where_index + 7:]]
+    return f"{split_query[0].strip()} WHERE {{\n{values}{split_query[1].strip()}"
 
 
 # Get Given or then from the content of a graphmart
