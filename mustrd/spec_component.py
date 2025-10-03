@@ -359,7 +359,7 @@ def _get_spec_component_filedatasource_when(spec_component_details: SpecComponen
     # file_path = Path(str(spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
     #                                                              predicate=MUST.file)))
     spec_component.value = get_spec_component_from_file(get_file_absolute_path(spec_component_details, file_path))
-
+    spec_component.bindings = get_when_bindings(spec_component_details.subject, spec_component_details.spec_graph)
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType)
@@ -733,7 +733,8 @@ def get_spec_from_table(subject: URIRef,
 
 def get_when_bindings(subject: URIRef,
                       spec_graph: Graph) -> dict:
-    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a <{MUST.TextSparqlSource}> ;
+    # this query was restricted to queries of type MUST.TextSparqlSource, which seems unnecessary when get_when_bindings is called from specific methods
+    when_bindings_query = f"""SELECT ?variable ?binding {{ <{subject}> <{MUST.when}> [ a ?queryType ;
     <{MUST.hasBinding}> [ <{MUST.variable}> ?variable ;
     <{MUST.boundValue}> ?binding ; ] ; ]  ;}}"""
     when_bindings = spec_graph.query(when_bindings_query)
