@@ -1,0 +1,30 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:a_complete_select_scenario_with_variables_and_varied_casing
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataset ;
+                                   must:hasStatement [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    test-data:obj ; ] ,
+                                  [ a             rdf:Statement ;
+                                   rdf:subject   test-data:sub ;
+                                   rdf:predicate test-data:pred ;
+                                   rdf:object    "hello world" ; ] ; ] ;
+    must:when  [ a must:TextSparqlSource ;
+                                   must:queryText  "select ?Subject ?p ?O where { ?Subject ?p ?O }" ;
+                 must:hasBinding [ must:variable "O" ;
+                                 must:boundValue  "hello world" ; ] ;
+                 must:queryType must:SelectSparql   ; ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding[ must:variable "Subject" ;
+                                        must:boundValue  test-data:sub ; ],
+                                      [ must:variable "p" ;
+                                        must:boundValue  test-data:pred ; ],
+                                      [ must:variable "O" ;
+                                        must:boundValue  "hello world" ; ] ;
+               ] ; ] .
