@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 import pytest
 import os
@@ -351,9 +352,33 @@ class MustrdTestPlugin:
                 test_name = test_conf.originalname
                 is_mustrd = False
 
+            spec = getattr(test_conf, 'spec', None)
+            failure_message = None
+            if result.outcome == 'failed' and result.longrepr:
+                clean = re.sub(r'\x1b\[[0-9;]*m', '', str(result.longrepr))
+                # Extract only the first contiguous block of | lines to avoid duplicates
+                table_lines = []
+                in_table = False
+                for l in clean.splitlines():
+                    if l.strip().startswith('|'):
+                        table_lines.append(l)
+                        in_table = True
+                    elif in_table:
+                        break
+                if table_lines:
+                    failure_message = _markdown_table_to_html(table_lines)
             test_results.append(
                 TestResult(
-                    test_name, class_name, module_name, result.outcome, is_mustrd
+                    test_name, class_name, module_name, result.outcome, is_mustrd,
+                    given_files=[str(f) for f in (getattr(spec, 'given_files', None) or [])],
+                    ontology_files=[str(f) for f in (getattr(spec, 'ontology_files', None) or [])],
+                    shacl_files=[str(f) for f in (getattr(spec, 'shacl_files', None) or [])],
+                    shacl_conforms=getattr(spec, 'shacl_conforms', None),
+                    ontology_conforms=getattr(spec, 'ontology_conforms', None),
+                    then_file=str(getattr(spec, 'then_file', None)) if getattr(spec, 'then_file', None) else None,
+                    shacl_report=getattr(spec, 'shacl_report', None),
+                    ontology_report=getattr(spec, 'ontology_report', None),
+                    failure_message=failure_message,
                 )
             )
 
@@ -370,6 +395,18 @@ class MustrdTestPlugin:
         md = result_list.render()
         with open(self.md_path, "w") as file:
             file.write(md)
+
+
+def _markdown_table_to_html(lines):
+    # Skip the separator row (e.g. |---|:---|)
+    rows = [l for l in lines if not re.match(r'^\s*\|[-:|\s]+\|\s*$', l)]
+    html = ['<table class="diff-table">']
+    for i, row in enumerate(rows):
+        cells = [c.strip() for c in row.strip().strip('|').split('|')]
+        tag = 'th' if i == 0 else 'td'
+        html.append('<tr>' + ''.join(f'<{tag}>{c}</{tag}>' for c in cells) + '</tr>')
+    html.append('</table>')
+    return '\n'.join(html)
 
 
 class MustrdFile(pytest.File):
@@ -415,6 +452,9 @@ class MustrdFile(pytest.File):
                     )
                 except Exception as e:
                     logger.error(f"Error generating tests: {e}\n{traceback.format_exc()}")
+                    exc_given_files = tuple(str(f) for f in getattr(e, 'given_files', []))
+                    exc_ontology_files = tuple(str(f) for f in getattr(e, 'ontology_files', []))
+                    exc_shacl_files = tuple(str(f) for f in getattr(e, 'shacl_files', []))
                     specs = [
                         SpecInvalid(
                             MUST.TestSpec,
@@ -422,6 +462,13 @@ class MustrdFile(pytest.File):
                             f"Test generation failed: {str(e)}",
                             spec_file_name=str(test_config.spec_path.name) if test_config.spec_path else "unknown.mustrd.ttl",
                             spec_source_file=self.path if test_config.spec_path else Path("unknown.mustrd.ttl"),
+                            given_files=exc_given_files,
+                            ontology_files=exc_ontology_files,
+                            shacl_files=exc_shacl_files,
+                            shacl_conforms=getattr(e, 'shacl_conforms', None),
+                            ontology_conforms=getattr(e, 'ontology_conforms', None),
+                            shacl_report=getattr(e, 'shacl_report', None),
+                            ontology_report=getattr(e, 'ontology_report', None),
                         )
                         for triple_store in (triple_stores or test_config.filter_on_tripleStore)
                     ]

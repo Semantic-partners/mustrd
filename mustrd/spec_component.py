@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, List, Type
+from typing import Tuple, List, Type, Optional
 
 import pandas
 import requests
@@ -23,6 +23,22 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class MustrdValidationError(ValueError):
+    """Raised when SHACL or OWL DL validation fails during given-clause processing.
+    Carries file metadata so callers can surface it in reports even on failure."""
+    def __init__(self, message, given_files=None, ontology_files=None, shacl_files=None,
+                 shacl_conforms=None, ontology_conforms=None,
+                 shacl_report=None, ontology_report=None):
+        super().__init__(message)
+        self.given_files = given_files or []
+        self.ontology_files = ontology_files or []
+        self.shacl_files = shacl_files or []
+        self.shacl_conforms = shacl_conforms
+        self.ontology_conforms = ontology_conforms
+        self.shacl_report = shacl_report
+        self.ontology_report = ontology_report
+
+
 @dataclass
 class SpecComponent:
     pass
@@ -31,6 +47,28 @@ class SpecComponent:
 @dataclass
 class GivenSpec(SpecComponent):
     value: ConjunctiveGraph = None
+    source_file: Optional[Path] = None
+    given_files: list = field(default_factory=list)
+    ontology_files: list = field(default_factory=list)
+    shacl_files: list = field(default_factory=list)
+    shacl_conforms: Optional[bool] = None
+    ontology_conforms: Optional[bool] = None
+
+
+@dataclass
+class OntologyGivenSpec(GivenSpec):
+    """Holds an OWL ontology loaded from a must:FileOntology node.
+    When combined with other GivenSpec instances, OWL DL reasoning will be applied
+    over the merged data + ontology graph before the spec is executed."""
+    pass
+
+
+@dataclass
+class ShaclGivenSpec(GivenSpec):
+    """Holds a SHACL shapes graph loaded from a must:FileShaclDataset node.
+    When combined with other GivenSpec instances, the data graph will be validated
+    against these shapes before the spec is executed."""
+    pass
 
 
 @dataclass
@@ -57,6 +95,7 @@ class SpadeEdnGroupSourceWhenSpec(WhenSpec):
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
+    source_file: Optional[Path] = None
 
 
 @dataclass
@@ -169,8 +208,10 @@ def get_spec_component_type(spec_components: List[SpecComponent]) -> Type[SpecCo
 
 
 def combine_specs_dispatch(spec_components: List[SpecComponent]) -> Type[SpecComponent]:
-    spec_type = get_spec_component_type(spec_components)
-    return spec_type
+    # Allow mixing GivenSpec and OntologyGivenSpec (subclass) in the same given clause
+    if all(isinstance(c, GivenSpec) for c in spec_components):
+        return GivenSpec
+    return get_spec_component_type(spec_components)
 
 
 combine_specs = MultiMethod("combine_specs", combine_specs_dispatch)
@@ -178,15 +219,142 @@ combine_specs = MultiMethod("combine_specs", combine_specs_dispatch)
 
 @combine_specs.method(GivenSpec)
 def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
-    if len(spec_components) == 1:
-        return spec_components[0]
-    else:
+    ontology_specs = [c for c in spec_components if isinstance(c, OntologyGivenSpec)]
+    shacl_specs = [c for c in spec_components if isinstance(c, ShaclGivenSpec)]
+    data_specs = [c for c in spec_components
+                  if not isinstance(c, OntologyGivenSpec) and not isinstance(c, ShaclGivenSpec)]
+
+    all_given_files = [s.source_file for s in data_specs if getattr(s, 'source_file', None)]
+    all_ontology_files = [o.source_file for o in ontology_specs if getattr(o, 'source_file', None)]
+    all_shacl_files = [s.source_file for s in shacl_specs if getattr(s, 'source_file', None)]
+
+    if not ontology_specs and not shacl_specs:
+        # Original behaviour: no validators present
+        if len(spec_components) == 1:
+            result = spec_components[0]
+            result.given_files = all_given_files
+            return result
         graph = Graph()
         for spec_component in spec_components:
             graph += spec_component.value
         given_spec = GivenSpec()
         given_spec.value = graph
+        given_spec.given_files = all_given_files
         return given_spec
+
+    # Merge all data graphs
+    data_graph = Graph()
+    for s in data_specs:
+        if s.value is not None:
+            data_graph += s.value
+
+    # Run SHACL validation if shapes files are present
+    shacl_conforms = None
+    if shacl_specs:
+        from pyshacl import validate as shacl_validate
+        shacl_graph = Graph()
+        for s in shacl_specs:
+            if s.value is not None:
+                shacl_graph += s.value
+        log.debug("Running SHACL validation on given data graph")
+        conforms, _, results_text = shacl_validate(
+            data_graph,
+            shacl_graph=shacl_graph,
+            inference="none",
+            abort_on_first=False,
+        )
+        shacl_conforms = conforms
+        if not conforms:
+            raise MustrdValidationError(
+                f"SHACL validation failed for given data graph:\n{results_text}",
+                given_files=all_given_files,
+                shacl_files=all_shacl_files,
+                shacl_conforms=False,
+                shacl_report=results_text,
+            )
+
+    if not ontology_specs:
+        given_spec = GivenSpec()
+        given_spec.value = data_graph
+        given_spec.given_files = all_given_files
+        given_spec.shacl_files = all_shacl_files
+        given_spec.shacl_conforms = shacl_conforms
+        return given_spec
+
+    # Merge all ontology graphs into the same graph and run OWL DL reasoning
+    for o in ontology_specs:
+        if o.value is not None:
+            data_graph += o.value
+
+    import os
+    import tempfile
+
+    try:
+        import owlready2
+    except ImportError as e:
+        raise MustrdValidationError(
+            "owlready2 is required for OWL DL reasoning with must:FileOntology. "
+            "Install it with: pip install owlready2. Note: Java JRE must be available.",
+            given_files=all_given_files,
+            ontology_files=all_ontology_files,
+            ontology_conforms=False,
+        ) from e
+
+    try:
+        import owlrl
+    except ImportError as e:
+        raise MustrdValidationError(
+            "owlrl is required for forward-chaining entailment with must:FileOntology. "
+            "It should be available as a transitive dependency of pyshacl.",
+            given_files=all_given_files,
+            ontology_files=all_ontology_files,
+            ontology_conforms=False,
+        ) from e
+
+    tmp_in = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".owl", delete=False, mode="wb") as f:
+            f.write(data_graph.serialize(format="xml").encode("utf-8"))
+            tmp_in = f.name
+
+        log.debug("Running OWL DL consistency check via owlready2 sync_reasoner on combined given graph + ontology")
+        world = owlready2.World()
+        onto = world.get_ontology(f"file://{tmp_in}").load()
+        try:
+            with onto:
+                owlready2.sync_reasoner(world, infer_property_values=True)
+        except owlready2.base.OwlReadyInconsistentOntologyError:
+            inconsistent = list(world.inconsistent_classes())
+            if inconsistent:
+                lines = ["Inconsistent classes detected:"]
+                for cls in inconsistent:
+                    lines.append(f"  - {cls.iri}")
+                ontology_report = "\n".join(lines)
+            else:
+                ontology_report = "Ontology is inconsistent (no specific inconsistent classes identified)."
+            raise MustrdValidationError(
+                "OWL DL inconsistency detected in given graph + ontology",
+                given_files=all_given_files,
+                ontology_files=all_ontology_files,
+                ontology_conforms=False,
+                ontology_report=ontology_report,
+            )
+
+    finally:
+        if tmp_in and os.path.exists(tmp_in):
+            os.unlink(tmp_in)
+
+    log.debug("Applying OWL 2 RL forward-chaining entailment to given graph")
+    owlrl.DeductiveClosure(owlrl.OWLRL_Semantics).expand(data_graph)
+
+    given_spec = GivenSpec()
+    given_spec.value = data_graph
+    given_spec.given_files = all_given_files
+    given_spec.ontology_files = all_ontology_files
+    given_spec.shacl_files = all_shacl_files
+    given_spec.shacl_conforms = shacl_conforms
+    given_spec.ontology_conforms = True
+    return given_spec
 
 
 @combine_specs.method(WhenSpec)
@@ -290,6 +458,18 @@ def _get_spec_component_filedatasource(spec_component_details: SpecComponentDeta
     spec_component = GivenSpec()
     return load_spec_component(spec_component_details, spec_component)
 
+
+@get_spec_component.method((MUST.FileOntology, MUST.given))
+def _get_spec_component_fileontology_given(spec_component_details: SpecComponentDetails) -> OntologyGivenSpec:
+    spec_component = OntologyGivenSpec()
+    return load_spec_component(spec_component_details, spec_component)
+
+
+@get_spec_component.method((MUST.FileShaclDataset, MUST.given))
+def _get_spec_component_fileshacldataset_given(spec_component_details: SpecComponentDetails) -> ShaclGivenSpec:
+    spec_component = ShaclGivenSpec()
+    return load_spec_component(spec_component_details, spec_component)
+
 @get_spec_component.method((MUST.FileDataset, MUST.then))
 def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
@@ -299,7 +479,11 @@ def _get_spec_component_filedatasource(spec_component_details: SpecComponentDeta
 def load_spec_component(spec_component_details, spec_component):
     file_path = get_file_or_fileurl(spec_component_details)
     file_path = Path(str(file_path))
-    return load_dataset_from_file(get_file_absolute_path(spec_component_details, file_path), spec_component)
+    absolute_path = get_file_absolute_path(spec_component_details, file_path)
+    result = load_dataset_from_file(absolute_path, spec_component)
+    if result is not None:
+        result.source_file = absolute_path
+    return result
 
 def get_file_or_fileurl(spec_component_details):
     file_path = spec_component_details.spec_graph.value(

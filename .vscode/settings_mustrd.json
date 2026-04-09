@@ -1,6 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "--mustrd", "--md=junit/github_job_summary.md", "--config=test/test_config_local.ttl"
+        "--mustrd", "--md=junit/github_job_summary.md", "--config=--config=new_feature_shacl/mustrd_config.ttl"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

@@ -1,0 +1,17 @@
+PREFIX trains:     <https://example.org/trains-Ontology#> 
+PREFIX data: <https://example.org/trains-Triples#>  
+
+# CQ: Which stations are served by more than one service?
+
+SELECT DISTINCT ?station 
+WHERE{
+    ?station a trains:Station .
+    ?line_1 a trains:Line ;
+        trains:operatedBy ?service_1 ;
+        trains:hasStation ?station .
+    ?line_2 a trains:Line ;
+        trains:operatedBy ?service_2 ;
+        trains:hasStation ?station .
+    FILTER(?service_1 != ?service_2)
+}
+ORDER BY ?station

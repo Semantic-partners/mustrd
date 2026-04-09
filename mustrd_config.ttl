@@ -1,0 +1,14 @@
+@prefix : <https://mustrd.org/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+
+:hub_stations_ontology_test a :MustrdTest ;
+    :hasSpecPath "new_feature_ontology" ;
+    :hasDataPath "new_feature_ontology" ;
+    :hasPytestPath "hub_stations_ontology" ;
+    :filterOnTripleStore triplestore:RdfLib .
+
+:hub_stations_shacl_test a :MustrdTest ;
+    :hasSpecPath "new_feature_shacl" ;
+    :hasDataPath "new_feature_shacl" ;
+    :hasPytestPath "hub_stations_shacl" ;
+    :filterOnTripleStore triplestore:RdfLib .

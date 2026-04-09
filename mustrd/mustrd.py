@@ -1,11 +1,11 @@
 import os
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pyparsing import ParseException
 from pathlib import Path
@@ -21,7 +21,7 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
+from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec, MustrdValidationError
 from .utils import is_json, get_mustrd_root
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -77,6 +77,14 @@ class Specification:
     then: ThenSpec
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
+    given_files: tuple = field(default_factory=tuple)
+    ontology_files: tuple = field(default_factory=tuple)
+    shacl_files: tuple = field(default_factory=tuple)
+    shacl_conforms: Optional[bool] = None
+    ontology_conforms: Optional[bool] = None
+    then_file: Optional[Path] = None
+    shacl_report: Optional[str] = None
+    ontology_report: Optional[str] = None
 
 
 @dataclass
@@ -138,6 +146,14 @@ class SpecInvalid(SpecResult):
     message: str
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
+    given_files: tuple = field(default_factory=tuple)
+    ontology_files: tuple = field(default_factory=tuple)
+    shacl_files: tuple = field(default_factory=tuple)
+    shacl_conforms: Optional[bool] = None
+    ontology_conforms: Optional[bool] = None
+    then_file: Optional[Path] = None
+    shacl_report: Optional[str] = None
+    ontology_report: Optional[str] = None
 
 
 @dataclass
@@ -375,6 +391,13 @@ def get_specs(
                                 str(e),
                                 str(file_name),
                                 Path(file_path),
+                                given_files=tuple(str(f) for f in getattr(e, 'given_files', [])),
+                                ontology_files=tuple(str(f) for f in getattr(e, 'ontology_files', [])),
+                                shacl_files=tuple(str(f) for f in getattr(e, 'shacl_files', [])),
+                                shacl_conforms=getattr(e, 'shacl_conforms', None),
+                                ontology_conforms=getattr(e, 'ontology_conforms', None),
+                                shacl_report=getattr(e, 'shacl_report', None),
+                                ontology_report=getattr(e, 'ontology_report', None),
                             )
                         ]
 
@@ -440,14 +463,22 @@ def get_spec(
             )
         )
         # https://github.com/Semantic-partners/mustrd/issues/92
+        given_component = components[0]
+        then_component = components[2]
         return Specification(
             spec_uri,
             mustrd_triple_store,
-            components[0].value,
+            given_component.value,
             components[1],
-            components[2],
+            then_component,
             spec_file_name,
             spec_file_path,
+            given_files=tuple(getattr(given_component, 'given_files', [])),
+            ontology_files=tuple(getattr(given_component, 'ontology_files', [])),
+            shacl_files=tuple(getattr(given_component, 'shacl_files', [])),
+            shacl_conforms=getattr(given_component, 'shacl_conforms', None),
+            ontology_conforms=getattr(given_component, 'ontology_conforms', None),
+            then_file=getattr(then_component, 'source_file', None),
         )
 
     except (ValueError, FileNotFoundError) as e:

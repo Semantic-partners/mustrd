@@ -1,0 +1,62 @@
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <https://www.w3.org/2009/08/skos-reference/skos.html#> .
+@prefix :  <https://example.org/trains-Ontology#> .
+
+<https://example.org/trains-Ontology>
+    a owl:Ontology ;
+    skos:prefLabel "London Trains Ontology" ;
+    rdfs:comment "A simple ontology describing rail concepts within London." .
+
+# Classes
+
+:TransportMode
+    a owl:Class ;
+    skos:prefLabel "Transport Mode" ;
+    rdfs:comment "A mode of transport available in London." .
+
+:Line
+    a owl:Class ;
+    skos:prefLabel "Line" ;
+    rdfs:comment "A named service line (e.g. Central line, Elizabeth line)." .
+:TflLine a owl:Class ; skos:prefLabel "TfL Line" ; rdfs:comment "Lines ran by Transport for London" ; rdfs:subClassOf :Line .
+
+:Station
+    a owl:Class ;
+    skos:prefLabel "Station" ;
+    rdfs:comment "A station or stop on the trains network." ;
+    owl:disjointWith :Zone .
+
+:Zone
+    a owl:Class ;
+    skos:prefLabel "Zone" ;
+    rdfs:comment "A fare zone in the trains network." ;
+    owl:disjointWith :Station .
+
+# :contradiction a owl:Class  ;
+#         rdfs:subClassOf :Zone , :Station .
+# :contradiction a :Zone .
+
+# Properties
+
+:operatedBy
+    a owl:ObjectProperty ;
+    skos:prefLabel "operated by" ;
+    rdfs:domain :Line ;
+    rdfs:comment "connects a Line to the mode of transport it is part of";
+    rdfs:range :TransportMode .
+
+:hasStation
+    a owl:ObjectProperty ;
+    skos:prefLabel "has station" ;
+    rdfs:comment "connects a Station to a Line which stops there";
+    rdfs:domain :Line ;
+    rdfs:range :Station .
+
+:inZone
+    a owl:ObjectProperty ;
+    skos:prefLabel "in zone" ;
+    rdfs:comment "connects a Station to the London fare zone it is part of";
+    rdfs:domain :Station ;
+    rdfs:range :Zone .

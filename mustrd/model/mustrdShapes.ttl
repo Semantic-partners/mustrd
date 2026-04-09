@@ -137,6 +137,32 @@ must:OrderedTableDatasetShape
                      sh:node     must:OrderedRowShape ;
                      sh:minCount 2 ; ] .
 
+must:FileShaclDatasetShape
+    a              sh:NodeShape ;
+    sh:targetClass must:FileShaclDataset ;
+    sh:or (
+        [ sh:path must:file ;
+          sh:datatype xsd:string ;
+          sh:maxCount 1 ; ]
+        [ sh:path must:fileurl ;
+          sh:nodeKind sh:IRI ;
+          sh:minCount 1 ;
+          sh:maxCount 1 ; ]
+    ) .
+
+must:FileOntologyShape
+    a              sh:NodeShape ;
+    sh:targetClass must:FileOntology ;
+    sh:or (
+        [ sh:path must:file ;
+          sh:datatype xsd:string ;
+          sh:maxCount 1 ; ]
+        [ sh:path must:fileurl ;
+          sh:nodeKind sh:IRI ;
+          sh:minCount 1 ;
+          sh:maxCount 1 ; ]
+    ) .
+
 must:FileDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:FileDataset ;

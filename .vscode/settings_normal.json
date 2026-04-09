@@ -1,6 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "test/"
+        "new_feature_shacl/"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

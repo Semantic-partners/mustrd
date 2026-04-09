@@ -305,6 +305,24 @@ sh:order rdf:type owl:DatatypeProperty ;
              rdfs:label "File dataset" .
 
 
+:FileOntology a owl:Class ;
+            rdfs:isDefinedBy "https://mustrd.org/model/" ;
+            rdfs:label "Ontology File" ;
+            rdfs:subClassOf :Validator ;
+            rdfs:subClassOf :Dataset ;
+            rdfs:comment "The file which contains an ontology with which mustrd will apply OWL DL reasoning to an accompanying input dataset." .
+
+:FileShaclDataset a owl:Class ;
+            rdfs:isDefinedBy "https://mustrd.org/model/" ;
+            rdfs:label "Shacl File" ;
+            rdfs:subClassOf :Validator ;
+            rdfs:subClassOf :Dataset ;
+            rdfs:comment "The file which contains a shapes graph against which mustrd will validate an accompanying input dataset." .
+
+:Validator a owl:Class ;
+            rdfs:isDefinedBy "https://mustrd.org/model/";
+            rdfs:label "Validator" ;
+            rdfs:comment "The class of things used to validate and ensure data quality." .
 ###  https://mustrd.org/model/FileSparqlSource
 :FileSparqlSource rdf:type owl:Class ;
                   rdfs:subClassOf :SparqlSource ;

@@ -1,19 +1,37 @@
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col">module</th>
-            <th scope="col">class</th>
-            <th scope="col">test</th>
-            <th scope="col">status</th>
-        <tr>
-    </thead>
-    <tbody>
-    {% for  result in result_list -%}
-        <tr>
-            <td>{{result.module_name}}</td>
-            <td>{{result.class_name}}</td>
-            <td>{{result.test_name}}</td>
-            <td>{{result.status}}</td>
-        </tr>
-    {% endfor %}</tbody>
+<style>
+table.mustrd-main { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+table.mustrd-main th, table.mustrd-main td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+table.mustrd-main th { background: #f0f0f0; font-weight: bold; }
+table.detail-table { border-collapse: collapse; font-size: 0.85em; width: 100%; margin-top: 4px; }
+table.detail-table th, table.detail-table td { border: 1px solid #ddd; padding: 4px 10px; text-align: left; vertical-align: top; }
+table.detail-table th { background: #eef; width: 160px; }
+table.diff-table { border-collapse: collapse; font-size: 0.85em; margin-top: 4px; }
+table.diff-table th, table.diff-table td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; white-space: nowrap; }
+table.diff-table th { background: #f0f0f0; font-weight: bold; }
+.status-passed { color: green; font-weight: bold; }
+.status-failed { color: red; font-weight: bold; }
+.status-skipped { color: grey; }
+</style>
+<table class="mustrd-main">
+<thead><tr><th>module</th><th>class</th><th>test</th><th>status</th><th>details</th></tr></thead>
+<tbody>
+{% for result in result_list -%}
+<tr>
+<td>{{result.module_name}}</td>
+<td>{{result.class_name}}</td>
+<td>{{result.test_name}}</td>
+<td><span class="status-{{result.status}}">{{result.status}}</span></td>
+<td><details><summary>show</summary>
+<table class="detail-table">
+<tr><th>input file(s)</th><td>{% for f in result.given_files %}<details><summary>{{f}}</summary><pre>{{read_file(f)}}</pre></details>{% else %}—{% endfor %}</td></tr>
+<tr><th>ontology file(s)</th><td>{% for f in result.ontology_files %}<details><summary>{{f}}</summary><pre>{{read_file(f)}}</pre></details>{% else %}—{% endfor %}</td></tr>
+<tr><th>ontology conforms</th><td>{%- if result.ontology_files -%}{%- if result.ontology_conforms == true -%}✓{%- elif result.ontology_conforms == false -%}✗{%- else -%}—{%- endif -%}{%- else -%}—{%- endif -%}{%- if result.ontology_report %}<details><summary>report</summary><pre>{{result.ontology_report|escape_html}}</pre></details>{% endif %}</td></tr>
+<tr><th>SHACL file(s)</th><td>{% for f in result.shacl_files %}<details><summary>{{f}}</summary><pre>{{read_file(f)}}</pre></details>{% else %}—{% endfor %}</td></tr>
+<tr><th>SHACL conforms</th><td>{%- if result.shacl_files -%}{%- if result.shacl_conforms == true -%}✓{%- elif result.shacl_conforms == false -%}✗{%- else -%}—{%- endif -%}{%- else -%}—{%- endif -%}{%- if result.shacl_report %}<details><summary>report</summary><pre>{{result.shacl_report|escape_html}}</pre></details>{% endif %}</td></tr>
+{%- if result.failure_message %}<tr><th>failure</th><td>{{result.failure_message}}</td></tr>{% endif %}
+</table>
+</details></td>
+</tr>
+{% endfor %}
+</tbody>
 </table>

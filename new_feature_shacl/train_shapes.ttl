@@ -1,0 +1,19 @@
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix trains: <https://example.org/trains-Ontology#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+trains:StationShape
+    a sh:NodeShape ;
+    sh:targetClass trains:Station ;
+    sh:property [
+        sh:path     [ sh:inversePath trains:hasStation ] ;
+        sh:class    trains:Line ;
+        sh:minCount 1 ;
+        sh:message  "A Station must be the object of at least one trains:hasStation triple whose subject is a trains:Line." ;
+    ] ;
+    sh:property [
+        sh:path      trains:inZone ;
+        sh:class  trains:Zone ;
+        sh:minCount  1 ;
+        sh:message   "A Station must have at least one trains:inZone value of type trains:Zone." ;
+    ] .

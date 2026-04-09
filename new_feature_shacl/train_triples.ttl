@@ -1,0 +1,244 @@
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <https://www.w3.org/2009/08/skos-reference/skos.html#> .
+@prefix :  <https://example.org/trains-Triples#> .
+@prefix trains:     <https://example.org/trains-Ontology#> .
+
+
+# Transport Modes
+
+:Underground   a trains:TransportMode ; skos:prefLabel "London Underground" .
+:Overground    a trains:TransportMode ; skos:prefLabel "London Overground" .
+:ElizabethLine a trains:TransportMode ; skos:prefLabel "Elizabeth line" .
+:DLR           a trains:TransportMode ; skos:prefLabel "Docklands Light Railway" .
+:NationalRail  a trains:TransportMode ; skos:prefLabel "National Rail" .
+
+# Zones
+
+:Zone1 a trains:Zone ; skos:prefLabel "Zone 1" .
+:Zone2 a trains:Zone ; skos:prefLabel "Zone 2" .
+:Zone3 a trains:Zone ; skos:prefLabel "Zone 3" .
+:Zone4 a trains:Zone ; skos:prefLabel "Zone 4" .
+
+# Lines
+
+:CentralLine
+    a trains:Line ;
+    skos:prefLabel "Central" ;
+    trains:operatedBy :Underground .
+
+:JubileeLine
+    a trains:Line ;
+    skos:prefLabel "Jubilee" ;
+    trains:operatedBy :Underground .
+
+:NorthernLine
+    a trains:Line ;
+    skos:prefLabel "Northern" ;
+    trains:operatedBy :Underground .
+
+:VictoriaLine
+    a trains:Line ;
+    skos:prefLabel "Victoria" ;
+    trains:operatedBy :Underground .
+
+:ElizabethLineSvc
+    a trains:Line ;
+    skos:prefLabel "Elizabeth" ;
+    trains:operatedBy :ElizabethLine .
+
+:DLRLine
+    a trains:Line ;
+    skos:prefLabel "Docklands Light Railway" ;
+    trains:operatedBy :DLR .
+
+:GWR
+    a trains:Line ;
+    skos:prefLabel "Great Western Railway" ;
+    trains:operatedBy :NationalRail .
+
+:LNER
+    a trains:Line ;
+    skos:prefLabel "London North Eastern Railway" ;
+    trains:operatedBy :NationalRail .
+
+:Southern
+    a trains:Line ;
+    skos:prefLabel "Southern" ;
+    trains:operatedBy :NationalRail .
+
+# Stations
+
+:OxfordCircus
+    a trains:Station ;
+    skos:prefLabel "Oxford Circus" ;
+    trains:inZone :Zone1 .
+
+:BondStreet
+    a trains:Station ;
+    skos:prefLabel "Bond Street" ;
+    trains:inZone :Zone1 .
+
+:LiverpoolStreet
+    a trains:Station ;
+    skos:prefLabel "Liverpool Street" ;
+    trains:inZone :Zone1 .
+
+:StratfordStation
+    a trains:Station ;
+    skos:prefLabel "Stratford" ;
+    trains:inZone :Zone3 .
+
+:CanaryWharf
+    a trains:Station ;
+    skos:prefLabel "Canary Wharf" ;
+    trains:inZone :Zone2 .
+
+:KingsCross
+    a trains:Station ;
+    skos:prefLabel "King's Cross St. Pancras" ;
+    trains:inZone :Zone1 .
+
+:BankStation
+    a trains:Station ;
+    skos:prefLabel "Bank" ;
+    trains:inZone :Zone1 .
+
+:WaterlooStation
+    a trains:Station ;
+    skos:prefLabel "Waterloo" ;
+    trains:inZone :Zone1 .
+
+:BrixtonStation
+    a trains:Station ;
+    skos:prefLabel "Brixton" ;
+    trains:inZone :Zone2 .
+
+:EalingBroadway
+    a trains:Station ;
+    skos:prefLabel "Ealing Broadway" ;
+    trains:inZone :Zone3 .
+
+:Paddington
+    a trains:Station ;
+    skos:prefLabel "Paddington" ;
+    trains:inZone :Zone1 .
+
+:Reading
+    a trains:Station ;
+    skos:prefLabel "Reading" .
+
+:BristolTempleMeads
+    a trains:Station ;
+    skos:prefLabel "Bristol Temple Meads" .
+
+:York
+    a trains:Station ;
+    skos:prefLabel "York" .
+
+:EdinburghWaverley
+    a trains:Station ;
+    skos:prefLabel "Edinburgh Waverley" .
+
+:LondonBridge
+    a trains:Station ;
+    skos:prefLabel "London Bridge" ;
+    trains:inZone :Zone1 .
+
+:GatwickAirport
+    a trains:Station ;
+    skos:prefLabel "Gatwick Airport" .
+
+:Brighton
+    a trains:Station ;
+    skos:prefLabel "Brighton" .
+
+:TowerGateway
+    a trains:Station ;
+    skos:prefLabel "Tower Gateway" ;
+    trains:inZone :Zone1 .
+
+:Shadwell
+    a trains:Station ;
+    skos:prefLabel "Shadwell" ;
+    trains:inZone :Zone2 .
+
+:Limehouse
+    a trains:Station ;
+    skos:prefLabel "Limehouse" ;
+    trains:inZone :Zone2 .
+
+:Poplar
+    a trains:Station ;
+    skos:prefLabel "Poplar" ;
+    trains:inZone :Zone2 .
+
+:Westferry
+    a trains:Station ;
+    skos:prefLabel "Westferry" ;
+    trains:inZone :Zone2 .
+
+:HeronQuays
+    a trains:Station ;
+    skos:prefLabel "Heron Quays" ;
+    trains:inZone :Zone2 .
+
+# Line-station relationships
+
+:CentralLine
+    trains:hasStation :OxfordCircus ;
+    trains:hasStation :BondStreet ;
+    trains:hasStation :BankStation ;
+    trains:hasStation :LiverpoolStreet ;
+    trains:hasStation :EalingBroadway .
+
+:JubileeLine
+    trains:hasStation :BondStreet ;
+    trains:hasStation :WaterlooStation ;
+    trains:hasStation :CanaryWharf ;
+    trains:hasStation :StratfordStation .
+
+:NorthernLine
+    trains:hasStation :KingsCross ;
+    trains:hasStation :BankStation ;
+    trains:hasStation :WaterlooStation ;
+    trains:hasStation :BrixtonStation .
+
+:VictoriaLine
+    trains:hasStation :OxfordCircus ;
+    trains:hasStation :KingsCross ;
+    trains:hasStation :WaterlooStation ;
+    trains:hasStation :BrixtonStation .
+
+:ElizabethLineSvc
+    trains:hasStation :BondStreet ;
+    trains:hasStation :LiverpoolStreet ;
+    trains:hasStation :CanaryWharf ;
+    trains:hasStation :StratfordStation .
+
+:GWR
+    trains:hasStation :Paddington ;
+    trains:hasStation :Reading ;
+    trains:hasStation :BristolTempleMeads .
+
+:LNER
+    trains:hasStation :KingsCross ;
+    trains:hasStation :York ;
+    trains:hasStation :EdinburghWaverley .
+
+:Southern
+    trains:hasStation :LondonBridge ;
+    trains:hasStation :GatwickAirport ;
+    trains:hasStation :Brighton .
+
+:DLRLine
+    trains:hasStation :BankStation ;
+    trains:hasStation :TowerGateway ;
+    trains:hasStation :Shadwell ;
+    trains:hasStation :Limehouse ;
+    trains:hasStation :Westferry ;
+    trains:hasStation :Poplar ;
+    trains:hasStation :HeronQuays ;
+    trains:hasStation :CanaryWharf ;
+    trains:hasStation :StratfordStation .

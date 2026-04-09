@@ -1,0 +1,30 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+
+must:hub_query a must:TestSpec ;
+              must:given [ a must:FileDataset ;
+                       must:fileurl <file://./minimal_train_triples.ttl> ] ;
+              must:given [ a must:FileOntology ;
+                       must:fileurl <file://./train_ontology.ttl>] ;
+              must:when [ a must:FileSparqlSource ;
+                     must:queryType must:SelectSparql ;
+                     must:fileurl <file://./select_hubs.sparql> ] ;
+              must:then [ a must:TableDataset ;
+                     must:hasRow [ sh:order 1 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#BankStation> ] ] ;
+                     must:hasRow [ sh:order 2 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#BondStreet> ] ] ;
+                     must:hasRow [ sh:order 3 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#CanaryWharf> ] ] ;
+                     must:hasRow [ sh:order 4 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#KingsCross> ] ] ;
+                     must:hasRow [ sh:order 5 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#LiverpoolStreet> ] ] ;
+                     must:hasRow [ sh:order 6 ;
+                                   must:hasBinding [ must:variable "station" ;
+                                                     must:boundValue <https://example.org/trains-Triples#StratfordStation> ] ] ] .
