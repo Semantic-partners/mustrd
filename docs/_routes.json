@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "include": ["/model*", "/triplestore*", "/mustrdTest*"],
+  "exclude": ["/model/*", "/triplestore/*", "/mustrdTest/*"]
+}
