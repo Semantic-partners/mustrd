@@ -6,6 +6,11 @@ on:
       - master
     paths:
       - 'docs/**'
+      - 'site-src/**'
+      - 'functions/**'
+      - 'mustrd/model/**'
+      - 'scripts/build.py'
+      - 'scripts/requirements.txt'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -17,6 +22,16 @@ jobs:
       deployments: write
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: pip install -r scripts/requirements.txt
+
+      - name: Build ontology artifacts
+        run: python scripts/build.py
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
