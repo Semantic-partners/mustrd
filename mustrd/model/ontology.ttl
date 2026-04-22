@@ -10,7 +10,7 @@
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @base <https://mustrd.org/model/> .
 
-<https://mustrd.org/model> rdf:type owl:Ontology ;
+<https://mustrd.org/model/> rdf:type owl:Ontology ;
                             owl:imports <https://mustrd.org/triplestore/> ,
                                         rdf: ,
                                         rdfs: ;
