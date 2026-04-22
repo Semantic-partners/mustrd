@@ -181,3 +181,4 @@ test/anzoConnectionConfig.ttl
 pytest.ini
 test/*nogit.py
 test_logs.txt
+.wrangler/
