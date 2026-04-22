@@ -1,5 +1,21 @@
 {
   "version": 1,
-  "include": ["/model*", "/triplestore*", "/mustrdTest*"],
-  "exclude": ["/model/*", "/triplestore/*", "/mustrdTest/*"]
+  "include": [
+    "/model",
+    "/model.ttl",
+    "/model.rdf",
+    "/model.jsonld",
+    "/model.nt",
+    "/triplestore",
+    "/triplestore.ttl",
+    "/triplestore.rdf",
+    "/triplestore.jsonld",
+    "/triplestore.nt",
+    "/mustrdTest",
+    "/mustrdTest.ttl",
+    "/mustrdTest.rdf",
+    "/mustrdTest.jsonld",
+    "/mustrdTest.nt"
+  ],
+  "exclude": []
 }
