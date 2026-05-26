@@ -8,7 +8,7 @@ from rdflib import Graph, RDF
 from pytest import Session
 
 from mustrd import logger_setup
-from mustrd.TestResult import ResultList, TestResult, get_result_list
+from mustrd.TestResult import TestResult, render_cq_table
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -359,17 +359,7 @@ class MustrdTestPlugin:
                 )
             )
 
-        result_list = ResultList(
-            None,
-            get_result_list(
-                test_results,
-                lambda result: result.type,
-                lambda result: is_mustrd and result.test_name.split("@")[1],
-            ),
-            False,
-        )
-
-        md = result_list.render()
+        md = render_cq_table(test_results)
         with open(self.md_path, "w") as file:
             file.write(md)
 
