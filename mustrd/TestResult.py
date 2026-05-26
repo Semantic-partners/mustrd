@@ -24,6 +24,7 @@ TEMPLATE_FOLDER = Path(os.path.join(get_mustrd_root(), "templates/"))
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
 RESULT_LIST_LEAF_MD_TEMPLATE = "md_ResultList_leaf_template.jinja"
+CQ_TABLE_MD_TEMPLATE = "md_cq_table_template.jinja"
 
 
 @dataclass
@@ -34,14 +35,17 @@ class TestResult:
     status: str
     is_mustrd: bool
     type: str
+    competency_question: str = None
 
-    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
+    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool,
+                 competency_question: str = None):
         self.test_name = test_name
         self.class_name = class_name
         self.module_name = module_name
         self.status = status
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
+        self.competency_question = competency_question
 
 
 @dataclass
@@ -110,3 +114,8 @@ class ResultList:
         environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
         template = RESULT_LIST_LEAF_MD_TEMPLATE if self.is_leaf else RESULT_LIST_MD_TEMPLATE
         return environment.get_template(template).render(result_list=self.result_list, environment=environment)
+
+
+def render_cq_table(test_results: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(result_list=test_results)

@@ -351,9 +351,11 @@ class MustrdTestPlugin:
                 test_name = test_conf.originalname
                 is_mustrd = False
 
+            spec = getattr(test_conf, 'spec', None)
             test_results.append(
                 TestResult(
-                    test_name, class_name, module_name, result.outcome, is_mustrd
+                    test_name, class_name, module_name, result.outcome, is_mustrd,
+                    competency_question=getattr(spec, 'competency_question', None),
                 )
             )
 

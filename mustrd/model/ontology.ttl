@@ -229,6 +229,12 @@ sh:order rdf:type owl:DatatypeProperty ;
           rdfs:range xsd:boolean ;
           .
 
+###  https://mustrd.org/model/CompetencyQuestion
+:CompetencyQuestion rdf:type owl:AnnotationProperty ;
+                    rdfs:domain :TestSpec ;
+                    rdfs:range xsd:string ;
+                    rdfs:label "Tests Competency Question" .
+
 #################################################################
 #    Classes
 #################################################################

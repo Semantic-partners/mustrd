@@ -1,0 +1,5 @@
+| Module | Class | Test | Competency Question | Status |
+|--------|-------|------|---------------------|--------|
+{% for result in result_list -%}
+| {{ result.module_name }} | {{ result.class_name }} | {{ result.test_name }} | {{ result.competency_question or "" }} | {{ result.status }} |
+{% endfor -%}

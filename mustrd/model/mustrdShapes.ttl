@@ -22,7 +22,10 @@ must:TestSpecShape
                      sh:minCount 1 ; ] ;
     sh:property    [ sh:path     must:then ;
                      sh:class    must:Dataset ;
-                     sh:minCount 1 ; ] .
+                     sh:minCount 1 ; ] ;
+    sh:property    [ sh:path     must:CompetencyQuestion ;
+                     sh:datatype xsd:string ;
+                     sh:maxCount 1 ; ] .
 
 must:TestSpecGivenShape
     a              sh:NodeShape ;
