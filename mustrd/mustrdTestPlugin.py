@@ -403,6 +403,11 @@ class MustrdTestPlugin:
             md = render_cq_table(test_results)
             if coverage is not None:
                 md += "\n\n" + render_term_coverage(coverage)
+            # Create the parent directory if needed, so --md=build/report.md
+            # works without a prior mkdir.
+            parent = os.path.dirname(self.md_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
             with open(self.md_path, "w") as file:
                 file.write(md)
 
