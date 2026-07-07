@@ -1,11 +1,10 @@
 <!--
   Example `--md` report for the ontology-term-coverage feature.
-  Produced by running mustrd over a small geography ontology (7 terms) with two
-  competency-question specs:
+  Produced by running mustrd over a small geography ontology (declared via
+  mustrdTest:hasOntologyPath) with two competency-question specs:
     pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=report.md
-  The CQ table comes first; the Ontology term coverage section is appended
-  (--term-coverage is required; without it only the CQ table is written).
-  Reproduced here verbatim as documentation.
+  The CQ table comes first; the Ontology term coverage section is appended.
+  (file:// links are absolute on the machine that produced the report.)
 -->
 | Module | Class | Test | Competency Question | Status |
 |--------|-------|------|---------------------|--------|
@@ -18,6 +17,9 @@
 **Overall: 6/6 terms used to answer the CQs = 100%**
 
 _(7 declared; 1 structural/schema term(s) excluded from the denominator — see below.)_
+
+
+Ontology checked: [ontology/geography.ttl](file:///workspaces/training-data/geography-lab/ontology/geography.ttl)
 
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 

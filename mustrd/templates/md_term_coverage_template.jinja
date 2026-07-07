@@ -4,6 +4,9 @@
 {% if coverage.schema_count %}
 _({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural/schema term(s) excluded from the denominator — see below.)_
 {% endif %}
+{% if coverage.ontology_sources %}
+Ontology checked: {% for s in coverage.ontology_sources %}[{{ s.path }}]({{ s.url }}){{ ", " if not loop.last else "" }}{% endfor %}
+{% endif %}
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 
 | Term | Kind | In input data | In SPARQL | In schema | Status |

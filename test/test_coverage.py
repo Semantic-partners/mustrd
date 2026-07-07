@@ -128,6 +128,17 @@ def test_expand_ontology_files_scans_directories_recursively(tmp_path):
     assert found == {"a.ttl", "b.ttl"}  # recursive; non-RDF skipped
 
 
+def test_ontology_sources_reported_as_links(tmp_path):
+    onto = tmp_path / "geo.ttl"
+    onto.write_text(ONTO)
+    cov = compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])],
+                           ontology=load_ontology([onto]), ontology_sources=[onto])
+    assert len(cov["ontology_sources"]) == 1
+    src = cov["ontology_sources"][0]
+    assert src["path"].endswith("geo.ttl")
+    assert src["url"].startswith("file://") and src["url"].endswith("geo.ttl")
+
+
 def test_load_ontology_merges_files(tmp_path):
     (tmp_path / "onto.ttl").write_text(ONTO)
     g = load_ontology([tmp_path])

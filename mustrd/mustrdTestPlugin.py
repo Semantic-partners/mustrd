@@ -9,7 +9,7 @@ from pytest import Session
 
 from mustrd import logger_setup
 from mustrd.TestResult import TestResult, render_cq_table, render_term_coverage
-from mustrd.coverage import compute_coverage, load_ontology
+from mustrd.coverage import compute_coverage, load_ontology, expand_ontology_files
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -437,8 +437,11 @@ class MustrdTestPlugin:
         coverage = None
         if report_coverage:
             try:
+                ontology_files = expand_ontology_files(self.ontology_paths)
                 ontology = load_ontology(self.ontology_paths)
-                coverage = compute_coverage(coverage_specs, ontology=ontology)
+                coverage = compute_coverage(
+                    coverage_specs, ontology=ontology, ontology_sources=ontology_files
+                )
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
 

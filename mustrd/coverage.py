@@ -18,6 +18,7 @@ namespaces so vocabulary terms like rdfs:label are not mistaken for the
 ontology under test.
 """
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -241,7 +242,22 @@ def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     return reasons
 
 
-def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Optional[dict]:
+def _source_link(p) -> dict:
+    """Display label (relative to cwd if possible) + clickable file:// URL."""
+    p = Path(p)
+    try:
+        label = os.path.relpath(p)
+    except ValueError:  # e.g. different drive on Windows
+        label = str(p)
+    try:
+        url = p.resolve().as_uri()
+    except ValueError:
+        url = str(p)
+    return {"path": label, "url": url}
+
+
+def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
+                     ontology_sources=None) -> Optional[dict]:
     """Compute term coverage across specs.
 
     `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}.
@@ -335,6 +351,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     return {
         "covered": covered, "denominator": denominator, "pct": pct,
         "declared_total": len(declared), "schema_count": len(schema_only),
+        "ontology_sources": [_source_link(p) for p in (ontology_sources or [])],
         "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
