@@ -5,9 +5,10 @@
 the CQ results table).
 
 Ontology term coverage is **opt-in** via `--term-coverage`. When enabled, mustrd
-prints an overall percentage, a per-term matrix, and the list of declared terms
-no CQ exercises to **stdout**; adding `--md` also writes it to the report file
-(beneath the CQ table).
+prints an overall percentage, a per-term matrix, the ontology files it measured
+against (as clickable `file://` links), and the list of declared terms no CQ
+exercises to **stdout**; adding `--md` also writes it to the report file
+(beneath the CQ table, creating the parent directory if needed).
 
 The ontology to measure against is named in the test configuration with
 `mustrdTest:hasOntologyPath`. The value is a path (relative to the config file)
@@ -144,12 +145,18 @@ Reuses what mustrd already parses — no new config:
    `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
    used class. Declared terms that are only schema-referenced are excluded from
    the denominator.
-5. The result is rendered by `templates/md_term_coverage_template.jinja` and
-   appended to the `--md` report after the CQ table.
+5. The result — including the resolved ontology file list as `file://` links
+   (`ontology_sources`) — is rendered by
+   `templates/md_term_coverage_template.jinja`, printed to stdout via the
+   terminal reporter and appended to the `--md` report after the CQ table (whose
+   parent directory is created if missing).
 
 Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
-`mustrd/TestResult.py` (`render_term_coverage`), wired in
-`mustrd/mustrdTestPlugin.py`. Unit tests in `test/test_coverage.py`.
+`mustrd/TestResult.py` (`render_term_coverage`), the `--term-coverage` option,
+`:hasOntologyPath` config parsing and the fail-early check in
+`mustrd/mustrdTestPlugin.py`, the `:hasOntologyPath` term in
+`mustrd/namespace.py` + `mustrd/model/mustrdTest{Ontology,Shapes}.ttl`. Unit
+tests in `test/test_coverage.py`.
 
 ### Known limitations / open questions
 
