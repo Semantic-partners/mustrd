@@ -80,6 +80,14 @@ def pytest_addoption(parser):
         dest="ignore_focus",
         help="Activate/deactivate focus: if --ignore-focus is set, focus will be ignored.",
     )
+    group.addoption(
+        "--term-coverage",
+        action="store_true",
+        dest="term_coverage",
+        help="Report ontology term coverage across the CQ specs: which declared "
+             "terms the passing tests exercise (in data or SPARQL). Prints a "
+             "percentage and table to stdout; also written to the --md file if given.",
+    )
     return
 
 
@@ -92,6 +100,7 @@ def pytest_configure(config) -> None:
                 Path(config.getoption("configpath")),
                 config.getoption("secrets"),
                 config.getoption("ignore_focus"),
+                config.getoption("term_coverage"),
             )
         )
 
@@ -189,11 +198,13 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False):
+    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
+                 term_coverage=False):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
+        self.term_coverage = term_coverage
         self.items = []
 
     @pytest.hookimpl(tryfirst=True)
@@ -329,8 +340,8 @@ class MustrdTestPlugin:
 
     # Take all the test results in session, parse them, split them in mustrd and standard pytest  and generate md file
     def pytest_sessionfinish(self, session: Session, exitstatus):
-        # if md path has not been defined in argument, then do not generate md file
-        if not self.md_path:
+        # Nothing to do unless we're writing an md report or reporting coverage.
+        if not self.md_path and not self.term_coverage:
             return
 
         test_results = []
@@ -376,21 +387,46 @@ class MustrdTestPlugin:
                     "queries": queries,
                 })
 
-        md = render_cq_table(test_results)
+        # Ontology term coverage is opt-in via --term-coverage. compute_coverage
+        # returns None when the specs declare no ontology terms in their given
+        # data, so it stays a no-op for ordinary suites even when requested.
+        coverage = None
+        if self.term_coverage:
+            try:
+                coverage = compute_coverage(coverage_specs)
+            except Exception as e:
+                logger.warning(f"Could not compute ontology term coverage: {e}")
 
-        # Ontology term coverage: which declared terms the passing CQ specs
-        # actually exercise (in their data or SPARQL). compute_coverage returns
-        # None when the specs declare no ontology terms in their given data, so
-        # ordinary suites are unaffected.
-        try:
-            coverage = compute_coverage(coverage_specs)
+        # Markdown report file: CQ table always; term coverage appended only when
+        # it was requested (and produced a result).
+        if self.md_path:
+            md = render_cq_table(test_results)
             if coverage is not None:
                 md += "\n\n" + render_term_coverage(coverage)
-        except Exception as e:
-            logger.warning(f"Could not compute ontology term coverage: {e}")
+            with open(self.md_path, "w") as file:
+                file.write(md)
 
-        with open(self.md_path, "w") as file:
-            file.write(md)
+        # Term coverage to stdout when requested.
+        if self.term_coverage:
+            self._report_coverage_to_terminal(session.config, coverage)
+
+    def _report_coverage_to_terminal(self, config, coverage):
+        tr = config.pluginmanager.get_plugin("terminalreporter")
+        if coverage is not None:
+            lines = render_term_coverage(coverage).splitlines()
+            # drop the leading markdown "## Ontology term coverage" — the
+            # terminal section header below already labels it.
+            if lines and lines[0].strip() == "## Ontology term coverage":
+                lines = lines[1:]
+        else:
+            lines = ["No ontology term coverage: the specs declare no ontology "
+                     "terms in their given data."]
+        if tr is not None:
+            tr.section("Ontology term coverage", sep="=")
+            for line in lines:
+                tr.write_line(line)
+        else:  # pragma: no cover - terminalreporter is normally present
+            print("\n".join(lines))
 
 
 class MustrdFile(pytest.File):

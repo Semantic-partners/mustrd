@@ -2,8 +2,9 @@
   Example `--md` report for the ontology-term-coverage feature.
   Produced by running mustrd over a small geography ontology (7 terms) with two
   competency-question specs:
-    pytest --mustrd --config=tests/mustrd-config.ttl --md=report.md
-  The CQ table comes first; the Ontology term coverage section is appended.
+    pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=report.md
+  The CQ table comes first; the Ontology term coverage section is appended
+  (--term-coverage is required; without it only the CQ table is written).
   Reproduced here verbatim as documentation.
 -->
 | Module | Class | Test | Competency Question | Status |

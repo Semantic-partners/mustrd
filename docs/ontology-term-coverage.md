@@ -4,15 +4,22 @@
 **Builds on:** `feature/cq_parsing` (the `must:CompetencyQuestion` annotation and
 the CQ results table).
 
-When you run mustrd with `--md`, the report now appends an **Ontology term
-coverage** section beneath the CQ table: an overall percentage, a per-term
-matrix, and the list of declared terms no CQ exercises. It is emitted only when
-the specs declare ontology terms in their `given` data — ordinary suites are
-unaffected.
+Ontology term coverage is **opt-in** via `--term-coverage`. When enabled, mustrd
+prints an overall percentage, a per-term matrix, and the list of declared terms
+no CQ exercises to **stdout**; adding `--md` also writes it to the report file
+(beneath the CQ table). It is emitted only when the specs declare ontology terms
+in their `given` data — ordinary suites are unaffected.
 
 ```bash
-pytest --mustrd --config=path/to/mustrd-config.ttl --md=report.md
+# coverage to stdout
+pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage
+
+# coverage to stdout AND appended to the md report
+pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage --md=report.md
 ```
+
+Without `--term-coverage`, no coverage is computed; `--md` on its own writes
+just the CQ table, exactly as before.
 
 ## Motivation
 
@@ -106,7 +113,8 @@ terms no CQ touches at all.
 
 Reuses what mustrd already parses — no new config:
 
-1. In `pytest_sessionfinish`, for each collected `TestSpec` we read the merged
+1. `--term-coverage` opts in (checked in `pytest_configure`). In
+   `pytest_sessionfinish`, for each collected `TestSpec` we read the merged
    `given` graph, the `when` query text(s), and the pass/fail result mustrd
    already has.
 2. `mustrd/coverage.py` computes ABox usage (`rdf:type` objects + asserted
