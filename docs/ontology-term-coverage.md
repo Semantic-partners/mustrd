@@ -4,11 +4,18 @@
 **Builds on:** `feature/cq_parsing` (the `must:CompetencyQuestion` annotation and
 the CQ results table).
 
-Ontology term coverage is **opt-in** via `--term-coverage`. When enabled, mustrd
-prints an overall percentage, a per-term matrix, the ontology files it measured
-against (as clickable `file://` links), and the list of declared terms no CQ
-exercises to **stdout**; adding `--md` also writes it to the report file
-(beneath the CQ table, creating the parent directory if needed).
+Ontology term coverage is **opt-in** via `--term-coverage`. When enabled the
+report is framed as an **Ontologies Report**:
+
+1. **Ontologies** — the files measured against, as clickable `file://` links,
+   each with the `owl:Ontology` IRI and description found in it;
+2. **Competency Questions** — the CQ pass/fail table;
+3. **Ontology term coverage** — the percentage, per-term matrix, schema terms,
+   and the declared terms no CQ exercises.
+
+It is printed to **stdout**; adding `--md` also writes it to the report file
+(creating the parent directory if needed). Without `--term-coverage`, the `--md`
+report is just the Competency Questions table.
 
 The ontology to measure against is named in the test configuration with
 `mustrdTest:hasOntologyPath`. The value is a path (relative to the config file)
@@ -145,14 +152,17 @@ Reuses what mustrd already parses — no new config:
    `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
    used class. Declared terms that are only schema-referenced are excluded from
    the denominator.
-5. The result — including the resolved ontology file list as `file://` links
-   (`ontology_sources`) — is rendered by
-   `templates/md_term_coverage_template.jinja`, printed to stdout via the
-   terminal reporter and appended to the `--md` report after the CQ table (whose
+5. The report is assembled from three templates — `md_ontologies_template.jinja`
+   (files + `owl:Ontology` IRI + description, via `coverage.ontology_report`),
+   `md_cq_table_template.jinja`, and `md_term_coverage_template.jinja` — printed
+   to stdout via the terminal reporter and written to the `--md` file (whose
    parent directory is created if missing).
 
-Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
-`mustrd/TestResult.py` (`render_term_coverage`), the `--term-coverage` option,
+Files: `mustrd/coverage.py` (incl. `ontology_report`), the
+`md_ontologies_template.jinja` / `md_cq_table_template.jinja` (now headed
+"Competency Questions") / `md_term_coverage_template.jinja` templates,
+`mustrd/TestResult.py` (`render_ontologies` / `render_term_coverage`), the
+`--term-coverage` option,
 `:hasOntologyPath` config parsing and the fail-early check in
 `mustrd/mustrdTestPlugin.py`, the `:hasOntologyPath` term in
 `mustrd/namespace.py` + `mustrd/model/mustrdTest{Ontology,Shapes}.ttl`. Unit

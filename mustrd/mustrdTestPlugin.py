@@ -8,8 +8,10 @@ from rdflib import Graph, RDF
 from pytest import Session
 
 from mustrd import logger_setup
-from mustrd.TestResult import TestResult, render_cq_table, render_term_coverage
-from mustrd.coverage import compute_coverage, load_ontology, expand_ontology_files
+from mustrd.TestResult import (
+    TestResult, render_cq_table, render_term_coverage, render_ontologies,
+)
+from mustrd.coverage import compute_coverage, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -435,22 +437,27 @@ class MustrdTestPlugin:
         # want to also print an empty coverage note here).
         report_coverage = self.term_coverage and bool(self.ontology_paths)
         coverage = None
+        ontologies = []
         if report_coverage:
             try:
-                ontology_files = expand_ontology_files(self.ontology_paths)
+                ontologies = ontology_report(self.ontology_paths)
                 ontology = load_ontology(self.ontology_paths)
-                coverage = compute_coverage(
-                    coverage_specs, ontology=ontology, ontology_sources=ontology_files
-                )
+                coverage = compute_coverage(coverage_specs, ontology=ontology)
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
 
-        # Markdown report file: CQ table always; term coverage appended only when
-        # it was requested (and produced a result).
+        # Markdown report file. When an ontology is being checked the report is
+        # framed as an "Ontologies Report" (ontologies -> competency questions ->
+        # coverage); otherwise it is just the Competency Questions table.
         if self.md_path:
-            md = render_cq_table(test_results)
+            parts = []
+            if ontologies:
+                parts.append("# Ontologies Report")
+                parts.append(render_ontologies(ontologies))
+            parts.append(render_cq_table(test_results))
             if coverage is not None:
-                md += "\n\n" + render_term_coverage(coverage)
+                parts.append(render_term_coverage(coverage))
+            md = "\n\n".join(parts)
             # Create the parent directory if needed, so --md=build/report.md
             # works without a prior mkdir.
             parent = os.path.dirname(self.md_path)
@@ -459,23 +466,23 @@ class MustrdTestPlugin:
             with open(self.md_path, "w") as file:
                 file.write(md)
 
-        # Term coverage to stdout when requested (and an ontology was resolved).
+        # Ontologies + coverage to stdout when requested (and an ontology was resolved).
         if report_coverage:
-            self._report_coverage_to_terminal(session.config, coverage)
+            self._report_coverage_to_terminal(session.config, ontologies, coverage)
 
-    def _report_coverage_to_terminal(self, config, coverage):
+    def _report_coverage_to_terminal(self, config, ontologies, coverage):
         tr = config.pluginmanager.get_plugin("terminalreporter")
+        blocks = []
+        if ontologies:
+            blocks.append(render_ontologies(ontologies))
         if coverage is not None:
-            lines = render_term_coverage(coverage).splitlines()
-            # drop the leading markdown "## Ontology term coverage" — the
-            # terminal section header below already labels it.
-            if lines and lines[0].strip() == "## Ontology term coverage":
-                lines = lines[1:]
+            blocks.append(render_term_coverage(coverage))
         else:
-            lines = ["No ontology term coverage: the configured ontology declares "
-                     "no terms (or could not be parsed)."]
+            blocks.append("No ontology term coverage: the configured ontology "
+                          "declares no terms (or could not be parsed).")
+        lines = "\n".join(blocks).splitlines()
         if tr is not None:
-            tr.section("Ontology term coverage", sep="=")
+            tr.section("Ontologies Report", sep="=")
             for line in lines:
                 tr.write_line(line)
         else:  # pragma: no cover - terminalreporter is normally present

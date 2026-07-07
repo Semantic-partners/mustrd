@@ -3,7 +3,7 @@ from rdflib import Graph
 
 from mustrd.coverage import (
     compute_coverage, declared_terms, query_uris, abox_terms,
-    expand_ontology_files, load_ontology,
+    expand_ontology_files, load_ontology, ontology_report,
 )
 
 ONTO = """
@@ -128,15 +128,27 @@ def test_expand_ontology_files_scans_directories_recursively(tmp_path):
     assert found == {"a.ttl", "b.ttl"}  # recursive; non-RDF skipped
 
 
-def test_ontology_sources_reported_as_links(tmp_path):
+def test_ontology_report_extracts_uri_and_description(tmp_path):
     onto = tmp_path / "geo.ttl"
-    onto.write_text(ONTO)
-    cov = compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])],
-                           ontology=load_ontology([onto]), ontology_sources=[onto])
-    assert len(cov["ontology_sources"]) == 1
-    src = cov["ontology_sources"][0]
-    assert src["path"].endswith("geo.ttl")
-    assert src["url"].startswith("file://") and src["url"].endswith("geo.ttl")
+    onto.write_text(ONTO + """
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+<http://geo.org/> a <http://www.w3.org/2002/07/owl#Ontology> ;
+    rdfs:comment "A tiny geography ontology." .
+""")
+    rows = ontology_report([onto])
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["path"].endswith("geo.ttl")
+    assert r["url"].startswith("file://") and r["url"].endswith("geo.ttl")
+    assert r["uri"] == "http://geo.org/"
+    assert r["description"] == "A tiny geography ontology."
+
+
+def test_ontology_report_file_without_ontology_header(tmp_path):
+    onto = tmp_path / "vocab.ttl"
+    onto.write_text(ONTO)  # declares classes but no owl:Ontology
+    rows = ontology_report([onto])
+    assert len(rows) == 1 and rows[0]["uri"] is None
 
 
 def test_load_ontology_merges_files(tmp_path):

@@ -158,9 +158,11 @@ of a used property, or a superclass of a used class) are reported separately as
 The result classifies every term as *fully exercised*, *data-only*, *query-only*,
 *schema*, or *unused* — so untested terms surface immediately.
 
-The report also lists the exact ontology files it measured against, as
-clickable `file://` links, so it's clear what was checked. When you pass `--md`,
-the parent directory is created automatically if it doesn't exist.
+With `--term-coverage` the output is framed as an **Ontologies Report**: the
+ontologies measured against (file `file://` links, each with its `owl:Ontology`
+IRI and description), then the **Competency Questions** table, then the coverage
+section — so it's clear what was checked. When you pass `--md`, the parent
+directory is created automatically if it doesn't exist.
 
 See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
 full definition and [`docs/examples/term-coverage-example.md`](docs/examples/term-coverage-example.md)

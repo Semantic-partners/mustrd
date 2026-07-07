@@ -25,7 +25,12 @@ from pathlib import Path
 from typing import List, Optional
 
 from rdflib import Graph, URIRef, RDF, RDFS, OWL, XSD
+from rdflib.namespace import DCTERMS, DC, SKOS
 from rdflib.plugins.sparql import prepareQuery
+
+# Predicates checked, in order, for an ontology's human description.
+DESCRIPTION_PREDICATES = (RDFS.comment, DCTERMS.description, DC.description,
+                          SKOS.definition, RDFS.label)
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +95,41 @@ def expand_ontology_files(paths) -> list:
             seen.add(rp)
             unique.append(f)
     return unique
+
+
+def ontology_report(paths) -> list:
+    """Per-file summary of the ontologies under `paths`, for the report header.
+
+    Each entry: {path, url, uri, description} — the clickable file link, the
+    owl:Ontology IRI declared in that file (if any), and its description
+    (rdfs:comment / dcterms:description / … ). A file with no owl:Ontology still
+    appears (uri/description None); a file declaring several yields one row each.
+    """
+    rows = []
+    for f in expand_ontology_files(paths):
+        link = _source_link(f)
+        g = Graph()
+        try:
+            g.parse(str(f))
+        except Exception as e:
+            log.warning(f"Could not parse ontology file {f}: {e}")
+            rows.append({**link, "uri": None, "description": None})
+            continue
+        ontologies = sorted(str(s) for s in g.subjects(RDF.type, OWL.Ontology))
+        if not ontologies:
+            rows.append({**link, "uri": None, "description": None})
+        for uri in ontologies:
+            rows.append({**link, "uri": uri,
+                         "description": _first_literal(g, URIRef(uri), DESCRIPTION_PREDICATES)})
+    return rows
+
+
+def _first_literal(graph: Graph, subject, predicates) -> Optional[str]:
+    for p in predicates:
+        val = graph.value(subject=subject, predicate=p)
+        if val is not None:
+            return str(val)
+    return None
 
 
 def load_ontology(paths) -> Optional[Graph]:
@@ -256,8 +296,7 @@ def _source_link(p) -> dict:
     return {"path": label, "url": url}
 
 
-def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
-                     ontology_sources=None) -> Optional[dict]:
+def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Optional[dict]:
     """Compute term coverage across specs.
 
     `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}.
@@ -351,7 +390,6 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     return {
         "covered": covered, "denominator": denominator, "pct": pct,
         "declared_total": len(declared), "schema_count": len(schema_only),
-        "ontology_sources": [_source_link(p) for p in (ontology_sources or [])],
         "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
