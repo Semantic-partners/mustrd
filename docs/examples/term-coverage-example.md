@@ -14,34 +14,43 @@
 
 ## Ontology term coverage
 
-**Overall: 6/7 terms used to answer the CQs = 86%**
+**Overall: 6/6 terms used to answer the CQs = 100%**
+
+_(7 declared; 1 structural/schema term(s) excluded from the denominator — see below.)_
 
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 
-| Term | Kind | In input data | In SPARQL | Used |
-|------|------|:---:|:---:|:---:|
-| geo:AdministrativeDivision | class | ❌ | ✅ | ✅ |
-| geo:City | class | ✅ | ❌ | ✅ |
-| geo:Continent | class | ✅ | ❌ | ✅ |
-| geo:Country | class | ✅ | ✅ | ✅ |
-| geo:Place | class | ❌ | ❌ | ❌ |
-| geo:Province | class | ✅ | ❌ | ✅ |
-| geo:isLocatedIn | property | ✅ | ✅ | ✅ |
+| Term | Kind | In input data | In SPARQL | In schema | Status |
+|------|------|:---:|:---:|:---:|:---:|
+| geo:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered |
+| geo:City | class | ✅ | ❌ | · | ✅ covered |
+| geo:Continent | class | ✅ | ❌ | · | ✅ covered |
+| geo:Country | class | ✅ | ✅ | · | ✅ covered |
+| geo:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
+| geo:Province | class | ✅ | ❌ | · | ✅ covered |
+| geo:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
 
 ### How to read this table
 
-The **In input data** and **In SPARQL** columns show *where* a term is exercised — together they classify every term into one of four roles:
+The **In input data**, **In SPARQL** and **In schema** columns show *where* a term is exercised, classifying every term into a role:
 
-| Data | SPARQL | Role | Meaning |
-|:---:|:---:|------|---------|
-| ✅ | ✅ | **fully exercised** | populated in the data *and* queried |
-| ✅ | ❌ | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
-| ❌ | ✅ | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
-| ❌ | ❌ | **unused** | declared but neither instantiated nor queried |
+| Data | SPARQL | Schema | Role | Meaning |
+|:---:|:---:|:---:|------|---------|
+| ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
+| ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
+| ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
+| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but domain/range of a used property or superclass of a used class — good for documentation & inferencing; **excluded from coverage** |
+| ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced |
 
 ## Not used by any CQ
 
-- geo:Place (class) — declared in the ontology, never instantiated in data nor referenced by a query
+_none — every declared term is exercised or structural_
+
+## Structural / schema terms (excluded from coverage)
+
+Not directly exercised, but they define the schema of terms the CQs use:
+
+- geo:Place (class) — domain of geo:isLocatedIn; range of geo:isLocatedIn; superclass of geo:AdministrativeDivision
 
 
 ## Per competency question

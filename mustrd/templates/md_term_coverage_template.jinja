@@ -1,33 +1,45 @@
 ## Ontology term coverage
 
-**Overall: {{ coverage.covered }}/{{ coverage.declared }} terms used to answer the CQs = {{ coverage.pct }}%**
-
+**Overall: {{ coverage.covered }}/{{ coverage.denominator }} terms used to answer the CQs = {{ coverage.pct }}%**
+{% if coverage.schema_count %}
+_({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural/schema term(s) excluded from the denominator — see below.)_
+{% endif %}
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 
-| Term | Kind | In input data | In SPARQL | Used |
-|------|------|:---:|:---:|:---:|
+| Term | Kind | In input data | In SPARQL | In schema | Status |
+|------|------|:---:|:---:|:---:|:---:|
 {% for t in coverage.terms -%}
-| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.used else '❌' }} |
+| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |
 {% endfor %}
 ### How to read this table
 
-The **In input data** and **In SPARQL** columns show *where* a term is exercised — together they classify every term into one of four roles:
+The **In input data**, **In SPARQL** and **In schema** columns show *where* a term is exercised, classifying every term into a role:
 
-| Data | SPARQL | Role | Meaning |
-|:---:|:---:|------|---------|
-| ✅ | ✅ | **fully exercised** | populated in the data *and* queried |
-| ✅ | ❌ | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
-| ❌ | ✅ | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
-| ❌ | ❌ | **unused** | declared but neither instantiated nor queried |
+| Data | SPARQL | Schema | Role | Meaning |
+|:---:|:---:|:---:|------|---------|
+| ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
+| ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
+| ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
+| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but domain/range of a used property or superclass of a used class — good for documentation & inferencing; **excluded from coverage** |
+| ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced |
 
 ## Not used by any CQ
 
-{% if coverage.unused -%}
-{% for t in coverage.unused -%}
-- {{ t.term }} ({{ t.kind }}) — declared in the ontology, never instantiated in data nor referenced by a query
+{% if coverage.gaps -%}
+{% for t in coverage.gaps -%}
+- {{ t.term }} ({{ t.kind }}) — declared in the ontology, never instantiated, queried, nor referenced in the schema of a used term
 {% endfor %}
 {%- else -%}
-_none — every declared term is exercised_
+_none — every declared term is exercised or structural_
+{%- endif %}
+{% if coverage.schema_terms %}
+## Structural / schema terms (excluded from coverage)
+
+Not directly exercised, but they define the schema of terms the CQs use:
+
+{% for t in coverage.schema_terms -%}
+- {{ t.term }} ({{ t.kind }}) — {{ t.reason }}
+{% endfor %}
 {%- endif %}
 
 ## Per competency question

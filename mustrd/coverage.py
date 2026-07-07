@@ -158,6 +158,42 @@ def _shortener(graphs, query_texts=()):
     return short
 
 
+def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
+    """Declared terms that structurally support a *used* term via TBox axioms.
+
+    These are not directly instantiated or queried, but they are not dead
+    weight either — they define the schema of terms the CQs do use, which is
+    what makes them valuable for documentation and inferencing. Two sources:
+
+      * domain / range of a used property, and
+      * a superclass of a used class.
+
+    Returns {term_iri: [reason, ...]} for terms that qualify. Reasons list
+    domain/range before superclass, most relevant first.
+    """
+    declared_set = set(declared)
+    reasons = {}
+
+    def add(term, reason):
+        if str(term) in declared_set:
+            reasons.setdefault(str(term), [])
+            if reason not in reasons[str(term)]:
+                reasons[str(term)].append(reason)
+
+    for u in used:
+        node = URIRef(u)
+        if declared.get(u) == "property":
+            for d in tbox.objects(node, RDFS.domain):
+                add(d, f"domain of {short(u)}")
+            for r in tbox.objects(node, RDFS.range):
+                add(r, f"range of {short(u)}")
+        elif declared.get(u) == "class":
+            for anc in tbox.transitive_objects(node, RDFS.subClassOf):
+                if str(anc) != u:
+                    add(anc, f"superclass of {short(u)}")
+    return reasons
+
+
 def compute_coverage(specs: List[dict]) -> Optional[dict]:
     """Compute term coverage across specs.
 
@@ -203,21 +239,48 @@ def compute_coverage(specs: List[dict]) -> Optional[dict]:
         ))
 
     used = used_data | used_query
+
+    # Third category: terms not directly exercised, but referenced structurally
+    # in the schema of a USED term (domain/range of a used property, superclass
+    # of a used class). These are excluded from the coverage denominator.
+    tbox = Graph()
+    for g in given_graphs:
+        tbox += g
+    schema_reasons = schema_references(tbox, used, declared, short)
+    schema_only = {t for t in schema_reasons if t not in used}
+
+    def status(t):
+        if t in used:
+            return "covered"
+        if t in schema_only:
+            return "schema"
+        return "unused"
+
     terms = []
     for t in sorted(declared, key=lambda x: (declared[x], short(x))):
         terms.append({
             "term": short(t), "kind": declared[t],
-            "in_data": t in used_data, "in_query": t in used_query, "used": t in used,
+            "in_data": t in used_data, "in_query": t in used_query,
+            "in_schema": t in schema_only, "status": status(t),
         })
-    unused = [{"term": short(t), "kind": declared[t]} for t in sorted(declared) if t not in used]
+
+    gaps = [{"term": short(t), "kind": declared[t]}
+            for t in sorted(declared) if status(t) == "unused"]
+    def _reason_key(r):
+        return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
+
+    schema_terms = [{"term": short(t), "kind": declared[t],
+                     "reason": "; ".join(sorted(schema_reasons[t], key=_reason_key)[:3])}
+                    for t in sorted(schema_only)]
 
     covered = sum(1 for t in declared if t in used)
-    total = len(declared)
-    pct = round(100.0 * covered / total) if total else 0
+    denominator = len(declared) - len(schema_only)  # schema-only terms excluded
+    pct = round(100.0 * covered / denominator) if denominator else 0
 
     return {
-        "covered": covered, "declared": total, "pct": pct,
-        "terms": terms, "unused": unused,
+        "covered": covered, "denominator": denominator, "pct": pct,
+        "declared_total": len(declared), "schema_count": len(schema_only),
+        "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,

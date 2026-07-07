@@ -11,7 +11,8 @@ geo:Place a owl:Class .
 geo:City a owl:Class ; rdfs:subClassOf geo:Place .
 geo:Country a owl:Class ; rdfs:subClassOf geo:Place .
 geo:AdministrativeDivision a owl:Class ; rdfs:subClassOf geo:Place .
-geo:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty .
+geo:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain geo:Place ; rdfs:range geo:Place .
 """
 
 DATA = """
@@ -69,14 +70,20 @@ def test_coverage_roles_and_percentage():
     cov = compute_coverage([_spec(given=_graph(ONTO, DATA), queries=[QUERY])])
     by = {t["term"]: t for t in cov["terms"]}
 
-    assert by["geo:City"]["in_data"] and not by["geo:City"]["in_query"]        # data-only
-    assert by["geo:Country"]["in_data"] and by["geo:Country"]["in_query"]      # fully exercised
-    assert by["geo:isLocatedIn"]["used"]
-    assert not by["geo:Place"]["used"]                                         # unused
-    assert not by["geo:AdministrativeDivision"]["used"]                        # unused
+    assert by["geo:City"]["status"] == "covered" and by["geo:City"]["in_data"]      # data-only
+    assert by["geo:Country"]["in_data"] and by["geo:Country"]["in_query"]           # fully exercised
+    assert by["geo:isLocatedIn"]["status"] == "covered"
+    # Place: domain/range of the used isLocatedIn + superclass of used classes -> schema, excluded
+    assert by["geo:Place"]["status"] == "schema" and by["geo:Place"]["in_schema"]
+    # AdministrativeDivision: not used and not structural -> a genuine gap
+    assert by["geo:AdministrativeDivision"]["status"] == "unused"
 
-    assert cov["covered"] == 3 and cov["declared"] == 5 and cov["pct"] == 60
-    assert {u["term"] for u in cov["unused"]} == {"geo:Place", "geo:AdministrativeDivision"}
+    # covered = City, Country, isLocatedIn; denominator excludes schema-only Place
+    assert cov["covered"] == 3 and cov["denominator"] == 4 and cov["pct"] == 75
+    assert cov["declared_total"] == 5 and cov["schema_count"] == 1
+    assert {g["term"] for g in cov["gaps"]} == {"geo:AdministrativeDivision"}
+    place = next(s for s in cov["schema_terms"] if s["term"] == "geo:Place")
+    assert "geo:isLocatedIn" in place["reason"]
 
 
 def test_failing_spec_is_not_credited():
@@ -87,9 +94,10 @@ def test_failing_spec_is_not_credited():
 
 def test_tbox_only_given_yields_no_usage():
     # The ontology on its own declares terms but instantiates/queries nothing,
-    # proving TBox declarations do not inflate coverage.
+    # proving TBox declarations do not inflate coverage. With nothing used,
+    # nothing is structural either, so all terms are genuine gaps.
     cov = compute_coverage([_spec(given=_graph(ONTO), queries=[])])
-    assert cov["declared"] == 5 and cov["covered"] == 0
+    assert cov["declared_total"] == 5 and cov["covered"] == 0 and cov["schema_count"] == 0
 
 
 def test_no_declared_terms_returns_none():

@@ -62,17 +62,30 @@ loading the ontology as a `given` never inflates the score.
 A term only genuinely helps answer a CQ if that CQ's test passes. When the CQ
 results are available, only specs with status `passed` are credited.
 
-## The four term roles
+## The term roles
 
-The two source columns (data / SPARQL) classify every declared term into one of
-four roles — this is the real documentation value of the report:
+Three source signals — data / SPARQL / schema — classify every declared term.
+This is the real documentation value of the report:
 
-| In data | In SPARQL | Role | Meaning |
-|:---:|:---:|------|---------|
-| ✅ | ✅ | **fully exercised** | populated *and* queried — strongest evidence the term works |
-| ✅ | ❌ | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
-| ❌ | ✅ | **query-only** | matched by a query (e.g. via `subClassOf*`) but never instantiated — relies on inference, not asserted data |
-| ❌ | ❌ | **unused** | declared but neither instantiated nor queried — dead weight until a CQ needs it |
+| In data | In SPARQL | In schema | Role | Meaning |
+|:---:|:---:|:---:|------|---------|
+| ✅ | ✅ | | **fully exercised** | populated *and* queried — strongest evidence the term works |
+| ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
+| ❌ | ✅ | | **query-only** | matched by a query (e.g. via `subClassOf*`) but never instantiated — relies on inference, not asserted data |
+| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but domain/range of a *used* property or superclass of a *used* class — valuable for documentation and inferencing, so **excluded from the coverage denominator** rather than counted as a gap |
+| ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced — dead weight until a CQ needs it |
+
+### Why a "schema" category
+
+A root class like `geo:Place` is rarely instantiated or named in a query, yet it
+is the `rdfs:domain`/`rdfs:range` of `geo:isLocatedIn` and the superclass of the
+classes the CQs do use. That structural role is deliberate — it supports
+documentation and inferencing — so flagging it as an untested "gap" would be
+misleading. Such terms are reported separately and excluded from the coverage
+percentage; the headline `covered/denominator` counts only terms that *could*
+be directly exercised. The denominator's total is still shown, so nothing is
+hidden. A term is only schema-classified when it supports a **used** term — a
+superclass of only-unused classes stays a genuine gap.
 
 ## Worked example
 
@@ -80,11 +93,14 @@ A small geography ontology (7 declared terms) with two competency questions —
 *"In which country is Rotterdam?"* and *"In what administrative division of what
 country is Rotterdam?"* — produces the report in
 [`examples/term-coverage-example.md`](examples/term-coverage-example.md):
-**6/7 terms (86%)**, with `geo:Place` (an abstract root class) flagged as the
-one term no CQ exercises.
+**6/6 terms (100%)**. `geo:Place` (the abstract root) is not directly exercised
+but is the domain/range of `geo:isLocatedIn` and the superclass of the used
+classes, so it is reported as a **schema** term and excluded from the
+denominator rather than counted as a gap.
 
-That single line — *`geo:Place`: declared, never used* — is exactly the signal
-the CQ table cannot give today.
+The value the CQ table cannot give today: a percentage, the schema/structural
+terms called out separately, and — when one exists — the exact list of declared
+terms no CQ touches at all.
 
 ## How it's implemented
 
@@ -101,7 +117,11 @@ Reuses what mustrd already parses — no new config:
    (so `rdfs:label` etc. aren't mistaken for the ontology under test). This
    works because a CQ that needs class-hierarchy reasoning already loads the
    ontology into its `given`.
-4. The result is rendered by `templates/md_term_coverage_template.jinja` and
+4. **Schema references** are found over the union of the given graphs: the
+   `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
+   used class. Declared terms that are only schema-referenced are excluded from
+   the denominator.
+5. The result is rendered by `templates/md_term_coverage_template.jinja` and
    appended to the `--md` report after the CQ table.
 
 Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
@@ -114,9 +134,10 @@ Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
   graphs and filtered against a fixed well-known-vocabulary list. An explicit
   config option (point at the ontology file, or name the namespace) would be
   more robust when the ontology is *not* loaded into any `given`.
-- **Abstract classes** — intentionally-abstract superclasses (e.g. a `Place`
-  root) are counted in the denominator and simply flagged as unused; there's no
-  opt-out yet.
+- **Schema heuristic** — a term is treated as structural when it is the
+  domain/range of a used property or a superclass of a used class. Other
+  structural roles (e.g. `owl:Restriction` fillers, property chains) are not yet
+  recognised and would still show as gaps.
 - **Multiple ontologies / imports** — all non-well-known declared terms are
   pooled; scoping per-vocabulary is not yet supported.
 
