@@ -1,8 +1,18 @@
-# Proposal: Ontology term coverage from competency-question specs
+# Ontology term coverage from competency-question specs
 
-**Status:** Draft / RFC — proposal only, no implementation in this PR.
+**Status:** Implemented (draft PR).
 **Builds on:** `feature/cq_parsing` (the `must:CompetencyQuestion` annotation and
 the CQ results table).
+
+When you run mustrd with `--md`, the report now appends an **Ontology term
+coverage** section beneath the CQ table: an overall percentage, a per-term
+matrix, and the list of declared terms no CQ exercises. It is emitted only when
+the specs declare ontology terms in their `given` data — ordinary suites are
+unaffected.
+
+```bash
+pytest --mustrd --config=path/to/mustrd-config.ttl --md=report.md
+```
 
 ## Motivation
 
@@ -76,30 +86,39 @@ one term no CQ exercises.
 That single line — *`geo:Place`: declared, never used* — is exactly the signal
 the CQ table cannot give today.
 
-## Proposed integration (sketch, not in this PR)
+## How it's implemented
 
-Reuse what mustrd already parses:
+Reuses what mustrd already parses — no new config:
 
-1. For each `TestSpec`: read the `must:given` datasets and the `must:when`
-   query — mustrd resolves both already.
-2. Compute ABox usage (`rdf:type` objects + asserted predicates in the merged
-   given) ∪ query usage (IRIs from the parsed SPARQL algebra).
-3. Join against the ontology's declared terms (subjects typed `owl:Class` /
-   `rdf:Property` / …), restricted to the ontology's own namespace(s).
-4. Credit only specs whose result status is `passed`.
-5. Emit a Markdown section alongside the existing CQ table — overall %, the
-   per-term table above, an explicit unused-terms list, and a per-CQ breakdown.
+1. In `pytest_sessionfinish`, for each collected `TestSpec` we read the merged
+   `given` graph, the `when` query text(s), and the pass/fail result mustrd
+   already has.
+2. `mustrd/coverage.py` computes ABox usage (`rdf:type` objects + asserted
+   predicates in the given) ∪ query usage (IRIs from the parsed SPARQL algebra),
+   crediting only specs whose result is `passed`.
+3. **Declared terms** are derived from the same given graphs — subjects typed
+   `owl:Class` / `rdf:Property` / … — restricted to non-well-known namespaces
+   (so `rdfs:label` etc. aren't mistaken for the ontology under test). This
+   works because a CQ that needs class-hierarchy reasoning already loads the
+   ontology into its `given`.
+4. The result is rendered by `templates/md_term_coverage_template.jinja` and
+   appended to the `--md` report after the CQ table.
 
-Open questions for discussion:
+Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
+`mustrd/TestResult.py` (`render_term_coverage`), wired in
+`mustrd/mustrdTestPlugin.py`. Unit tests in `test/test_coverage.py`.
 
-- **Namespace selection** — infer the ontology namespace(s) from
-  `owl:Ontology` / declared-term prefixes, or take an explicit config value?
-- **Abstract classes** — should intentionally-abstract superclasses be
-  excludable from the denominator, or always counted (and merely flagged)?
-- **Report surface** — extend the existing `--md` table, or a separate
-  `--term-coverage` output?
-- **Multiple ontologies / imports** — how to scope "declared terms" when specs
-  span several vocabularies.
+### Known limitations / open questions
+
+- **Namespace selection** — declared terms are auto-detected from the given
+  graphs and filtered against a fixed well-known-vocabulary list. An explicit
+  config option (point at the ontology file, or name the namespace) would be
+  more robust when the ontology is *not* loaded into any `given`.
+- **Abstract classes** — intentionally-abstract superclasses (e.g. a `Place`
+  root) are counted in the denominator and simply flagged as unused; there's no
+  opt-out yet.
+- **Multiple ontologies / imports** — all non-well-known declared terms are
+  pooled; scoping per-vocabulary is not yet supported.
 
 ## Why this belongs in mustrd
 

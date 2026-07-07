@@ -25,6 +25,7 @@ TEMPLATE_FOLDER = Path(os.path.join(get_mustrd_root(), "templates/"))
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
 RESULT_LIST_LEAF_MD_TEMPLATE = "md_ResultList_leaf_template.jinja"
 CQ_TABLE_MD_TEMPLATE = "md_cq_table_template.jinja"
+TERM_COVERAGE_MD_TEMPLATE = "md_term_coverage_template.jinja"
 
 
 @dataclass
@@ -119,3 +120,8 @@ class ResultList:
 def render_cq_table(test_results: list) -> str:
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(result_list=test_results)
+
+
+def render_term_coverage(coverage: dict) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(TERM_COVERAGE_MD_TEMPLATE).render(coverage=coverage)

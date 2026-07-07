@@ -8,7 +8,8 @@ from rdflib import Graph, RDF
 from pytest import Session
 
 from mustrd import logger_setup
-from mustrd.TestResult import TestResult, render_cq_table
+from mustrd.TestResult import TestResult, render_cq_table, render_term_coverage
+from mustrd.coverage import compute_coverage
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -333,6 +334,7 @@ class MustrdTestPlugin:
             return
 
         test_results = []
+        coverage_specs = []
         for test_conf, result in session.results.items():
             # Case auto generated tests
             if test_conf.originalname != test_conf.name:
@@ -359,7 +361,34 @@ class MustrdTestPlugin:
                 )
             )
 
+            # Collect what each mustrd spec exercises, for ontology term coverage.
+            if spec is not None:
+                when = getattr(spec, 'when', None)
+                # `when` may be a single WhenSpec or a list of them.
+                when_list = when if isinstance(when, list) else ([when] if when is not None else [])
+                queries = [w.value for w in when_list
+                           if isinstance(getattr(w, 'value', None), str)]
+                coverage_specs.append({
+                    "name": getattr(spec, 'spec_file_name', test_name),
+                    "cq": getattr(spec, 'competency_question', None),
+                    "passed": result.outcome == "passed",
+                    "given": getattr(spec, 'given', None),
+                    "queries": queries,
+                })
+
         md = render_cq_table(test_results)
+
+        # Ontology term coverage: which declared terms the passing CQ specs
+        # actually exercise (in their data or SPARQL). compute_coverage returns
+        # None when the specs declare no ontology terms in their given data, so
+        # ordinary suites are unaffected.
+        try:
+            coverage = compute_coverage(coverage_specs)
+            if coverage is not None:
+                md += "\n\n" + render_term_coverage(coverage)
+        except Exception as e:
+            logger.warning(f"Could not compute ontology term coverage: {e}")
+
         with open(self.md_path, "w") as file:
             file.write(md)
 

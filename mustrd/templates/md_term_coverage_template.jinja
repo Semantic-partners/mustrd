@@ -1,0 +1,39 @@
+## Ontology term coverage
+
+**Overall: {{ coverage.covered }}/{{ coverage.declared }} terms used to answer the CQs = {{ coverage.pct }}%**
+
+A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
+
+| Term | Kind | In input data | In SPARQL | Used |
+|------|------|:---:|:---:|:---:|
+{% for t in coverage.terms -%}
+| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.used else '❌' }} |
+{% endfor %}
+### How to read this table
+
+The **In input data** and **In SPARQL** columns show *where* a term is exercised — together they classify every term into one of four roles:
+
+| Data | SPARQL | Role | Meaning |
+|:---:|:---:|------|---------|
+| ✅ | ✅ | **fully exercised** | populated in the data *and* queried |
+| ✅ | ❌ | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
+| ❌ | ✅ | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
+| ❌ | ❌ | **unused** | declared but neither instantiated nor queried |
+
+## Not used by any CQ
+
+{% if coverage.unused -%}
+{% for t in coverage.unused -%}
+- {{ t.term }} ({{ t.kind }}) — declared in the ontology, never instantiated in data nor referenced by a query
+{% endfor %}
+{%- else -%}
+_none — every declared term is exercised_
+{%- endif %}
+
+## Per competency question
+
+{% for c in coverage.per_cq -%}
+- **{{ c.name }}** — {{ c.cq or "(no CQ)" }} — _{{ c.status }}_{{ "" if c.credited else " (not credited)" }}
+  - in data:  {{ c.data | join(", ") or "(none)" }}
+  - in query: {{ c.query | join(", ") or "(none)" }}
+{% endfor %}
