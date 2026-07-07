@@ -1,7 +1,7 @@
 <!--
   Example `--md` report for the ontology-term-coverage feature. Produced with:
     pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=build/report.md
-  Ontology links are relative to the report file so they render in a markdown previewer.
+  Links (ontologies + tests) are relative to the report file so they render in a markdown previewer.
 -->
 # Ontologies Report
 
@@ -16,8 +16,8 @@ Coverage below is measured against this ontology:
 
 | Module | Class | Test | Competency Question | Status |
 |--------|-------|------|---------------------|--------|
-| mustrd-config.ttl | . | country-of-rotterdam.mustrd.ttl | In which country is Rotterdam? | passed |
-| mustrd-config.ttl | . | division-and-country-of-rotterdam.mustrd.ttl | In what administrative division of what country is Rotterdam? | passed |
+| mustrd-config.ttl | . | [country-of-rotterdam.mustrd.ttl](../tests/country-of-rotterdam.mustrd.ttl) | In which country is Rotterdam? | passed |
+| mustrd-config.ttl | . | [division-and-country-of-rotterdam.mustrd.ttl](../tests/division-and-country-of-rotterdam.mustrd.ttl) | In what administrative division of what country is Rotterdam? | passed |
 
 
 ## Ontology term coverage

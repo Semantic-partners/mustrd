@@ -407,12 +407,14 @@ class MustrdTestPlugin:
                 is_mustrd = False
 
             spec = getattr(test_conf, 'spec', None)
-            test_results.append(
-                TestResult(
-                    test_name, class_name, module_name, result.outcome, is_mustrd,
-                    competency_question=getattr(spec, 'competency_question', None),
-                )
+            test_result = TestResult(
+                test_name, class_name, module_name, result.outcome, is_mustrd,
+                competency_question=getattr(spec, 'competency_question', None),
             )
+            # Stash the spec's source file so the CQ table can link to it once we
+            # know the report location (link must be relative to the report dir).
+            test_result._spec_source_file = getattr(spec, 'spec_source_file', None)
+            test_results.append(test_result)
 
             # Collect what each mustrd spec exercises, for ontology term coverage.
             if spec is not None:
@@ -451,6 +453,14 @@ class MustrdTestPlugin:
         # in a Markdown previewer (which blocks absolute file:// links).
         if self.md_path:
             parent = os.path.dirname(self.md_path)
+            # Link each test to its .mustrd.ttl spec, relative to the report dir.
+            for tr in test_results:
+                src = getattr(tr, "_spec_source_file", None)
+                if src and str(src) != "unknown.mustrd.ttl":
+                    try:
+                        tr.test_link = os.path.relpath(str(src), parent or ".")
+                    except ValueError:
+                        tr.test_link = str(src)
             parts = []
             if report_coverage:
                 ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")

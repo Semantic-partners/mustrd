@@ -38,9 +38,10 @@ class TestResult:
     is_mustrd: bool
     type: str
     competency_question: str = None
+    test_link: str = None
 
     def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool,
-                 competency_question: str = None):
+                 competency_question: str = None, test_link: str = None):
         self.test_name = test_name
         self.class_name = class_name
         self.module_name = module_name
@@ -48,6 +49,7 @@ class TestResult:
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
         self.competency_question = competency_question
+        self.test_link = test_link
 
 
 @dataclass

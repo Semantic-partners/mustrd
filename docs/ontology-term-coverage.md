@@ -10,7 +10,8 @@ report is framed as an **Ontologies Report**:
 1. **Ontologies** — the files measured against, as clickable links (relative to
    the report so they render in a Markdown previewer), each with the
    `owl:Ontology` IRI and description found in it;
-2. **Competency Questions** — the CQ pass/fail table;
+2. **Competency Questions** — the CQ pass/fail table, each test name linking to
+   its `.mustrd.ttl` spec;
 3. **Ontology term coverage** — the percentage, per-term matrix, schema terms,
    and the declared terms no CQ exercises.
 
