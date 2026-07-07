@@ -135,11 +135,12 @@ def test_ontology_report_extracts_uri_and_description(tmp_path):
 <http://geo.org/> a <http://www.w3.org/2002/07/owl#Ontology> ;
     rdfs:comment "A tiny geography ontology." .
 """)
-    rows = ontology_report([onto])
+    rows = ontology_report([onto], link_base=tmp_path)
     assert len(rows) == 1
     r = rows[0]
     assert r["path"].endswith("geo.ttl")
-    assert r["url"].startswith("file://") and r["url"].endswith("geo.ttl")
+    # href is relative to link_base (renders in a markdown previewer)
+    assert r["url"] == "geo.ttl"
     assert r["uri"] == "http://geo.org/"
     assert r["description"] == "A tiny geography ontology."
 

@@ -97,17 +97,18 @@ def expand_ontology_files(paths) -> list:
     return unique
 
 
-def ontology_report(paths) -> list:
+def ontology_report(paths, link_base=None) -> list:
     """Per-file summary of the ontologies under `paths`, for the report header.
 
-    Each entry: {path, url, uri, description} — the clickable file link, the
-    owl:Ontology IRI declared in that file (if any), and its description
-    (rdfs:comment / dcterms:description / … ). A file with no owl:Ontology still
-    appears (uri/description None); a file declaring several yields one row each.
+    Each entry: {path, url, uri, description} — the file link (href relative to
+    `link_base`, see `_source_link`), the owl:Ontology IRI declared in that file
+    (if any), and its description (rdfs:comment / dcterms:description / … ). A
+    file with no owl:Ontology still appears (uri/description None); a file
+    declaring several yields one row each.
     """
     rows = []
     for f in expand_ontology_files(paths):
-        link = _source_link(f)
+        link = _source_link(f, link_base)
         g = Graph()
         try:
             g.parse(str(f))
@@ -282,15 +283,24 @@ def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     return reasons
 
 
-def _source_link(p) -> dict:
-    """Display label (relative to cwd if possible) + clickable file:// URL."""
+def _source_link(p, link_base=None) -> dict:
+    """Display label + a link href relative to `link_base`.
+
+    Markdown previewers (e.g. VS Code) block absolute `file://` links under their
+    content-security policy, so we emit a RELATIVE href instead — resolved by the
+    viewer against the report's own location. `link_base` should be the directory
+    the link is relative to: the report file's directory for an `--md` file, or
+    the cwd for terminal output (which linkifies cwd-relative paths). The label
+    stays relative to the cwd for readability.
+    """
     p = Path(p)
+    base = Path(link_base) if link_base is not None else Path.cwd()
     try:
         label = os.path.relpath(p)
     except ValueError:  # e.g. different drive on Windows
         label = str(p)
     try:
-        url = p.resolve().as_uri()
+        url = os.path.relpath(p, base)
     except ValueError:
         url = str(p)
     return {"path": label, "url": url}

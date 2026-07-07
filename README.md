@@ -159,7 +159,7 @@ The result classifies every term as *fully exercised*, *data-only*, *query-only*
 *schema*, or *unused* — so untested terms surface immediately.
 
 With `--term-coverage` the output is framed as an **Ontologies Report**: the
-ontologies measured against (file `file://` links, each with its `owl:Ontology`
+ontologies measured against (as clickable links, each with its `owl:Ontology`
 IRI and description), then the **Competency Questions** table, then the coverage
 section — so it's clear what was checked. When you pass `--md`, the parent
 directory is created automatically if it doesn't exist.

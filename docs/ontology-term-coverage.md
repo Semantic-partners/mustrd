@@ -7,8 +7,9 @@ the CQ results table).
 Ontology term coverage is **opt-in** via `--term-coverage`. When enabled the
 report is framed as an **Ontologies Report**:
 
-1. **Ontologies** — the files measured against, as clickable `file://` links,
-   each with the `owl:Ontology` IRI and description found in it;
+1. **Ontologies** — the files measured against, as clickable links (relative to
+   the report so they render in a Markdown previewer), each with the
+   `owl:Ontology` IRI and description found in it;
 2. **Competency Questions** — the CQ pass/fail table;
 3. **Ontology term coverage** — the percentage, per-term matrix, schema terms,
    and the declared terms no CQ exercises.

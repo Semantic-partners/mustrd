@@ -1,9 +1,7 @@
 <!--
-  Example `--md` report for the ontology-term-coverage feature.
-  Produced by running mustrd with an ontology declared via mustrdTest:hasOntologyPath:
-    pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=report.md
-  Structure: Ontologies Report title -> Ontologies -> Competency Questions -> coverage.
-  (file:// links are absolute on the machine that produced the report.)
+  Example `--md` report for the ontology-term-coverage feature. Produced with:
+    pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=build/report.md
+  Ontology links are relative to the report file so they render in a markdown previewer.
 -->
 # Ontologies Report
 
@@ -11,7 +9,7 @@
 
 Coverage below is measured against this ontology:
 
-- [ontology/geography.ttl](file:///workspaces/training-data/geography-lab/ontology/geography.ttl) — `http://geo.org/` — A minimal vocabulary for places and how they are geographically contained within one another.
+- [ontology/geography.ttl](../ontology/geography.ttl) — `http://geo.org/` — A minimal vocabulary for places and how they are geographically contained within one another.
 
 
 ## Competency Questions

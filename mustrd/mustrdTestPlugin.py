@@ -437,10 +437,8 @@ class MustrdTestPlugin:
         # want to also print an empty coverage note here).
         report_coverage = self.term_coverage and bool(self.ontology_paths)
         coverage = None
-        ontologies = []
         if report_coverage:
             try:
-                ontologies = ontology_report(self.ontology_paths)
                 ontology = load_ontology(self.ontology_paths)
                 coverage = compute_coverage(coverage_specs, ontology=ontology)
             except Exception as e:
@@ -448,26 +446,32 @@ class MustrdTestPlugin:
 
         # Markdown report file. When an ontology is being checked the report is
         # framed as an "Ontologies Report" (ontologies -> competency questions ->
-        # coverage); otherwise it is just the Competency Questions table.
+        # coverage); otherwise it is just the Competency Questions table. Ontology
+        # links are made relative to the report file's directory so they resolve
+        # in a Markdown previewer (which blocks absolute file:// links).
         if self.md_path:
+            parent = os.path.dirname(self.md_path)
             parts = []
-            if ontologies:
-                parts.append("# Ontologies Report")
-                parts.append(render_ontologies(ontologies))
+            if report_coverage:
+                ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
+                if ontologies:
+                    parts.append("# Ontologies Report")
+                    parts.append(render_ontologies(ontologies))
             parts.append(render_cq_table(test_results))
             if coverage is not None:
                 parts.append(render_term_coverage(coverage))
             md = "\n\n".join(parts)
             # Create the parent directory if needed, so --md=build/report.md
             # works without a prior mkdir.
-            parent = os.path.dirname(self.md_path)
             if parent:
                 os.makedirs(parent, exist_ok=True)
             with open(self.md_path, "w") as file:
                 file.write(md)
 
-        # Ontologies + coverage to stdout when requested (and an ontology was resolved).
+        # Ontologies + coverage to stdout when requested. Links are relative to
+        # the cwd, which the terminal resolves for click-through.
         if report_coverage:
+            ontologies = ontology_report(self.ontology_paths)
             self._report_coverage_to_terminal(session.config, ontologies, coverage)
 
     def _report_coverage_to_terminal(self, config, ontologies, coverage):
