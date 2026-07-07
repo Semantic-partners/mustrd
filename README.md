@@ -104,6 +104,50 @@ We have a pytest plugin.
 4. VS Code should auto discover your tests and they'll show up in the flask icon 'tab'.
 ![alt text](image.png)
 
+## Competency questions & ontology coverage
+
+A test spec can record the competency question (CQ) it answers:
+
+```ttl
+:test_example a :TestSpec ;
+    :CompetencyQuestion "In which country is Rotterdam?" ;
+    :given ... ; :when ... ; :then ... .
+```
+
+With `--md`, the report includes a **CQ table** — one row per spec showing the
+question and whether its test passed:
+
+```bash
+pytest --mustrd --config=path/to/config.ttl --md=report.md
+```
+
+### Ontology term coverage
+
+Beyond "do my CQs pass?", MustRD can report **how much of your ontology those
+CQs actually exercise**. This is opt-in via `--term-coverage`, which prints an
+overall percentage and a per-term table to stdout (and appends it to the `--md`
+file when one is given):
+
+```bash
+# coverage to stdout
+pytest --mustrd --config=path/to/config.ttl --term-coverage
+
+# coverage to stdout AND written to the report file
+pytest --mustrd --config=path/to/config.ttl --term-coverage --md=report.md
+```
+
+A declared term counts as **used** when a *passing* CQ test exercises it — either
+in its input data (as an instance type or asserted predicate) or in its SPARQL
+query. Terms that are only structurally referenced (the `rdfs:domain`/`rdfs:range`
+of a used property, or a superclass of a used class) are reported separately as
+**schema** terms and excluded from the percentage, rather than flagged as gaps.
+The result classifies every term as *fully exercised*, *data-only*, *query-only*,
+*schema*, or *unused* — so untested terms surface immediately.
+
+See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
+full definition and [`docs/examples/term-coverage-example.md`](docs/examples/term-coverage-example.md)
+for sample output.
+
 ## When?
 
 MustRD is a work in progress, built to meet the needs of our projects across multiple clients and vendor stacks. While we find it useful, it may not meet your needs out of the box.
