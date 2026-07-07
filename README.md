@@ -126,7 +126,18 @@ pytest --mustrd --config=path/to/config.ttl --md=report.md
 Beyond "do my CQs pass?", MustRD can report **how much of your ontology those
 CQs actually exercise**. This is opt-in via `--term-coverage`, which prints an
 overall percentage and a per-term table to stdout (and appends it to the `--md`
-file when one is given):
+file when one is given).
+
+Tell MustRD which ontology to measure against with `:hasOntologyPath` in your
+config — a file or a directory (scanned recursively), repeatable:
+
+```ttl
+:myTest a :MustrdTest ;
+    :hasSpecPath     "specs/" ;
+    :hasDataPath     "data/" ;
+    :hasOntologyPath "ontology/" ;   # file or directory; repeat for several
+    :filterOnTripleStore triplestore:RdfLib .
+```
 
 ```bash
 # coverage to stdout
@@ -135,6 +146,9 @@ pytest --mustrd --config=path/to/config.ttl --term-coverage
 # coverage to stdout AND written to the report file
 pytest --mustrd --config=path/to/config.ttl --term-coverage --md=report.md
 ```
+
+(If `--term-coverage` is set without `:hasOntologyPath`, MustRD fails early and
+tells you exactly what to add.)
 
 A declared term counts as **used** when a *passing* CQ test exercises it — either
 in its input data (as an instance type or asserted predicate) or in its SPARQL

@@ -20,5 +20,7 @@
                      sh:maxCount 1 ],
                      [ sh:path     :hasPytestPath ;
                      sh:datatype xsd:string ;
-                     sh:maxCount 1 ] . 
+                     sh:maxCount 1 ],
+                     [ sh:path     :hasOntologyPath ;
+                     sh:datatype xsd:string ] .
 

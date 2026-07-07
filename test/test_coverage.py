@@ -1,7 +1,10 @@
 """Unit tests for ontology term coverage (mustrd/coverage.py)."""
 from rdflib import Graph
 
-from mustrd.coverage import compute_coverage, declared_terms, query_uris, abox_terms
+from mustrd.coverage import (
+    compute_coverage, declared_terms, query_uris, abox_terms,
+    expand_ontology_files, load_ontology,
+)
 
 ONTO = """
 @prefix geo:  <http://geo.org/> .
@@ -102,3 +105,35 @@ def test_tbox_only_given_yields_no_usage():
 
 def test_no_declared_terms_returns_none():
     assert compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])]) is None
+
+
+def test_declared_terms_come_from_explicit_ontology():
+    # The given holds only instance data (no TBox); declared terms must still be
+    # found from the explicitly-passed ontology graph.
+    cov = compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])],
+                           ontology=_graph(ONTO))
+    assert cov is not None
+    by = {t["term"]: t for t in cov["terms"]}
+    assert by["geo:City"]["status"] == "covered"
+    assert by["geo:Place"]["status"] == "schema"  # domain/range of used isLocatedIn
+
+
+def test_expand_ontology_files_scans_directories_recursively(tmp_path):
+    (tmp_path / "a.ttl").write_text(ONTO)
+    nested = tmp_path / "sub" / "deep"
+    nested.mkdir(parents=True)
+    (nested / "b.ttl").write_text(DATA)
+    (tmp_path / "notes.txt").write_text("ignore me")
+    found = {f.name for f in expand_ontology_files([tmp_path])}
+    assert found == {"a.ttl", "b.ttl"}  # recursive; non-RDF skipped
+
+
+def test_load_ontology_merges_files(tmp_path):
+    (tmp_path / "onto.ttl").write_text(ONTO)
+    g = load_ontology([tmp_path])
+    assert g is not None
+    assert set(declared_terms(g)) >= {"http://geo.org/Place", "http://geo.org/isLocatedIn"}
+
+
+def test_load_ontology_empty_returns_none(tmp_path):
+    assert load_ontology([tmp_path / "does-not-exist"]) is None

@@ -101,6 +101,7 @@ class MUSTRDTEST(DefinedNamespace):
     hasDataPath: URIRef
     triplestoreSpecPath: URIRef
     hasPytestPath: URIRef
+    hasOntologyPath: URIRef
     filterOnTripleStore: URIRef
 
 from rdflib import Namespace

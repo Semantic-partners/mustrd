@@ -17,12 +17,19 @@ subjects typed as a class or property), restricted to non-well-known
 namespaces so vocabulary terms like rdfs:label are not mistaken for the
 ontology under test.
 """
+import logging
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Optional
 
 from rdflib import Graph, URIRef, RDF, RDFS, OWL, XSD
 from rdflib.plugins.sparql import prepareQuery
+
+log = logging.getLogger(__name__)
+
+# RDF serialisations recognised when scanning an ontology directory.
+ONTOLOGY_SUFFIXES = {".ttl", ".trig", ".nt", ".nq", ".n3", ".jsonld", ".rdf", ".owl", ".xml"}
 
 # Namespaces whose terms are infrastructure, not "the ontology under test".
 WELL_KNOWN = (
@@ -56,6 +63,46 @@ class SpecUsage:
 
 def _is_domain_term(uri) -> bool:
     return isinstance(uri, URIRef) and not any(str(uri).startswith(ns) for ns in WELL_KNOWN)
+
+
+def expand_ontology_files(paths) -> list:
+    """Expand a list of file/directory paths into a sorted list of RDF files.
+
+    Files are kept as-is; directories are scanned recursively for files with a
+    recognised RDF suffix. Non-existent paths are skipped with a warning.
+    """
+    files = []
+    for p in paths:
+        p = Path(p)
+        if p.is_dir():
+            files.extend(sorted(f for f in p.rglob("*")
+                                if f.is_file() and f.suffix.lower() in ONTOLOGY_SUFFIXES))
+        elif p.is_file():
+            files.append(p)
+        else:
+            log.warning(f"hasOntologyPath does not exist, skipping: {p}")
+    # de-duplicate while preserving order
+    seen, unique = set(), []
+    for f in files:
+        rp = f.resolve()
+        if rp not in seen:
+            seen.add(rp)
+            unique.append(f)
+    return unique
+
+
+def load_ontology(paths) -> Optional[Graph]:
+    """Parse every ontology file under `paths` (files or dirs) into one graph."""
+    files = expand_ontology_files(paths)
+    if not files:
+        return None
+    g = Graph()
+    for f in files:
+        try:
+            g.parse(str(f))
+        except Exception as e:
+            log.warning(f"Could not parse ontology file {f}: {e}")
+    return g
 
 
 def declared_terms(graph: Graph) -> dict:
@@ -194,25 +241,31 @@ def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     return reasons
 
 
-def compute_coverage(specs: List[dict]) -> Optional[dict]:
+def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Optional[dict]:
     """Compute term coverage across specs.
 
-    `specs` is a list of dicts: {name, cq, passed, given (Graph), query (str)}.
+    `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}.
+    `ontology` is the graph whose declared terms coverage is measured against;
+    when given, declared terms come from it. When omitted (e.g. in unit tests),
+    declared terms fall back to the union of the specs' given graphs.
+
     Returns a template context dict, or None if no ontology terms are declared
-    across any given (nothing to measure).
+    (nothing to measure).
     """
     given_graphs = [s["given"] for s in specs if isinstance(s.get("given"), Graph)]
-    if not given_graphs:
-        return None
 
     declared = {}
-    for g in given_graphs:
-        declared.update(declared_terms(g))
+    if ontology is not None:
+        declared.update(declared_terms(ontology))
+    else:
+        for g in given_graphs:
+            declared.update(declared_terms(g))
     if not declared:
         return None
 
     all_queries = [q for s in specs for q in (s.get("queries") or []) if isinstance(q, str)]
-    short = _shortener(given_graphs, all_queries)
+    prefix_graphs = given_graphs + ([ontology] if ontology is not None else [])
+    short = _shortener(prefix_graphs, all_queries)
 
     used_data, used_query = set(), set()
     per_cq = []
@@ -246,6 +299,8 @@ def compute_coverage(specs: List[dict]) -> Optional[dict]:
     tbox = Graph()
     for g in given_graphs:
         tbox += g
+    if ontology is not None:
+        tbox += ontology
     schema_reasons = schema_references(tbox, used, declared, short)
     schema_only = {t for t in schema_reasons if t not in used}
 

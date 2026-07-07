@@ -9,7 +9,7 @@ from pytest import Session
 
 from mustrd import logger_setup
 from mustrd.TestResult import TestResult, render_cq_table, render_term_coverage
-from mustrd.coverage import compute_coverage
+from mustrd.coverage import compute_coverage, load_ontology
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -156,6 +156,15 @@ def parse_config(config_path):
             root_path / Path(triplestore_spec_path) if triplestore_spec_path else None
         )
 
+        # hasOntologyPath may be repeated; each value is a file or a directory
+        # (scanned recursively), resolved relative to the config file.
+        ontology_paths = tuple(
+            root_path / Path(str(o))
+            for o in config_graph.objects(
+                subject=test_config_subject, predicate=MUSTRDTEST.hasOntologyPath
+            )
+        )
+
         test_configs.append(
             TestConfig(
                 spec_path=spec_path,
@@ -163,6 +172,7 @@ def parse_config(config_path):
                 triplestore_spec_path=triplestore_spec_path,
                 pytest_path=pytest_path,
                 filter_on_tripleStore=filter_on_tripleStore,
+                ontology_paths=ontology_paths,
             )
         )
     return test_configs
@@ -182,6 +192,7 @@ class TestConfig:
     triplestore_spec_path: Path
     pytest_path: str
     filter_on_tripleStore: str = None
+    ontology_paths: tuple = ()
 
 
 # Configure logging - do not use setup_logger in the pytest plugin, 
@@ -205,6 +216,7 @@ class MustrdTestPlugin:
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.term_coverage = term_coverage
+        self.ontology_paths = []
         self.items = []
 
     @pytest.hookimpl(tryfirst=True)
@@ -242,6 +254,34 @@ class MustrdTestPlugin:
             session.config.args = args
 
         logger.info(f"Final session.config.args: {session.config.args}")
+
+        # Ontology term coverage needs an ontology to measure against. Resolve it
+        # from the config now (and fail early with a helpful message if absent),
+        # so the user is told before any tests run rather than after.
+        if self.term_coverage:
+            self._resolve_ontology_paths_or_fail()
+
+    def _resolve_ontology_paths_or_fail(self):
+        config_path = Path(self.test_config_file)
+        config_graph = Graph().parse(config_path)
+        subjects = list(config_graph.subjects(RDF.type, MUSTRDTEST.MustrdTest))
+        paths = [
+            config_path.parent / Path(str(o))
+            for s in subjects
+            for o in config_graph.objects(s, MUSTRDTEST.hasOntologyPath)
+        ]
+        self.ontology_paths = paths
+        if not paths:
+            subj = subjects[0] if subjects else "https://your.example/mustrdTest/yourTest"
+            raise pytest.UsageError(
+                "--term-coverage needs an ontology to measure against, but no "
+                "mustrdTest:hasOntologyPath is set in the test configuration.\n"
+                f"  Config file to amend: {config_path}\n"
+                "  Add one or more ontology locations (a file, or a directory that "
+                "is scanned recursively), e.g.:\n\n"
+                f"      <{subj}> <https://mustrd.org/mustrdTest/hasOntologyPath> \"<insert ontology path here>\" .\n\n"
+                "  The property may be repeated for multiple ontologies."
+            )
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
@@ -390,10 +430,15 @@ class MustrdTestPlugin:
         # Ontology term coverage is opt-in via --term-coverage. compute_coverage
         # returns None when the specs declare no ontology terms in their given
         # data, so it stays a no-op for ordinary suites even when requested.
+        # Report coverage only when requested AND an ontology was resolved (a
+        # missing ontology already failed early during collection, so we don't
+        # want to also print an empty coverage note here).
+        report_coverage = self.term_coverage and bool(self.ontology_paths)
         coverage = None
-        if self.term_coverage:
+        if report_coverage:
             try:
-                coverage = compute_coverage(coverage_specs)
+                ontology = load_ontology(self.ontology_paths)
+                coverage = compute_coverage(coverage_specs, ontology=ontology)
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
 
@@ -411,8 +456,8 @@ class MustrdTestPlugin:
             with open(self.md_path, "w") as file:
                 file.write(md)
 
-        # Term coverage to stdout when requested.
-        if self.term_coverage:
+        # Term coverage to stdout when requested (and an ontology was resolved).
+        if report_coverage:
             self._report_coverage_to_terminal(session.config, coverage)
 
     def _report_coverage_to_terminal(self, config, coverage):
@@ -424,8 +469,8 @@ class MustrdTestPlugin:
             if lines and lines[0].strip() == "## Ontology term coverage":
                 lines = lines[1:]
         else:
-            lines = ["No ontology term coverage: the specs declare no ontology "
-                     "terms in their given data."]
+            lines = ["No ontology term coverage: the configured ontology declares "
+                     "no terms (or could not be parsed)."]
         if tr is not None:
             tr.section("Ontology term coverage", sep="=")
             for line in lines:

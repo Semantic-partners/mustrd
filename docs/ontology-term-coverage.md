@@ -7,8 +7,21 @@ the CQ results table).
 Ontology term coverage is **opt-in** via `--term-coverage`. When enabled, mustrd
 prints an overall percentage, a per-term matrix, and the list of declared terms
 no CQ exercises to **stdout**; adding `--md` also writes it to the report file
-(beneath the CQ table). It is emitted only when the specs declare ontology terms
-in their `given` data — ordinary suites are unaffected.
+(beneath the CQ table).
+
+The ontology to measure against is named in the test configuration with
+`mustrdTest:hasOntologyPath`. The value is a path (relative to the config file)
+to **a file or a directory**; a directory is scanned **recursively** for RDF
+files. The property may be **repeated** for multiple ontologies:
+
+```ttl
+:myTest a :MustrdTest ;
+    :hasSpecPath     "specs/" ;
+    :hasDataPath     "data/" ;
+    :hasOntologyPath "ontology/" ,           # a directory (scanned recursively)
+                     "vocab/extra.ttl" ;     # or an individual file
+    :filterOnTripleStore triplestore:RdfLib .
+```
 
 ```bash
 # coverage to stdout
@@ -18,8 +31,10 @@ pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage
 pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage --md=report.md
 ```
 
-Without `--term-coverage`, no coverage is computed; `--md` on its own writes
-just the CQ table, exactly as before.
+If `--term-coverage` is given but no `hasOntologyPath` is set, mustrd **fails
+early** (before running tests) with the config file to amend and a proposed
+triple. Without `--term-coverage`, no coverage is computed and no ontology is
+required; `--md` on its own writes just the CQ table, exactly as before.
 
 ## Motivation
 
@@ -120,11 +135,11 @@ Reuses what mustrd already parses — no new config:
 2. `mustrd/coverage.py` computes ABox usage (`rdf:type` objects + asserted
    predicates in the given) ∪ query usage (IRIs from the parsed SPARQL algebra),
    crediting only specs whose result is `passed`.
-3. **Declared terms** are derived from the same given graphs — subjects typed
-   `owl:Class` / `rdf:Property` / … — restricted to non-well-known namespaces
-   (so `rdfs:label` etc. aren't mistaken for the ontology under test). This
-   works because a CQ that needs class-hierarchy reasoning already loads the
-   ontology into its `given`.
+3. **Declared terms** come from the ontology named by `mustrdTest:hasOntologyPath`
+   (files and/or recursively-scanned directories, merged into one graph):
+   subjects typed `owl:Class` / `rdf:Property` / …, restricted to non-well-known
+   namespaces (so `rdfs:label` etc. aren't mistaken for the ontology under test).
+   `--term-coverage` with no `hasOntologyPath` fails early.
 4. **Schema references** are found over the union of the given graphs: the
    `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
    used class. Declared terms that are only schema-referenced are excluded from
@@ -138,10 +153,11 @@ Files: `mustrd/coverage.py`, `mustrd/templates/md_term_coverage_template.jinja`,
 
 ### Known limitations / open questions
 
-- **Namespace selection** — declared terms are auto-detected from the given
-  graphs and filtered against a fixed well-known-vocabulary list. An explicit
-  config option (point at the ontology file, or name the namespace) would be
-  more robust when the ontology is *not* loaded into any `given`.
+- **Namespace filtering** — declared terms are read from the configured
+  ontology and filtered against a fixed well-known-vocabulary list
+  (`rdf`, `rdfs`, `owl`, `xsd`, `skos`, `sh`, `mustrd`, `dc`, `dcterms`, `prov`).
+  Terms in other imported vocabularies loaded via `hasOntologyPath` would be
+  counted; scoping to a specific namespace is not yet configurable.
 - **Schema heuristic** — a term is treated as structural when it is the
   domain/range of a used property or a superclass of a used class. Other
   structural roles (e.g. `owl:Restriction` fillers, property chains) are not yet
