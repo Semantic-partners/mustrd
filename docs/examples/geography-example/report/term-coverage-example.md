@@ -4,8 +4,8 @@
 
 Coverage below is measured against these ontologies:
 
-- [ontology/geography.ttl](../ontology/geography.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
-- [ontology/people.ttl](../ontology/people.ttl) — `http://example.org/people#` — A tiny vocabulary for people and the places they govern.
+- [ontology/place.ttl](../ontology/place.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
+- [ontology/governance.ttl](../ontology/governance.ttl) — `http://example.org/governance#` — A tiny vocabulary for governance roles and the places they govern.
 
 
 ## Competency Questions
@@ -30,14 +30,14 @@ A term is *used* if a passing CQ test exercises it — either in the **input dat
 
 | Term | Kind | In input data | In SPARQL | In schema | Status |
 |------|------|:---:|:---:|:---:|:---:|
-| people:Mayor | class | ✅ | ✅ | · | ✅ covered |
+| gov:Mayor | class | ✅ | ✅ | · | ✅ covered |
 | place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered |
 | place:City | class | ✅ | ✅ | · | ✅ covered |
 | place:Continent | class | ✅ | ❌ | · | ✅ covered |
 | place:Country | class | ✅ | ✅ | · | ✅ covered |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
 | place:Province | class | ✅ | ❌ | · | ✅ covered |
-| people:governs | property | ✅ | ✅ | · | ✅ covered |
+| gov:governs | property | ✅ | ✅ | · | ✅ covered |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
 
@@ -76,5 +76,5 @@ Not directly exercised, but they define the schema of terms the CQs use:
   - in data:  place:City, place:Continent, place:Country, place:Province, place:isLocatedIn
   - in query: place:AdministrativeDivision, place:Country, place:isLocatedIn
 - **mayor-of-rotterdam.mustrd.ttl** — Who is the mayor of Rotterdam? — _passed_
-  - in data:  people:Mayor, people:governs, place:City
-  - in query: people:Mayor, people:governs, place:City
+  - in data:  gov:Mayor, gov:governs, place:City
+  - in query: gov:Mayor, gov:governs, place:City

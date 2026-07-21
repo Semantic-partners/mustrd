@@ -11,11 +11,11 @@
                  # Bind the city the question asks about, rather than hard-coding
                  # it in the query text.
                  must:hasBinding [ must:variable "city" ; must:boundValue ex:Rotterdam ] ;
-                 must:queryText """PREFIX people: <http://example.org/people#>
-PREFIX place:  <http://example.org/place#>
+                 must:queryText """PREFIX gov:   <http://example.org/governance#>
+PREFIX place: <http://example.org/place#>
 SELECT ?mayor WHERE {
-  ?mayor a people:Mayor ;
-         people:governs ?city .
+  ?mayor a gov:Mayor ;
+         gov:governs ?city .
   ?city a place:City .
 }""" ] ;
     must:then  [ a must:TableDataset ;

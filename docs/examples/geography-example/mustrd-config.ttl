@@ -7,7 +7,7 @@
     :hasDataPath     "data" ;
     # :hasOntologyPath is repeatable — name each ontology the suite validates.
     # (A directory may also be given; it is scanned recursively.)
-    :hasOntologyPath "ontology/geography.ttl" ;
-    :hasOntologyPath "ontology/people.ttl" ;
+    :hasOntologyPath "ontology/place.ttl" ;
+    :hasOntologyPath "ontology/governance.ttl" ;
     :hasPytestPath   "rdflib" ;
     :filterOnTripleStore triplestore:RdfLib .

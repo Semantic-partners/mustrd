@@ -30,8 +30,8 @@ def test_term_coverage_report_is_generated(tmp_path):
 
     # Ontologies section names BOTH ontologies measured against, with IRIs/desc.
     assert "these ontologies" in text  # plural header
-    assert "geography.ttl" in text and "http://example.org/place#" in text
-    assert "people.ttl" in text and "http://example.org/people#" in text
+    assert "place.ttl" in text and "http://example.org/place#" in text
+    assert "governance.ttl" in text and "http://example.org/governance#" in text
     assert "A minimal vocabulary for places" in text
 
     # All three competency questions appear in the CQ table.
@@ -43,7 +43,7 @@ def test_term_coverage_report_is_generated(tmp_path):
     # (place:Place and the ontology-level metadata place:basedOnStandard), no gaps.
     assert "8/8 terms used to answer the CQs = 100%" in text
     assert "10 declared; 2 structural/schema term(s) excluded" in text
-    assert "place:Place" in text and "people:Mayor" in text
+    assert "place:Place" in text and "gov:Mayor" in text
     assert "place:basedOnStandard (property) — ontology property" in text
     # foaf:Person is referenced (Mayor's superclass / governs' domain) but not
     # declared here, so it is external and must not appear in coverage at all.

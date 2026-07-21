@@ -138,7 +138,7 @@ directly (the queried types are the instantiated types) is not flagged.
 
 ## Worked example
 
-Two ontologies — a geography vocabulary and a small people vocabulary that
+Two ontologies — a place vocabulary and a small governance vocabulary that
 reuses it (10 declared terms in total) — measured against three competency
 questions (*"In which country is Rotterdam?"*, *"In what administrative division
 of what country is Rotterdam?"*, and *"Who is the mayor of Rotterdam?"*) produce
@@ -153,7 +153,7 @@ ontologies at once. Two declared terms are reported as **schema** and excluded
 from the denominator rather than counted as gaps: `place:Place` (the abstract
 root — domain/range of `place:isLocatedIn` and superclass of the used classes)
 and `place:basedOnStandard` (an `owl:OntologyProperty` — ontology-level
-metadata). `people:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is
+metadata). `gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is
 only referenced, not declared in these ontologies, so it is not counted.
 
 The value the CQ table cannot give today: a percentage, the schema/structural

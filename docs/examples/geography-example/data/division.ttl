@@ -4,7 +4,7 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
 # The class hierarchy the query's rdfs:subClassOf* path walks. (Only the axioms
-# the query needs; the authoritative declarations live in ontology/geography.ttl.)
+# the query needs; the authoritative declarations live in ontology/place.ttl.)
 place:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .
 
 ex:Rotterdam   a place:City     ; place:isLocatedIn ex:ZuidHolland .
