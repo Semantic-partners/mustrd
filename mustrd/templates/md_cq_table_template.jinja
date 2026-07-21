@@ -1,7 +1,10 @@
 ## Competency Questions
+{% for g in groups %}
+### {% if g.module_link %}[{{ g.module_name }}]({{ g.module_link }}){% else %}{{ g.module_name }}{% endif %}{% if g.class_name %} — {{ g.class_name }}{% endif %}
 
-| Competency Question | Test | Status | Module | Class |
-|---------------------|------|--------|--------|-------|
-{% for result in result_list -%}
-| {{ result.competency_question or "" }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ '✅' if result.status == 'passed' else ('❌' if result.status == 'failed' else '⏭️') }} {{ result.status }} | {% if result.module_link %}[{{ result.module_name }}]({{ result.module_link }}){% else %}{{ result.module_name }}{% endif %} | {{ result.class_name }} |
+| Competency Question | Test | Status |
+|---------------------|------|--------|
+{% for result in g.results -%}
+| {{ result.competency_question or "" }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ '✅' if result.status == 'passed' else ('❌' if result.status == 'failed' else '⏭️') }} {{ result.status }} |
+{% endfor %}
 {% endfor -%}

@@ -123,8 +123,17 @@ class ResultList:
 
 
 def render_cq_table(test_results: list) -> str:
+    # Group by (module, class) — rendered as a heading — so those columns drop
+    # out of the table. Insertion order is preserved (session result order).
+    groups = {}
+    for r in test_results:
+        key = (r.module_name, r.class_name)
+        if key not in groups:
+            groups[key] = {"module_name": r.module_name, "module_link": r.module_link,
+                           "class_name": r.class_name, "results": []}
+        groups[key]["results"].append(r)
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
-    return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(result_list=test_results)
+    return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(groups=list(groups.values()))
 
 
 def render_term_coverage(coverage: dict) -> str:
