@@ -2,5 +2,7 @@
 @prefix ex:    <http://example.org/> .
 
 ex:Rotterdam a place:City    ; place:isLocatedIn ex:NL .
-ex:NL        a place:Country ; place:isLocatedIn ex:Europe .
+# place:hasEconomicArea is used here but is not declared in place.ttl — the
+# report flags it as "used but not declared".
+ex:NL        a place:Country ; place:isLocatedIn ex:Europe ; place:hasEconomicArea ex:EU .
 ex:Europe    a place:Continent .

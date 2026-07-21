@@ -37,9 +37,9 @@ the report stays correct.
 
 **Multiple ontologies:** the report's *Ontologies* section lists both files
 (each with its `owl:Ontology` IRI and description), and coverage is measured
-against their combined declared terms — **8/8 domain terms covered (100%)**
-across 10 declared. The two excluded from the denominator are reported as
-**schema** terms rather than gaps:
+against their combined declared terms — **8/9 domain terms covered (89%)** across
+11 declared. Two are reported as **schema** terms (excluded from the denominator
+rather than counted as gaps):
 
 - `place:Place` — the abstract root; not instantiated or queried, but the
   `rdfs:domain`/`rdfs:range` of `place:isLocatedIn` and the superclass of the
@@ -47,10 +47,21 @@ across 10 declared. The two excluded from the denominator are reported as
 - `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata,
   not part of the domain vocabulary the CQs exercise.
 
+**Failure signals:** the example deliberately shows two problems the report
+catches:
+
+- `place:Region` is declared but no CQ exercises it — a genuine **gap** (the
+  1-of-9 that drops coverage below 100%), listed under *Not used by any CQ*.
+- `place:hasEconomicArea` is used in the country spec's data but never declared
+  in `place.ttl`, so it appears under **⚠️ Used but not declared** — a likely typo
+  or missing definition.
+
 **External vocabularies aren't counted:** `gov:Mayor` is a subclass of
 `foaf:Person` and `gov:governs`'s domain is `foaf:Person`, but `foaf:Person`
 is only *referenced*, not *declared* here — so it never appears in coverage. Only
-terms the ontologies under test actually declare are measured.
+terms the ontologies under test actually declare are measured. (Contrast with
+`place:hasEconomicArea`, which *is* in an ontology's namespace, so its absence is
+flagged.)
 
 It also shows the **requires ontology to pass** flag: the division CQ queries
 `place:AdministrativeDivision` but its data holds a `place:Province`, so it only

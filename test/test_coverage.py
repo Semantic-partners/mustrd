@@ -199,6 +199,50 @@ def test_not_requires_ontology_when_data_has_queried_type():
     assert cov["per_cq"][0]["requires_ontology"] is False
 
 
+def test_undeclared_term_used_in_data_is_flagged_as_input_data():
+    # onto:hasMayor is used in the data and sits in the ontology's namespace, but
+    # is never declared -> surfaced as "used but not declared", tagged input data.
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rotterdam a onto:City ; onto:hasMayor ex:X .
+    """)
+    cov = compute_coverage([_spec(given=data, queries=[])], ontology=_graph(ONTO))
+    by = {u["term"]: u for u in cov["undeclared"]}
+    assert by["onto:hasMayor"]["in_data"] is True
+    assert by["onto:hasMayor"]["in_query"] is False
+    assert "onto:City" not in by  # declared, so not flagged
+
+
+def test_undeclared_term_used_in_query_is_flagged_as_sparql():
+    # onto:nickname appears only in the SPARQL, not the data -> tagged SPARQL.
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rotterdam a onto:City .
+    """)
+    query = """PREFIX onto: <http://onto.org/>
+    SELECT ?x WHERE { ?x a onto:City ; onto:nickname ?n }"""
+    cov = compute_coverage([_spec(given=data, queries=[query])], ontology=_graph(ONTO))
+    by = {u["term"]: u for u in cov["undeclared"]}
+    assert by["onto:nickname"]["in_query"] is True
+    assert by["onto:nickname"]["in_data"] is False
+
+
+def test_external_namespace_terms_are_not_flagged_as_undeclared():
+    # foaf:name is used but lives in an external namespace (not one of the
+    # ontology's), so it is not flagged — only undefined terms in the ontology's
+    # own namespace are.
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix ex:   <http://example.org/> .
+    ex:X a onto:City ; foaf:name "x" .
+    """)
+    cov = compute_coverage([_spec(given=data, queries=[])], ontology=_graph(ONTO))
+    assert cov["undeclared"] == []
+
+
 def test_expand_ontology_files_scans_directories_recursively(tmp_path):
     (tmp_path / "a.ttl").write_text(ONTO)
     nested = tmp_path / "sub" / "deep"

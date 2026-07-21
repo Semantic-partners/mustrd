@@ -13,7 +13,8 @@ report is framed as an **Ontologies Report**:
 2. **Competency Questions** — the CQ pass/fail table, each test name linking to
    its `.mustrd.ttl` spec;
 3. **Ontology term coverage** — the percentage, per-term matrix, schema terms,
-   and the declared terms no CQ exercises.
+   the declared terms no CQ exercises, and any terms a CQ references that are
+   *not* declared in the ontology (likely typos or missing definitions).
 
 It is printed to **stdout**; adding `--md` also writes it to the report file
 (creating the parent directory if needed). Without `--term-coverage`, the `--md`
@@ -139,7 +140,7 @@ directly (the queried types are the instantiated types) is not flagged.
 ## Worked example
 
 Two ontologies — a place vocabulary and a small governance vocabulary that
-reuses it (10 declared terms in total) — measured against three competency
+reuses it (11 declared terms in total) — measured against three competency
 questions (*"In which country is Rotterdam?"*, *"In what administrative division
 of what country is Rotterdam?"*, and *"Who is the mayor of Rotterdam?"*) produce
 the report in
@@ -148,13 +149,19 @@ That report is generated from the runnable fixtures in
 [`examples/geography-example/`](examples/geography-example/) (config, two
 ontologies, data, and the three CQ specs) — see the README there for the command
 to regenerate it, and `test/test_coverage_plugin.py` which asserts it stays
-correct. The headline: **8/8 terms (100%)**, coverage measured across both
+correct. The headline: **8/9 terms (89%)**, coverage measured across both
 ontologies at once. Two declared terms are reported as **schema** and excluded
 from the denominator rather than counted as gaps: `place:Place` (the abstract
 root — domain/range of `place:isLocatedIn` and superclass of the used classes)
 and `place:basedOnStandard` (an `owl:OntologyProperty` — ontology-level
 metadata). `gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is
 only referenced, not declared in these ontologies, so it is not counted.
+
+The example also shows the two failure signals: `place:Region` is declared but
+no CQ exercises it, so it is a **gap** (the 1 of 9 that drops coverage below
+100%); and `place:hasEconomicArea` is used in a `given` but never declared in the
+ontology, so it appears under **⚠️ Used but not declared** — a likely typo or
+missing definition.
 
 The value the CQ table cannot give today: a percentage, the schema/structural
 terms called out separately, and — when one exists — the exact list of declared

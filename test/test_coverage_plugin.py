@@ -39,16 +39,24 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "In what administrative division of what country is Rotterdam?" in text
     assert "Who is the mayor of Rotterdam?" in text
 
-    # 8/8 = 100%: 10 declared across both ontologies, two schema terms excluded
-    # (place:Place and the ontology-level metadata place:basedOnStandard), no gaps.
-    assert "8/8 terms used to answer the CQs = 100%" in text
-    assert "10 declared; 2 structural/schema term(s) excluded" in text
+    # 8/9 = 89%: 11 declared across both ontologies, two schema terms excluded
+    # (place:Place and the ontology-level metadata place:basedOnStandard), and one
+    # genuine gap (place:Region) dropping coverage below 100%.
+    assert "8/9 terms used to answer the CQs = 89%" in text
+    assert "11 declared; 2 structural/schema term(s) excluded" in text
     assert "place:Place" in text and "gov:Mayor" in text
     assert "place:basedOnStandard (property) — ontology property" in text
     # foaf:Person is referenced (Mayor's superclass / governs' domain) but not
     # declared here, so it is external and must not appear in coverage at all.
     assert "foaf:Person" not in text and "foaf" not in text
-    assert "_none — every declared term is exercised or structural_" in text
+
+    # place:Region is declared but no CQ exercises it -> a genuine gap.
+    assert "place:Region (class) — declared in the ontology" in text
+    # place:hasEconomicArea is used in the country data but not declared in
+    # place.ttl, yet sits in the ontology's namespace -> flagged as
+    # used-but-not-declared, tagged as referenced in the input data (not SPARQL).
+    assert "## ⚠️ Used but not declared" in text
+    assert "| place:hasEconomicArea | input data |" in text
 
     # The division CQ matches its data only via the class hierarchy (queries
     # AdministrativeDivision, data has Province), so it is flagged as needing the

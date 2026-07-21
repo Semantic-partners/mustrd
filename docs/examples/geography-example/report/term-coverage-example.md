@@ -22,9 +22,9 @@ Coverage below is measured against these ontologies:
 
 ## Ontology term coverage
 
-**Overall: 8/8 terms used to answer the CQs = 100%**
+**Overall: 8/9 terms used to answer the CQs = 89%**
 
-_(10 declared; 2 structural/schema term(s) excluded from the denominator — see below.)_
+_(11 declared; 2 structural/schema term(s) excluded from the denominator — see below.)_
 
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 
@@ -37,6 +37,7 @@ A term is *used* if a passing CQ test exercises it — either in the **input dat
 | place:Country | class | ✅ | ✅ | · | ✅ covered |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
 | place:Province | class | ✅ | ❌ | · | ✅ covered |
+| place:Region | class | ❌ | ❌ | · | ❌ unused |
 | gov:governs | property | ✅ | ✅ | · | ✅ covered |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
@@ -55,7 +56,8 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 
 ## Not used by any CQ
 
-_none — every declared term is exercised or structural_
+- place:Region (class) — declared in the ontology, never instantiated, queried, nor referenced in the schema of a used term
+
 
 ## Structural / schema terms (excluded from coverage)
 
@@ -63,6 +65,15 @@ Not directly exercised, but they define the schema of terms the CQs use:
 
 - place:Place (class) — domain of place:isLocatedIn; range of place:isLocatedIn; superclass of place:AdministrativeDivision
 - place:basedOnStandard (property) — ontology property
+
+
+## ⚠️ Used but not declared
+
+Referenced by a CQ, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
+
+| Term | Referenced in |
+|------|---------------|
+| place:hasEconomicArea | input data |
 
 
 ## Per competency question

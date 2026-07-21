@@ -41,6 +41,17 @@ Not directly exercised, but they define the schema of terms the CQs use:
 - {{ t.term }} ({{ t.kind }}) — {{ t.reason }}
 {% endfor %}
 {%- endif %}
+{% if coverage.undeclared %}
+## ⚠️ Used but not declared
+
+Referenced by a CQ, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
+
+| Term | Referenced in |
+|------|---------------|
+{% for t in coverage.undeclared -%}
+| {{ t.term }} | {% if t.in_data and t.in_query %}input data & SPARQL{% elif t.in_data %}input data{% else %}SPARQL{% endif %} |
+{% endfor %}
+{%- endif %}
 
 ## Per competency question
 

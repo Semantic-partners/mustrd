@@ -82,6 +82,15 @@ def _is_domain_term(uri) -> bool:
     return isinstance(uri, URIRef) and not any(str(uri).startswith(ns) for ns in WELL_KNOWN)
 
 
+def _namespace(iri: str) -> str:
+    """The namespace of an IRI — up to and including its last '#' or '/'."""
+    for sep in ("#", "/"):
+        idx = iri.rfind(sep)
+        if idx != -1:
+            return iri[:idx + 1]
+    return iri
+
+
 def expand_ontology_files(paths) -> list:
     """Expand a list of file/directory paths into a sorted list of RDF files.
 
@@ -401,17 +410,23 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
         tbox += ontology
 
     used_data, used_query = set(), set()
+    # Every domain-namespace term any spec references, split by where (for the
+    # "used but not declared" report, which distinguishes data from SPARQL).
+    referenced_data, referenced_query = set(), set()
     per_cq = []
     declared_set = set(declared)
     for s in specs:
         g = s.get("given")
         queries = s.get("queries") or []
-        d_terms = (abox_terms(g) & declared_set) if isinstance(g, Graph) else set()
-        q_terms = set()
+        raw_data = abox_terms(g) if isinstance(g, Graph) else set()
+        raw_query = set()
         for q in queries:
             if isinstance(q, str):
-                q_terms |= query_uris(q)
-        q_terms &= declared_set
+                raw_query |= query_uris(q)
+        referenced_data |= {t for t in raw_data if _is_domain_term(URIRef(t))}
+        referenced_query |= {t for t in raw_query if _is_domain_term(URIRef(t))}
+        d_terms = raw_data & declared_set
+        q_terms = raw_query & declared_set
         credited = bool(s.get("passed"))
         if credited:
             used_data |= d_terms
@@ -469,10 +484,23 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
     pct = round(100.0 * covered / denominator) if denominator else 0
 
+    # Terms a CQ references (in data or SPARQL) that fall in a declared ontology's
+    # namespace but are not themselves declared — a likely typo or missing
+    # definition. External vocabularies (other namespaces) are ignored. Each is
+    # tagged with where it was referenced (input data, SPARQL, or both).
+    ontology_namespaces = {_namespace(t) for t in declared}
+    undeclared_iris = [t for t in (referenced_data | referenced_query)
+                       if t not in declared_set and _namespace(t) in ontology_namespaces]
+    undeclared = [{"term": short(t),
+                   "in_data": t in referenced_data,
+                   "in_query": t in referenced_query}
+                  for t in sorted(undeclared_iris, key=short)]
+
     return {
         "covered": covered, "denominator": denominator, "pct": pct,
         "declared_total": len(declared), "schema_count": len(schema_only),
         "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
+        "undeclared": undeclared,
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,
