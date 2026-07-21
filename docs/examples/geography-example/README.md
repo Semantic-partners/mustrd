@@ -52,9 +52,11 @@ catches:
 
 - `place:Region` is declared but no CQ exercises it — a genuine **gap** (the
   1-of-9 that drops coverage below 100%), listed under *Not used by any CQ*.
-- `place:hasEconomicArea` is used in the country spec's data but never declared
-  in `place.ttl`, so it appears under **⚠️ Used but not declared** — a likely typo
-  or missing definition.
+- `place:hasEconomicArea` (in the country spec's data) and `gov:appointedOn` (in
+  the mayor spec's SPARQL) are used but never declared in their ontologies, so
+  they appear under **⚠️ Used but not declared** — likely typos or missing
+  definitions. Each lists the referencing CQ and whether it was seen in the input
+  data or the SPARQL.
 
 **External vocabularies aren't counted:** `gov:Mayor` is a subclass of
 `foaf:Person` and `gov:governs`'s domain is `foaf:Person`, but `foaf:Person`

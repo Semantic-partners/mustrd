@@ -71,6 +71,9 @@ Not directly exercised, but they define the schema of terms the CQs use:
 
 Referenced by a CQ, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
 
+- **gov:appointedOn**
+  - [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) — SPARQL
+
 - **place:hasEconomicArea**
   - [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) — input data
 

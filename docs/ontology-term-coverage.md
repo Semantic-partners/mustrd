@@ -159,9 +159,10 @@ only referenced, not declared in these ontologies, so it is not counted.
 
 The example also shows the two failure signals: `place:Region` is declared but
 no CQ exercises it, so it is a **gap** (the 1 of 9 that drops coverage below
-100%); and `place:hasEconomicArea` is used in a `given` but never declared in the
-ontology, so it appears under **⚠️ Used but not declared** — a likely typo or
-missing definition.
+100%); and two terms appear under **⚠️ Used but not declared** —
+`place:hasEconomicArea` (used in a `given`, tagged *input data*) and
+`gov:appointedOn` (used only in the mayor query, tagged *SPARQL*) — each likely a
+typo or missing definition, listed with the CQ that references it.
 
 The value the CQ table cannot give today: a percentage, the schema/structural
 terms called out separately, and — when one exists — the exact list of declared

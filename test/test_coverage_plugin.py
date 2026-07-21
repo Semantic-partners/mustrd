@@ -57,10 +57,14 @@ def test_term_coverage_report_is_generated(tmp_path):
     # used-but-not-declared, listing the referencing CQ (linked to its spec) and
     # tagging it as referenced in the input data (not SPARQL).
     assert "## ⚠️ Used but not declared" in text
+    # place:hasEconomicArea — used in the country data, tagged input data.
     assert "- **place:hasEconomicArea**" in text
-    # the referencing CQ is listed, linked to its spec, tagged input data
-    ref_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— input data"))
-    assert "country-of-rotterdam.mustrd.ttl" in ref_line and "](" in ref_line
+    data_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— input data"))
+    assert "country-of-rotterdam.mustrd.ttl" in data_line and "](" in data_line
+    # gov:appointedOn — referenced only in the mayor query (OPTIONAL), tagged SPARQL.
+    assert "- **gov:appointedOn**" in text
+    sparql_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— SPARQL"))
+    assert "mayor-of-rotterdam.mustrd.ttl" in sparql_line and "](" in sparql_line
 
     # The division CQ matches its data only via the class hierarchy (queries
     # AdministrativeDivision, data has Province), so it is flagged as needing the
