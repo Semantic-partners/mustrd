@@ -1,0 +1,21 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix ex:   <http://example.org/> .
+@prefix :     <http://geo.org/example/> .
+
+:divisionAndCountryOfRotterdam
+    a must:TestSpec ;
+    must:CompetencyQuestion "In what administrative division of what country is Rotterdam?" ;
+    must:given [ a must:FileDataset ; must:file "division.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 must:queryText """PREFIX geo:  <http://geo.org/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?division ?country WHERE {
+  ?city geo:isLocatedIn ?division .
+  ?division a/rdfs:subClassOf* geo:AdministrativeDivision .
+  ?division geo:isLocatedIn+ ?country .
+  ?country a geo:Country .
+}""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "division" ; must:boundValue ex:ZuidHolland ],
+                                                [ must:variable "country"  ; must:boundValue ex:NL ] ] ] .

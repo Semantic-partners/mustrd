@@ -42,7 +42,6 @@ WELL_KNOWN = (
     str(RDF), str(RDFS), str(OWL), str(XSD),
     "http://www.w3.org/2004/02/skos/core#",
     "http://www.w3.org/ns/shacl#",
-    "http://www.w3.org/2002/07/owl#",
     "https://mustrd.org/model/",
     "http://purl.org/dc/elements/1.1/",
     "http://purl.org/dc/terms/",
@@ -206,12 +205,15 @@ def query_uris(query_text: str) -> set:
     algebra = None
     try:
         algebra = prepareQuery(query_text).algebra
-    except Exception:
+    except Exception as query_exc:
         try:
             from rdflib.plugins.sparql.parser import parseUpdate
             from rdflib.plugins.sparql.algebra import translateUpdate
             algebra = translateUpdate(parseUpdate(query_text))
-        except Exception:
+        except Exception as update_exc:
+            log.debug("query_uris: could not parse as query (%s) nor update (%s); "
+                      "extracting no query terms from: %s",
+                      query_exc, update_exc, query_text)
             return set()
 
     found = set()

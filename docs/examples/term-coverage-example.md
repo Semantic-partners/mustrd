@@ -1,7 +1,14 @@
 <!--
-  Example `--md` report for the ontology-term-coverage feature. Produced with:
-    pytest --mustrd --config=tests/mustrd-config.ttl --term-coverage --md=build/report.md
-  Links (ontologies + tests) are relative to the report file so they render in a markdown previewer.
+  Real `--md` output of the ontology-term-coverage feature, generated from the
+  runnable fixtures in ./geography-example (config, ontology, data, and two CQ
+  specs). To regenerate, from the repo root:
+
+    (cd docs/examples/geography-example && \
+       pytest . --mustrd --config=mustrd-config.ttl --term-coverage \
+              --md=../term-coverage-example.md)
+
+  Links are relative to this file so they render in a Markdown previewer.
+  test/test_coverage_plugin.py asserts this report stays correct.
 -->
 # Ontologies Report
 
@@ -9,15 +16,15 @@
 
 Coverage below is measured against this ontology:
 
-- [ontology/geography.ttl](../ontology/geography.ttl) — `http://geo.org/` — A minimal vocabulary for places and how they are geographically contained within one another.
+- [ontology/geography.ttl](geography-example/ontology/geography.ttl) — `http://geo.org/` — A minimal vocabulary for places and how they are geographically contained within one another.
 
 
 ## Competency Questions
 
 | Module | Class | Test | Competency Question | Status |
 |--------|-------|------|---------------------|--------|
-| mustrd-config.ttl | . | [country-of-rotterdam.mustrd.ttl](../tests/country-of-rotterdam.mustrd.ttl) | In which country is Rotterdam? | passed |
-| mustrd-config.ttl | . | [division-and-country-of-rotterdam.mustrd.ttl](../tests/division-and-country-of-rotterdam.mustrd.ttl) | In what administrative division of what country is Rotterdam? | passed |
+| docs/examples/geography-example/mustrd-config.ttl | rdflib | [country-of-rotterdam.mustrd.ttl](geography-example/specs/country-of-rotterdam.mustrd.ttl) | In which country is Rotterdam? | passed |
+| docs/examples/geography-example/mustrd-config.ttl | rdflib | [division-and-country-of-rotterdam.mustrd.ttl](geography-example/specs/division-and-country-of-rotterdam.mustrd.ttl) | In what administrative division of what country is Rotterdam? | passed |
 
 
 ## Ontology term coverage
@@ -47,7 +54,7 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
-| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but domain/range of a used property or superclass of a used class — good for documentation & inferencing; **excluded from coverage** |
+| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
 | ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced |
 
 ## Not used by any CQ

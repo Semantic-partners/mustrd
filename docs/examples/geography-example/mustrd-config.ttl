@@ -1,0 +1,10 @@
+@prefix :            <https://mustrd.org/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+
+:geographyCoverageExample
+    a :MustrdTest ;
+    :hasSpecPath     "specs" ;
+    :hasDataPath     "data" ;
+    :hasOntologyPath "ontology" ;   # a directory, scanned recursively
+    :hasPytestPath   "rdflib" ;
+    :filterOnTripleStore triplestore:RdfLib .

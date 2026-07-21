@@ -1,0 +1,17 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix ex:   <http://example.org/> .
+@prefix :     <http://geo.org/example/> .
+
+:countryOfRotterdam
+    a must:TestSpec ;
+    must:CompetencyQuestion "In which country is Rotterdam?" ;
+    must:given [ a must:FileDataset ; must:file "country.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 must:queryText """PREFIX geo: <http://geo.org/>
+SELECT ?country WHERE {
+  ?city geo:isLocatedIn ?country .
+  ?country a geo:Country .
+}""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "country" ; must:boundValue ex:NL ] ] ] .

@@ -130,8 +130,13 @@ or SPARQL) it still counts as covered.
 A small geography ontology (7 declared terms) with two competency questions —
 *"In which country is Rotterdam?"* and *"In what administrative division of what
 country is Rotterdam?"* — produces the report in
-[`examples/term-coverage-example.md`](examples/term-coverage-example.md):
-**6/6 terms (100%)**. `geo:Place` (the abstract root) is not directly exercised
+[`examples/term-coverage-example.md`](examples/term-coverage-example.md). That
+report is generated from the runnable fixtures in
+[`examples/geography-example/`](examples/geography-example/) (config, ontology,
+data, and the two CQ specs) — see the comment at the top of the report for the
+command to regenerate it, and `test/test_coverage_plugin.py` which asserts it
+stays correct. The headline: **6/6 terms (100%)**. `geo:Place` (the abstract
+root) is not directly exercised
 but is the domain/range of `geo:isLocatedIn` and the superclass of the used
 classes, so it is reported as a **schema** term and excluded from the
 denominator rather than counted as a gap.

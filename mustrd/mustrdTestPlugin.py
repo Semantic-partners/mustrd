@@ -264,26 +264,27 @@ class MustrdTestPlugin:
             self._resolve_ontology_paths_or_fail()
 
     def _resolve_ontology_paths_or_fail(self):
+        # Reuse parse_config (which also SHACL-validates) so ontology paths come
+        # from the same TestConfig the tests are built from — one source of truth.
         config_path = Path(self.test_config_file)
+        test_configs = parse_config(config_path)
+        self.ontology_paths = [p for tc in test_configs for p in tc.ontology_paths]
+        if not self.ontology_paths:
+            raise pytest.UsageError(self._missing_ontology_message(config_path))
+
+    def _missing_ontology_message(self, config_path):
         config_graph = Graph().parse(config_path)
         subjects = list(config_graph.subjects(RDF.type, MUSTRDTEST.MustrdTest))
-        paths = [
-            config_path.parent / Path(str(o))
-            for s in subjects
-            for o in config_graph.objects(s, MUSTRDTEST.hasOntologyPath)
-        ]
-        self.ontology_paths = paths
-        if not paths:
-            subj = subjects[0] if subjects else "https://your.example/mustrdTest/yourTest"
-            raise pytest.UsageError(
-                "--term-coverage needs an ontology to measure against, but no "
-                "mustrdTest:hasOntologyPath is set in the test configuration.\n"
-                f"  Config file to amend: {config_path}\n"
-                "  Add one or more ontology locations (a file, or a directory that "
-                "is scanned recursively), e.g.:\n\n"
-                f"      <{subj}> <https://mustrd.org/mustrdTest/hasOntologyPath> \"<insert ontology path here>\" .\n\n"
-                "  The property may be repeated for multiple ontologies."
-            )
+        subj = subjects[0] if subjects else "https://your.example/mustrdTest/yourTest"
+        return (
+            "--term-coverage needs an ontology to measure against, but no "
+            "mustrdTest:hasOntologyPath is set in the test configuration.\n"
+            f"  Config file to amend: {config_path}\n"
+            "  Add one or more ontology locations (a file, or a directory that "
+            "is scanned recursively), e.g.:\n\n"
+            f"      <{subj}> <https://mustrd.org/mustrdTest/hasOntologyPath> \"<insert ontology path here>\" .\n\n"
+            "  The property may be repeated for multiple ontologies."
+        )
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
