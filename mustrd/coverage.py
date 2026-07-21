@@ -432,6 +432,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
 
     gaps = [{"term": short(t), "kind": declared[t]}
             for t in sorted(declared) if status(t) == "unused"]
+
     def _reason_key(r):
         return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
