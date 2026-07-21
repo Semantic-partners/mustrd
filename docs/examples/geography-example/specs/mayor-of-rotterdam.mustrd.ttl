@@ -16,7 +16,7 @@ PREFIX place: <http://example.org/place#>
 SELECT ?mayor WHERE {
   ?mayor a gov:Mayor ;
          gov:governs ?city .
-  OPTIONAL { ?major gov:appointedOn ?date }
+  OPTIONAL { ?mayor gov:appointedOn ?date }
   ?city a place:City .
 }""" ] ;
     must:then  [ a must:TableDataset ;

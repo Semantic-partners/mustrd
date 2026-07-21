@@ -12,11 +12,11 @@ Coverage below is measured against these ontologies:
 
 ### [mustrd-config.ttl](../mustrd-config.ttl) — rdflib
 
-| Competency Question | Test | Status |
-|---------------------|------|--------|
-| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed |
-| In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed |
-| Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed |
+| Competency Question | Test | Test Status | Coverage Status |
+|---------------------|------|-------------|-----------------|
+| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |
+| In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed | ✅ passed |
+| Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: gov:appointedOn (SPARQL) |
 
 
 

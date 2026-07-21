@@ -2,9 +2,9 @@
 {% for g in groups %}
 ### {% if g.module_link %}[{{ g.module_name }}]({{ g.module_link }}){% else %}{{ g.module_name }}{% endif %}{% if g.class_name %} — {{ g.class_name }}{% endif %}
 
-| Competency Question | Test | Status |
-|---------------------|------|--------|
+| Competency Question | Test | Test Status |{% if show_coverage %} Coverage Status |{% endif %}
+|---------------------|------|-------------|{% if show_coverage %}-----------------|{% endif %}
 {% for result in g.results -%}
-| {{ result.competency_question or "" }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ '✅' if result.status == 'passed' else ('❌' if result.status == 'failed' else '⏭️') }} {{ result.status }} |
+| {{ result.competency_question or "" }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ '✅' if result.status == 'passed' else ('❌' if result.status == 'failed' else '⏭️') }} {{ result.status }} |{% if show_coverage %} {{ result.coverage_status or '✅ passed' }} |{% endif %}
 {% endfor %}
 {% endfor -%}

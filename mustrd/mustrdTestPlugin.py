@@ -489,6 +489,22 @@ class MustrdTestPlugin:
                         tr.test_link = str(src)
                     tr.module_name = config_path.name
                     tr.module_link = config_link
+            # Per-CQ Coverage Status column: surface the undeclared terms each CQ
+            # references (from the "used but not declared" section); ✅ if none.
+            if coverage is not None:
+                issues = {}
+                for term in coverage.get("undeclared", []):
+                    for ref in term["refs"]:
+                        if ref["in_data"] and ref["in_query"]:
+                            where = "data & SPARQL"
+                        elif ref["in_data"]:
+                            where = "input data"
+                        else:
+                            where = "SPARQL"
+                        issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
+                for tr in test_results:
+                    probs = issues.get(tr.test_name)
+                    tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
             parts = []
             if report_coverage:
                 ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")

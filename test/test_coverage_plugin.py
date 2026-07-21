@@ -34,10 +34,15 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "governance.ttl" in text and "http://example.org/governance#" in text
     assert "A minimal vocabulary for places" in text
 
-    # All three competency questions appear in the CQ table.
+    # All three competency questions appear in the CQ table, which has both a
+    # Test Status and a Coverage Status column.
     assert "In which country is Rotterdam?" in text
     assert "In what administrative division of what country is Rotterdam?" in text
     assert "Who is the mayor of Rotterdam?" in text
+    assert "Test Status" in text and "Coverage Status" in text
+    # Coverage Status surfaces each CQ's undeclared terms; the clean CQ is ✅.
+    assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
+    assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
 
     # 8/9 = 89%: 11 declared across both ontologies, two schema terms excluded
     # (place:Place and the ontology-level metadata place:basedOnStandard), and one
@@ -87,6 +92,9 @@ def test_md_without_term_coverage_is_just_the_cq_table(tmp_path):
     assert "In which country is Rotterdam?" in text
     assert "Ontology term coverage" not in text
     assert "# Ontologies Report" not in text
+    # No coverage analysis -> no Coverage Status column (but Test Status remains).
+    assert "Test Status" in text
+    assert "Coverage Status" not in text
 
 
 def test_missing_ontology_path_fails_early():
