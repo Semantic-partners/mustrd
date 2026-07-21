@@ -17,8 +17,10 @@ report is framed as an **Ontologies Report**:
    *not* declared in the ontology (likely typos or missing definitions).
 
 It is printed to **stdout**; adding `--md` also writes it to the report file
-(creating the parent directory if needed). Without `--term-coverage`, the `--md`
-report is just the Competency Questions table.
+(creating the parent directory if needed). The Competency Questions table is part
+of this report. Without `--term-coverage`, `--md` is unchanged — it writes the
+standard test-results summary (a `ResultList` of every test), no ontology
+required.
 
 The ontology to measure against is named in the test configuration with
 `mustrdTest:hasOntologyPath`. The value is a path (relative to the config file)
@@ -45,7 +47,8 @@ pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage --md=report.m
 If `--term-coverage` is given but no `hasOntologyPath` is set, mustrd **fails
 early** (before running tests) with the config file to amend and a proposed
 triple. Without `--term-coverage`, no coverage is computed and no ontology is
-required; `--md` on its own writes just the CQ table, exactly as before.
+required; `--md` on its own writes the standard test-results summary, exactly as
+before this feature.
 
 ## Motivation
 

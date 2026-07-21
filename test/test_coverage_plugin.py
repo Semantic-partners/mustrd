@@ -82,18 +82,18 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "requires ontology to pass" not in country
 
 
-def test_md_without_term_coverage_is_just_the_cq_table(tmp_path):
-    # Without --term-coverage the report stays the plain Competency Questions
-    # table — no ontology required, no coverage section (additive behaviour).
+def test_md_without_term_coverage_is_the_result_list(tmp_path):
+    # Additive behaviour: without --term-coverage, --md keeps its pre-existing
+    # (master) form — a ResultList of every test — and none of the coverage
+    # report's sections appear. The competency-question table and coverage are
+    # exclusive to --term-coverage.
     md = tmp_path / "report.md"
     _run(md, term_coverage=False)
     text = md.read_text()
-    assert "## Competency Questions" in text
-    assert "In which country is Rotterdam?" in text
-    assert "Ontology term coverage" not in text
+    assert "total:" in text  # ResultList summary line
     assert "# Ontologies Report" not in text
-    # No coverage analysis -> no Coverage Status column (but Test Status remains).
-    assert "Test Status" in text
+    assert "## Competency Questions" not in text
+    assert "Ontology term coverage" not in text
     assert "Coverage Status" not in text
 
 

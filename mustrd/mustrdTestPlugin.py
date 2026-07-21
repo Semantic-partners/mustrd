@@ -10,6 +10,7 @@ from pytest import Session
 from mustrd import logger_setup
 from mustrd.TestResult import (
     TestResult, render_cq_table, render_term_coverage, render_ontologies,
+    ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
@@ -398,14 +399,52 @@ class MustrdTestPlugin:
             # Add the result of the test to the session
             item.session.results[item] = result
 
-    # Take all the test results in session, parse them, split them in mustrd and standard pytest  and generate md file
+    # Take all the test results in session, parse them, and generate the md file.
     def pytest_sessionfinish(self, session: Session, exitstatus):
         # Nothing to do unless we're writing an md report or reporting coverage.
         if not self.md_path and not self.term_coverage:
             return
 
-        test_results = []
-        coverage_specs = []
+        test_results, cq_results, coverage_specs, last_is_mustrd = self._collect_results(session)
+
+        # Ontology term coverage is opt-in via --term-coverage and is measured over
+        # competency-question specs only. compute_coverage returns None when those
+        # specs declare no ontology terms. A missing ontology already failed early
+        # during collection, so report_coverage tracks "requested and resolved".
+        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        coverage = None
+        if report_coverage:
+            try:
+                coverage = compute_coverage(coverage_specs, ontology=load_ontology(self.ontology_paths))
+            except Exception as e:
+                logger.warning(f"Could not compute ontology term coverage: {e}")
+
+        # Markdown report file. With --term-coverage it is the "Ontologies Report"
+        # (ontologies -> competency questions [CQ specs only] -> coverage). Without
+        # it, --md keeps its pre-existing behaviour: a ResultList of every test.
+        if self.md_path:
+            if report_coverage:
+                md = self._render_coverage_report(cq_results, coverage)
+            else:
+                md = self._render_result_list(test_results, last_is_mustrd)
+            parent = os.path.dirname(self.md_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(self.md_path, "w") as file:
+                file.write(md)
+
+        # Ontologies + coverage to stdout when requested. Links are relative to
+        # the cwd, which the terminal resolves for click-through.
+        if report_coverage:
+            ontologies = ontology_report(self.ontology_paths)
+            self._report_coverage_to_terminal(session.config, ontologies, coverage)
+
+    def _collect_results(self, session):
+        """Build a TestResult for every test (for the ResultList --md) plus the
+        competency-question subset and coverage specs (for the coverage report).
+        Returns (test_results, cq_results, coverage_specs, last_is_mustrd)."""
+        test_results, cq_results, coverage_specs = [], [], []
+        is_mustrd = False
         for test_conf, result in session.results.items():
             # Case auto generated tests
             if test_conf.originalname != test_conf.name:
@@ -425,109 +464,104 @@ class MustrdTestPlugin:
                 is_mustrd = False
 
             spec = getattr(test_conf, 'spec', None)
+            cq = getattr(spec, 'competency_question', None)
             test_result = TestResult(
                 test_name, class_name, module_name, result.outcome, is_mustrd,
-                competency_question=getattr(spec, 'competency_question', None),
+                competency_question=cq,
             )
             # Stash the spec's source file so the CQ table can link to it once we
             # know the report location (link must be relative to the report dir).
             test_result._spec_source_file = getattr(spec, 'spec_source_file', None)
             test_results.append(test_result)
 
-            # Collect what each mustrd spec exercises, for ontology term coverage.
-            if spec is not None:
-                when = getattr(spec, 'when', None)
-                # `when` may be a single WhenSpec or a list of them.
-                when_list = when if isinstance(when, list) else ([when] if when is not None else [])
-                queries = [w.value for w in when_list
-                           if isinstance(getattr(w, 'value', None), str)]
-                coverage_specs.append({
-                    "name": getattr(spec, 'spec_file_name', test_name),
-                    "cq": getattr(spec, 'competency_question', None),
-                    "passed": result.outcome == "passed",
-                    "given": getattr(spec, 'given', None),
-                    "queries": queries,
-                    "source_file": getattr(spec, 'spec_source_file', None),
-                })
+            # The coverage report covers competency questions only.
+            if cq is not None:
+                cq_results.append(test_result)
+                coverage_specs.append(self._coverage_spec(spec, result, test_name, cq))
+        return test_results, cq_results, coverage_specs, is_mustrd
 
-        # Ontology term coverage is opt-in via --term-coverage. compute_coverage
-        # returns None when the specs declare no ontology terms in their given
-        # data, so it stays a no-op for ordinary suites even when requested.
-        # Report coverage only when requested AND an ontology was resolved (a
-        # missing ontology already failed early during collection, so we don't
-        # want to also print an empty coverage note here).
-        report_coverage = self.term_coverage and bool(self.ontology_paths)
-        coverage = None
-        if report_coverage:
-            try:
-                ontology = load_ontology(self.ontology_paths)
-                coverage = compute_coverage(coverage_specs, ontology=ontology)
-            except Exception as e:
-                logger.warning(f"Could not compute ontology term coverage: {e}")
+    @staticmethod
+    def _coverage_spec(spec, result, test_name, cq):
+        when = getattr(spec, 'when', None)
+        # `when` may be a single WhenSpec or a list of them.
+        when_list = when if isinstance(when, list) else ([when] if when is not None else [])
+        queries = [w.value for w in when_list if isinstance(getattr(w, 'value', None), str)]
+        return {
+            "name": getattr(spec, 'spec_file_name', test_name),
+            "cq": cq,
+            "passed": result.outcome == "passed",
+            "given": getattr(spec, 'given', None),
+            "queries": queries,
+            "source_file": getattr(spec, 'spec_source_file', None),
+        }
 
-        # Markdown report file. When an ontology is being checked the report is
-        # framed as an "Ontologies Report" (ontologies -> competency questions ->
-        # coverage); otherwise it is just the Competency Questions table. Ontology
-        # links are made relative to the report file's directory so they resolve
-        # in a Markdown previewer (which blocks absolute file:// links).
-        if self.md_path:
-            parent = os.path.dirname(self.md_path)
-            # The Module column links to the suite config file (label = its
-            # filename), relative to the report dir.
-            config_path = Path(self.test_config_file)
-            try:
-                config_link = os.path.relpath(str(config_path.resolve()), parent or ".")
-            except ValueError:
-                config_link = str(config_path)
-            # Link each test to its .mustrd.ttl spec, relative to the report dir.
-            for tr in test_results:
-                src = getattr(tr, "_spec_source_file", None)
-                if src and str(src) != "unknown.mustrd.ttl":
-                    try:
-                        tr.test_link = os.path.relpath(str(src), parent or ".")
-                    except ValueError:
-                        tr.test_link = str(src)
-                    tr.module_name = config_path.name
-                    tr.module_link = config_link
-            # Per-CQ Coverage Status column: surface the undeclared terms each CQ
-            # references (from the "used but not declared" section); ✅ if none.
-            if coverage is not None:
-                issues = {}
-                for term in coverage.get("undeclared", []):
-                    for ref in term["refs"]:
-                        if ref["in_data"] and ref["in_query"]:
-                            where = "data & SPARQL"
-                        elif ref["in_data"]:
-                            where = "input data"
-                        else:
-                            where = "SPARQL"
-                        issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
-                for tr in test_results:
-                    probs = issues.get(tr.test_name)
-                    tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
-            parts = []
-            if report_coverage:
-                ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
-                if ontologies:
-                    parts.append("# Ontologies Report")
-                    parts.append(render_ontologies(ontologies))
-            parts.append(render_cq_table(test_results))
-            if coverage is not None:
-                _link_undeclared_refs(coverage, parent or ".")
-                parts.append(render_term_coverage(coverage))
-            md = "\n\n".join(parts)
-            # Create the parent directory if needed, so --md=build/report.md
-            # works without a prior mkdir.
-            if parent:
-                os.makedirs(parent, exist_ok=True)
-            with open(self.md_path, "w") as file:
-                file.write(md)
+    @staticmethod
+    def _render_result_list(test_results, is_mustrd):
+        """The pre-existing (master) --md report: a ResultList of every test."""
+        result_list = ResultList(
+            None,
+            get_result_list(
+                test_results,
+                lambda result: result.type,
+                lambda result: is_mustrd and result.test_name.split("@")[1],
+            ),
+            False,
+        )
+        return result_list.render()
 
-        # Ontologies + coverage to stdout when requested. Links are relative to
-        # the cwd, which the terminal resolves for click-through.
-        if report_coverage:
-            ontologies = ontology_report(self.ontology_paths)
-            self._report_coverage_to_terminal(session.config, ontologies, coverage)
+    def _render_coverage_report(self, cq_results, coverage):
+        """The --term-coverage report: ontologies -> CQ table -> term coverage.
+        Links are relative to the report dir so they resolve in a previewer."""
+        parent = os.path.dirname(self.md_path)
+        self._link_cq_specs(cq_results, parent)
+        if coverage is not None:
+            self._apply_coverage_status(cq_results, coverage)
+        parts = []
+        ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
+        if ontologies:
+            parts.append("# Ontologies Report")
+            parts.append(render_ontologies(ontologies))
+        parts.append(render_cq_table(cq_results))
+        if coverage is not None:
+            _link_undeclared_refs(coverage, parent or ".")
+            parts.append(render_term_coverage(coverage))
+        return "\n\n".join(parts)
+
+    def _link_cq_specs(self, cq_results, parent):
+        """Link each CQ's Test cell to its .mustrd.ttl spec and its Module cell to
+        the suite config file, relative to the report dir."""
+        config_path = Path(self.test_config_file)
+        try:
+            config_link = os.path.relpath(str(config_path.resolve()), parent or ".")
+        except ValueError:
+            config_link = str(config_path)
+        for tr in cq_results:
+            src = getattr(tr, "_spec_source_file", None)
+            if src and str(src) != "unknown.mustrd.ttl":
+                try:
+                    tr.test_link = os.path.relpath(str(src), parent or ".")
+                except ValueError:
+                    tr.test_link = str(src)
+                tr.module_name = config_path.name
+                tr.module_link = config_link
+
+    @staticmethod
+    def _apply_coverage_status(cq_results, coverage):
+        """Per-CQ Coverage Status: the undeclared terms each CQ references (from
+        the 'used but not declared' analysis), or ✅ passed if none."""
+        issues = {}
+        for term in coverage.get("undeclared", []):
+            for ref in term["refs"]:
+                if ref["in_data"] and ref["in_query"]:
+                    where = "data & SPARQL"
+                elif ref["in_data"]:
+                    where = "input data"
+                else:
+                    where = "SPARQL"
+                issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
+        for tr in cq_results:
+            probs = issues.get(tr.test_name)
+            tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
 
     def _report_coverage_to_terminal(self, config, ontologies, coverage):
         tr = config.pluginmanager.get_plugin("terminalreporter")

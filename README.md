@@ -114,11 +114,13 @@ A test spec can record the competency question (CQ) it answers:
     :given ... ; :when ... ; :then ... .
 ```
 
-With `--md`, the report includes a **CQ table** — one row per spec showing the
-question and whether its test passed:
+Passing `--term-coverage` produces an **Ontologies Report** with a **Competency
+Questions table** — one row per CQ spec showing its test status (and its coverage
+status, see below). Plain `--md` is unchanged: it still writes the standard
+test-results summary.
 
 ```bash
-pytest --mustrd --config=path/to/config.ttl --md=report.md
+pytest --mustrd --config=path/to/config.ttl --md=report.md   # test-results summary
 ```
 
 ### Ontology term coverage
