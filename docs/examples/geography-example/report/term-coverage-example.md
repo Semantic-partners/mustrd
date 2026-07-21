@@ -47,7 +47,7 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
 | ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
-| ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced |
+| ❌ | ❌ | | **unused** | declared but neither instantiated, queried, nor structurally referenced |
 
 ## Not used by any CQ
 
