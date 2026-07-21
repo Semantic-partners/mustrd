@@ -251,8 +251,8 @@ def _shortener(graphs, query_texts=()):
 
     Sources both the given graphs and the `PREFIX` declarations in the query
     text. mustrd's given graph often loses author prefixes (rdflib
-    auto-generates `ns1`, `geo1`, ... on collisions), whereas the SPARQL
-    `PREFIX geo: <...>` lines are author-chosen and clean. Per namespace we pick
+    auto-generates `ns1`, `ns2`, ... on collisions), whereas the SPARQL
+    `PREFIX ex: <...>` lines are author-chosen and clean. Per namespace we pick
     the cleanest prefix: prefer one not ending in a digit, then the shortest.
     """
     candidates = {}  # namespace -> set of prefixes

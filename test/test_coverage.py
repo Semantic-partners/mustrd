@@ -6,30 +6,32 @@ from mustrd.coverage import (
     expand_ontology_files, load_ontology, ontology_report,
 )
 
+# A neutral namespace/prefix for the fixtures. (Avoid `geo`, which rdflib
+# pre-binds to GeoSPARQL and would rename an author's `geo:` to `geo1:`.)
 ONTO = """
-@prefix geo:  <http://geo.org/> .
+@prefix onto: <http://onto.org/> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-geo:Place a owl:Class .
-geo:City a owl:Class ; rdfs:subClassOf geo:Place .
-geo:Country a owl:Class ; rdfs:subClassOf geo:Place .
-geo:AdministrativeDivision a owl:Class ; rdfs:subClassOf geo:Place .
-geo:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
-    rdfs:domain geo:Place ; rdfs:range geo:Place .
+onto:Place a owl:Class .
+onto:City a owl:Class ; rdfs:subClassOf onto:Place .
+onto:Country a owl:Class ; rdfs:subClassOf onto:Place .
+onto:AdministrativeDivision a owl:Class ; rdfs:subClassOf onto:Place .
+onto:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain onto:Place ; rdfs:range onto:Place .
 """
 
 DATA = """
-@prefix geo:  <http://geo.org/> .
+@prefix onto: <http://onto.org/> .
 @prefix ex:   <http://example.org/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-ex:Rotterdam a geo:City ; rdfs:label "Rotterdam" ; geo:isLocatedIn ex:NL .
-ex:NL a geo:Country ; rdfs:label "NL" .
+ex:Rotterdam a onto:City ; rdfs:label "Rotterdam" ; onto:isLocatedIn ex:NL .
+ex:NL a onto:Country ; rdfs:label "NL" .
 """
 
 QUERY = """
-PREFIX geo: <http://geo.org/>
-# comment naming geo:Place must NOT count as usage
-SELECT ?c WHERE { ?x geo:isLocatedIn ?c . ?c a geo:Country . }
+PREFIX onto: <http://onto.org/>
+# comment naming onto:Place must NOT count as usage
+SELECT ?c WHERE { ?x onto:isLocatedIn ?c . ?c a onto:Country . }
 """
 
 
@@ -48,45 +50,45 @@ def _spec(passed=True, given=None, queries=(), name="a.mustrd.ttl", cq="Q?"):
 def test_declared_terms_excludes_well_known_vocab():
     d = declared_terms(_graph(ONTO))
     assert set(d) == {
-        "http://geo.org/Place", "http://geo.org/City", "http://geo.org/Country",
-        "http://geo.org/AdministrativeDivision", "http://geo.org/isLocatedIn",
+        "http://onto.org/Place", "http://onto.org/City", "http://onto.org/Country",
+        "http://onto.org/AdministrativeDivision", "http://onto.org/isLocatedIn",
     }
-    assert d["http://geo.org/isLocatedIn"] == "property"
-    assert d["http://geo.org/City"] == "class"
+    assert d["http://onto.org/isLocatedIn"] == "property"
+    assert d["http://onto.org/City"] == "class"
 
 
 def test_query_uris_ignores_comments():
     uris = query_uris(QUERY)
-    assert "http://geo.org/Country" in uris
-    assert "http://geo.org/isLocatedIn" in uris
-    assert "http://geo.org/Place" not in uris  # only mentioned in a comment
+    assert "http://onto.org/Country" in uris
+    assert "http://onto.org/isLocatedIn" in uris
+    assert "http://onto.org/Place" not in uris  # only mentioned in a comment
 
 
 def test_abox_terms_are_types_and_predicates():
     used = abox_terms(_graph(DATA))
-    assert "http://geo.org/City" in used        # rdf:type object
-    assert "http://geo.org/Country" in used      # rdf:type object
-    assert "http://geo.org/isLocatedIn" in used  # asserted predicate
+    assert "http://onto.org/City" in used        # rdf:type object
+    assert "http://onto.org/Country" in used      # rdf:type object
+    assert "http://onto.org/isLocatedIn" in used  # asserted predicate
 
 
 def test_coverage_roles_and_percentage():
     cov = compute_coverage([_spec(given=_graph(ONTO, DATA), queries=[QUERY])])
     by = {t["term"]: t for t in cov["terms"]}
 
-    assert by["geo:City"]["status"] == "covered" and by["geo:City"]["in_data"]      # data-only
-    assert by["geo:Country"]["in_data"] and by["geo:Country"]["in_query"]           # fully exercised
-    assert by["geo:isLocatedIn"]["status"] == "covered"
+    assert by["onto:City"]["status"] == "covered" and by["onto:City"]["in_data"]      # data-only
+    assert by["onto:Country"]["in_data"] and by["onto:Country"]["in_query"]           # fully exercised
+    assert by["onto:isLocatedIn"]["status"] == "covered"
     # Place: domain/range of the used isLocatedIn + superclass of used classes -> schema, excluded
-    assert by["geo:Place"]["status"] == "schema" and by["geo:Place"]["in_schema"]
+    assert by["onto:Place"]["status"] == "schema" and by["onto:Place"]["in_schema"]
     # AdministrativeDivision: not used and not structural -> a genuine gap
-    assert by["geo:AdministrativeDivision"]["status"] == "unused"
+    assert by["onto:AdministrativeDivision"]["status"] == "unused"
 
     # covered = City, Country, isLocatedIn; denominator excludes schema-only Place
     assert cov["covered"] == 3 and cov["denominator"] == 4 and cov["pct"] == 75
     assert cov["declared_total"] == 5 and cov["schema_count"] == 1
-    assert {g["term"] for g in cov["gaps"]} == {"geo:AdministrativeDivision"}
-    place = next(s for s in cov["schema_terms"] if s["term"] == "geo:Place")
-    assert "geo:isLocatedIn" in place["reason"]
+    assert {g["term"] for g in cov["gaps"]} == {"onto:AdministrativeDivision"}
+    place = next(s for s in cov["schema_terms"] if s["term"] == "onto:Place")
+    assert "onto:isLocatedIn" in place["reason"]
 
 
 def test_failing_spec_is_not_credited():
@@ -114,12 +116,10 @@ def test_declared_terms_come_from_explicit_ontology():
                            ontology=_graph(ONTO))
     assert cov is not None
     by = {t["term"]: t for t in cov["terms"]}
-    assert by["geo:City"]["status"] == "covered"
-    assert by["geo:Place"]["status"] == "schema"  # domain/range of used isLocatedIn
+    assert by["onto:City"]["status"] == "covered"
+    assert by["onto:Place"]["status"] == "schema"  # domain/range of used isLocatedIn
 
 
-# A namespace whose prefix does not collide with rdflib's built-ins (unlike
-# `geo`, which rdflib pre-binds to GeoSPARQL and would be renamed to geo1).
 ANNOTATION_ONTO = """
 @prefix onto: <http://onto.org/> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
@@ -180,20 +180,20 @@ def test_expand_ontology_files_scans_directories_recursively(tmp_path):
 
 
 def test_ontology_report_extracts_uri_and_description(tmp_path):
-    onto = tmp_path / "geo.ttl"
+    onto = tmp_path / "onto.ttl"
     onto.write_text(ONTO + """
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-<http://geo.org/> a <http://www.w3.org/2002/07/owl#Ontology> ;
-    rdfs:comment "A tiny geography ontology." .
+<http://onto.org/> a <http://www.w3.org/2002/07/owl#Ontology> ;
+    rdfs:comment "A tiny example ontology." .
 """)
     rows = ontology_report([onto], link_base=tmp_path)
     assert len(rows) == 1
     r = rows[0]
-    assert r["path"].endswith("geo.ttl")
+    assert r["path"].endswith("onto.ttl")
     # href is relative to link_base (renders in a markdown previewer)
-    assert r["url"] == "geo.ttl"
-    assert r["uri"] == "http://geo.org/"
-    assert r["description"] == "A tiny geography ontology."
+    assert r["url"] == "onto.ttl"
+    assert r["uri"] == "http://onto.org/"
+    assert r["description"] == "A tiny example ontology."
 
 
 def test_ontology_report_file_without_ontology_header(tmp_path):
@@ -207,7 +207,7 @@ def test_load_ontology_merges_files(tmp_path):
     (tmp_path / "onto.ttl").write_text(ONTO)
     g = load_ontology([tmp_path])
     assert g is not None
-    assert set(declared_terms(g)) >= {"http://geo.org/Place", "http://geo.org/isLocatedIn"}
+    assert set(declared_terms(g)) >= {"http://onto.org/Place", "http://onto.org/isLocatedIn"}
 
 
 def test_load_ontology_empty_returns_none(tmp_path):
