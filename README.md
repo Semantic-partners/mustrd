@@ -153,7 +153,8 @@ tells you exactly what to add.)
 A declared term counts as **used** when a *passing* CQ test exercises it — either
 in its input data (as an instance type or asserted predicate) or in its SPARQL
 query. Terms that are only structurally referenced (the `rdfs:domain`/`rdfs:range`
-of a used property, or a superclass of a used class) are reported separately as
+of a used property, a superclass of a used class, or a metadata property such as
+an `owl:AnnotationProperty`/`owl:OntologyProperty`) are reported separately as
 **schema** terms and excluded from the percentage, rather than flagged as gaps.
 The result classifies every term as *fully exercised*, *data-only*, *query-only*,
 *schema*, or *unused* — so untested terms surface immediately.

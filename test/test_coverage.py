@@ -118,6 +118,57 @@ def test_declared_terms_come_from_explicit_ontology():
     assert by["geo:Place"]["status"] == "schema"  # domain/range of used isLocatedIn
 
 
+# A namespace whose prefix does not collide with rdflib's built-ins (unlike
+# `geo`, which rdflib pre-binds to GeoSPARQL and would be renamed to geo1).
+ANNOTATION_ONTO = """
+@prefix onto: <http://onto.org/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+onto:City a owl:Class .
+onto:isLocatedIn a owl:ObjectProperty ; rdfs:domain onto:City .
+onto:editorialNote a owl:AnnotationProperty .
+onto:versionInfo a owl:OntologyProperty .
+"""
+
+
+def test_annotation_and_ontology_properties_are_schema_not_gaps():
+    # An unused annotation/ontology property is metadata, not a coverage gap:
+    # it lands in the schema bucket and is excluded from the denominator.
+    data = """
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rotterdam a onto:City ; onto:isLocatedIn ex:NL .
+    """
+    cov = compute_coverage([_spec(given=_graph(data), queries=[])],
+                           ontology=_graph(ANNOTATION_ONTO))
+    by = {t["term"]: t for t in cov["terms"]}
+
+    assert by["onto:editorialNote"]["status"] == "schema"
+    assert by["onto:versionInfo"]["status"] == "schema"
+    # neither is reported as a gap
+    gap_terms = {g["term"] for g in cov["gaps"]}
+    assert "onto:editorialNote" not in gap_terms and "onto:versionInfo" not in gap_terms
+    # and both are excluded from the coverage denominator
+    assert by["onto:City"]["status"] == "covered"
+    assert cov["schema_count"] == 2 and cov["denominator"] == 2
+    reasons = {s["term"]: s["reason"] for s in cov["schema_terms"]}
+    assert reasons["onto:editorialNote"] == "annotation property"
+    assert reasons["onto:versionInfo"] == "ontology property"
+
+
+def test_used_annotation_property_still_counts_as_covered():
+    # If a CQ actually exercises an annotation property, it is covered, not schema.
+    data = """
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rotterdam a onto:City ; onto:editorialNote "note" .
+    """
+    cov = compute_coverage([_spec(given=_graph(data), queries=[])],
+                           ontology=_graph(ANNOTATION_ONTO))
+    by = {t["term"]: t for t in cov["terms"]}
+    assert by["onto:editorialNote"]["status"] == "covered"
+
+
 def test_expand_ontology_files_scans_directories_recursively(tmp_path):
     (tmp_path / "a.ttl").write_text(ONTO)
     nested = tmp_path / "sub" / "deep"

@@ -104,7 +104,7 @@ This is the real documentation value of the report:
 | ✅ | ✅ | | **fully exercised** | populated *and* queried — strongest evidence the term works |
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `subClassOf*`) but never instantiated — relies on inference, not asserted data |
-| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but domain/range of a *used* property or superclass of a *used* class — valuable for documentation and inferencing, so **excluded from the coverage denominator** rather than counted as a gap |
+| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural rather than dead weight — the domain/range of a *used* property, the superclass of a *used* class, or a metadata property (`owl:AnnotationProperty` / `owl:OntologyProperty`) — so **excluded from the coverage denominator** rather than counted as a gap |
 | ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced — dead weight until a CQ needs it |
 
 ### Why a "schema" category
@@ -118,6 +118,12 @@ percentage; the headline `covered/denominator` counts only terms that *could*
 be directly exercised. The denominator's total is still shown, so nothing is
 hidden. A term is only schema-classified when it supports a **used** term — a
 superclass of only-unused classes stays a genuine gap.
+
+Annotation and ontology properties (`owl:AnnotationProperty`,
+`owl:OntologyProperty`) are documentation/metadata vocabulary rather than the
+domain terms CQs are meant to exercise, so an unused one is likewise reported as
+**schema** rather than flagged as a gap. If a CQ actually exercises one (in data
+or SPARQL) it still counts as covered.
 
 ## Worked example
 

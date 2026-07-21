@@ -50,11 +50,22 @@ WELL_KNOWN = (
 )
 
 CLASS_TYPES = (OWL.Class, RDFS.Class)
-PROPERTY_TYPES = (
-    OWL.ObjectProperty, OWL.DatatypeProperty, OWL.TransitiveProperty,
-    OWL.AnnotationProperty, OWL.FunctionalProperty, OWL.SymmetricProperty,
+PROPERTY_TYPES = frozenset((
     RDF.Property,
-)
+    OWL.ObjectProperty, OWL.DatatypeProperty, OWL.AnnotationProperty,
+    OWL.OntologyProperty,
+    OWL.FunctionalProperty, OWL.InverseFunctionalProperty,
+    OWL.SymmetricProperty, OWL.TransitiveProperty,
+))
+
+# Property types that describe documentation/metadata rather than the domain
+# vocabulary CQs are meant to exercise. A term declared *only* as one of these
+# is treated as a schema term (excluded from the coverage %) when unused, rather
+# than flagged as a gap. Mapped to the reason shown in the report.
+METADATA_PROPERTY_TYPES = {
+    OWL.AnnotationProperty: "annotation property",
+    OWL.OntologyProperty: "ontology property",
+}
 
 
 @dataclass
@@ -163,6 +174,28 @@ def declared_terms(graph: Graph) -> dict:
             if _is_domain_term(s):
                 terms[str(s)] = "property"  # a property label wins over a class collision
     return terms
+
+
+def metadata_terms(graph: Graph) -> dict:
+    """Domain terms declared *only* as annotation/ontology properties.
+
+    Maps each such IRI to a reason label ("annotation property" /
+    "ontology property"). These are documentation/metadata vocabulary, not the
+    substantive classes and properties CQs exercise, so coverage reports an
+    unused one as a schema term rather than a gap. A term also declared as a
+    class or a substantive property is excluded — it is not "just metadata".
+    """
+    meta = {}
+    for typ, label in METADATA_PROPERTY_TYPES.items():
+        for s in graph.subjects(RDF.type, typ):
+            if _is_domain_term(s):
+                meta.setdefault(str(s), label)
+    substantive = set()
+    for typ in CLASS_TYPES:
+        substantive |= {str(s) for s in graph.subjects(RDF.type, typ)}
+    for typ in PROPERTY_TYPES - set(METADATA_PROPERTY_TYPES):
+        substantive |= {str(s) for s in graph.subjects(RDF.type, typ)}
+    return {iri: label for iri, label in meta.items() if iri not in substantive}
 
 
 def query_uris(query_text: str) -> set:
@@ -320,13 +353,17 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     given_graphs = [s["given"] for s in specs if isinstance(s.get("given"), Graph)]
 
     declared = {}
+    metadata = {}
     if ontology is not None:
         declared.update(declared_terms(ontology))
+        metadata.update(metadata_terms(ontology))
     else:
         for g in given_graphs:
             declared.update(declared_terms(g))
+            metadata.update(metadata_terms(g))
     if not declared:
         return None
+    metadata = {t: r for t, r in metadata.items() if t in declared}
 
     all_queries = [q for s in specs for q in (s.get("queries") or []) if isinstance(q, str)]
     prefix_graphs = given_graphs + ([ontology] if ontology is not None else [])
@@ -367,6 +404,13 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     if ontology is not None:
         tbox += ontology
     schema_reasons = schema_references(tbox, used, declared, short)
+    # Annotation/ontology properties that no CQ exercises are metadata, not gaps:
+    # fold them into the schema bucket (excluded from the %) with their own reason.
+    for t, label in metadata.items():
+        if t not in used:
+            reasons = schema_reasons.setdefault(t, [])
+            if label not in reasons:
+                reasons.append(label)
     schema_only = {t for t in schema_reasons if t not in used}
 
     def status(t):
