@@ -4,7 +4,7 @@
 
 :divisionAndCountryOfRotterdam
     a must:TestSpec ;
-    must:CompetencyQuestion "In what administrative division of what country is Rotterdam?" ;
+    must:competencyQuestion "In what administrative division of what country is Rotterdam?" ;
     must:given [ a must:FileDataset ; must:file "division.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;

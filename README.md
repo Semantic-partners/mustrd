@@ -110,7 +110,7 @@ A test spec can record the competency question (CQ) it answers:
 
 ```ttl
 :test_example a :TestSpec ;
-    :CompetencyQuestion "In which country is Rotterdam?" ;
+    :competencyQuestion "In which country is Rotterdam?" ;
     :given ... ; :when ... ; :then ... .
 ```
 

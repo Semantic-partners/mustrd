@@ -4,7 +4,7 @@
 
 :countryOfRotterdam
     a must:TestSpec ;
-    must:CompetencyQuestion "In which country is Rotterdam?" ;
+    must:competencyQuestion "In which country is Rotterdam?" ;
     must:given [ a must:FileDataset ; must:file "country.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;

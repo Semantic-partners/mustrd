@@ -1,7 +1,7 @@
 # Ontology term coverage from competency-question specs
 
 **Status:** Implemented (draft PR).
-**Builds on:** `feature/cq_parsing` (the `must:CompetencyQuestion` annotation and
+**Builds on:** `feature/cq_parsing` (the `must:competencyQuestion` annotation and
 the CQ results table).
 
 Ontology term coverage is **opt-in** via `--term-coverage`. When enabled the

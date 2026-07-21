@@ -441,7 +441,7 @@ def get_spec(
             )
         )
         # https://github.com/Semantic-partners/mustrd/issues/92
-        cq_node = spec_graph.value(subject=spec_uri, predicate=MUST.CompetencyQuestion)
+        cq_node = spec_graph.value(subject=spec_uri, predicate=MUST.competencyQuestion)
         return Specification(
             spec_uri,
             mustrd_triple_store,
