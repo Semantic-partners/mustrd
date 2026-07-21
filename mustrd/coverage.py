@@ -411,8 +411,10 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
 
     used_data, used_query = set(), set()
     # Every domain-namespace term any spec references, split by where (for the
-    # "used but not declared" report, which distinguishes data from SPARQL).
+    # "used but not declared" report, which distinguishes data from SPARQL and
+    # lists the referencing CQs).
     referenced_data, referenced_query = set(), set()
+    spec_refs = []  # one per spec: (name, source_file, data_terms, query_terms)
     per_cq = []
     declared_set = set(declared)
     for s in specs:
@@ -423,8 +425,11 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
         for q in queries:
             if isinstance(q, str):
                 raw_query |= query_uris(q)
-        referenced_data |= {t for t in raw_data if _is_domain_term(URIRef(t))}
-        referenced_query |= {t for t in raw_query if _is_domain_term(URIRef(t))}
+        s_data = {t for t in raw_data if _is_domain_term(URIRef(t))}
+        s_query = {t for t in raw_query if _is_domain_term(URIRef(t))}
+        referenced_data |= s_data
+        referenced_query |= s_query
+        spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
         d_terms = raw_data & declared_set
         q_terms = raw_query & declared_set
         credited = bool(s.get("passed"))
@@ -491,10 +496,12 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     ontology_namespaces = {_namespace(t) for t in declared}
     undeclared_iris = [t for t in (referenced_data | referenced_query)
                        if t not in declared_set and _namespace(t) in ontology_namespaces]
-    undeclared = [{"term": short(t),
-                   "in_data": t in referenced_data,
-                   "in_query": t in referenced_query}
-                  for t in sorted(undeclared_iris, key=short)]
+    undeclared = []
+    for t in sorted(undeclared_iris, key=short):
+        refs = [{"name": name, "source_file": str(src) if src else None,
+                 "in_data": t in sd, "in_query": t in sq}
+                for (name, src, sd, sq) in spec_refs if t in sd or t in sq]
+        undeclared.append({"term": short(t), "refs": refs})
 
     return {
         "covered": covered, "denominator": denominator, "pct": pct,

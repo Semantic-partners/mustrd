@@ -187,6 +187,23 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
     return convert_function(raw_value) if raw_value else None
 
 
+def _link_undeclared_refs(coverage, base):
+    """Set each undeclared-term reference's `link` (to its spec file) relative to
+    `base` — the report dir for --md, the cwd for terminal output."""
+    if not coverage:
+        return
+    for term in coverage.get("undeclared", []):
+        for ref in term.get("refs", []):
+            src = ref.get("source_file")
+            if src and src != "unknown.mustrd.ttl":
+                try:
+                    ref["link"] = os.path.relpath(src, base)
+                except ValueError:
+                    ref["link"] = src
+            else:
+                ref["link"] = None
+
+
 @dataclass(frozen=True)
 class TestConfig:
     spec_path: Path
@@ -430,6 +447,7 @@ class MustrdTestPlugin:
                     "passed": result.outcome == "passed",
                     "given": getattr(spec, 'given', None),
                     "queries": queries,
+                    "source_file": getattr(spec, 'spec_source_file', None),
                 })
 
         # Ontology term coverage is opt-in via --term-coverage. compute_coverage
@@ -479,6 +497,7 @@ class MustrdTestPlugin:
                     parts.append(render_ontologies(ontologies))
             parts.append(render_cq_table(test_results))
             if coverage is not None:
+                _link_undeclared_refs(coverage, parent or ".")
                 parts.append(render_term_coverage(coverage))
             md = "\n\n".join(parts)
             # Create the parent directory if needed, so --md=build/report.md
@@ -500,6 +519,7 @@ class MustrdTestPlugin:
         if ontologies:
             blocks.append(render_ontologies(ontologies))
         if coverage is not None:
+            _link_undeclared_refs(coverage, os.getcwd())
             blocks.append(render_term_coverage(coverage))
         else:
             blocks.append("No ontology term coverage: the configured ontology "

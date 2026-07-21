@@ -54,9 +54,13 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "place:Region (class) — declared in the ontology" in text
     # place:hasEconomicArea is used in the country data but not declared in
     # place.ttl, yet sits in the ontology's namespace -> flagged as
-    # used-but-not-declared, tagged as referenced in the input data (not SPARQL).
+    # used-but-not-declared, listing the referencing CQ (linked to its spec) and
+    # tagging it as referenced in the input data (not SPARQL).
     assert "## ⚠️ Used but not declared" in text
-    assert "| place:hasEconomicArea | input data |" in text
+    assert "- **place:hasEconomicArea**" in text
+    # the referencing CQ is listed, linked to its spec, tagged input data
+    ref_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— input data"))
+    assert "country-of-rotterdam.mustrd.ttl" in ref_line and "](" in ref_line
 
     # The division CQ matches its data only via the class hierarchy (queries
     # AdministrativeDivision, data has Province), so it is flagged as needing the

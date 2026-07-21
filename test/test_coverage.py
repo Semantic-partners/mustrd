@@ -207,10 +207,12 @@ def test_undeclared_term_used_in_data_is_flagged_as_input_data():
     @prefix ex:   <http://example.org/> .
     ex:Rotterdam a onto:City ; onto:hasMayor ex:X .
     """)
-    cov = compute_coverage([_spec(given=data, queries=[])], ontology=_graph(ONTO))
+    cov = compute_coverage([_spec(given=data, queries=[], name="q.mustrd.ttl")],
+                           ontology=_graph(ONTO))
     by = {u["term"]: u for u in cov["undeclared"]}
-    assert by["onto:hasMayor"]["in_data"] is True
-    assert by["onto:hasMayor"]["in_query"] is False
+    ref = by["onto:hasMayor"]["refs"][0]
+    assert ref["in_data"] is True and ref["in_query"] is False
+    assert ref["name"] == "q.mustrd.ttl"  # the referencing CQ is recorded
     assert "onto:City" not in by  # declared, so not flagged
 
 
@@ -225,8 +227,8 @@ def test_undeclared_term_used_in_query_is_flagged_as_sparql():
     SELECT ?x WHERE { ?x a onto:City ; onto:nickname ?n }"""
     cov = compute_coverage([_spec(given=data, queries=[query])], ontology=_graph(ONTO))
     by = {u["term"]: u for u in cov["undeclared"]}
-    assert by["onto:nickname"]["in_query"] is True
-    assert by["onto:nickname"]["in_data"] is False
+    ref = by["onto:nickname"]["refs"][0]
+    assert ref["in_query"] is True and ref["in_data"] is False
 
 
 def test_external_namespace_terms_are_not_flagged_as_undeclared():
