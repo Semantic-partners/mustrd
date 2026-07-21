@@ -1,7 +1,7 @@
 ## Competency Questions
 
-| Module | Class | Test | Competency Question | Status |
-|--------|-------|------|---------------------|--------|
+| Competency Question | Test | Status | Module | Class |
+|---------------------|------|--------|--------|-------|
 {% for result in result_list -%}
-| {{ result.module_name }} | {{ result.class_name }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ result.competency_question or "" }} | {{ result.status }} |
+| {{ result.competency_question or "" }} | {% if result.test_link %}[{{ result.test_name }}]({{ result.test_link }}){% else %}{{ result.test_name }}{% endif %} | {{ '✅' if result.status == 'passed' else ('❌' if result.status == 'failed' else '⏭️') }} {{ result.status }} | {% if result.module_link %}[{{ result.module_name }}]({{ result.module_link }}){% else %}{{ result.module_name }}{% endif %} | {{ result.class_name }} |
 {% endfor -%}

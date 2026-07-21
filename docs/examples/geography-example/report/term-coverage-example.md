@@ -9,10 +9,10 @@ Coverage below is measured against this ontology:
 
 ## Competency Questions
 
-| Module | Class | Test | Competency Question | Status |
-|--------|-------|------|---------------------|--------|
-| docs/examples/geography-example/mustrd-config.ttl | rdflib | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | In which country is Rotterdam? | passed |
-| docs/examples/geography-example/mustrd-config.ttl | rdflib | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | In what administrative division of what country is Rotterdam? | passed |
+| Competency Question | Test | Status | Module | Class |
+|---------------------|------|--------|--------|-------|
+| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | [mustrd-config.ttl](../mustrd-config.ttl) | rdflib |
+| In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed | [mustrd-config.ttl](../mustrd-config.ttl) | rdflib |
 
 
 ## Ontology term coverage

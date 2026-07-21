@@ -454,6 +454,13 @@ class MustrdTestPlugin:
         # in a Markdown previewer (which blocks absolute file:// links).
         if self.md_path:
             parent = os.path.dirname(self.md_path)
+            # The Module column links to the suite config file (label = its
+            # filename), relative to the report dir.
+            config_path = Path(self.test_config_file)
+            try:
+                config_link = os.path.relpath(str(config_path.resolve()), parent or ".")
+            except ValueError:
+                config_link = str(config_path)
             # Link each test to its .mustrd.ttl spec, relative to the report dir.
             for tr in test_results:
                 src = getattr(tr, "_spec_source_file", None)
@@ -462,6 +469,8 @@ class MustrdTestPlugin:
                         tr.test_link = os.path.relpath(str(src), parent or ".")
                     except ValueError:
                         tr.test_link = str(src)
+                    tr.module_name = config_path.name
+                    tr.module_link = config_link
             parts = []
             if report_coverage:
                 ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
