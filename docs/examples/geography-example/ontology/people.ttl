@@ -1,0 +1,17 @@
+@prefix people: <http://example.org/people#> .
+@prefix place:  <http://example.org/place#> .
+@prefix foaf:   <http://xmlns.com/foaf/0.1/> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://example.org/people#> a owl:Ontology ;
+    rdfs:comment "A tiny vocabulary for people and the places they govern." .
+
+# Mayor reuses foaf:Person from an external vocabulary. foaf:Person is referenced
+# but not declared here, so it is not a term of the ontology under test and does
+# not appear in coverage.
+people:Mayor a owl:Class ; rdfs:subClassOf foaf:Person ;
+    rdfs:comment "A person who governs a city." .
+people:governs a owl:ObjectProperty ;
+    rdfs:domain foaf:Person ; rdfs:range place:City ;
+    rdfs:comment "Relates a person to a place they are responsible for governing." .

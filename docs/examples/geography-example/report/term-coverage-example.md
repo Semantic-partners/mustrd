@@ -2,9 +2,10 @@
 
 ## Ontologies
 
-Coverage below is measured against this ontology:
+Coverage below is measured against these ontologies:
 
 - [ontology/geography.ttl](../ontology/geography.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
+- [ontology/people.ttl](../ontology/people.ttl) — `http://example.org/people#` — A tiny vocabulary for people and the places they govern.
 
 
 ## Competency Questions
@@ -15,25 +16,28 @@ Coverage below is measured against this ontology:
 |---------------------|------|--------|
 | In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed |
 | In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed |
+| Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed |
 
 
 
 ## Ontology term coverage
 
-**Overall: 6/6 terms used to answer the CQs = 100%**
+**Overall: 8/8 terms used to answer the CQs = 100%**
 
-_(8 declared; 2 structural/schema term(s) excluded from the denominator — see below.)_
+_(10 declared; 2 structural/schema term(s) excluded from the denominator — see below.)_
 
 A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
 
 | Term | Kind | In input data | In SPARQL | In schema | Status |
 |------|------|:---:|:---:|:---:|:---:|
+| people:Mayor | class | ✅ | ✅ | · | ✅ covered |
 | place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered |
-| place:City | class | ✅ | ❌ | · | ✅ covered |
+| place:City | class | ✅ | ✅ | · | ✅ covered |
 | place:Continent | class | ✅ | ❌ | · | ✅ covered |
 | place:Country | class | ✅ | ✅ | · | ✅ covered |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
 | place:Province | class | ✅ | ❌ | · | ✅ covered |
+| people:governs | property | ✅ | ✅ | · | ✅ covered |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
 
@@ -71,3 +75,6 @@ Not directly exercised, but they define the schema of terms the CQs use:
 - **division-and-country-of-rotterdam.mustrd.ttl** — In what administrative division of what country is Rotterdam? — _passed_ — 🧩 **requires ontology to pass**
   - in data:  place:City, place:Continent, place:Country, place:Province, place:isLocatedIn
   - in query: place:AdministrativeDivision, place:Country, place:isLocatedIn
+- **mayor-of-rotterdam.mustrd.ttl** — Who is the mayor of Rotterdam? — _passed_
+  - in data:  people:Mayor, people:governs, place:City
+  - in query: people:Mayor, people:governs, place:City

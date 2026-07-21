@@ -2,22 +2,25 @@
 
 A small, runnable mustrd suite that demonstrates the `--term-coverage` feature
 (see [`../../ontology-term-coverage.md`](../../ontology-term-coverage.md) for the
-design). A tiny geography ontology is validated by two competency-question specs;
-the report shows which declared terms those passing CQs actually exercise.
+design). **Two** ontologies — a geography vocabulary and a small people
+vocabulary that reuses it — are validated by three competency-question specs;
+the report shows which declared terms those passing CQs actually exercise, across
+both ontologies.
 
 ## Layout
 
 | Path | What it is |
 |------|------------|
-| [`mustrd-config.ttl`](mustrd-config.ttl) | The suite config — points at the specs, data, and ontology (`:hasOntologyPath`). |
-| [`ontology/geography.ttl`](ontology/geography.ttl) | The ontology under test: places (`Place`, `City`, `Country`, …) and `isLocatedIn`, plus an ontology-level metadata property. |
+| [`mustrd-config.ttl`](mustrd-config.ttl) | The suite config — points at the specs, data, and the ontologies. `:hasOntologyPath` is repeated, once per ontology. |
+| [`ontology/geography.ttl`](ontology/geography.ttl) | Places (`Place`, `City`, `Country`, …) and `isLocatedIn`, plus an ontology-level metadata property. |
+| [`ontology/people.ttl`](ontology/people.ttl) | A second ontology: `Mayor` (a subclass of `foaf:Person`) and `governs`, which ranges over `place:City` — so it reuses both an external vocabulary and the geography one. |
 | [`data/`](data/) | The `given` instance data for each spec. |
-| [`specs/`](specs/) | The two competency-question specs (`must:competencyQuestion`, a `SELECT` `when`, and a `then` table). |
+| [`specs/`](specs/) | The three competency-question specs (`must:competencyQuestion`, a `SELECT` `when`, and a `then` table). The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
 | [`report/term-coverage-example.md`](report/term-coverage-example.md) | The generated report (committed so it can be viewed on GitHub). |
 
 ## Run it
 
-From the repo root, scoped to this directory so only these two specs run:
+From the repo root, scoped to this directory so only these specs run:
 
 ```bash
 (cd docs/examples/geography-example && \
@@ -32,14 +35,22 @@ the report stays correct.
 
 ## What it shows
 
-**6/6 domain terms covered (100%)** across 8 declared terms. The two excluded
-from the denominator are reported as **schema** terms rather than gaps:
+**Multiple ontologies:** the report's *Ontologies* section lists both files
+(each with its `owl:Ontology` IRI and description), and coverage is measured
+against their combined declared terms — **8/8 domain terms covered (100%)**
+across 10 declared. The two excluded from the denominator are reported as
+**schema** terms rather than gaps:
 
 - `place:Place` — the abstract root; not instantiated or queried, but the
   `rdfs:domain`/`rdfs:range` of `place:isLocatedIn` and the superclass of the
   classes the CQs use.
 - `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata,
   not part of the domain vocabulary the CQs exercise.
+
+**External vocabularies aren't counted:** `people:Mayor` is a subclass of
+`foaf:Person` and `people:governs`'s domain is `foaf:Person`, but `foaf:Person`
+is only *referenced*, not *declared* here — so it never appears in coverage. Only
+terms the ontologies under test actually declare are measured.
 
 It also shows the **requires ontology to pass** flag: the division CQ queries
 `place:AdministrativeDivision` but its data holds a `place:Province`, so it only

@@ -5,6 +5,9 @@
     a :MustrdTest ;
     :hasSpecPath     "specs" ;
     :hasDataPath     "data" ;
-    :hasOntologyPath "ontology" ;   # a directory, scanned recursively
+    # :hasOntologyPath is repeatable — name each ontology the suite validates.
+    # (A directory may also be given; it is scanned recursively.)
+    :hasOntologyPath "ontology/geography.ttl" ;
+    :hasOntologyPath "ontology/people.ttl" ;
     :hasPytestPath   "rdflib" ;
     :filterOnTripleStore triplestore:RdfLib .

@@ -1,0 +1,9 @@
+@prefix people: <http://example.org/people#> .
+@prefix place:  <http://example.org/place#> .
+@prefix ex:     <http://example.org/> .
+
+ex:Aboutaleb a people:Mayor ; people:governs ex:Rotterdam .
+ex:Rotterdam a place:City .
+
+ex:Halsema   a people:Mayor ; people:governs ex:Amsterdam .
+ex:Amsterdam a place:City .

@@ -138,21 +138,23 @@ directly (the queried types are the instantiated types) is not flagged.
 
 ## Worked example
 
-A small geography ontology (8 declared terms) with two competency questions —
-*"In which country is Rotterdam?"* and *"In what administrative division of what
-country is Rotterdam?"* — produces the report in
-[`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md). That
-report is generated from the runnable fixtures in
-[`examples/geography-example/`](examples/geography-example/) (config, ontology,
-data, and the two CQ specs) — see the comment at the top of the report for the
-command to regenerate it, and `test/test_coverage_plugin.py` which asserts it
-stays correct. The headline: **6/6 terms (100%)**. `place:Place` (the abstract
-root) is not directly exercised
-but is the domain/range of `place:isLocatedIn` and the superclass of the used
-classes, so it is reported as a **schema** term and excluded from the
-denominator rather than counted as a gap. The ontology-level metadata property
-`place:basedOnStandard` (an `owl:OntologyProperty`) is likewise reported as
-schema, not a gap — leaving **6** domain terms in the denominator, all covered.
+Two ontologies — a geography vocabulary and a small people vocabulary that
+reuses it (10 declared terms in total) — measured against three competency
+questions (*"In which country is Rotterdam?"*, *"In what administrative division
+of what country is Rotterdam?"*, and *"Who is the mayor of Rotterdam?"*) produce
+the report in
+[`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md).
+That report is generated from the runnable fixtures in
+[`examples/geography-example/`](examples/geography-example/) (config, two
+ontologies, data, and the three CQ specs) — see the README there for the command
+to regenerate it, and `test/test_coverage_plugin.py` which asserts it stays
+correct. The headline: **8/8 terms (100%)**, coverage measured across both
+ontologies at once. Two declared terms are reported as **schema** and excluded
+from the denominator rather than counted as gaps: `place:Place` (the abstract
+root — domain/range of `place:isLocatedIn` and superclass of the used classes)
+and `place:basedOnStandard` (an `owl:OntologyProperty` — ontology-level
+metadata). `people:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is
+only referenced, not declared in these ontologies, so it is not counted.
 
 The value the CQ table cannot give today: a percentage, the schema/structural
 terms called out separately, and — when one exists — the exact list of declared

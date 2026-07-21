@@ -28,21 +28,26 @@ def test_term_coverage_report_is_generated(tmp_path):
     _run(md, term_coverage=True)
     text = md.read_text()
 
-    # Ontologies section names the file measured against and its IRI/description.
-    assert "geography.ttl" in text
-    assert "http://example.org/place#" in text
+    # Ontologies section names BOTH ontologies measured against, with IRIs/desc.
+    assert "these ontologies" in text  # plural header
+    assert "geography.ttl" in text and "http://example.org/place#" in text
+    assert "people.ttl" in text and "http://example.org/people#" in text
     assert "A minimal vocabulary for places" in text
 
-    # Both competency questions appear in the CQ table.
+    # All three competency questions appear in the CQ table.
     assert "In which country is Rotterdam?" in text
     assert "In what administrative division of what country is Rotterdam?" in text
+    assert "Who is the mayor of Rotterdam?" in text
 
-    # 6/6 = 100%: 8 declared, two schema terms excluded (place:Place and the
-    # ontology-level metadata property place:basedOnStandard), no gaps.
-    assert "6/6 terms used to answer the CQs = 100%" in text
-    assert "8 declared; 2 structural/schema term(s) excluded" in text
-    assert "place:Place" in text
+    # 8/8 = 100%: 10 declared across both ontologies, two schema terms excluded
+    # (place:Place and the ontology-level metadata place:basedOnStandard), no gaps.
+    assert "8/8 terms used to answer the CQs = 100%" in text
+    assert "10 declared; 2 structural/schema term(s) excluded" in text
+    assert "place:Place" in text and "people:Mayor" in text
     assert "place:basedOnStandard (property) — ontology property" in text
+    # foaf:Person is referenced (Mayor's superclass / governs' domain) but not
+    # declared here, so it is external and must not appear in coverage at all.
+    assert "foaf:Person" not in text and "foaf" not in text
     assert "_none — every declared term is exercised or structural_" in text
 
     # The division CQ matches its data only via the class hierarchy (queries
