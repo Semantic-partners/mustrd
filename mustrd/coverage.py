@@ -207,12 +207,34 @@ def metadata_terms(graph: Graph) -> dict:
     return {iri: label for iri, label in meta.items() if iri not in substantive}
 
 
+def _collect_uris(root) -> set:
+    """Every URIRef reachable from a parsed-algebra node, walked iteratively.
+
+    Descends dicts, sequences and objects' ``__dict__``; a seen-set on object
+    identity guards against cycles.
+    """
+    found, seen, stack = set(), set(), [root]
+    while stack:
+        obj = stack.pop()
+        if id(obj) in seen:
+            continue
+        seen.add(id(obj))
+        if isinstance(obj, URIRef):
+            found.add(str(obj))
+        elif isinstance(obj, dict):
+            stack.extend(obj.values())
+        elif isinstance(obj, (list, tuple, set)):
+            stack.extend(obj)
+        elif hasattr(obj, "__dict__"):
+            stack.extend(vars(obj).values())
+    return found
+
+
 def query_uris(query_text: str) -> set:
     """Every IRI referenced in a query's parsed algebra (ignores comments).
 
     Handles SELECT/CONSTRUCT/ASK/DESCRIBE and, as a fallback, SPARQL Update.
     """
-    algebra = None
     try:
         algebra = prepareQuery(query_text).algebra
     except Exception as query_exc:
@@ -225,27 +247,7 @@ def query_uris(query_text: str) -> set:
                       "extracting no query terms from: %s",
                       query_exc, update_exc, query_text)
             return set()
-
-    found = set()
-
-    def walk(obj, seen):
-        if id(obj) in seen:
-            return
-        seen.add(id(obj))
-        if isinstance(obj, URIRef):
-            found.add(str(obj))
-        elif isinstance(obj, dict):
-            for v in obj.values():
-                walk(v, seen)
-        elif isinstance(obj, (list, tuple, set)):
-            for v in obj:
-                walk(v, seen)
-        elif hasattr(obj, "__dict__"):
-            for v in vars(obj).values():
-                walk(v, seen)
-
-    walk(algebra, set())
-    return found
+    return _collect_uris(algebra)
 
 
 def abox_terms(graph: Graph) -> set:
@@ -307,25 +309,27 @@ def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     """
     declared_set = set(declared)
     reasons = {}
-
-    def add(term, reason):
-        if str(term) in declared_set:
-            reasons.setdefault(str(term), [])
-            if reason not in reasons[str(term)]:
-                reasons[str(term)].append(reason)
-
     for u in used:
         node = URIRef(u)
-        if declared.get(u) == "property":
+        kind = declared.get(u)
+        if kind == "property":
             for d in tbox.objects(node, RDFS.domain):
-                add(d, f"domain of {short(u)}")
+                _add_reason(reasons, declared_set, d, f"domain of {short(u)}")
             for r in tbox.objects(node, RDFS.range):
-                add(r, f"range of {short(u)}")
-        elif declared.get(u) == "class":
+                _add_reason(reasons, declared_set, r, f"range of {short(u)}")
+        elif kind == "class":
             for anc in tbox.transitive_objects(node, RDFS.subClassOf):
                 if str(anc) != u:
-                    add(anc, f"superclass of {short(u)}")
+                    _add_reason(reasons, declared_set, anc, f"superclass of {short(u)}")
     return reasons
+
+
+def _add_reason(reasons: dict, declared_set: set, term, reason: str) -> None:
+    """Record `reason` for a declared `term` (deduped), skipping non-declared."""
+    if str(term) in declared_set:
+        bucket = reasons.setdefault(str(term), [])
+        if reason not in bucket:
+            bucket.append(reason)
 
 
 def requires_ontology_to_pass(data_terms: set, query_terms: set, declared: dict, tbox: Graph) -> bool:
@@ -371,6 +375,125 @@ def _source_link(p, link_base=None) -> dict:
     return {"path": label, "url": url}
 
 
+def _derive_declared(given_graphs, ontology):
+    """(declared, metadata) from the ontology when given, else the given graphs.
+
+    metadata is restricted to declared terms.
+    """
+    declared, metadata = {}, {}
+    for g in ([ontology] if ontology is not None else given_graphs):
+        declared.update(declared_terms(g))
+        metadata.update(metadata_terms(g))
+    return declared, {t: r for t, r in metadata.items() if t in declared}
+
+
+def _build_shortener(specs, given_graphs, ontology):
+    all_queries = [q for s in specs for q in (s.get("queries") or []) if isinstance(q, str)]
+    prefix_graphs = list(given_graphs)
+    if ontology is not None:
+        prefix_graphs.append(ontology)
+    return _shortener(prefix_graphs, all_queries)
+
+
+def _build_tbox(given_graphs, ontology):
+    """Combined TBox (given graphs + ontology) for schema classification and for
+    deciding whether a CQ leans on the ontology's class hierarchy to pass."""
+    tbox = Graph()
+    for g in given_graphs:
+        tbox += g
+    if ontology is not None:
+        tbox += ontology
+    return tbox
+
+
+def _scan_specs(specs, declared_set, declared, tbox, short):
+    """Walk each spec's data + queries once. Returns the credited used sets, the
+    domain-namespace terms referenced anywhere (split data/query), one SpecUsage
+    per spec, and per-spec reference tuples for the undeclared report."""
+    used_data, used_query = set(), set()
+    referenced_data, referenced_query = set(), set()
+    spec_refs, per_cq = [], []
+    for s in specs:
+        g = s.get("given")
+        raw_data = abox_terms(g) if isinstance(g, Graph) else set()
+        raw_query = set()
+        for q in (s.get("queries") or []):
+            if isinstance(q, str):
+                raw_query |= query_uris(q)
+        s_data = {t for t in raw_data if _is_domain_term(URIRef(t))}
+        s_query = {t for t in raw_query if _is_domain_term(URIRef(t))}
+        referenced_data |= s_data
+        referenced_query |= s_query
+        spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
+        d_terms = raw_data & declared_set
+        q_terms = raw_query & declared_set
+        if s.get("passed"):
+            used_data |= d_terms
+            used_query |= q_terms
+        per_cq.append(SpecUsage(
+            name=s.get("name", "?"),
+            competency_question=s.get("cq"),
+            passed=bool(s.get("passed")),
+            data_terms=sorted(short(t) for t in d_terms),
+            query_terms=sorted(short(t) for t in q_terms),
+            requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox),
+        ))
+    return used_data, used_query, referenced_data, referenced_query, per_cq, spec_refs
+
+
+def _fold_metadata_into_schema(schema_reasons, metadata, used):
+    """Annotation/ontology properties no CQ exercises are metadata, not gaps —
+    fold them into the schema bucket (excluded from the %) with their own reason."""
+    for t, label in metadata.items():
+        if t in used:
+            continue
+        bucket = schema_reasons.setdefault(t, [])
+        if label not in bucket:
+            bucket.append(label)
+
+
+def _reason_key(r):
+    return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
+
+
+def _classify_terms(declared, used, used_data, used_query, schema_only, short):
+    """Per-term matrix rows and the list of genuine gaps."""
+    def status(t):
+        if t in used:
+            return "covered"
+        return "schema" if t in schema_only else "unused"
+    terms = [{"term": short(t), "kind": declared[t],
+              "in_data": t in used_data, "in_query": t in used_query,
+              "in_schema": t in schema_only, "status": status(t)}
+             for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
+    gaps = [{"term": short(t), "kind": declared[t]}
+            for t in sorted(declared) if status(t) == "unused"]
+    return terms, gaps
+
+
+def _schema_term_rows(schema_only, schema_reasons, declared, short):
+    return [{"term": short(t), "kind": declared[t],
+             "reason": "; ".join(sorted(schema_reasons[t], key=_reason_key)[:3])}
+            for t in sorted(schema_only)]
+
+
+def _build_undeclared(referenced_data, referenced_query, declared, declared_set, spec_refs, short):
+    """Terms a CQ references (in data or SPARQL) that fall in a declared ontology's
+    namespace but are not themselves declared — likely typos or missing
+    definitions. External vocabularies (other namespaces) are ignored. Each is
+    tagged with where it was referenced and which CQs reference it."""
+    ontology_namespaces = {_namespace(t) for t in declared}
+    iris = [t for t in (referenced_data | referenced_query)
+            if t not in declared_set and _namespace(t) in ontology_namespaces]
+    undeclared = []
+    for t in sorted(iris, key=short):
+        refs = [{"name": name, "source_file": str(src) if src else None,
+                 "in_data": t in sd, "in_query": t in sq}
+                for (name, src, sd, sq) in spec_refs if t in sd or t in sq]
+        undeclared.append({"term": short(t), "refs": refs})
+    return undeclared
+
+
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Optional[dict]:
     """Compute term coverage across specs.
 
@@ -383,125 +506,30 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     (nothing to measure).
     """
     given_graphs = [s["given"] for s in specs if isinstance(s.get("given"), Graph)]
-
-    declared = {}
-    metadata = {}
-    if ontology is not None:
-        declared.update(declared_terms(ontology))
-        metadata.update(metadata_terms(ontology))
-    else:
-        for g in given_graphs:
-            declared.update(declared_terms(g))
-            metadata.update(metadata_terms(g))
+    declared, metadata = _derive_declared(given_graphs, ontology)
     if not declared:
         return None
-    metadata = {t: r for t, r in metadata.items() if t in declared}
 
-    all_queries = [q for s in specs for q in (s.get("queries") or []) if isinstance(q, str)]
-    prefix_graphs = given_graphs + ([ontology] if ontology is not None else [])
-    short = _shortener(prefix_graphs, all_queries)
-
-    # Combined TBox (given graphs + ontology) for schema classification and for
-    # deciding whether a CQ leans on the ontology's class hierarchy to pass.
-    tbox = Graph()
-    for g in given_graphs:
-        tbox += g
-    if ontology is not None:
-        tbox += ontology
-
-    used_data, used_query = set(), set()
-    # Every domain-namespace term any spec references, split by where (for the
-    # "used but not declared" report, which distinguishes data from SPARQL and
-    # lists the referencing CQs).
-    referenced_data, referenced_query = set(), set()
-    spec_refs = []  # one per spec: (name, source_file, data_terms, query_terms)
-    per_cq = []
+    short = _build_shortener(specs, given_graphs, ontology)
+    tbox = _build_tbox(given_graphs, ontology)
     declared_set = set(declared)
-    for s in specs:
-        g = s.get("given")
-        queries = s.get("queries") or []
-        raw_data = abox_terms(g) if isinstance(g, Graph) else set()
-        raw_query = set()
-        for q in queries:
-            if isinstance(q, str):
-                raw_query |= query_uris(q)
-        s_data = {t for t in raw_data if _is_domain_term(URIRef(t))}
-        s_query = {t for t in raw_query if _is_domain_term(URIRef(t))}
-        referenced_data |= s_data
-        referenced_query |= s_query
-        spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
-        d_terms = raw_data & declared_set
-        q_terms = raw_query & declared_set
-        credited = bool(s.get("passed"))
-        if credited:
-            used_data |= d_terms
-            used_query |= q_terms
-        per_cq.append(SpecUsage(
-            name=s.get("name", "?"),
-            competency_question=s.get("cq"),
-            passed=credited,
-            data_terms=sorted(short(t) for t in d_terms),
-            query_terms=sorted(short(t) for t in q_terms),
-            requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox),
-        ))
 
+    used_data, used_query, referenced_data, referenced_query, per_cq, spec_refs = \
+        _scan_specs(specs, declared_set, declared, tbox, short)
     used = used_data | used_query
 
-    # Third category: terms not directly exercised, but referenced structurally
-    # in the schema of a USED term (domain/range of a used property, superclass
-    # of a used class). These are excluded from the coverage denominator.
     schema_reasons = schema_references(tbox, used, declared, short)
-    # Annotation/ontology properties that no CQ exercises are metadata, not gaps:
-    # fold them into the schema bucket (excluded from the %) with their own reason.
-    for t, label in metadata.items():
-        if t not in used:
-            reasons = schema_reasons.setdefault(t, [])
-            if label not in reasons:
-                reasons.append(label)
+    _fold_metadata_into_schema(schema_reasons, metadata, used)
     schema_only = {t for t in schema_reasons if t not in used}
 
-    def status(t):
-        if t in used:
-            return "covered"
-        if t in schema_only:
-            return "schema"
-        return "unused"
-
-    terms = []
-    for t in sorted(declared, key=lambda x: (declared[x], short(x))):
-        terms.append({
-            "term": short(t), "kind": declared[t],
-            "in_data": t in used_data, "in_query": t in used_query,
-            "in_schema": t in schema_only, "status": status(t),
-        })
-
-    gaps = [{"term": short(t), "kind": declared[t]}
-            for t in sorted(declared) if status(t) == "unused"]
-
-    def _reason_key(r):
-        return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
-
-    schema_terms = [{"term": short(t), "kind": declared[t],
-                     "reason": "; ".join(sorted(schema_reasons[t], key=_reason_key)[:3])}
-                    for t in sorted(schema_only)]
+    terms, gaps = _classify_terms(declared, used, used_data, used_query, schema_only, short)
+    schema_terms = _schema_term_rows(schema_only, schema_reasons, declared, short)
+    undeclared = _build_undeclared(referenced_data, referenced_query, declared,
+                                   declared_set, spec_refs, short)
 
     covered = sum(1 for t in declared if t in used)
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
     pct = round(100.0 * covered / denominator) if denominator else 0
-
-    # Terms a CQ references (in data or SPARQL) that fall in a declared ontology's
-    # namespace but are not themselves declared — a likely typo or missing
-    # definition. External vocabularies (other namespaces) are ignored. Each is
-    # tagged with where it was referenced (input data, SPARQL, or both).
-    ontology_namespaces = {_namespace(t) for t in declared}
-    undeclared_iris = [t for t in (referenced_data | referenced_query)
-                       if t not in declared_set and _namespace(t) in ontology_namespaces]
-    undeclared = []
-    for t in sorted(undeclared_iris, key=short):
-        refs = [{"name": name, "source_file": str(src) if src else None,
-                 "in_data": t in sd, "in_query": t in sq}
-                for (name, src, sd, sq) in spec_refs if t in sd or t in sq]
-        undeclared.append({"term": short(t), "refs": refs})
 
     return {
         "covered": covered, "denominator": denominator, "pct": pct,
