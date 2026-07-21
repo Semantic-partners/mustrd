@@ -169,6 +169,36 @@ def test_used_annotation_property_still_counts_as_covered():
     assert by["onto:editorialNote"]["status"] == "covered"
 
 
+def test_requires_ontology_when_query_needs_class_hierarchy():
+    # Query asks for a superclass (onto:Place) that no data instance is typed as;
+    # only subclass instances (onto:City) exist, so the rdfs:subClassOf axiom must
+    # be loaded for the query to match -> "requires ontology to pass".
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rotterdam a onto:City .
+    """)
+    query = """PREFIX onto: <http://onto.org/>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT ?x WHERE { ?x a/rdfs:subClassOf* onto:Place }"""
+    cov = compute_coverage([_spec(given=data, queries=[query])], ontology=_graph(ONTO))
+    assert cov["per_cq"][0]["requires_ontology"] is True
+
+
+def test_not_requires_ontology_when_data_has_queried_type():
+    # Query asks for onto:Country and data has Country instances directly, so it
+    # passes without the class hierarchy -> not flagged.
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:NL a onto:Country .
+    """)
+    query = """PREFIX onto: <http://onto.org/>
+    SELECT ?x WHERE { ?x a onto:Country }"""
+    cov = compute_coverage([_spec(given=data, queries=[query])], ontology=_graph(ONTO))
+    assert cov["per_cq"][0]["requires_ontology"] is False
+
+
 def test_expand_ontology_files_scans_directories_recursively(tmp_path):
     (tmp_path / "a.ttl").write_text(ONTO)
     nested = tmp_path / "sub" / "deep"

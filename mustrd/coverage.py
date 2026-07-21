@@ -75,6 +75,7 @@ class SpecUsage:
     passed: bool
     data_terms: List[str] = field(default_factory=list)
     query_terms: List[str] = field(default_factory=list)
+    requires_ontology: bool = False
 
 
 def _is_domain_term(uri) -> bool:
@@ -318,6 +319,26 @@ def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     return reasons
 
 
+def requires_ontology_to_pass(data_terms: set, query_terms: set, declared: dict, tbox: Graph) -> bool:
+    """Whether a CQ's query matches its data only via a TBox axiom.
+
+    True when the query references a declared class that is NOT instantiated in
+    the CQ's own data, yet a subclass of it IS — so the query can only match
+    (e.g. through an `rdfs:subClassOf*` path) if the ontology's class hierarchy
+    is loaded as an input. The ontology is deliberately not counted as input
+    data, so this is surfaced separately as "requires ontology to pass".
+    """
+    data_classes = [d for d in data_terms if declared.get(d) == "class"]
+    for q in query_terms:
+        if q in data_terms or declared.get(q) != "class":
+            continue
+        qnode = URIRef(q)
+        for d in data_classes:
+            if d != q and qnode in set(tbox.transitive_objects(URIRef(d), RDFS.subClassOf)):
+                return True
+    return False
+
+
 def _source_link(p, link_base=None) -> dict:
     """Display label + a link href relative to `link_base`.
 
@@ -371,6 +392,14 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     prefix_graphs = given_graphs + ([ontology] if ontology is not None else [])
     short = _shortener(prefix_graphs, all_queries)
 
+    # Combined TBox (given graphs + ontology) for schema classification and for
+    # deciding whether a CQ leans on the ontology's class hierarchy to pass.
+    tbox = Graph()
+    for g in given_graphs:
+        tbox += g
+    if ontology is not None:
+        tbox += ontology
+
     used_data, used_query = set(), set()
     per_cq = []
     declared_set = set(declared)
@@ -393,6 +422,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
             passed=credited,
             data_terms=sorted(short(t) for t in d_terms),
             query_terms=sorted(short(t) for t in q_terms),
+            requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox),
         ))
 
     used = used_data | used_query
@@ -400,11 +430,6 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     # Third category: terms not directly exercised, but referenced structurally
     # in the schema of a USED term (domain/range of a used property, superclass
     # of a used class). These are excluded from the coverage denominator.
-    tbox = Graph()
-    for g in given_graphs:
-        tbox += g
-    if ontology is not None:
-        tbox += ontology
     schema_reasons = schema_references(tbox, used, declared, short)
     # Annotation/ontology properties that no CQ exercises are metadata, not gaps:
     # fold them into the schema bucket (excluded from the %) with their own reason.
@@ -451,6 +476,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,
+            "requires_ontology": u.requires_ontology,
         } for u in per_cq],
     }
 

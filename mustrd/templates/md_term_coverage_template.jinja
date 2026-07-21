@@ -44,8 +44,10 @@ Not directly exercised, but they define the schema of terms the CQs use:
 
 ## Per competency question
 
+🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
+
 {% for c in coverage.per_cq -%}
-- **{{ c.name }}** — {{ c.cq or "(no CQ)" }} — _{{ c.status }}_{{ "" if c.credited else " (not credited)" }}
+- **{{ c.name }}** — {{ c.cq or "(no CQ)" }} — _{{ c.status }}_{{ "" if c.credited else " (not credited)" }}{% if c.requires_ontology %} — 🧩 **requires ontology to pass**{% endif %}
   - in data:  {{ c.data | join(", ") or "(none)" }}
   - in query: {{ c.query | join(", ") or "(none)" }}
 {% endfor %}

@@ -125,6 +125,17 @@ domain terms CQs are meant to exercise, so an unused one is likewise reported as
 **schema** rather than flagged as a gap. If a CQ actually exercises one (in data
 or SPARQL) it still counts as covered.
 
+### "Requires ontology to pass"
+
+The flip side of not counting the ontology as input data: when a CQ's query only
+matches its `given` *through* the ontology, that dependency is itself worth
+surfacing. A query that asks for a class (say `place:AdministrativeDivision`)
+while the data holds instances of a **subclass** (`place:Province`) can only
+match if the `rdfs:subClassOf` axioms are loaded as an input — the ontology is a
+required input dataset for the test to pass. Such CQs are flagged **requires
+ontology to pass** in the per-CQ section. A CQ whose query matches the data
+directly (the queried types are the instantiated types) is not flagged.
+
 ## Worked example
 
 A small geography ontology (8 declared terms) with two competency questions —

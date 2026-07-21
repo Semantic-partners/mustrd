@@ -4,7 +4,7 @@
 
 Coverage below is measured against this ontology:
 
-- [docs/examples/geography-example/ontology/geography.ttl](../ontology/geography.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
+- [ontology/geography.ttl](../ontology/geography.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
 
 
 ## Competency Questions
@@ -60,9 +60,11 @@ Not directly exercised, but they define the schema of terms the CQs use:
 
 ## Per competency question
 
+🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
+
 - **country-of-rotterdam.mustrd.ttl** — In which country is Rotterdam? — _passed_
   - in data:  place:City, place:Continent, place:Country, place:isLocatedIn
   - in query: place:Country, place:isLocatedIn
-- **division-and-country-of-rotterdam.mustrd.ttl** — In what administrative division of what country is Rotterdam? — _passed_
+- **division-and-country-of-rotterdam.mustrd.ttl** — In what administrative division of what country is Rotterdam? — _passed_ — 🧩 **requires ontology to pass**
   - in data:  place:City, place:Continent, place:Country, place:Province, place:isLocatedIn
   - in query: place:AdministrativeDivision, place:Country, place:isLocatedIn

@@ -41,6 +41,12 @@ from the denominator are reported as **schema** terms rather than gaps:
 - `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata,
   not part of the domain vocabulary the CQs exercise.
 
+It also shows the **requires ontology to pass** flag: the division CQ queries
+`place:AdministrativeDivision` but its data holds a `place:Province`, so it only
+matches through the `rdfs:subClassOf` axioms — the ontology must be loaded as an
+input for that test to pass. The country CQ queries types that are instantiated
+directly, so it is not flagged.
+
 > The ontology uses a `place:` prefix rather than `geo:` — rdflib pre-binds
 > `geo:` to GeoSPARQL, which would rename an author's `geo:` to `geo1:` in the
 > report output.

@@ -45,6 +45,16 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "place:basedOnStandard (property) — ontology property" in text
     assert "_none — every declared term is exercised or structural_" in text
 
+    # The division CQ matches its data only via the class hierarchy (queries
+    # AdministrativeDivision, data has Province), so it is flagged as needing the
+    # ontology loaded; the country CQ (direct types) is not.
+    assert "requires ontology to pass" in text
+    bullets = [ln for ln in text.splitlines() if ln.startswith("- **")]
+    division = next(ln for ln in bullets if ln.startswith("- **division-and-country"))
+    country = next(ln for ln in bullets if ln.startswith("- **country-of-rotterdam"))
+    assert "requires ontology to pass" in division
+    assert "requires ontology to pass" not in country
+
 
 def test_md_without_term_coverage_is_just_the_cq_table(tmp_path):
     # Without --term-coverage the report stays the plain Competency Questions
