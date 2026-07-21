@@ -1,6 +1,6 @@
-@prefix geo: <http://geo.org/> .
-@prefix ex:  <http://example.org/> .
+@prefix place: <http://example.org/place#> .
+@prefix ex:    <http://example.org/> .
 
-ex:Rotterdam a geo:City    ; geo:isLocatedIn ex:NL .
-ex:NL        a geo:Country ; geo:isLocatedIn ex:Europe .
-ex:Europe    a geo:Continent .
+ex:Rotterdam a place:City    ; place:isLocatedIn ex:NL .
+ex:NL        a place:Country ; place:isLocatedIn ex:Europe .
+ex:Europe    a place:Continent .

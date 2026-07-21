@@ -37,9 +37,10 @@ jobs:
         run:  poetry run pytest --mustrd --md=junit/github_job_summary.md --config=.github/test_config.ttl
       - name: Run ontology term-coverage example
         # Runs the runnable geography example with --term-coverage so its
-        # Ontologies Report shows up in the job summary below. Collection is
-        # scoped to the example dir, so only its two CQ specs run (both pass).
-        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --md=junit/term_coverage_example.md
+        # Ontologies Report shows up in the job summary below and the committed
+        # report is regenerated. Collection is scoped to the example dir, so only
+        # its two CQ specs run (both pass).
+        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --md=docs/examples/geography-example/report/term-coverage-example.md
         if: ${{ always() }}
       - name: Upload pytest test results
         if: ${{ always() }}
@@ -51,7 +52,7 @@ jobs:
         run: |
           cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
           printf '\n\n---\n\n' >> $GITHUB_STEP_SUMMARY
-          cat junit/term_coverage_example.md >> $GITHUB_STEP_SUMMARY
+          cat docs/examples/geography-example/report/term-coverage-example.md >> $GITHUB_STEP_SUMMARY
         if: ${{ always() }}
       - name: Generate coverage HTML report
         run: poetry run coverage html --directory=htmlcov --include=mustrd/*

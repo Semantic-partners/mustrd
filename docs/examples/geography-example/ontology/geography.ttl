@@ -1,17 +1,23 @@
-@prefix geo:  <http://geo.org/> .
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix place: <http://example.org/place#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
-<http://geo.org/> a owl:Ontology ;
+<http://example.org/place#> a owl:Ontology ;
     rdfs:comment "A minimal vocabulary for places and how they are geographically contained within one another." .
 
-geo:Place a owl:Class ;
+# An ontology-level metadata property (relates this ontology to another). It is
+# not part of the domain vocabulary the CQs exercise, so coverage reports it as a
+# schema term rather than a gap.
+place:basedOnStandard a owl:OntologyProperty ;
+    rdfs:comment "The published standard this vocabulary is based on." .
+
+place:Place a owl:Class ;
     rdfs:comment "Anything with a geographic location." .
-geo:Continent a owl:Class ; rdfs:subClassOf geo:Place .
-geo:Country a owl:Class ; rdfs:subClassOf geo:Place .
-geo:AdministrativeDivision a owl:Class ; rdfs:subClassOf geo:Place .
-geo:Province a owl:Class ; rdfs:subClassOf geo:AdministrativeDivision .
-geo:City a owl:Class ; rdfs:subClassOf geo:Place .
-geo:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
-    rdfs:domain geo:Place ; rdfs:range geo:Place ;
+place:Continent a owl:Class ; rdfs:subClassOf place:Place .
+place:Country a owl:Class ; rdfs:subClassOf place:Place .
+place:AdministrativeDivision a owl:Class ; rdfs:subClassOf place:Place .
+place:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .
+place:City a owl:Class ; rdfs:subClassOf place:Place .
+place:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain place:Place ; rdfs:range place:Place ;
     rdfs:comment "Relates a place to a place that geographically contains it." .

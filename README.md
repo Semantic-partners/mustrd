@@ -166,7 +166,7 @@ section — so it's clear what was checked. When you pass `--md`, the parent
 directory is created automatically if it doesn't exist.
 
 See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
-full definition and [`docs/examples/term-coverage-example.md`](docs/examples/term-coverage-example.md)
+full definition and [`docs/examples/geography-example/report/term-coverage-example.md`](docs/examples/geography-example/report/term-coverage-example.md)
 for sample output.
 
 ## When?

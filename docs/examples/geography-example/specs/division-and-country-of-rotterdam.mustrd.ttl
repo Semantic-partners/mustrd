@@ -1,6 +1,6 @@
 @prefix must: <https://mustrd.org/model/> .
 @prefix ex:   <http://example.org/> .
-@prefix :     <http://geo.org/example/> .
+@prefix :     <http://example.org/place/example/> .
 
 :divisionAndCountryOfRotterdam
     a must:TestSpec ;
@@ -8,13 +8,13 @@
     must:given [ a must:FileDataset ; must:file "division.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;
-                 must:queryText """PREFIX geo:  <http://geo.org/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                 must:queryText """PREFIX place: <http://example.org/place#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?division ?country WHERE {
-  ?city geo:isLocatedIn ?division .
-  ?division a/rdfs:subClassOf* geo:AdministrativeDivision .
-  ?division geo:isLocatedIn+ ?country .
-  ?country a geo:Country .
+  ?city place:isLocatedIn ?division .
+  ?division a/rdfs:subClassOf* place:AdministrativeDivision .
+  ?division place:isLocatedIn+ ?country .
+  ?country a place:Country .
 }""" ] ;
     must:then  [ a must:TableDataset ;
                  must:hasRow [ must:hasBinding [ must:variable "division" ; must:boundValue ex:ZuidHolland ],

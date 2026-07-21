@@ -1,13 +1,13 @@
-@prefix geo:  <http://geo.org/> .
-@prefix ex:   <http://example.org/> .
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix place: <http://example.org/place#> .
+@prefix ex:    <http://example.org/> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
 # The class hierarchy the query's rdfs:subClassOf* path walks. (Only the axioms
 # the query needs; the authoritative declarations live in ontology/geography.ttl.)
-geo:Province a owl:Class ; rdfs:subClassOf geo:AdministrativeDivision .
+place:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .
 
-ex:Rotterdam   a geo:City     ; geo:isLocatedIn ex:ZuidHolland .
-ex:ZuidHolland a geo:Province ; geo:isLocatedIn ex:NL .
-ex:NL          a geo:Country  ; geo:isLocatedIn ex:Europe .
-ex:Europe      a geo:Continent .
+ex:Rotterdam   a place:City     ; place:isLocatedIn ex:ZuidHolland .
+ex:ZuidHolland a place:Province ; place:isLocatedIn ex:NL .
+ex:NL          a place:Country  ; place:isLocatedIn ex:Europe .
+ex:Europe      a place:Continent .

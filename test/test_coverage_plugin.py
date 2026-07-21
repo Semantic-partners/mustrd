@@ -30,17 +30,19 @@ def test_term_coverage_report_is_generated(tmp_path):
 
     # Ontologies section names the file measured against and its IRI/description.
     assert "geography.ttl" in text
-    assert "http://geo.org/" in text
+    assert "http://example.org/place#" in text
     assert "A minimal vocabulary for places" in text
 
     # Both competency questions appear in the CQ table.
     assert "In which country is Rotterdam?" in text
     assert "In what administrative division of what country is Rotterdam?" in text
 
-    # 6/6 = 100%: 7 declared, geo:Place excluded as a schema term, no gaps.
+    # 6/6 = 100%: 8 declared, two schema terms excluded (place:Place and the
+    # ontology-level metadata property place:basedOnStandard), no gaps.
     assert "6/6 terms used to answer the CQs = 100%" in text
-    assert "7 declared; 1 structural/schema term(s) excluded" in text
-    assert "geo:Place" in text
+    assert "8 declared; 2 structural/schema term(s) excluded" in text
+    assert "place:Place" in text
+    assert "place:basedOnStandard (property) — ontology property" in text
     assert "_none — every declared term is exercised or structural_" in text
 
 
