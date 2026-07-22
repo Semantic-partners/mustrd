@@ -29,6 +29,7 @@ TERM_COVERAGE_MD_TEMPLATE = "md_term_coverage_template.jinja"
 ONTOLOGIES_MD_TEMPLATE = "md_ontologies_template.jinja"
 DUPLICATE_CQS_MD_TEMPLATE = "md_duplicate_cqs_template.jinja"
 PER_CQ_MD_TEMPLATE = "md_per_cq_template.jinja"
+CQ_GAPS_MD_TEMPLATE = "md_cq_gaps_template.jinja"
 
 
 @dataclass
@@ -168,3 +169,8 @@ def render_duplicate_cqs(duplicate_cqs: list) -> str:
 def render_per_cq(per_cq: list, unchecked: bool = False) -> str:
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     return environment.get_template(PER_CQ_MD_TEMPLATE).render(per_cq=per_cq, unchecked=unchecked)
+
+
+def render_cq_gaps(cq_gaps: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(CQ_GAPS_MD_TEMPLATE).render(cq_gaps=cq_gaps)

@@ -10,7 +10,7 @@ from pytest import Session
 from mustrd import logger_setup
 from mustrd.TestResult import (
     TestResult, render_cq_table, render_term_coverage, render_ontologies,
-    render_duplicate_cqs, render_per_cq, ResultList, get_result_list,
+    render_duplicate_cqs, render_per_cq, render_cq_gaps, ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, cq_only_view, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
@@ -533,35 +533,42 @@ class MustrdTestPlugin:
 
     def _build_report(self, cq_results, coverage, cq_view, all_results, link_base):
         """Assemble the report for the active flags, with links relative to
-        `link_base`. Section order: ontologies -> CQ table -> term coverage ->
-        per-CQ -> duplicate-CQ warning. Coverage sections need `coverage`; CQ
-        sections need `--cq` (using `coverage` when present, else `cq_view`)."""
+        `link_base`. Two H2 sub-reports under a top title:
+
+          # Ontologies Report
+          ## Coverage Report            (--term-coverage)
+             ### Ontologies / Term Coverage / Not used by any test / schema / used-but-not-declared
+          ## Competency Questions Report  (--cq)
+             ### Competency Questions / Duplicate CQs / Not used by any CQ / Per competency question
+        """
         parts = []
         if coverage is not None:
+            parts.append("# Ontologies Report")
+            parts.append("## Coverage Report")
+            _link_report_refs(coverage, link_base)
             ontologies = ontology_report(self.ontology_paths, link_base=link_base)
             if ontologies:
-                parts.append("# Ontologies Report")
                 parts.append(render_ontologies(ontologies))
-        if self.cq:
+            parts.append(render_term_coverage(coverage))
+        # CQ report — from coverage when available, else the no-ontology cq_view.
+        view = coverage if coverage is not None else cq_view
+        if self.cq and view is not None:
+            _link_report_refs(view, link_base)
             self._link_cq_specs(cq_results, link_base)
             if coverage is not None:
                 self._apply_coverage_status(cq_results, coverage)
             group_totals = {}
             for tr in all_results:
                 group_totals[tr.class_name] = group_totals.get(tr.class_name, 0) + 1
+            parts.append("## Competency Questions Report" if coverage is not None
+                         else "# Competency Questions Report")
             parts.append(render_cq_table(cq_results, group_totals))
-        if coverage is not None:
-            _link_report_refs(coverage, link_base)
-            parts.append(render_term_coverage(coverage))
-        # CQ detail sections (per-CQ, duplicate warning) come from coverage when
-        # available, otherwise from the no-ontology cq_view.
-        view = coverage if coverage is not None else cq_view
-        if self.cq and view is not None:
-            _link_report_refs(view, link_base)
-            if view.get("per_cq"):
-                parts.append(render_per_cq(view["per_cq"], view.get("unchecked", False)))
             if view.get("duplicate_cqs"):
                 parts.append(render_duplicate_cqs(view["duplicate_cqs"]))
+            if coverage is not None:
+                parts.append(render_cq_gaps(coverage.get("cq_gaps", [])))
+            if view.get("per_cq"):
+                parts.append(render_per_cq(view["per_cq"], view.get("unchecked", False)))
         return "\n\n".join(parts)
 
     def _link_cq_specs(self, cq_results, parent):

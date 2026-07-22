@@ -1,0 +1,9 @@
+### Not used by any CQ
+
+{% if cq_gaps -%}
+{% for t in cq_gaps -%}
+- {{ t.term }} ({{ t.kind }}) — not exercised by any competency question (a non-CQ test may still use it)
+{% endfor %}
+{%- else -%}
+_none — every declared term is exercised by a competency question or is structural_
+{%- endif %}

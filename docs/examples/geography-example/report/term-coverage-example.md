@@ -1,6 +1,8 @@
 # Ontologies Report
 
-## Ontologies
+## Coverage Report
+
+### Ontologies
 
 Coverage below is measured against these ontologies:
 
@@ -8,21 +10,7 @@ Coverage below is measured against these ontologies:
 - [ontology/governance.ttl](../ontology/governance.ttl) — `http://example.org/governance#` — A tiny vocabulary for governance roles and the places they govern.
 
 
-## Competency Questions
-
-### [mustrd-config.ttl](../mustrd-config.ttl) — rdflib
-
-_3 of 4 tests are competency questions._
-
-| Competency Question | Test | Test Status | Coverage Status |
-|---------------------|------|-------------|-----------------|
-| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |
-| In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed | ✅ passed |
-| Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: gov:appointedOn (SPARQL) |
-
-
-
-## Ontology term coverage
+### Term Coverage
 
 **Overall: 9/9 terms exercised by the tests = 100%**
 
@@ -47,7 +35,7 @@ A term is *used* if a passing test exercises it — either in the **input data**
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | ❌ | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ | ✅ covered |
 
-### How to read this table
+#### How to read this table
 
 The **In input data**, **In SPARQL** and **In schema** columns show *where* a term is exercised, classifying every term into a role:
 
@@ -61,17 +49,11 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 
 **By a CQ?** shows whether a *competency question* (not just any test) exercises the term — ❌ here means the term is covered only by non-CQ tests, so it lacks CQ coverage.
 
-## Not used by any test
+### Not used by any test
 
 _none — every declared term is exercised or structural_
 
-## Not used by any CQ
-
-- place:Region (class) — not exercised by any competency question (a non-CQ test may still use it)
-
-
-
-## Structural / schema terms (excluded from coverage)
+### Structural / schema terms (excluded from coverage)
 
 Not directly exercised, but they define the schema of terms the tests use:
 
@@ -79,7 +61,7 @@ Not directly exercised, but they define the schema of terms the tests use:
 - place:basedOnStandard (property) — ontology property
 
 
-## ⚠️ Used but not declared
+### ⚠️ Used but not declared
 
 Referenced by a test, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
 
@@ -90,7 +72,28 @@ Referenced by a test, and in an ontology's namespace, but **not declared** in an
   - [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) — input data
 
 
-## Per competency question
+## Competency Questions Report
+
+### Competency Questions
+
+#### [mustrd-config.ttl](../mustrd-config.ttl) — rdflib
+
+_3 of 4 tests are competency questions._
+
+| Competency Question | Test | Test Status | Coverage Status |
+|---------------------|------|-------------|-----------------|
+| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |
+| In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed | ✅ passed |
+| Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: gov:appointedOn (SPARQL) |
+
+
+
+### Not used by any CQ
+
+- place:Region (class) — not exercised by any competency question (a non-CQ test may still use it)
+
+
+### Per competency question
 
 🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
 

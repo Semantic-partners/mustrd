@@ -1,6 +1,6 @@
-## Competency Questions
+### Competency Questions
 {% for g in groups %}
-### {% if g.module_link %}[{{ g.module_name }}]({{ g.module_link }}){% else %}{{ g.module_name }}{% endif %}{% if g.class_name %} — {{ g.class_name }}{% endif %}
+#### {% if g.module_link %}[{{ g.module_name }}]({{ g.module_link }}){% else %}{{ g.module_name }}{% endif %}{% if g.class_name %} — {{ g.class_name }}{% endif %}
 
 _{{ g.cq_count }} of {{ g.total_tests }} tests are competency questions._
 

@@ -29,6 +29,10 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     _run(md, term_coverage=True, cq=True)
     text = md.read_text()
 
+    # Two sub-reports under the top title.
+    assert "# Ontologies Report" in text
+    assert "## Coverage Report" in text
+    assert "## Competency Questions Report" in text
     # Ontologies section names BOTH ontologies, with IRIs/description.
     assert "these ontologies" in text
     assert "place.ttl" in text and "http://example.org/place#" in text
@@ -53,14 +57,14 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     region_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Region "))
     assert region_row.endswith("| ❌ | ✅ covered |")
     # Nothing is dead across all tests, but place:Region is a CQ-scoped gap.
-    assert "## Not used by any test" in text
-    assert "## Not used by any CQ" in text
-    cq_gaps = text.split("## Not used by any CQ", 1)[1].split("##", 1)[0]
+    assert "### Not used by any test" in text
+    assert "### Not used by any CQ" in text
+    cq_gaps = text.split("### Not used by any CQ", 1)[1].split("\n### ", 1)[0]
     assert "place:Region" in cq_gaps
     assert "place:basedOnStandard (property) — ontology property" in text
 
     # Used but not declared: one input-data term, one SPARQL term, each linked.
-    assert "## ⚠️ Used but not declared" in text
+    assert "### ⚠️ Used but not declared" in text
     data_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— input data"))
     assert "country-of-rotterdam.mustrd.ttl" in data_line and "](" in data_line
     sparql_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— SPARQL"))
@@ -81,14 +85,15 @@ def test_term_coverage_alone_has_no_cq_sections(tmp_path):
     md = tmp_path / "report.md"
     _run(md, term_coverage=True, cq=False)
     text = md.read_text()
+    assert "## Coverage Report" in text
     assert "9/9 terms exercised by the tests = 100%" in text
-    assert "## Not used by any test" in text
-    # No CQ overlay / sections.
+    assert "### Not used by any test" in text
+    # No CQ report / overlay.
+    assert "Competency Questions Report" not in text
     assert "By a competency question" not in text
     assert "By a CQ?" not in text
-    assert "## Competency Questions" not in text
-    assert "## Per competency question" not in text
-    assert "## Not used by any CQ" not in text
+    assert "### Per competency question" not in text
+    assert "Not used by any CQ" not in text
 
 
 def test_cq_alone_has_no_ontology_sections(tmp_path):
@@ -96,12 +101,14 @@ def test_cq_alone_has_no_ontology_sections(tmp_path):
     md = tmp_path / "report.md"
     _run(md, cq=True)
     text = md.read_text()
-    assert "## Competency Questions" in text
+    assert "# Competency Questions Report" in text  # standalone -> H1
+    assert "### Competency Questions" in text
     assert "In which country is Rotterdam?" in text
-    assert "## Per competency question" in text
+    assert "### Per competency question" in text
     assert "No ontology was checked" in text  # unchecked note
     # No coverage/ontology sections, and no Coverage Status column.
-    assert "Ontology term coverage" not in text
+    assert "## Coverage Report" not in text
+    assert "Term Coverage" not in text
     assert "# Ontologies Report" not in text
     assert "Coverage Status" not in text
     # Unchecked list includes an undeclared term (no ontology to filter it out).
@@ -116,8 +123,8 @@ def test_md_without_flags_is_the_result_list(tmp_path):
     text = md.read_text()
     assert "total:" in text  # ResultList summary line
     assert "# Ontologies Report" not in text
-    assert "## Competency Questions" not in text
-    assert "Ontology term coverage" not in text
+    assert "Competency Questions Report" not in text
+    assert "Term Coverage" not in text
 
 
 def test_missing_ontology_path_fails_early():
