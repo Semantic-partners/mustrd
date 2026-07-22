@@ -456,22 +456,54 @@ def _reason_key(r):
     return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
 
-def _classify_terms(declared, used, used_data, used_query, schema_only, short, cq_used):
+def _non_cq_usage(non_cq_specs, declared_set):
+    """Map each declared term to the *passing* non-CQ tests that exercise it.
+
+    Used to explain a covered-but-not-by-a-CQ term: which plain test backs it.
+    Returns {term_iri: [{name, source_file, in_data, in_query}, ...]}.
+    """
+    refs_by_term = {}
+    for s in non_cq_specs:
+        if not s.get("passed"):
+            continue
+        g = s.get("given")
+        d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set())
+             if _is_domain_term(URIRef(t))} & declared_set
+        q = set()
+        for query in (s.get("queries") or []):
+            if isinstance(query, str):
+                q |= {t for t in query_uris(query) if _is_domain_term(URIRef(t))}
+        q &= declared_set
+        for t in d | q:
+            refs_by_term.setdefault(t, []).append({
+                "name": s.get("name", "?"),
+                "source_file": str(s.get("source_file")) if s.get("source_file") else None,
+                "in_data": t in d, "in_query": t in q})
+    return refs_by_term
+
+
+def _classify_terms(declared, used, used_data, used_query, schema_only, short, cq_used, non_cq_refs):
     """Per-term matrix rows and the list of genuine gaps (unused by any test).
 
-    `cq_used` is the subset of declared terms a competency question exercises;
-    each row carries `by_cq` so the report can flag CQ-backed coverage.
+    `cq_used` is the subset of declared terms a competency question exercises
+    (drives `by_cq`). A covered term that no CQ exercises carries the non-CQ
+    tests that do (`non_cq_refs`), so the report can name them.
     """
     def status(t):
         if t in used:
             return "covered"
         return "schema" if t in schema_only else "unused"
 
-    terms = [{"term": short(t), "kind": declared[t],
-              "in_data": t in used_data, "in_query": t in used_query,
-              "in_schema": t in schema_only, "status": status(t),
-              "by_cq": t in cq_used}
-             for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
+    def row(t):
+        r = {"term": short(t), "kind": declared[t],
+             "in_data": t in used_data, "in_query": t in used_query,
+             "in_schema": t in schema_only, "status": status(t),
+             "by_cq": t in cq_used}
+        if t not in cq_used and t in non_cq_refs:
+            r["non_cq_refs"] = non_cq_refs[t]
+        return r
+
+    terms = [row(t) for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
     gaps = [{"term": short(t), "kind": declared[t]}
             for t in sorted(declared) if status(t) == "unused"]
     return terms, gaps
@@ -569,8 +601,9 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     _fold_metadata_into_schema(schema_reasons, metadata, used)
     schema_only = {t for t in schema_reasons if t not in used}
 
+    non_cq_refs = _non_cq_usage([s for s in specs if s not in (cq_specs or [])], declared_set)
     terms, gaps = _classify_terms(declared, used, used_data, used_query,
-                                  schema_only, short, cq_used)
+                                  schema_only, short, cq_used, non_cq_refs)
     # CQ-scoped gaps: declared, non-schema terms no competency question exercises
     # (a superset of `gaps` — includes terms only a non-CQ test covers).
     cq_gaps = [{"term": short(t), "kind": declared[t]}

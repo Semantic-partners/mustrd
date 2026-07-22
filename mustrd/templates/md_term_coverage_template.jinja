@@ -12,7 +12,7 @@ A term is *used* if a passing test exercises it — either in the **input data**
 | Term | Kind | In input data | In SPARQL | In schema | Test Coverage |{% if coverage.has_cq %} By a CQ? |{% endif %}
 |------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
 {% for t in coverage.terms -%}
-| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.status == 'schema' %}🔧 schema{% elif t.by_cq %}✅{% else %}❌{% endif %} |{% endif %}
+| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.status == 'schema' %}🔧 schema{% elif t.by_cq %}✅{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌{% endif %} |{% endif %}
 {% endfor %}
 #### How to read this table
 

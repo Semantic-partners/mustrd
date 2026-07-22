@@ -30,7 +30,7 @@ A term is *used* if a passing test exercises it — either in the **input data**
 | place:Country | class | ✅ | ✅ | · | ✅ covered | ✅ |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
 | place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
-| place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ |
+| place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ unused by CQ — exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL) |
 | gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered | ✅ |

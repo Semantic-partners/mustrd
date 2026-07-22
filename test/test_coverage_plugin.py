@@ -54,9 +54,11 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "foaf:Person" not in text and "foaf" not in text  # external, uncounted
 
     # Term Coverage then By a CQ? (last column): place:Region is covered by a
-    # test but By a CQ? ❌; a schema term shows 🔧 schema in both.
+    # test, so By a CQ? names the non-CQ test that exercises it (linked); a
+    # schema term shows 🔧 schema in both.
     region_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Region "))
-    assert region_row.endswith("| ✅ covered | ❌ |")
+    assert "| ✅ covered | ❌ unused by CQ — exercised by " in region_row
+    assert "region-lookup.mustrd.ttl](" in region_row and region_row.endswith("(data & SPARQL) |")
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))
     assert place_row.endswith("| 🔧 schema | 🔧 schema |")
     # Nothing is dead across all tests, but place:Region is a CQ-scoped gap.
