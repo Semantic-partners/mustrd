@@ -527,6 +527,28 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
     return undeclared
 
 
+def _split_duplicate_cqs(specs):
+    """Partition specs into (duplicate_cqs, kept).
+
+    A competency-question value shared by more than one spec is almost always a
+    copy/paste error, so every spec carrying a duplicated value is dropped from
+    the calculation. `duplicate_cqs` describes what was excluded, for a warning:
+    [{cq, specs: [{name, source_file}, ...]}].
+    """
+    counts = {}
+    for s in specs:
+        counts[s.get("cq")] = counts.get(s.get("cq"), 0) + 1
+    dup_values = {cq for cq, n in counts.items() if cq is not None and n > 1}
+    kept = [s for s in specs if s.get("cq") not in dup_values]
+    duplicate_cqs = [{
+        "cq": cq,
+        "specs": [{"name": s.get("name", "?"),
+                   "source_file": str(s.get("source_file")) if s.get("source_file") else None}
+                  for s in specs if s.get("cq") == cq],
+    } for cq in sorted(dup_values)]
+    return duplicate_cqs, kept
+
+
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
                      non_cq_specs: Optional[List[dict]] = None) -> Optional[dict]:
     """Compute term coverage across specs.
@@ -543,6 +565,9 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     Returns a template context dict, or None if no ontology terms are declared
     (nothing to measure).
     """
+    # Specs sharing a competency-question value are excluded (likely copy/paste).
+    duplicate_cqs, specs = _split_duplicate_cqs(specs)
+
     given_graphs = [s["given"] for s in specs if isinstance(s.get("given"), Graph)]
     declared, metadata = _derive_declared(given_graphs, ontology)
     if not declared:
@@ -575,7 +600,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "covered": covered, "denominator": denominator, "pct": pct,
         "declared_total": len(declared), "schema_count": len(schema_only),
         "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
-        "undeclared": undeclared,
+        "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
         "per_cq": [{
             "name": u.name, "cq": u.competency_question, "status": _status(u),
             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,

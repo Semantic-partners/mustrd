@@ -42,6 +42,8 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "Test Status" in text and "Coverage Status" in text
     # 3 of the 4 tests in the suite are competency questions (region-lookup isn't).
     assert "3 of 4 tests are competency questions" in text
+    # The example's CQs are all distinct -> no duplicate-CQ warning.
+    assert "Duplicate competency questions" not in text
     # Coverage Status surfaces each CQ's undeclared terms; the clean CQ is ✅.
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text

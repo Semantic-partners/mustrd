@@ -16,6 +16,12 @@ report is framed as an **Ontologies Report**:
    the declared terms no CQ exercises, and any terms a CQ references that are
    *not* declared in the ontology (likely typos or missing definitions).
 
+If several specs share the same `must:competencyQuestion` value (usually a
+copy/paste slip), those specs are **excluded from the calculation** and listed
+under a *Duplicate competency questions* warning. An ontology term that no CQ
+exercises but a **non-CQ** mustrd test does is still counted as uncovered, but
+its Status links the test that exercises it, so it doesn't look dead.
+
 It is printed to **stdout**; adding `--md` also writes it to the report file
 (creating the parent directory if needed). The Competency Questions table is part
 of this report. Without `--term-coverage`, `--md` is unchanged — it writes the

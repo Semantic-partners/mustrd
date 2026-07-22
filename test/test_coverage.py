@@ -119,6 +119,20 @@ def test_unused_term_notes_non_cq_test_that_exercises_it():
     assert "non_cq_refs" not in by["onto:City"] or by["onto:City"]["status"] != "unused"
 
 
+def test_duplicate_competency_questions_are_excluded_and_warned():
+    # Two specs share the same CQ text (copy/paste). Both are excluded from the
+    # calculation and reported under duplicate_cqs; a spec with a unique CQ counts.
+    dup_a = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl", cq="dupe?")
+    dup_b = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="b.mustrd.ttl", cq="dupe?")
+    unique = _spec(given=_graph(DATA), queries=[QUERY], name="c.mustrd.ttl", cq="unique?")
+    cov = compute_coverage([dup_a, dup_b, unique], ontology=_graph(ONTO))
+    dupes = cov["duplicate_cqs"]
+    assert len(dupes) == 1 and dupes[0]["cq"] == "dupe?"
+    assert {s["name"] for s in dupes[0]["specs"]} == {"a.mustrd.ttl", "b.mustrd.ttl"}
+    # Only the unique CQ contributes to the per-CQ breakdown / usage.
+    assert {c["name"] for c in cov["per_cq"]} == {"c.mustrd.ttl"}
+
+
 def test_tbox_only_given_yields_no_usage():
     # The ontology on its own declares terms but instantiates/queries nothing,
     # proving TBox declarations do not inflate coverage. With nothing used,

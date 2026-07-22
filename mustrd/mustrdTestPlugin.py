@@ -10,7 +10,7 @@ from pytest import Session
 from mustrd import logger_setup
 from mustrd.TestResult import (
     TestResult, render_cq_table, render_term_coverage, render_ontologies,
-    ResultList, get_result_list,
+    render_duplicate_cqs, ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
@@ -196,6 +196,7 @@ def _link_report_refs(coverage, base):
         return
     ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
     ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("terms", [])]
+    ref_lists += [d.get("specs", []) for d in coverage.get("duplicate_cqs", [])]
     for refs in ref_lists:
         for ref in refs:
             src = ref.get("source_file")
@@ -539,6 +540,8 @@ class MustrdTestPlugin:
         parts.append(render_cq_table(cq_results, group_totals))
         if coverage is not None:
             _link_report_refs(coverage, parent or ".")
+            if coverage.get("duplicate_cqs"):
+                parts.append(render_duplicate_cqs(coverage["duplicate_cqs"]))
             parts.append(render_term_coverage(coverage))
         return "\n\n".join(parts)
 
@@ -562,8 +565,9 @@ class MustrdTestPlugin:
 
     @staticmethod
     def _apply_coverage_status(cq_results, coverage):
-        """Per-CQ Coverage Status: the undeclared terms each CQ references (from
-        the 'used but not declared' analysis), or ✅ passed if none."""
+        """Per-CQ Coverage Status: excluded (duplicate CQ), else the undeclared
+        terms the CQ references (from 'used but not declared'), else ✅ passed."""
+        dup_names = {s["name"] for d in coverage.get("duplicate_cqs", []) for s in d["specs"]}
         issues = {}
         for term in coverage.get("undeclared", []):
             for ref in term["refs"]:
@@ -575,6 +579,9 @@ class MustrdTestPlugin:
                     where = "SPARQL"
                 issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
         for tr in cq_results:
+            if tr.test_name in dup_names:
+                tr.coverage_status = "⚠️ excluded (duplicate competency question)"
+                continue
             probs = issues.get(tr.test_name)
             tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
 
