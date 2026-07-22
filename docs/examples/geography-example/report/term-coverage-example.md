@@ -21,19 +21,19 @@ _(11 declared; 2 structural/schema term(s) excluded from the denominator — see
 
 A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
 
-| Term | Kind | In input data | In SPARQL | In schema | By a CQ? | Status |
+| Term | Kind | In input data | In SPARQL | In schema | Test Coverage | By a CQ? |
 |------|------|:---:|:---:|:---:|:---:|:---:|
-| gov:Mayor | class | ✅ | ✅ | · | ✅ | ✅ covered |
-| place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ | ✅ covered |
-| place:City | class | ✅ | ✅ | · | ✅ | ✅ covered |
-| place:Continent | class | ✅ | ❌ | · | ✅ | ✅ covered |
-| place:Country | class | ✅ | ✅ | · | ✅ | ✅ covered |
-| place:Place | class | ❌ | ❌ | ✅ | ❌ | 🔧 schema |
-| place:Province | class | ✅ | ❌ | · | ✅ | ✅ covered |
-| place:Region | class | ✅ | ✅ | · | ❌ | ✅ covered |
-| gov:governs | property | ✅ | ✅ | · | ✅ | ✅ covered |
-| place:basedOnStandard | property | ❌ | ❌ | ✅ | ❌ | 🔧 schema |
-| place:isLocatedIn | property | ✅ | ✅ | · | ✅ | ✅ covered |
+| gov:Mayor | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered | ✅ |
+| place:City | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| place:Continent | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| place:Country | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| place:Place | class | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
+| place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ |
+| gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
+| place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
+| place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered | ✅ |
 
 #### How to read this table
 
@@ -47,7 +47,7 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
 | ❌ | ❌ | | **unused** | not exercised by any test, nor structural to one |
 
-**By a CQ?** shows whether a *competency question* (not just any test) exercises the term — ❌ here means the term is covered only by non-CQ tests, so it lacks CQ coverage.
+**By a CQ?** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 schema (excluded, so not applicable).
 
 ### Not used by any test
 
