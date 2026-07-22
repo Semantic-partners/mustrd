@@ -424,7 +424,7 @@ class MustrdTestPlugin:
         # it, --md keeps its pre-existing behaviour: a ResultList of every test.
         if self.md_path:
             if report_coverage:
-                md = self._render_coverage_report(cq_results, coverage)
+                md = self._render_coverage_report(cq_results, coverage, test_results)
             else:
                 md = self._render_result_list(test_results, last_is_mustrd)
             parent = os.path.dirname(self.md_path)
@@ -509,19 +509,24 @@ class MustrdTestPlugin:
         )
         return result_list.render()
 
-    def _render_coverage_report(self, cq_results, coverage):
+    def _render_coverage_report(self, cq_results, coverage, all_results):
         """The --term-coverage report: ontologies -> CQ table -> term coverage.
         Links are relative to the report dir so they resolve in a previewer."""
         parent = os.path.dirname(self.md_path)
         self._link_cq_specs(cq_results, parent)
         if coverage is not None:
             self._apply_coverage_status(cq_results, coverage)
+        # Total tests per group (by pytest_path), so the CQ table can show how
+        # many of a group's tests are competency questions.
+        group_totals = {}
+        for tr in all_results:
+            group_totals[tr.class_name] = group_totals.get(tr.class_name, 0) + 1
         parts = []
         ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
         if ontologies:
             parts.append("# Ontologies Report")
             parts.append(render_ontologies(ontologies))
-        parts.append(render_cq_table(cq_results))
+        parts.append(render_cq_table(cq_results, group_totals))
         if coverage is not None:
             _link_undeclared_refs(coverage, parent or ".")
             parts.append(render_term_coverage(coverage))

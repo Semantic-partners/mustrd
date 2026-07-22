@@ -15,7 +15,7 @@ both ontologies.
 | [`ontology/place.ttl`](ontology/place.ttl) | Places (`Place`, `City`, `Country`, …) and `isLocatedIn`, plus an ontology-level metadata property. |
 | [`ontology/governance.ttl`](ontology/governance.ttl) | A second ontology: `Mayor` (a subclass of `foaf:Person`) and `governs`, which ranges over `place:City` — so it reuses both an external vocabulary and the place one. |
 | [`data/`](data/) | The `given` instance data for each spec. |
-| [`specs/`](specs/) | The three competency-question specs (`must:competencyQuestion`, a `SELECT` `when`, and a `then` table). The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
+| [`specs/`](specs/) | The three competency-question specs (`must:competencyQuestion`, a `SELECT` `when`, and a `then` table), plus one **non-CQ** spec (`region-lookup.mustrd.ttl`). The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
 | [`report/term-coverage-example.md`](report/term-coverage-example.md) | The generated report (committed so it can be viewed on GitHub). |
 
 ## Run it
@@ -52,6 +52,10 @@ catches:
 
 - `place:Region` is declared but no CQ exercises it — a genuine **gap** (the
   1-of-9 that drops coverage below 100%), listed under *Not used by any CQ*.
+  Note `region-lookup.mustrd.ttl` *does* use `place:Region` (and passes), but it
+  has no `must:competencyQuestion`, so it is excluded from the CQ table and from
+  coverage — `place:Region` stays a gap. This demonstrates that **coverage is
+  competency-question-only**: a plain test exercising a term doesn't count.
 - `place:hasEconomicArea` (in the country spec's data) and `gov:appointedOn` (in
   the mayor spec's SPARQL) are used but never declared in their ontologies, so
   they appear under **⚠️ Used but not declared** — likely typos or missing

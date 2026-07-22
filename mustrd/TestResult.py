@@ -125,9 +125,10 @@ class ResultList:
         return environment.get_template(template).render(result_list=self.result_list, environment=environment)
 
 
-def render_cq_table(test_results: list) -> str:
+def render_cq_table(test_results: list, group_totals: dict = None) -> str:
     # Group by (module, class) — rendered as a heading — so those columns drop
     # out of the table. Insertion order is preserved (session result order).
+    group_totals = group_totals or {}
     groups = {}
     for r in test_results:
         key = (r.module_name, r.class_name)
@@ -135,11 +136,16 @@ def render_cq_table(test_results: list) -> str:
             groups[key] = {"module_name": r.module_name, "module_link": r.module_link,
                            "class_name": r.class_name, "results": []}
         groups[key]["results"].append(r)
+    group_list = list(groups.values())
+    # Per group: how many CQs are shown out of all tests in that group.
+    for g in group_list:
+        g["cq_count"] = len(g["results"])
+        g["total_tests"] = group_totals.get(g["class_name"], g["cq_count"])
     # The Coverage Status column only appears when term coverage was computed.
     show_coverage = any(getattr(r, "coverage_status", None) is not None for r in test_results)
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(
-        groups=list(groups.values()), show_coverage=show_coverage)
+        groups=group_list, show_coverage=show_coverage)
 
 
 def render_term_coverage(coverage: dict) -> str:

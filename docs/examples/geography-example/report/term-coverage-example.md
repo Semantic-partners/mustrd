@@ -12,6 +12,8 @@ Coverage below is measured against these ontologies:
 
 ### [mustrd-config.ttl](../mustrd-config.ttl) — rdflib
 
+_3 of 4 tests are competency questions._
+
 | Competency Question | Test | Test Status | Coverage Status |
 |---------------------|------|-------------|-----------------|
 | In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |

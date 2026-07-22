@@ -1,0 +1,4 @@
+@prefix place: <http://example.org/place#> .
+@prefix ex:    <http://example.org/> .
+
+ex:Randstad a place:Region .

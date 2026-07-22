@@ -40,6 +40,8 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "In what administrative division of what country is Rotterdam?" in text
     assert "Who is the mayor of Rotterdam?" in text
     assert "Test Status" in text and "Coverage Status" in text
+    # 3 of the 4 tests in the suite are competency questions (region-lookup isn't).
+    assert "3 of 4 tests are competency questions" in text
     # Coverage Status surfaces each CQ's undeclared terms; the clean CQ is ✅.
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
@@ -55,8 +57,12 @@ def test_term_coverage_report_is_generated(tmp_path):
     # declared here, so it is external and must not appear in coverage at all.
     assert "foaf:Person" not in text and "foaf" not in text
 
-    # place:Region is declared but no CQ exercises it -> a genuine gap.
+    # place:Region is declared but no CQ exercises it -> a genuine gap. The
+    # region-lookup spec DOES use place:Region (in data and SPARQL) and passes,
+    # but it has no must:competencyQuestion, so it is excluded from the CQ table
+    # and from coverage — proving coverage is competency-question-only.
     assert "place:Region (class) — declared in the ontology" in text
+    assert "region-lookup" not in text
     # place:hasEconomicArea is used in the country data but not declared in
     # place.ttl, yet sits in the ontology's namespace -> flagged as
     # used-but-not-declared, listing the referencing CQ (linked to its spec) and

@@ -1,0 +1,16 @@
+# A valid mustrd test that exercises place:Region, but WITHOUT a
+# must:competencyQuestion. It proves coverage is CQ-only: even though this test
+# passes and uses place:Region, coverage still reports place:Region as unused.
+@prefix must: <https://mustrd.org/model/> .
+@prefix ex:   <http://example.org/> .
+@prefix :     <http://example.org/place/example/> .
+
+:regionLookup
+    a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "region.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 must:queryText """PREFIX place: <http://example.org/place#>
+SELECT ?region WHERE { ?region a place:Region }""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "region" ; must:boundValue ex:Randstad ] ] ] .

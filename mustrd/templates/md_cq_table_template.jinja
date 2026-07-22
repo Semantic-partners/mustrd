@@ -2,6 +2,8 @@
 {% for g in groups %}
 ### {% if g.module_link %}[{{ g.module_name }}]({{ g.module_link }}){% else %}{{ g.module_name }}{% endif %}{% if g.class_name %} — {{ g.class_name }}{% endif %}
 
+_{{ g.cq_count }} of {{ g.total_tests }} tests are competency questions._
+
 | Competency Question | Test | Test Status |{% if show_coverage %} Coverage Status |{% endif %}
 |---------------------|------|-------------|{% if show_coverage %}-----------------|{% endif %}
 {% for result in g.results -%}
