@@ -1,11 +1,12 @@
 # Ontology term-coverage example
 
-A small, runnable mustrd suite that demonstrates the `--term-coverage` feature
-(see [`../../ontology-term-coverage.md`](../../ontology-term-coverage.md) for the
-design). **Two** ontologies — a place vocabulary and a small governance
-vocabulary that reuses it — are validated by three competency-question specs;
-the report shows which declared terms those passing CQs actually exercise, across
-both ontologies.
+A small, runnable mustrd suite that demonstrates the `--term-coverage` and `--cq`
+features (see [`../../ontology-term-coverage.md`](../../ontology-term-coverage.md)
+for the design). **Two** ontologies — a place vocabulary and a small governance
+vocabulary that reuses it — are exercised by four mustrd tests (three with a
+competency question, one without). The report shows which declared terms the
+tests exercise across both ontologies, and how much of that is backed by a
+competency question.
 
 ## Layout
 
@@ -24,7 +25,7 @@ From the repo root, scoped to this directory so only these specs run:
 
 ```bash
 (cd docs/examples/geography-example && \
-   pytest . --mustrd --config=mustrd-config.ttl --term-coverage \
+   pytest . --mustrd --config=mustrd-config.ttl --term-coverage --cq \
           --md=report/term-coverage-example.md)
 ```
 
@@ -36,33 +37,27 @@ the report stays correct.
 ## What it shows
 
 **Multiple ontologies:** the report's *Ontologies* section lists both files
-(each with its `owl:Ontology` IRI and description), and coverage is measured
-against their combined declared terms — **8/9 domain terms covered (89%)** across
-11 declared. Two are reported as **schema** terms (excluded from the denominator
-rather than counted as gaps):
+(each with its `owl:Ontology` IRI and description); coverage is measured against
+their combined declared terms (11 declared, 2 excluded as **schema**):
 
 - `place:Place` — the abstract root; not instantiated or queried, but the
   `rdfs:domain`/`rdfs:range` of `place:isLocatedIn` and the superclass of the
-  classes the CQs use.
-- `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata,
-  not part of the domain vocabulary the CQs exercise.
+  classes the tests use.
+- `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata.
 
-**Failure signals:** the example deliberately shows two problems the report
-catches:
+**Two coverage numbers:** the tests exercise **9/9 = 100%** of the (non-schema)
+terms, but only **8/9 = 89%** are backed by a **competency question**. The one
+difference is `place:Region`: `region-lookup.mustrd.ttl` exercises it (in data
+and SPARQL) and passes, but it has no `must:competencyQuestion` — so `place:Region`
+is *covered* yet its **By a CQ?** column is ❌. That's the whole point of the two
+metrics: all-test coverage says nothing's dead; CQ coverage says which
+*requirements* actually pin the term down.
 
-- `place:Region` is declared but no CQ exercises it — a genuine **gap** (the
-  1-of-9 that drops coverage below 100%), listed under *Not used by any CQ*.
-  Note `region-lookup.mustrd.ttl` *does* use `place:Region` (and passes), but it
-  has no `must:competencyQuestion`, so it is excluded from the CQ table and from
-  coverage — `place:Region` stays a gap. This demonstrates that **coverage is
-  competency-question-only**: a plain test exercising a term doesn't count. The
-  term's **Status** does, however, link that non-CQ test — so you can see it
-  isn't dead, it just lacks CQ coverage.
-- `place:hasEconomicArea` (in the country spec's data) and `gov:appointedOn` (in
-  the mayor spec's SPARQL) are used but never declared in their ontologies, so
-  they appear under **⚠️ Used but not declared** — likely typos or missing
-  definitions. Each lists the referencing CQ and whether it was seen in the input
-  data or the SPARQL.
+**Failure signals:** `place:hasEconomicArea` (in the country spec's data) and
+`gov:appointedOn` (in the mayor spec's SPARQL) are used but never declared in
+their ontologies, so they appear under **⚠️ Used but not declared** — likely
+typos or missing definitions. Each lists the referencing test and whether it was
+seen in the input data or the SPARQL.
 
 **External vocabularies aren't counted:** `gov:Mayor` is a subclass of
 `foaf:Person` and `gov:governs`'s domain is `foaf:Person`, but `foaf:Person`

@@ -456,49 +456,22 @@ def _reason_key(r):
     return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
 
-def _non_cq_usage(non_cq_specs, declared_set):
-    """Map each declared term to the non-CQ specs that exercise it (data/query).
+def _classify_terms(declared, used, used_data, used_query, schema_only, short, cq_used):
+    """Per-term matrix rows and the list of genuine gaps (unused by any test).
 
-    Non-CQ mustrd tests never count toward coverage, but when one exercises a
-    term no CQ does, that is worth surfacing — the term is not truly dead.
-    Returns {term_iri: [{name, source_file, in_data, in_query}, ...]}.
+    `cq_used` is the subset of declared terms a competency question exercises;
+    each row carries `by_cq` so the report can flag CQ-backed coverage.
     """
-    refs_by_term = {}
-    for s in non_cq_specs or []:
-        g = s.get("given")
-        s_data = {t for t in (abox_terms(g) if isinstance(g, Graph) else set())
-                  if _is_domain_term(URIRef(t))} & declared_set
-        s_query = set()
-        for q in (s.get("queries") or []):
-            if isinstance(q, str):
-                s_query |= {t for t in query_uris(q) if _is_domain_term(URIRef(t))}
-        s_query &= declared_set
-        for t in s_data | s_query:
-            refs_by_term.setdefault(t, []).append({
-                "name": s.get("name", "?"),
-                "source_file": str(s.get("source_file")) if s.get("source_file") else None,
-                "in_data": t in s_data, "in_query": t in s_query,
-            })
-    return refs_by_term
-
-
-def _classify_terms(declared, used, used_data, used_query, schema_only, short, non_cq_refs):
-    """Per-term matrix rows and the list of genuine gaps. An unused term that a
-    non-CQ test exercises carries that test's references (for the status note)."""
     def status(t):
         if t in used:
             return "covered"
         return "schema" if t in schema_only else "unused"
 
-    def row(t):
-        r = {"term": short(t), "kind": declared[t],
-             "in_data": t in used_data, "in_query": t in used_query,
-             "in_schema": t in schema_only, "status": status(t)}
-        if r["status"] == "unused" and t in non_cq_refs:
-            r["non_cq_refs"] = non_cq_refs[t]
-        return r
-
-    terms = [row(t) for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
+    terms = [{"term": short(t), "kind": declared[t],
+              "in_data": t in used_data, "in_query": t in used_query,
+              "in_schema": t in schema_only, "status": status(t),
+              "by_cq": t in cq_used}
+             for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
     gaps = [{"term": short(t), "kind": declared[t]}
             for t in sorted(declared) if status(t) == "unused"]
     return terms, gaps
@@ -549,64 +522,106 @@ def _split_duplicate_cqs(specs):
     return duplicate_cqs, kept
 
 
+def _serialize_per_cq(per_cq):
+    return [{"name": u.name, "cq": u.competency_question, "status": _status(u),
+             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,
+             "requires_ontology": u.requires_ontology} for u in per_cq]
+
+
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
-                     non_cq_specs: Optional[List[dict]] = None) -> Optional[dict]:
-    """Compute term coverage across specs.
+                     cq_specs: Optional[List[dict]] = None) -> Optional[dict]:
+    """Ontology term coverage across ALL mustrd tests.
 
-    `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}
-    — the competency-question specs coverage is measured over. `non_cq_specs` is
-    the same shape for mustrd tests WITHOUT a competency question; they never
-    count toward coverage, but a term only they exercise is noted on its (unused)
-    row rather than looking wholly dead.
+    `specs` is a list of dicts: {name, passed, given (Graph), queries [str]} —
+    every mustrd test in the suite; coverage is measured over them.
     `ontology` is the graph whose declared terms coverage is measured against;
-    when given, declared terms come from it. When omitted (e.g. in unit tests),
-    declared terms fall back to the union of the specs' given graphs.
+    when omitted (e.g. in unit tests), declared terms fall back to the union of
+    the specs' given graphs.
+    `cq_specs` is the competency-question subset (each also carrying a `cq`
+    value). When given, it adds a CQ overlay: per-term `by_cq`, a CQ coverage
+    percentage, the per-CQ breakdown, and duplicate-CQ detection. CQs sharing a
+    value are excluded from that overlay (likely copy/paste).
 
-    Returns a template context dict, or None if no ontology terms are declared
-    (nothing to measure).
+    Returns a template context dict, or None if no ontology terms are declared.
     """
-    # Specs sharing a competency-question value are excluded (likely copy/paste).
-    duplicate_cqs, specs = _split_duplicate_cqs(specs)
-
     given_graphs = [s["given"] for s in specs if isinstance(s.get("given"), Graph)]
     declared, metadata = _derive_declared(given_graphs, ontology)
     if not declared:
         return None
 
-    short = _build_shortener(specs, given_graphs, ontology)
+    all_specs = specs + [s for s in (cq_specs or []) if s not in specs]
+    short = _build_shortener(all_specs, given_graphs, ontology)
     tbox = _build_tbox(given_graphs, ontology)
     declared_set = set(declared)
 
-    used_data, used_query, referenced_data, referenced_query, per_cq, spec_refs = \
+    # Coverage over every test.
+    used_data, used_query, referenced_data, referenced_query, _, spec_refs = \
         _scan_specs(specs, declared_set, declared, tbox, short)
     used = used_data | used_query
+
+    # CQ overlay: which declared terms competency questions exercise (deduped).
+    duplicate_cqs, cq_kept = _split_duplicate_cqs(cq_specs or [])
+    cq_used_data, cq_used_query, _, _, per_cq, _ = \
+        _scan_specs(cq_kept, declared_set, declared, tbox, short)
+    cq_used = cq_used_data | cq_used_query
 
     schema_reasons = schema_references(tbox, used, declared, short)
     _fold_metadata_into_schema(schema_reasons, metadata, used)
     schema_only = {t for t in schema_reasons if t not in used}
 
-    non_cq_refs = _non_cq_usage(non_cq_specs, declared_set)
     terms, gaps = _classify_terms(declared, used, used_data, used_query,
-                                  schema_only, short, non_cq_refs)
+                                  schema_only, short, cq_used)
+    # CQ-scoped gaps: declared, non-schema terms no competency question exercises
+    # (a superset of `gaps` — includes terms only a non-CQ test covers).
+    cq_gaps = [{"term": short(t), "kind": declared[t]}
+               for t in sorted(declared) if t not in schema_only and t not in cq_used]
     schema_terms = _schema_term_rows(schema_only, schema_reasons, declared, short)
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)
 
-    covered = sum(1 for t in declared if t in used)
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
-    pct = round(100.0 * covered / denominator) if denominator else 0
+    covered = sum(1 for t in declared if t in used)
+    covered_by_cq = sum(1 for t in declared if t in cq_used)
 
     return {
-        "covered": covered, "denominator": denominator, "pct": pct,
+        "covered": covered, "denominator": denominator,
+        "pct": round(100.0 * covered / denominator) if denominator else 0,
         "declared_total": len(declared), "schema_count": len(schema_only),
-        "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
+        "has_cq": bool(cq_specs),
+        "covered_by_cq": covered_by_cq,
+        "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
+        "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
-        "per_cq": [{
-            "name": u.name, "cq": u.competency_question, "status": _status(u),
-            "credited": u.passed, "data": u.data_terms, "query": u.query_terms,
-            "requires_ontology": u.requires_ontology,
-        } for u in per_cq],
+        "per_cq": _serialize_per_cq(per_cq),
     }
+
+
+def cq_only_view(cq_specs: List[dict]) -> dict:
+    """Competency-question breakdown WITHOUT an ontology (for --cq on its own).
+
+    Lists every non-well-known term each CQ references — unchecked, so it may
+    include terms no ontology declares — plus duplicate-CQ detection. `unchecked`
+    flags that no ontology was consulted, so the report can say so.
+    """
+    given_graphs = [s["given"] for s in cq_specs if isinstance(s.get("given"), Graph)]
+    all_queries = [q for s in cq_specs for q in (s.get("queries") or []) if isinstance(q, str)]
+    short = _shortener(given_graphs, all_queries)
+    duplicate_cqs, kept = _split_duplicate_cqs(cq_specs)
+    per_cq = []
+    for s in kept:
+        g = s.get("given")
+        d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set()) if _is_domain_term(URIRef(t))}
+        q = set()
+        for query in (s.get("queries") or []):
+            if isinstance(query, str):
+                q |= {t for t in query_uris(query) if _is_domain_term(URIRef(t))}
+        per_cq.append({"name": s.get("name", "?"), "cq": s.get("cq"),
+                       "status": "passed" if s.get("passed") else "not passed",
+                       "credited": bool(s.get("passed")),
+                       "data": sorted(short(t) for t in d),
+                       "query": sorted(short(t) for t in q),
+                       "requires_ontology": False})
+    return {"per_cq": per_cq, "duplicate_cqs": duplicate_cqs, "unchecked": True}
 
 
 def _status(u: SpecUsage) -> str:

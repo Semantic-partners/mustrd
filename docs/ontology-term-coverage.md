@@ -1,32 +1,34 @@
-# Ontology term coverage from competency-question specs
+# Ontology term coverage
 
 **Status:** Implemented (draft PR).
-**Builds on:** `feature/cq_parsing` (the `must:competencyQuestion` annotation and
-the CQ results table).
 
-Ontology term coverage is **opt-in** via `--term-coverage`. When enabled the
-report is framed as an **Ontologies Report**:
+Two independent, opt-in flags:
 
-1. **Ontologies** — the files measured against, as clickable links (relative to
-   the report so they render in a Markdown previewer), each with the
-   `owl:Ontology` IRI and description found in it;
-2. **Competency Questions** — the CQ pass/fail table, each test name linking to
-   its `.mustrd.ttl` spec;
-3. **Ontology term coverage** — the percentage, per-term matrix, schema terms,
-   the declared terms no CQ exercises, and any terms a CQ references that are
-   *not* declared in the ontology (likely typos or missing definitions).
+- **`--term-coverage`** — ontology term coverage over **all mustrd tests**. It
+  needs an ontology (`:hasOntologyPath`) and produces:
+  1. **Ontologies** — the files measured against, as clickable links (relative to
+     the report so they render in a Markdown previewer), each with the
+     `owl:Ontology` IRI and description;
+  2. **Ontology term coverage** — the percentage, a per-term matrix, the schema
+     terms, the declared terms **not used by any test**, and any terms a test
+     references that are *not* declared (likely typos / missing definitions).
+- **`--cq`** — competency-question sections: a **Competency Questions** table and
+  a **Per competency question** breakdown. Needs no ontology and can be used on
+  its own.
 
-If several specs share the same `must:competencyQuestion` value (usually a
-copy/paste slip), those specs are **excluded from the calculation** and listed
-under a *Duplicate competency questions* warning. An ontology term that no CQ
-exercises but a **non-CQ** mustrd test does is still counted as uncovered, but
-its Status links the test that exercises it, so it doesn't look dead.
+The flags **compose**. With both, coverage gains a CQ overlay: a second headline
+percentage (how much of the ontology the *competency questions* cover, vs all
+tests), a **By a CQ?** column per term, a second **Not used by any CQ** gap list
+(CQ-scoped, alongside the all-tests one), a Coverage Status column in the CQ
+table, and — because duplicate `must:competencyQuestion` values are usually a
+copy/paste slip — those CQs are excluded from the CQ overlay and listed under a
+*Duplicate competency questions* warning.
 
 It is printed to **stdout**; adding `--md` also writes it to the report file
-(creating the parent directory if needed). The Competency Questions table is part
-of this report. Without `--term-coverage`, `--md` is unchanged — it writes the
-standard test-results summary (a `ResultList` of every test), no ontology
-required.
+The report is printed to **stdout**; adding `--md` also writes it to the file
+(creating the parent directory if needed). With **neither** flag, `--md` is
+unchanged — it writes the standard test-results summary (a `ResultList` of every
+test), no ontology required.
 
 The ontology to measure against is named in the test configuration with
 `mustrdTest:hasOntologyPath`. The value is a path (relative to the config file)
@@ -43,11 +45,14 @@ files. The property may be **repeated** for multiple ontologies:
 ```
 
 ```bash
-# coverage to stdout
-pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage
+# ontology coverage over all tests, to stdout
+pytest --mustrd --config=config.ttl --term-coverage
 
-# coverage to stdout AND appended to the md report
-pytest --mustrd --config=path/to/mustrd-config.ttl --term-coverage --md=report.md
+# coverage + competency-question sections, written to a report file
+pytest --mustrd --config=config.ttl --term-coverage --cq --md=report.md
+
+# competency-question table only (no ontology needed)
+pytest --mustrd --config=config.ttl --cq --md=report.md
 ```
 
 If `--term-coverage` is given but no `hasOntologyPath` is set, mustrd **fails
@@ -149,29 +154,26 @@ directly (the queried types are the instantiated types) is not flagged.
 ## Worked example
 
 Two ontologies — a place vocabulary and a small governance vocabulary that
-reuses it (11 declared terms in total) — measured against three competency
-questions (*"In which country is Rotterdam?"*, *"In what administrative division
-of what country is Rotterdam?"*, and *"Who is the mayor of Rotterdam?"*) produce
-the report in
-[`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md).
-That report is generated from the runnable fixtures in
-[`examples/geography-example/`](examples/geography-example/) (config, two
-ontologies, data, and the three CQ specs) — see the README there for the command
-to regenerate it, and `test/test_coverage_plugin.py` which asserts it stays
-correct. The headline: **8/9 terms (89%)**, coverage measured across both
-ontologies at once. Two declared terms are reported as **schema** and excluded
-from the denominator rather than counted as gaps: `place:Place` (the abstract
-root — domain/range of `place:isLocatedIn` and superclass of the used classes)
-and `place:basedOnStandard` (an `owl:OntologyProperty` — ontology-level
-metadata). `gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is
-only referenced, not declared in these ontologies, so it is not counted.
+reuses it (11 declared terms in total) — exercised by four mustrd tests (three
+with a competency question, one without) produce the report in
+[`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md),
+generated from the runnable fixtures in
+[`examples/geography-example/`](examples/geography-example/) — see the README
+there for the command, and `test/test_coverage_plugin.py` which asserts it stays
+correct. The headline: **9/9 terms (100%)** exercised by the tests, of which
+**8/9 (89%)** are backed by a competency question. Two declared terms are
+reported as **schema** and excluded from the denominator: `place:Place` (the
+abstract root) and `place:basedOnStandard` (an `owl:OntologyProperty`).
+`gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is only referenced,
+not declared, so it is not counted.
 
-The example also shows the two failure signals: `place:Region` is declared but
-no CQ exercises it, so it is a **gap** (the 1 of 9 that drops coverage below
-100%); and two terms appear under **⚠️ Used but not declared** —
-`place:hasEconomicArea` (used in a `given`, tagged *input data*) and
-`gov:appointedOn` (used only in the mayor query, tagged *SPARQL*) — each likely a
-typo or missing definition, listed with the CQ that references it.
+The single-term gap between the two percentages is `place:Region`: the non-CQ
+`region-lookup` test exercises it (so it is **covered**), but no competency
+question does (so its **By a CQ?** column is ❌). The example also shows two
+**⚠️ Used but not declared** terms — `place:hasEconomicArea` (in a `given`,
+tagged *input data*) and `gov:appointedOn` (in the mayor query, tagged *SPARQL*)
+— each likely a typo or missing definition, listed with the test that references
+it.
 
 The value the CQ table cannot give today: a percentage, the schema/structural
 terms called out separately, and — when one exists — the exact list of declared

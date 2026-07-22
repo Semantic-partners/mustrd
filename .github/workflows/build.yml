@@ -36,11 +36,10 @@ jobs:
       - name: Run mustrd tests
         run:  poetry run pytest --mustrd --md=junit/github_job_summary.md --config=.github/test_config.ttl
       - name: Run ontology term-coverage example
-        # Runs the runnable geography example with --term-coverage so its
-        # Ontologies Report shows up in the job summary below and the committed
-        # report is regenerated. Collection is scoped to the example dir, so only
-        # its two CQ specs run (both pass).
-        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --md=docs/examples/geography-example/report/term-coverage-example.md
+        # Runs the runnable geography example with --term-coverage --cq so its
+        # report shows up in the job summary below and the committed report is
+        # regenerated. Collection is scoped to the example dir.
+        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --cq --md=docs/examples/geography-example/report/term-coverage-example.md
         if: ${{ always() }}
       - name: Upload pytest test results
         if: ${{ always() }}

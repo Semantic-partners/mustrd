@@ -1,4 +1,4 @@
-"""End-to-end tests for the --term-coverage plugin wiring.
+"""End-to-end tests for the --term-coverage / --cq plugin wiring.
 
 Runs the mustrd pytest plugin over the runnable example in
 docs/examples/geography-example (the same fixtures the worked-example report
@@ -15,75 +15,58 @@ EXAMPLE = Path("docs/examples/geography-example")
 CONFIG = EXAMPLE / "mustrd-config.ttl"
 
 
-def _run(md_path, term_coverage):
+def _run(md_path, term_coverage=False, cq=False):
     plugin = MustrdTestPlugin(
-        str(md_path) if md_path else None, CONFIG, None, term_coverage=term_coverage
+        str(md_path) if md_path else None, CONFIG, None,
+        term_coverage=term_coverage, cq=cq,
     )
     pytest.main([str(EXAMPLE), "-p", "no:cacheprovider"], plugins=[plugin])
     return plugin
 
 
-def test_term_coverage_report_is_generated(tmp_path):
+def test_full_report_term_coverage_and_cq(tmp_path):
     md = tmp_path / "report.md"
-    _run(md, term_coverage=True)
+    _run(md, term_coverage=True, cq=True)
     text = md.read_text()
 
-    # Ontologies section names BOTH ontologies measured against, with IRIs/desc.
-    assert "these ontologies" in text  # plural header
+    # Ontologies section names BOTH ontologies, with IRIs/description.
+    assert "these ontologies" in text
     assert "place.ttl" in text and "http://example.org/place#" in text
     assert "governance.ttl" in text and "http://example.org/governance#" in text
-    assert "A minimal vocabulary for places" in text
 
-    # All three competency questions appear in the CQ table, which has both a
-    # Test Status and a Coverage Status column.
+    # CQ table: three CQs, Test + Coverage Status columns, 3-of-4 count.
     assert "In which country is Rotterdam?" in text
-    assert "In what administrative division of what country is Rotterdam?" in text
     assert "Who is the mayor of Rotterdam?" in text
     assert "Test Status" in text and "Coverage Status" in text
-    # 3 of the 4 tests in the suite are competency questions (region-lookup isn't).
     assert "3 of 4 tests are competency questions" in text
-    # The example's CQs are all distinct -> no duplicate-CQ warning.
     assert "Duplicate competency questions" not in text
-    # Coverage Status surfaces each CQ's undeclared terms; the clean CQ is ✅.
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
 
-    # 8/9 = 89%: 11 declared across both ontologies, two schema terms excluded
-    # (place:Place and the ontology-level metadata place:basedOnStandard), and one
-    # genuine gap (place:Region) dropping coverage below 100%.
-    assert "8/9 terms used to answer the CQs = 89%" in text
+    # Two coverage metrics: all tests 9/9=100%, competency questions 8/9=89%.
+    assert "9/9 terms exercised by the tests = 100%" in text
+    assert "By a competency question: 8/9 = 89%" in text
     assert "11 declared; 2 structural/schema term(s) excluded" in text
-    assert "place:Place" in text and "gov:Mayor" in text
-    assert "place:basedOnStandard (property) — ontology property" in text
-    # foaf:Person is referenced (Mayor's superclass / governs' domain) but not
-    # declared here, so it is external and must not appear in coverage at all.
-    assert "foaf:Person" not in text and "foaf" not in text
+    assert "foaf:Person" not in text and "foaf" not in text  # external, uncounted
 
-    # place:Region is exercised by no CQ. region-lookup DOES use it (data + SPARQL)
-    # and passes, but has no must:competencyQuestion, so it is excluded from the CQ
-    # table ("3 of 4" above) and doesn't count toward coverage — place:Region stays
-    # unused. Its Status notes the non-CQ test and links to it.
-    assert "place:Region (class) — declared in the ontology" in text
+    # place:Region is covered (a non-CQ test exercises it) but By a CQ? is ❌.
     region_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Region "))
-    assert "unused by CQ — exercised by" in region_row
-    assert "region-lookup.mustrd.ttl](" in region_row
-    # place:hasEconomicArea is used in the country data but not declared in
-    # place.ttl, yet sits in the ontology's namespace -> flagged as
-    # used-but-not-declared, listing the referencing CQ (linked to its spec) and
-    # tagging it as referenced in the input data (not SPARQL).
+    assert region_row.endswith("| ❌ | ✅ covered |")
+    # Nothing is dead across all tests, but place:Region is a CQ-scoped gap.
+    assert "## Not used by any test" in text
+    assert "## Not used by any CQ" in text
+    cq_gaps = text.split("## Not used by any CQ", 1)[1].split("##", 1)[0]
+    assert "place:Region" in cq_gaps
+    assert "place:basedOnStandard (property) — ontology property" in text
+
+    # Used but not declared: one input-data term, one SPARQL term, each linked.
     assert "## ⚠️ Used but not declared" in text
-    # place:hasEconomicArea — used in the country data, tagged input data.
-    assert "- **place:hasEconomicArea**" in text
     data_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— input data"))
     assert "country-of-rotterdam.mustrd.ttl" in data_line and "](" in data_line
-    # gov:appointedOn — referenced only in the mayor query (OPTIONAL), tagged SPARQL.
-    assert "- **gov:appointedOn**" in text
     sparql_line = next(ln for ln in text.splitlines() if ln.strip().endswith("— SPARQL"))
     assert "mayor-of-rotterdam.mustrd.ttl" in sparql_line and "](" in sparql_line
 
-    # The division CQ matches its data only via the class hierarchy (queries
-    # AdministrativeDivision, data has Province), so it is flagged as needing the
-    # ontology loaded; the country CQ (direct types) is not.
+    # Per-CQ: the division CQ needs the class hierarchy; the country CQ doesn't.
     assert "requires ontology to pass" in text
     bullets = [ln for ln in text.splitlines() if ln.startswith("- **")]
     division = next(ln for ln in bullets if ln.startswith("- **division-and-country"))
@@ -92,19 +75,49 @@ def test_term_coverage_report_is_generated(tmp_path):
     assert "requires ontology to pass" not in country
 
 
-def test_md_without_term_coverage_is_the_result_list(tmp_path):
-    # Additive behaviour: without --term-coverage, --md keeps its pre-existing
-    # (master) form — a ResultList of every test — and none of the coverage
-    # report's sections appear. The competency-question table and coverage are
-    # exclusive to --term-coverage.
+def test_term_coverage_alone_has_no_cq_sections(tmp_path):
+    # --term-coverage without --cq: coverage over all tests, test-framed, and
+    # none of the competency-question extras.
     md = tmp_path / "report.md"
-    _run(md, term_coverage=False)
+    _run(md, term_coverage=True, cq=False)
+    text = md.read_text()
+    assert "9/9 terms exercised by the tests = 100%" in text
+    assert "## Not used by any test" in text
+    # No CQ overlay / sections.
+    assert "By a competency question" not in text
+    assert "By a CQ?" not in text
+    assert "## Competency Questions" not in text
+    assert "## Per competency question" not in text
+    assert "## Not used by any CQ" not in text
+
+
+def test_cq_alone_has_no_ontology_sections(tmp_path):
+    # --cq without --term-coverage: CQ table + per-CQ, no ontology check.
+    md = tmp_path / "report.md"
+    _run(md, cq=True)
+    text = md.read_text()
+    assert "## Competency Questions" in text
+    assert "In which country is Rotterdam?" in text
+    assert "## Per competency question" in text
+    assert "No ontology was checked" in text  # unchecked note
+    # No coverage/ontology sections, and no Coverage Status column.
+    assert "Ontology term coverage" not in text
+    assert "# Ontologies Report" not in text
+    assert "Coverage Status" not in text
+    # Unchecked list includes an undeclared term (no ontology to filter it out).
+    assert "place:hasEconomicArea" in text
+
+
+def test_md_without_flags_is_the_result_list(tmp_path):
+    # Additive: plain --md (no --term-coverage, no --cq) keeps the master
+    # ResultList of every test; no report sections.
+    md = tmp_path / "report.md"
+    _run(md)
     text = md.read_text()
     assert "total:" in text  # ResultList summary line
     assert "# Ontologies Report" not in text
     assert "## Competency Questions" not in text
     assert "Ontology term coverage" not in text
-    assert "Coverage Status" not in text
 
 
 def test_missing_ontology_path_fails_early():

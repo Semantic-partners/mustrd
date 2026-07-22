@@ -10,9 +10,9 @@ from pytest import Session
 from mustrd import logger_setup
 from mustrd.TestResult import (
     TestResult, render_cq_table, render_term_coverage, render_ontologies,
-    render_duplicate_cqs, ResultList, get_result_list,
+    render_duplicate_cqs, render_per_cq, ResultList, get_result_list,
 )
-from mustrd.coverage import compute_coverage, load_ontology, ontology_report
+from mustrd.coverage import compute_coverage, cq_only_view, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -87,9 +87,18 @@ def pytest_addoption(parser):
         "--term-coverage",
         action="store_true",
         dest="term_coverage",
-        help="Report ontology term coverage across the CQ specs: which declared "
-             "terms the passing tests exercise (in data or SPARQL). Prints a "
-             "percentage and table to stdout; also written to the --md file if given.",
+        help="Report ontology term coverage across ALL mustrd tests: which "
+             "declared terms the passing tests exercise (in data or SPARQL). "
+             "Prints a percentage and table to stdout; also written to --md.",
+    )
+    group.addoption(
+        "--cq",
+        action="store_true",
+        dest="cq",
+        help="Add competency-question sections to the report: a Competency "
+             "Questions table and a per-CQ breakdown. Combined with "
+             "--term-coverage it also shows how much of the ontology the CQs "
+             "(vs all tests) cover.",
     )
     return
 
@@ -104,6 +113,7 @@ def pytest_configure(config) -> None:
                 config.getoption("secrets"),
                 config.getoption("ignore_focus"),
                 config.getoption("term_coverage"),
+                config.getoption("cq"),
             )
         )
 
@@ -195,7 +205,6 @@ def _link_report_refs(coverage, base):
     if not coverage:
         return
     ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
-    ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("terms", [])]
     ref_lists += [d.get("specs", []) for d in coverage.get("duplicate_cqs", [])]
     for refs in ref_lists:
         for ref in refs:
@@ -234,12 +243,13 @@ class MustrdTestPlugin:
     collect_error: BaseException
 
     def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
-                 term_coverage=False):
+                 term_coverage=False, cq=False):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.term_coverage = term_coverage
+        self.cq = cq
         self.ontology_paths = []
         self.items = []
 
@@ -405,33 +415,36 @@ class MustrdTestPlugin:
 
     # Take all the test results in session, parse them, and generate the md file.
     def pytest_sessionfinish(self, session: Session, exitstatus):
-        # Nothing to do unless we're writing an md report or reporting coverage.
-        if not self.md_path and not self.term_coverage:
+        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        report_cq = self.cq
+        # Nothing to do unless we're writing an md report or reporting to stdout.
+        if not self.md_path and not report_coverage and not report_cq:
             return
 
-        test_results, cq_results, coverage_specs, non_cq_specs, last_is_mustrd = \
+        test_results, cq_results, all_specs, cq_specs, last_is_mustrd = \
             self._collect_results(session)
 
-        # Ontology term coverage is opt-in via --term-coverage and is measured over
-        # competency-question specs only. compute_coverage returns None when those
-        # specs declare no ontology terms. A missing ontology already failed early
-        # during collection, so report_coverage tracks "requested and resolved".
-        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        # Ontology term coverage (--term-coverage) is measured over ALL mustrd
+        # tests. The CQ overlay (by-a-CQ signal, CQ %, per-CQ) is added only when
+        # --cq is also set. compute_coverage returns None if nothing is declared.
         coverage = None
         if report_coverage:
             try:
-                coverage = compute_coverage(coverage_specs,
-                                            ontology=load_ontology(self.ontology_paths),
-                                            non_cq_specs=non_cq_specs)
+                coverage = compute_coverage(
+                    all_specs, ontology=load_ontology(self.ontology_paths),
+                    cq_specs=cq_specs if report_cq else None)
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
+        # --cq without --term-coverage: CQ sections with no ontology check.
+        cq_view = cq_only_view(cq_specs) if (report_cq and not report_coverage) else None
 
-        # Markdown report file. With --term-coverage it is the "Ontologies Report"
-        # (ontologies -> competency questions [CQ specs only] -> coverage). Without
-        # it, --md keeps its pre-existing behaviour: a ResultList of every test.
+        # Markdown report. With --term-coverage and/or --cq it is the assembled
+        # report; otherwise --md keeps its pre-existing form: a ResultList of
+        # every test.
         if self.md_path:
-            if report_coverage:
-                md = self._render_coverage_report(cq_results, coverage, test_results)
+            if report_coverage or report_cq:
+                md = self._build_report(cq_results, coverage, cq_view, test_results,
+                                        os.path.dirname(self.md_path) or ".")
             else:
                 md = self._render_result_list(test_results, last_is_mustrd)
             parent = os.path.dirname(self.md_path)
@@ -440,18 +453,17 @@ class MustrdTestPlugin:
             with open(self.md_path, "w") as file:
                 file.write(md)
 
-        # Ontologies + coverage to stdout when requested. Links are relative to
-        # the cwd, which the terminal resolves for click-through.
-        if report_coverage:
-            ontologies = ontology_report(self.ontology_paths)
-            self._report_coverage_to_terminal(session.config, ontologies, coverage)
+        # To stdout (links relative to the cwd, which the terminal linkifies).
+        if report_coverage or report_cq:
+            body = self._build_report(cq_results, coverage, cq_view, test_results, os.getcwd())
+            self._report_to_terminal(session.config, body)
 
     def _collect_results(self, session):
-        """Build a TestResult for every test (for the ResultList --md) plus the
-        competency-question subset and coverage specs (for the coverage report),
-        and the non-CQ mustrd specs (to note terms only they exercise).
-        Returns (test_results, cq_results, coverage_specs, non_cq_specs, last_is_mustrd)."""
-        test_results, cq_results, coverage_specs, non_cq_specs = [], [], [], []
+        """Build a TestResult for every test (for the ResultList --md), plus the
+        mustrd-spec dicts — all of them (coverage is over all tests) and the
+        competency-question subset (the CQ overlay / sections).
+        Returns (test_results, cq_results, all_specs, cq_specs, last_is_mustrd)."""
+        test_results, cq_results, all_specs, cq_specs = [], [], [], []
         is_mustrd = False
         for test_conf, result in session.results.items():
             # Case auto generated tests
@@ -482,14 +494,13 @@ class MustrdTestPlugin:
             test_result._spec_source_file = getattr(spec, 'spec_source_file', None)
             test_results.append(test_result)
 
-            # The coverage report covers competency questions only; other mustrd
-            # specs are kept aside to note terms only they exercise.
-            if cq is not None:
-                cq_results.append(test_result)
-                coverage_specs.append(self._coverage_spec(spec, result, test_name, cq))
-            elif spec is not None:
-                non_cq_specs.append(self._coverage_spec(spec, result, test_name, None))
-        return test_results, cq_results, coverage_specs, non_cq_specs, is_mustrd
+            if spec is not None:
+                cspec = self._coverage_spec(spec, result, test_name, cq)
+                all_specs.append(cspec)
+                if cq is not None:
+                    cq_results.append(test_result)
+                    cq_specs.append(cspec)
+        return test_results, cq_results, all_specs, cq_specs, is_mustrd
 
     @staticmethod
     def _coverage_spec(spec, result, test_name, cq):
@@ -520,29 +531,37 @@ class MustrdTestPlugin:
         )
         return result_list.render()
 
-    def _render_coverage_report(self, cq_results, coverage, all_results):
-        """The --term-coverage report: ontologies -> CQ table -> term coverage.
-        Links are relative to the report dir so they resolve in a previewer."""
-        parent = os.path.dirname(self.md_path)
-        self._link_cq_specs(cq_results, parent)
-        if coverage is not None:
-            self._apply_coverage_status(cq_results, coverage)
-        # Total tests per group (by pytest_path), so the CQ table can show how
-        # many of a group's tests are competency questions.
-        group_totals = {}
-        for tr in all_results:
-            group_totals[tr.class_name] = group_totals.get(tr.class_name, 0) + 1
+    def _build_report(self, cq_results, coverage, cq_view, all_results, link_base):
+        """Assemble the report for the active flags, with links relative to
+        `link_base`. Section order: ontologies -> CQ table -> term coverage ->
+        per-CQ -> duplicate-CQ warning. Coverage sections need `coverage`; CQ
+        sections need `--cq` (using `coverage` when present, else `cq_view`)."""
         parts = []
-        ontologies = ontology_report(self.ontology_paths, link_base=parent or ".")
-        if ontologies:
-            parts.append("# Ontologies Report")
-            parts.append(render_ontologies(ontologies))
-        parts.append(render_cq_table(cq_results, group_totals))
         if coverage is not None:
-            _link_report_refs(coverage, parent or ".")
-            if coverage.get("duplicate_cqs"):
-                parts.append(render_duplicate_cqs(coverage["duplicate_cqs"]))
+            ontologies = ontology_report(self.ontology_paths, link_base=link_base)
+            if ontologies:
+                parts.append("# Ontologies Report")
+                parts.append(render_ontologies(ontologies))
+        if self.cq:
+            self._link_cq_specs(cq_results, link_base)
+            if coverage is not None:
+                self._apply_coverage_status(cq_results, coverage)
+            group_totals = {}
+            for tr in all_results:
+                group_totals[tr.class_name] = group_totals.get(tr.class_name, 0) + 1
+            parts.append(render_cq_table(cq_results, group_totals))
+        if coverage is not None:
+            _link_report_refs(coverage, link_base)
             parts.append(render_term_coverage(coverage))
+        # CQ detail sections (per-CQ, duplicate warning) come from coverage when
+        # available, otherwise from the no-ontology cq_view.
+        view = coverage if coverage is not None else cq_view
+        if self.cq and view is not None:
+            _link_report_refs(view, link_base)
+            if view.get("per_cq"):
+                parts.append(render_per_cq(view["per_cq"], view.get("unchecked", False)))
+            if view.get("duplicate_cqs"):
+                parts.append(render_duplicate_cqs(view["duplicate_cqs"]))
         return "\n\n".join(parts)
 
     def _link_cq_specs(self, cq_results, parent):
@@ -585,20 +604,11 @@ class MustrdTestPlugin:
             probs = issues.get(tr.test_name)
             tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
 
-    def _report_coverage_to_terminal(self, config, ontologies, coverage):
+    def _report_to_terminal(self, config, body):
         tr = config.pluginmanager.get_plugin("terminalreporter")
-        blocks = []
-        if ontologies:
-            blocks.append(render_ontologies(ontologies))
-        if coverage is not None:
-            _link_report_refs(coverage, os.getcwd())
-            blocks.append(render_term_coverage(coverage))
-        else:
-            blocks.append("No ontology term coverage: the configured ontology "
-                          "declares no terms (or could not be parsed).")
-        lines = "\n".join(blocks).splitlines()
+        lines = (body or "No competency questions or ontology coverage to report.").splitlines()
         if tr is not None:
-            tr.section("Ontologies Report", sep="=")
+            tr.section("Mustrd report", sep="=")
             for line in lines:
                 tr.write_line(line)
         else:  # pragma: no cover - terminalreporter is normally present

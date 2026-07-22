@@ -114,21 +114,27 @@ A test spec can record the competency question (CQ) it answers:
     :given ... ; :when ... ; :then ... .
 ```
 
-Passing `--term-coverage` produces an **Ontologies Report** with a **Competency
-Questions table** — one row per CQ spec showing its test status (and its coverage
-status, see below). Plain `--md` is unchanged: it still writes the standard
+Two opt-in report flags build on this, and compose:
+
+- **`--cq`** adds a **Competency Questions** table (one row per CQ, its test
+  status) and a per-CQ breakdown. Needs no ontology.
+- **`--term-coverage`** adds **ontology term coverage over all mustrd tests**
+  (see below). Needs an ontology.
+
+Plain `--md` (neither flag) is unchanged: it still writes the standard
 test-results summary.
 
 ```bash
-pytest --mustrd --config=path/to/config.ttl --md=report.md   # test-results summary
+pytest --mustrd --config=config.ttl --md=report.md            # test-results summary
+pytest --mustrd --config=config.ttl --cq --md=report.md       # + competency questions
 ```
 
 ### Ontology term coverage
 
-Beyond "do my CQs pass?", MustRD can report **how much of your ontology those
-CQs actually exercise**. This is opt-in via `--term-coverage`, which prints an
-overall percentage and a per-term table to stdout (and appends it to the `--md`
-file when one is given).
+`--term-coverage` reports **how much of your ontology your tests actually
+exercise** — an overall percentage and a per-term table (to stdout, and the
+`--md` file if given). Add `--cq` too and it also shows how much is backed by a
+*competency question* (a stricter number) and marks each term `By a CQ?`.
 
 Tell MustRD which ontology to measure against with `:hasOntologyPath` in your
 config — a file or a directory (scanned recursively), repeatable:
@@ -142,30 +148,22 @@ config — a file or a directory (scanned recursively), repeatable:
 ```
 
 ```bash
-# coverage to stdout
-pytest --mustrd --config=path/to/config.ttl --term-coverage
-
-# coverage to stdout AND written to the report file
-pytest --mustrd --config=path/to/config.ttl --term-coverage --md=report.md
+pytest --mustrd --config=config.ttl --term-coverage             # coverage to stdout
+pytest --mustrd --config=config.ttl --term-coverage --cq --md=report.md
 ```
 
 (If `--term-coverage` is set without `:hasOntologyPath`, MustRD fails early and
 tells you exactly what to add.)
 
-A declared term counts as **used** when a *passing* CQ test exercises it — either
-in its input data (as an instance type or asserted predicate) or in its SPARQL
+A declared term counts as **used** when a *passing* test exercises it — either in
+its input data (as an instance type or asserted predicate) or in its SPARQL
 query. Terms that are only structurally referenced (the `rdfs:domain`/`rdfs:range`
 of a used property, a superclass of a used class, or a metadata property such as
 an `owl:AnnotationProperty`/`owl:OntologyProperty`) are reported separately as
 **schema** terms and excluded from the percentage, rather than flagged as gaps.
-The result classifies every term as *fully exercised*, *data-only*, *query-only*,
-*schema*, or *unused* — so untested terms surface immediately.
-
-With `--term-coverage` the output is framed as an **Ontologies Report**: the
-ontologies measured against (as clickable links, each with its `owl:Ontology`
-IRI and description), then the **Competency Questions** table, then the coverage
-section — so it's clear what was checked. When you pass `--md`, the parent
-directory is created automatically if it doesn't exist.
+Every term is classified as *fully exercised*, *data-only*, *query-only*,
+*schema*, or *unused* — so untested terms surface immediately. When you pass
+`--md`, the parent directory is created automatically if it doesn't exist.
 
 See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
 full definition and [`docs/examples/geography-example/report/term-coverage-example.md`](docs/examples/geography-example/report/term-coverage-example.md)

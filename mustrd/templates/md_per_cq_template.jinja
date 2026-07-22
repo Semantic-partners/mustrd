@@ -1,0 +1,11 @@
+## Per competency question
+{% if unchecked %}
+_No ontology was checked (`--cq` without `--term-coverage`), so these lists include every term each CQ references — declared or not._
+{% else %}
+🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
+{% endif %}
+{% for c in per_cq %}
+- **{{ c.name }}** — {{ c.cq or "(no CQ)" }} — _{{ c.status }}_{{ "" if c.credited else " (not credited)" }}{% if c.requires_ontology %} — 🧩 **requires ontology to pass**{% endif %}
+  - in data:  {{ c.data | join(", ") or "(none)" }}
+  - in query: {{ c.query | join(", ") or "(none)" }}
+{% endfor %}

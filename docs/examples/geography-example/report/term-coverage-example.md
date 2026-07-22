@@ -24,25 +24,28 @@ _3 of 4 tests are competency questions._
 
 ## Ontology term coverage
 
-**Overall: 8/9 terms used to answer the CQs = 89%**
+**Overall: 9/9 terms exercised by the tests = 100%**
+
+**By a competency question: 8/9 = 89%**
+
 
 _(11 declared; 2 structural/schema term(s) excluded from the denominator — see below.)_
 
-A term is *used* if a passing CQ test exercises it — either in the **input data** (as an instance type or asserted predicate) or in the **SPARQL** query. Ontology declarations alone do not count.
+A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
 
-| Term | Kind | In input data | In SPARQL | In schema | Status |
-|------|------|:---:|:---:|:---:|:---:|
-| gov:Mayor | class | ✅ | ✅ | · | ✅ covered |
-| place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered |
-| place:City | class | ✅ | ✅ | · | ✅ covered |
-| place:Continent | class | ✅ | ❌ | · | ✅ covered |
-| place:Country | class | ✅ | ✅ | · | ✅ covered |
-| place:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
-| place:Province | class | ✅ | ❌ | · | ✅ covered |
-| place:Region | class | ❌ | ❌ | · | ❌ unused by CQ — exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL) |
-| gov:governs | property | ✅ | ✅ | · | ✅ covered |
-| place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema |
-| place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
+| Term | Kind | In input data | In SPARQL | In schema | By a CQ? | Status |
+|------|------|:---:|:---:|:---:|:---:|:---:|
+| gov:Mayor | class | ✅ | ✅ | · | ✅ | ✅ covered |
+| place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ | ✅ covered |
+| place:City | class | ✅ | ✅ | · | ✅ | ✅ covered |
+| place:Continent | class | ✅ | ❌ | · | ✅ | ✅ covered |
+| place:Country | class | ✅ | ✅ | · | ✅ | ✅ covered |
+| place:Place | class | ❌ | ❌ | ✅ | ❌ | 🔧 schema |
+| place:Province | class | ✅ | ❌ | · | ✅ | ✅ covered |
+| place:Region | class | ✅ | ✅ | · | ❌ | ✅ covered |
+| gov:governs | property | ✅ | ✅ | · | ✅ | ✅ covered |
+| place:basedOnStandard | property | ❌ | ❌ | ✅ | ❌ | 🔧 schema |
+| place:isLocatedIn | property | ✅ | ✅ | · | ✅ | ✅ covered |
 
 ### How to read this table
 
@@ -51,19 +54,26 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | Data | SPARQL | Schema | Role | Meaning |
 |:---:|:---:|:---:|------|---------|
 | ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
-| ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
+| ✅ | ❌ | | **data-only** | instances exist but no test queries it — candidate for a new query |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
 | ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
-| ❌ | ❌ | | **unused** | not exercised by any competency question, nor structural to one. If a *non-CQ* mustrd test exercises it, Status links that test — the term isn't dead, it just lacks CQ coverage |
+| ❌ | ❌ | | **unused** | not exercised by any test, nor structural to one |
+
+**By a CQ?** shows whether a *competency question* (not just any test) exercises the term — ❌ here means the term is covered only by non-CQ tests, so it lacks CQ coverage.
+
+## Not used by any test
+
+_none — every declared term is exercised or structural_
 
 ## Not used by any CQ
 
-- place:Region (class) — declared in the ontology but not exercised by any competency question (nor structural to one)
+- place:Region (class) — not exercised by any competency question (a non-CQ test may still use it)
+
 
 
 ## Structural / schema terms (excluded from coverage)
 
-Not directly exercised, but they define the schema of terms the CQs use:
+Not directly exercised, but they define the schema of terms the tests use:
 
 - place:Place (class) — domain of place:isLocatedIn; range of place:isLocatedIn; superclass of place:AdministrativeDivision
 - place:basedOnStandard (property) — ontology property
@@ -71,7 +81,7 @@ Not directly exercised, but they define the schema of terms the CQs use:
 
 ## ⚠️ Used but not declared
 
-Referenced by a CQ, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
+Referenced by a test, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
 
 - **gov:appointedOn**
   - [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) — SPARQL
@@ -84,12 +94,15 @@ Referenced by a CQ, and in an ontology's namespace, but **not declared** in any 
 
 🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
 
+
 - **country-of-rotterdam.mustrd.ttl** — In which country is Rotterdam? — _passed_
   - in data:  place:City, place:Continent, place:Country, place:isLocatedIn
   - in query: place:Country, place:isLocatedIn
+
 - **division-and-country-of-rotterdam.mustrd.ttl** — In what administrative division of what country is Rotterdam? — _passed_ — 🧩 **requires ontology to pass**
   - in data:  place:City, place:Continent, place:Country, place:Province, place:isLocatedIn
   - in query: place:AdministrativeDivision, place:Country, place:isLocatedIn
+
 - **mayor-of-rotterdam.mustrd.ttl** — Who is the mayor of Rotterdam? — _passed_
   - in data:  gov:Mayor, gov:governs, place:City
   - in query: gov:Mayor, gov:governs, place:City
