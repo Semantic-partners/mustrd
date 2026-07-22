@@ -456,16 +456,49 @@ def _reason_key(r):
     return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
 
-def _classify_terms(declared, used, used_data, used_query, schema_only, short):
-    """Per-term matrix rows and the list of genuine gaps."""
+def _non_cq_usage(non_cq_specs, declared_set):
+    """Map each declared term to the non-CQ specs that exercise it (data/query).
+
+    Non-CQ mustrd tests never count toward coverage, but when one exercises a
+    term no CQ does, that is worth surfacing — the term is not truly dead.
+    Returns {term_iri: [{name, source_file, in_data, in_query}, ...]}.
+    """
+    refs_by_term = {}
+    for s in non_cq_specs or []:
+        g = s.get("given")
+        s_data = {t for t in (abox_terms(g) if isinstance(g, Graph) else set())
+                  if _is_domain_term(URIRef(t))} & declared_set
+        s_query = set()
+        for q in (s.get("queries") or []):
+            if isinstance(q, str):
+                s_query |= {t for t in query_uris(q) if _is_domain_term(URIRef(t))}
+        s_query &= declared_set
+        for t in s_data | s_query:
+            refs_by_term.setdefault(t, []).append({
+                "name": s.get("name", "?"),
+                "source_file": str(s.get("source_file")) if s.get("source_file") else None,
+                "in_data": t in s_data, "in_query": t in s_query,
+            })
+    return refs_by_term
+
+
+def _classify_terms(declared, used, used_data, used_query, schema_only, short, non_cq_refs):
+    """Per-term matrix rows and the list of genuine gaps. An unused term that a
+    non-CQ test exercises carries that test's references (for the status note)."""
     def status(t):
         if t in used:
             return "covered"
         return "schema" if t in schema_only else "unused"
-    terms = [{"term": short(t), "kind": declared[t],
-              "in_data": t in used_data, "in_query": t in used_query,
-              "in_schema": t in schema_only, "status": status(t)}
-             for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
+
+    def row(t):
+        r = {"term": short(t), "kind": declared[t],
+             "in_data": t in used_data, "in_query": t in used_query,
+             "in_schema": t in schema_only, "status": status(t)}
+        if r["status"] == "unused" and t in non_cq_refs:
+            r["non_cq_refs"] = non_cq_refs[t]
+        return r
+
+    terms = [row(t) for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
     gaps = [{"term": short(t), "kind": declared[t]}
             for t in sorted(declared) if status(t) == "unused"]
     return terms, gaps
@@ -494,10 +527,15 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
     return undeclared
 
 
-def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Optional[dict]:
+def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
+                     non_cq_specs: Optional[List[dict]] = None) -> Optional[dict]:
     """Compute term coverage across specs.
 
-    `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}.
+    `specs` is a list of dicts: {name, cq, passed, given (Graph), queries [str]}
+    — the competency-question specs coverage is measured over. `non_cq_specs` is
+    the same shape for mustrd tests WITHOUT a competency question; they never
+    count toward coverage, but a term only they exercise is noted on its (unused)
+    row rather than looking wholly dead.
     `ontology` is the graph whose declared terms coverage is measured against;
     when given, declared terms come from it. When omitted (e.g. in unit tests),
     declared terms fall back to the union of the specs' given graphs.
@@ -522,7 +560,9 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None) -> Opt
     _fold_metadata_into_schema(schema_reasons, metadata, used)
     schema_only = {t for t in schema_reasons if t not in used}
 
-    terms, gaps = _classify_terms(declared, used, used_data, used_query, schema_only, short)
+    non_cq_refs = _non_cq_usage(non_cq_specs, declared_set)
+    terms, gaps = _classify_terms(declared, used, used_data, used_query,
+                                  schema_only, short, non_cq_refs)
     schema_terms = _schema_term_rows(schema_only, schema_reasons, declared, short)
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)

@@ -39,7 +39,7 @@ A term is *used* if a passing CQ test exercises it — either in the **input dat
 | place:Country | class | ✅ | ✅ | · | ✅ covered |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema |
 | place:Province | class | ✅ | ❌ | · | ✅ covered |
-| place:Region | class | ❌ | ❌ | · | ❌ unused |
+| place:Region | class | ❌ | ❌ | · | ❌ unused by CQ — exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL) |
 | gov:governs | property | ✅ | ✅ | · | ✅ covered |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered |
@@ -54,11 +54,11 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
 | ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
-| ❌ | ❌ | | **unused** | declared but neither instantiated, queried, nor structurally referenced |
+| ❌ | ❌ | | **unused** | not exercised by any competency question, nor structural to one. If a *non-CQ* mustrd test exercises it, Status links that test — the term isn't dead, it just lacks CQ coverage |
 
 ## Not used by any CQ
 
-- place:Region (class) — declared in the ontology, never instantiated, queried, nor referenced in the schema of a used term
+- place:Region (class) — declared in the ontology but not exercised by any competency question (nor structural to one)
 
 
 ## Structural / schema terms (excluded from coverage)

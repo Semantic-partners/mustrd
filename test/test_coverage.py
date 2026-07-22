@@ -97,6 +97,28 @@ def test_failing_spec_is_not_credited():
     assert cov["per_cq"][0]["credited"] is False
 
 
+def test_unused_term_notes_non_cq_test_that_exercises_it():
+    # A term no CQ exercises but a non-CQ test does: still unused (not counted),
+    # but its row records the non-CQ test's reference.
+    admin_data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:X a onto:AdministrativeDivision .
+    """)
+    non_cq = {"name": "admin.mustrd.ttl", "source_file": "specs/admin.mustrd.ttl",
+              "given": admin_data, "queries": [], "passed": True}
+    # No CQ exercises anything; declared terms come from the ontology.
+    cov = compute_coverage([_spec(given=_graph(DATA), queries=[])],
+                           ontology=_graph(ONTO), non_cq_specs=[non_cq])
+    by = {t["term"]: t for t in cov["terms"]}
+    admin = by["onto:AdministrativeDivision"]
+    assert admin["status"] == "unused"            # not credited by coverage
+    assert admin["non_cq_refs"][0]["name"] == "admin.mustrd.ttl"
+    assert admin["non_cq_refs"][0]["in_data"] is True
+    # A term nothing exercises has no non_cq_refs key.
+    assert "non_cq_refs" not in by["onto:City"] or by["onto:City"]["status"] != "unused"
+
+
 def test_tbox_only_given_yields_no_usage():
     # The ontology on its own declares terms but instantiates/queries nothing,
     # proving TBox declarations do not inflate coverage. With nothing used,

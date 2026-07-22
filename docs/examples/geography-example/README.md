@@ -55,7 +55,9 @@ catches:
   Note `region-lookup.mustrd.ttl` *does* use `place:Region` (and passes), but it
   has no `must:competencyQuestion`, so it is excluded from the CQ table and from
   coverage — `place:Region` stays a gap. This demonstrates that **coverage is
-  competency-question-only**: a plain test exercising a term doesn't count.
+  competency-question-only**: a plain test exercising a term doesn't count. The
+  term's **Status** does, however, link that non-CQ test — so you can see it
+  isn't dead, it just lacks CQ coverage.
 - `place:hasEconomicArea` (in the country spec's data) and `gov:appointedOn` (in
   the mayor spec's SPARQL) are used but never declared in their ontologies, so
   they appear under **⚠️ Used but not declared** — likely typos or missing

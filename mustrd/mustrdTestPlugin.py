@@ -188,13 +188,16 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
     return convert_function(raw_value) if raw_value else None
 
 
-def _link_undeclared_refs(coverage, base):
-    """Set each undeclared-term reference's `link` (to its spec file) relative to
-    `base` — the report dir for --md, the cwd for terminal output."""
+def _link_report_refs(coverage, base):
+    """Set the `link` (to the referencing spec file) on every spec reference in
+    the report — the undeclared-term refs and the per-term non-CQ refs — relative
+    to `base` (the report dir for --md, the cwd for terminal output)."""
     if not coverage:
         return
-    for term in coverage.get("undeclared", []):
-        for ref in term.get("refs", []):
+    ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
+    ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("terms", [])]
+    for refs in ref_lists:
+        for ref in refs:
             src = ref.get("source_file")
             if src and src != "unknown.mustrd.ttl":
                 try:
@@ -405,7 +408,8 @@ class MustrdTestPlugin:
         if not self.md_path and not self.term_coverage:
             return
 
-        test_results, cq_results, coverage_specs, last_is_mustrd = self._collect_results(session)
+        test_results, cq_results, coverage_specs, non_cq_specs, last_is_mustrd = \
+            self._collect_results(session)
 
         # Ontology term coverage is opt-in via --term-coverage and is measured over
         # competency-question specs only. compute_coverage returns None when those
@@ -415,7 +419,9 @@ class MustrdTestPlugin:
         coverage = None
         if report_coverage:
             try:
-                coverage = compute_coverage(coverage_specs, ontology=load_ontology(self.ontology_paths))
+                coverage = compute_coverage(coverage_specs,
+                                            ontology=load_ontology(self.ontology_paths),
+                                            non_cq_specs=non_cq_specs)
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
 
@@ -441,9 +447,10 @@ class MustrdTestPlugin:
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) plus the
-        competency-question subset and coverage specs (for the coverage report).
-        Returns (test_results, cq_results, coverage_specs, last_is_mustrd)."""
-        test_results, cq_results, coverage_specs = [], [], []
+        competency-question subset and coverage specs (for the coverage report),
+        and the non-CQ mustrd specs (to note terms only they exercise).
+        Returns (test_results, cq_results, coverage_specs, non_cq_specs, last_is_mustrd)."""
+        test_results, cq_results, coverage_specs, non_cq_specs = [], [], [], []
         is_mustrd = False
         for test_conf, result in session.results.items():
             # Case auto generated tests
@@ -474,11 +481,14 @@ class MustrdTestPlugin:
             test_result._spec_source_file = getattr(spec, 'spec_source_file', None)
             test_results.append(test_result)
 
-            # The coverage report covers competency questions only.
+            # The coverage report covers competency questions only; other mustrd
+            # specs are kept aside to note terms only they exercise.
             if cq is not None:
                 cq_results.append(test_result)
                 coverage_specs.append(self._coverage_spec(spec, result, test_name, cq))
-        return test_results, cq_results, coverage_specs, is_mustrd
+            elif spec is not None:
+                non_cq_specs.append(self._coverage_spec(spec, result, test_name, None))
+        return test_results, cq_results, coverage_specs, non_cq_specs, is_mustrd
 
     @staticmethod
     def _coverage_spec(spec, result, test_name, cq):
@@ -528,7 +538,7 @@ class MustrdTestPlugin:
             parts.append(render_ontologies(ontologies))
         parts.append(render_cq_table(cq_results, group_totals))
         if coverage is not None:
-            _link_undeclared_refs(coverage, parent or ".")
+            _link_report_refs(coverage, parent or ".")
             parts.append(render_term_coverage(coverage))
         return "\n\n".join(parts)
 
@@ -574,7 +584,7 @@ class MustrdTestPlugin:
         if ontologies:
             blocks.append(render_ontologies(ontologies))
         if coverage is not None:
-            _link_undeclared_refs(coverage, os.getcwd())
+            _link_report_refs(coverage, os.getcwd())
             blocks.append(render_term_coverage(coverage))
         else:
             blocks.append("No ontology term coverage: the configured ontology "

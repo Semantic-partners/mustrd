@@ -9,7 +9,7 @@ A term is *used* if a passing CQ test exercises it — either in the **input dat
 | Term | Kind | In input data | In SPARQL | In schema | Status |
 |------|------|:---:|:---:|:---:|:---:|
 {% for t in coverage.terms -%}
-| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |
+| {{ t.term }} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {% if t.status == 'covered' %}✅ covered{% elif t.status == 'schema' %}🔧 schema{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌ unused{% endif %} |
 {% endfor %}
 ### How to read this table
 
@@ -21,13 +21,13 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
 | ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
-| ❌ | ❌ | | **unused** | declared but neither instantiated, queried, nor structurally referenced |
+| ❌ | ❌ | | **unused** | not exercised by any competency question, nor structural to one. If a *non-CQ* mustrd test exercises it, Status links that test — the term isn't dead, it just lacks CQ coverage |
 
 ## Not used by any CQ
 
 {% if coverage.gaps -%}
 {% for t in coverage.gaps -%}
-- {{ t.term }} ({{ t.kind }}) — declared in the ontology, never instantiated, queried, nor referenced in the schema of a used term
+- {{ t.term }} ({{ t.kind }}) — declared in the ontology but not exercised by any competency question (nor structural to one)
 {% endfor %}
 {%- else -%}
 _none — every declared term is exercised or structural_
