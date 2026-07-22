@@ -206,6 +206,7 @@ def _link_report_refs(coverage, base):
         return
     ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
     ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("terms", [])]
+    ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("cq_gaps", [])]
     ref_lists += [d.get("specs", []) for d in coverage.get("duplicate_cqs", [])]
     for refs in ref_lists:
         for ref in refs:

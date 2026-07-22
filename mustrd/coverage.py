@@ -605,9 +605,16 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     terms, gaps = _classify_terms(declared, used, used_data, used_query,
                                   schema_only, short, cq_used, non_cq_refs)
     # CQ-scoped gaps: declared, non-schema terms no competency question exercises
-    # (a superset of `gaps` — includes terms only a non-CQ test covers).
-    cq_gaps = [{"term": short(t), "kind": declared[t]}
-               for t in sorted(declared) if t not in schema_only and t not in cq_used]
+    # (a superset of `gaps` — includes terms only a non-CQ test covers). Where a
+    # non-CQ test does exercise it, carry that test so the report can name it.
+    cq_gaps = []
+    for t in sorted(declared):
+        if t in schema_only or t in cq_used:
+            continue
+        entry = {"term": short(t), "kind": declared[t]}
+        if t in non_cq_refs:
+            entry["non_cq_refs"] = non_cq_refs[t]
+        cq_gaps.append(entry)
     schema_terms = _schema_term_rows(schema_only, schema_reasons, declared, short)
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)

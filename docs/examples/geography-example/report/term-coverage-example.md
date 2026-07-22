@@ -90,7 +90,7 @@ _3 of 4 tests are competency questions._
 
 ### Not used by any CQ
 
-- place:Region (class) — not exercised by any competency question (a non-CQ test may still use it)
+- place:Region (class) — not exercised by any competency question; exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL)
 
 
 ### Per competency question

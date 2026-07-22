@@ -66,6 +66,7 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "### Not used by any CQ" in text
     cq_gaps = text.split("### Not used by any CQ", 1)[1].split("\n### ", 1)[0]
     assert "place:Region" in cq_gaps
+    assert "region-lookup.mustrd.ttl](" in cq_gaps  # links the non-CQ test that uses it
     assert "place:basedOnStandard (property) — ontology property" in text
 
     # Used but not declared: one input-data term, one SPARQL term, each linked.
