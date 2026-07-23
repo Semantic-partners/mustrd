@@ -47,6 +47,15 @@ jobs:
         with:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
+      - name: Upload ontology coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.python-version }}
+          path: |
+            docs/examples/geography-example/report/term-coverage-example.ttl
+            docs/examples/geography-example/report/term-coverage-example.md
+          if-no-files-found: warn
       - name: Define Job summary
         run: |
           cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
