@@ -113,18 +113,19 @@ def expand_ontology_files(paths) -> list:
     return unique
 
 
-def ontology_report(paths, link_base=None) -> list:
+def ontology_report(paths, link_base=None, href=None) -> list:
     """Per-file summary of the ontologies under `paths`, for the report header.
 
-    Each entry: {path, url, uri, description} — the file link (href relative to
-    `link_base`, see `_source_link`), the owl:Ontology IRI declared in that file
-    (if any), and its description (rdfs:comment / dcterms:description / … ). A
-    file with no owl:Ontology still appears (uri/description None); a file
-    declaring several yields one row each.
+    Each entry: {path, url, uri, description} — the file link (its href, see
+    `_source_link`), the owl:Ontology IRI declared in that file (if any), and its
+    description (rdfs:comment / dcterms:description / … ). A file with no
+    owl:Ontology still appears (uri/description None); a file declaring several
+    yields one row each. `href`, if given, is a callable path->url that overrides
+    the default `link_base`-relative href (e.g. absolute GitHub URLs in CI).
     """
     rows = []
     for f in expand_ontology_files(paths):
-        link = _source_link(f, link_base)
+        link = _source_link(f, link_base, href)
         g = Graph()
         try:
             g.parse(str(f))
@@ -290,24 +291,27 @@ def shortener(graphs, query_texts=()):
     return short
 
 
-def _source_link(p, link_base=None) -> dict:
-    """Display label + a link href relative to `link_base`.
+def _source_link(p, link_base=None, href=None) -> dict:
+    """Display label + a link href.
 
-    Markdown previewers (e.g. VS Code) block absolute `file://` links under their
-    content-security policy, so we emit a RELATIVE href instead — resolved by the
-    viewer against the report's own location. `link_base` should be the directory
-    the link is relative to: the report file's directory for an `--md` file, or
-    the cwd for terminal output (which linkifies cwd-relative paths). The label
-    stays relative to the cwd for readability.
+    When `href` (a path->url callable) is given it decides the url — used to emit
+    absolute GitHub URLs in CI. Otherwise the url is RELATIVE to `link_base`
+    (Markdown previewers like VS Code block absolute `file://` links, so a
+    relative href resolves against the report's own location): the report file's
+    directory for an `--md` file, or the cwd for terminal output. The label stays
+    relative to the cwd for readability.
     """
     p = Path(p)
-    base = Path(link_base) if link_base is not None else Path.cwd()
     try:
         label = os.path.relpath(p)
     except ValueError:  # e.g. different drive on Windows
         label = str(p)
-    try:
-        url = os.path.relpath(p, base)
-    except ValueError:
-        url = str(p)
+    if href is not None:
+        url = href(p)
+    else:
+        base = Path(link_base) if link_base is not None else Path.cwd()
+        try:
+            url = os.path.relpath(p, base)
+        except ValueError:
+            url = str(p)
     return {"path": label, "url": url}

@@ -5,6 +5,7 @@ docs/examples/geography-example (the same fixtures the worked-example report
 is generated from) and asserts the report it produces. Nested pytest.main
 invocation mirrors test/test_pytest_mustrd.py.
 """
+import os
 from pathlib import Path
 
 import pytest
@@ -164,6 +165,28 @@ def test_md_without_flags_is_the_result_list(tmp_path):
     assert "# Ontologies Report" not in text
     assert "Competency Questions Report" not in text
     assert "Term Coverage" not in text
+
+
+def test_github_actions_links_are_absolute(tmp_path, monkeypatch):
+    # In a GitHub Actions run the report is shown in the job summary (rendered on
+    # the Actions page), where report-relative links don't resolve — so links
+    # become absolute URLs into the repo on the GitHub web UI.
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "Semantic-partners/mustrd")
+    monkeypatch.setenv("GITHUB_SHA", "abc123")
+    monkeypatch.setenv("GITHUB_WORKSPACE", os.getcwd())
+    md = tmp_path / "report.md"
+    _run(md, term_coverage=True, cq=True)
+    text = md.read_text()
+
+    base = "https://github.com/Semantic-partners/mustrd/blob/abc123/"
+    # an ontology file and a spec file both link to the GitHub web UI
+    assert f"{base}docs/examples/geography-example/ontology/place.ttl" in text
+    assert f"{base}docs/examples/geography-example/specs/mayor-of-rotterdam.mustrd.ttl" in text
+    # no report-relative links survive
+    assert "](../specs/" not in text
+    assert "](ontology/" not in text
 
 
 def test_missing_ontology_path_fails_early():

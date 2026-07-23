@@ -7,7 +7,8 @@ Two independent, opt-in flags:
 - **`--term-coverage`** — ontology term coverage over **all mustrd tests**. It
   needs an ontology (`:hasOntologyPath`) and produces:
   1. **Ontologies** — the files measured against, as clickable links (relative to
-     the report so they render in a Markdown previewer), each with the
+     the report so they render in a Markdown previewer — or absolute GitHub URLs
+     when running as a GitHub Action, see *Report links* below), each with the
      `owl:Ontology` IRI and description;
   2. **Ontology term coverage** — the percentage and a per-term matrix. Class
      rows are arranged as a `rdfs:subClassOf` **tree** (indented under their
@@ -265,6 +266,21 @@ in `mustrd/mustrdTestPlugin.py`; the competency-question vocabulary
 `mustrd/model/mustrdShapes.ttl`; the `CQ` namespace in `mustrd/namespace.py`; the
 `:hasOntologyPath` term in `mustrd/model/mustrdTestOntology.ttl`. Tests in
 `test/test_coverage.py` (unit) and `test/test_coverage_plugin.py` (end-to-end).
+
+### Report links
+
+The report links each referenced file (ontologies, spec `.mustrd.ttl`s). Where
+those links point depends on where the report is read:
+
+- **Locally / committed in the repo** — links are **relative** to the report
+  file. A Markdown previewer (VS Code) and GitHub's own file view both resolve
+  them against the report's location.
+- **In a GitHub Actions job summary** — the summary is rendered on the
+  `…/actions/runs/…` page, so relative links don't resolve. When mustrd detects
+  it is running as an Action (`GITHUB_ACTIONS=true`) it emits **absolute** URLs
+  into the repo web UI — `{GITHUB_SERVER_URL}/{GITHUB_REPOSITORY}/blob/{GITHUB_SHA}/{path}`
+  (path relative to `GITHUB_WORKSPACE`). No configuration is needed; those
+  variables are injected by the Actions runner.
 
 ### Known limitations / open questions
 

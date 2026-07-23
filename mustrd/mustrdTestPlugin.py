@@ -210,10 +210,50 @@ def _local_name(iri):
     return s or str(iri)
 
 
-def _link_report_refs(coverage, base):
-    """Set the `link` (to the referencing spec file) on every spec reference in
-    the report — the undeclared-term refs and the per-term non-CQ refs — relative
-    to `base` (the report dir for --md, the cwd for terminal output)."""
+def _github_blob_prefix():
+    """In GitHub Actions, the '<server>/<repo>/blob/<sha>/' prefix for linking a
+    repo file on the GitHub web UI; None when not running as an Action."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return None
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    ref = os.environ.get("GITHUB_SHA") or os.environ.get("GITHUB_REF_NAME")
+    if not (repo and ref):
+        return None
+    return f"{server}/{repo}/blob/{ref}/"
+
+
+def _link_href(link_base):
+    """Return a function mapping a source-file path to its report href.
+
+    In a GitHub Actions run the job summary is rendered on the Actions page, where
+    report-relative links don't resolve — so links become absolute URLs into the
+    repo on the GitHub web UI (path taken relative to GITHUB_WORKSPACE). Otherwise
+    they stay relative to `link_base` (the report dir for --md, the cwd for
+    terminal output) so a Markdown previewer resolves them."""
+    prefix = _github_blob_prefix()
+    root = os.environ.get("GITHUB_WORKSPACE") or os.getcwd()
+
+    def href(src):
+        if not src or str(src) == "unknown.mustrd.ttl":
+            return None
+        src = str(src)
+        if prefix:
+            try:
+                return prefix + os.path.relpath(src, root).replace(os.sep, "/")
+            except ValueError:
+                return None
+        try:
+            return os.path.relpath(src, link_base or ".")
+        except ValueError:
+            return src
+    return href
+
+
+def _link_report_refs(coverage, href):
+    """Set the `link` (the href to the referencing spec file) on every spec
+    reference in the report — undeclared-term refs, per-term cover refs, CQ-gap
+    refs, duplicate-CQ nodes, and the TBox-in-data entries."""
     if not coverage:
         return
     ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
@@ -224,14 +264,7 @@ def _link_report_refs(coverage, base):
     ref_lists += [coverage.get("tbox_in_data", [])]
     for refs in ref_lists:
         for ref in refs:
-            src = ref.get("source_file")
-            if src and src != "unknown.mustrd.ttl":
-                try:
-                    ref["link"] = os.path.relpath(src, base)
-                except ValueError:
-                    ref["link"] = src
-            else:
-                ref["link"] = None
+            ref["link"] = href(ref.get("source_file"))
 
 
 @dataclass(frozen=True)
@@ -597,11 +630,12 @@ class MustrdTestPlugin:
              ### Competency Questions / Duplicate CQs / Not used by any CQ / Per competency question
         """
         parts = []
+        href = _link_href(link_base)
         if coverage is not None:
             parts.append("# Ontologies Report")
             parts.append("## Coverage Report")
-            _link_report_refs(coverage, link_base)
-            ontologies = ontology_report(self.ontology_paths, link_base=link_base)
+            _link_report_refs(coverage, href)
+            ontologies = ontology_report(self.ontology_paths, href=href)
             if ontologies:
                 parts.append(render_ontologies(ontologies))
             parts.append(render_term_coverage(coverage))
@@ -610,9 +644,9 @@ class MustrdTestPlugin:
         # CQ report — from coverage when available, else the no-ontology cq_view.
         view = coverage if coverage is not None else cq_view
         if self.cq and view is not None:
-            _link_report_refs(view, link_base)
+            _link_report_refs(view, href)
             per_cq = view.get("per_cq", [])
-            self._enrich_cq(per_cq, spec_by_uri, coverage, link_base)
+            self._enrich_cq(per_cq, spec_by_uri, coverage, href)
             parts.append("## Competency Questions Report" if coverage is not None
                          else "# Competency Questions Report")
             parts.append(render_cq_table(per_cq, show_coverage=coverage is not None))
@@ -624,18 +658,10 @@ class MustrdTestPlugin:
                 parts.append(render_per_cq(per_cq, view.get("unchecked", False)))
         return "\n\n".join(parts)
 
-    def _enrich_cq(self, per_cq, spec_by_uri, coverage, link_base):
+    def _enrich_cq(self, per_cq, spec_by_uri, coverage, href):
         """In place: give each CQ entry its source-file link and, per linked test,
         a link to its spec file and a coverage status (the undeclared terms it
         references, else ✅ passed). Dangling cqSpec targets get a display name."""
-        def rel(src):
-            if not src or str(src) == "unknown.mustrd.ttl":
-                return None
-            try:
-                return os.path.relpath(str(src), link_base or ".")
-            except ValueError:
-                return str(src)
-
         issues = {}
         for term in (coverage or {}).get("undeclared", []):
             for ref in term["refs"]:
@@ -643,10 +669,10 @@ class MustrdTestPlugin:
                          else "input data" if ref["in_data"] else "SPARQL")
                 issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
         for entry in per_cq:
-            entry["cq_link"] = rel(entry.get("source_file"))
+            entry["cq_link"] = href(entry.get("source_file"))
             entry["missing_names"] = [_local_name(u) for u in entry.get("missing_specs", [])]
             for t in entry.get("tests", []):
-                t["test_link"] = rel(spec_by_uri.get(t.get("uri"), {}).get("source_file"))
+                t["test_link"] = href(spec_by_uri.get(t.get("uri"), {}).get("source_file"))
                 if coverage is not None:
                     probs = issues.get(t["name"])
                     t["coverage_status"] = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
