@@ -42,6 +42,13 @@ TBOX_TYPES = CLASS_TYPES + tuple(PROPERTY_TYPES)
 TBOX_PREDICATES = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
 
 
+def _slug(qname: str) -> str:
+    """A URL-path-safe slug for a term's qname (e.g. place:City -> place.City),
+    used to mint stable per-term IRIs in the RDF output."""
+    return "".join(c if (c.isalnum() or c in "._-") else "_"
+                   for c in qname.replace(":", "."))
+
+
 def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
     """Declared terms that structurally support a *used* term via TBox axioms.
 
@@ -149,7 +156,7 @@ def _scan_specs(specs, declared_set):
         s_query = {t for t in raw_query if is_domain_term(URIRef(t))}
         referenced_data |= s_data
         referenced_query |= s_query
-        spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
+        spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query, s.get("uri")))
         if s.get("passed"):
             used_data |= raw_data & declared_set
             used_query |= raw_query & declared_set
@@ -192,7 +199,7 @@ def _usage_by_term(specs, declared_set):
         q &= declared_set
         for t in d | q:
             refs_by_term.setdefault(t, []).append({
-                "name": s.get("name", "?"),
+                "name": s.get("name", "?"), "uri": s.get("uri"),
                 "source_file": str(s.get("source_file")) if s.get("source_file") else None,
                 "in_data": t in d, "in_query": t in q})
     return refs_by_term
@@ -230,7 +237,7 @@ def _tbox_in_data(specs, short):
         axioms = _tbox_axioms(g, short)
         if axioms:
             results.append({
-                "name": s.get("name", "?"),
+                "name": s.get("name", "?"), "uri": s.get("uri"),
                 "source_file": str(s.get("source_file")) if s.get("source_file") else None,
                 "axioms": axioms})
     return results
@@ -384,10 +391,10 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
             if t not in declared_set and namespace(t) in ontology_namespaces]
     undeclared = []
     for t in sorted(iris, key=short):
-        refs = [{"name": name, "source_file": str(src) if src else None,
+        refs = [{"name": name, "uri": uri, "source_file": str(src) if src else None,
                  "in_data": t in sd, "in_query": t in sq}
-                for (name, src, sd, sq) in spec_refs if t in sd or t in sq]
-        undeclared.append({"term": short(t), "refs": refs})
+                for (name, src, sd, sq, uri) in spec_refs if t in sd or t in sq]
+        undeclared.append({"term": short(t), "iri": t, "refs": refs})
     return undeclared
 
 
@@ -470,15 +477,27 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     covered = sum(1 for t in declared if t in used_data)
     covered_by_cq = sum(1 for t in declared if t in cq_used_data)
 
+    # Machine-readable per-term records (full IRIs) for the RDF output — one per
+    # declared term, with its role, where it's exercised, and the tests behind it.
+    term_records = [{
+        "iri": t, "slug": _slug(short(t)), "kind": declared[t],
+        "role": _coverage_status(t, schema_only, used_data, used_query),
+        "cq_role": _coverage_status(t, schema_only, cq_used_data, cq_used_query),
+        "in_data": t in used_data, "in_query": t in used_query,
+        "exercised_by": sorted({r["uri"] for r in test_refs.get(t, []) if r.get("uri")}),
+    } for t in sorted(declared)]
+
     return {
         "covered": covered, "denominator": denominator,
         "pct": round(100.0 * covered / denominator) if denominator else 0,
+        "ratio": (covered / denominator) if denominator else 0.0,
         "declared_total": len(declared), "schema_count": len(schema_only),
         "has_cq": bool(cq_defs),
         "covered_by_cq": covered_by_cq,
         "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
+        "cq_ratio": (covered_by_cq / denominator) if denominator else 0.0,
         "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
         "tbox_in_data": _tbox_in_data(specs, short),
-        "per_cq": per_cq,
+        "per_cq": per_cq, "term_records": term_records,
     }

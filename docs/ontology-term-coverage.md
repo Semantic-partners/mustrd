@@ -282,6 +282,37 @@ those links point depends on where the report is read:
   (path relative to `GITHUB_WORKSPACE`). No configuration is needed; those
   variables are injected by the Actions runner.
 
+### RDF output (`--term-coverage-rdf`)
+
+Coverage is a **quality of the ontology** (as exercised by the tests), so it can
+be published as RDF and merged into a knowledge graph. `--term-coverage-rdf=PATH`
+writes a Turtle graph using **W3C DQV** (Data Quality Vocabulary) + **PROV-O**,
+plus a small `cov:` vocabulary in
+[`mustrd/model/coverage-ontology.ttl`](../mustrd/model/coverage-ontology.ttl)
+(namespace `https://mustrd.org/coverage/`):
+
+- **Aggregate** — a `dqv:QualityMeasurement` for `cov:termCoverageByTests` (and,
+  with `--cq`, `cov:termCoverageByCompetencyQuestions`), value a decimal **ratio**
+  (0–1; the % is display-only), `dqv:computedOn` **each ontology IRI and its
+  `owl:versionIRI`**, `prov:wasGeneratedBy` the run.
+- **Per term** — a `cov:TermCoverage` for every declared term: `cov:term` the
+  actual term IRI, `cov:role` / `cov:cqRole` a `cov:CoverageRole`
+  (Covered / QueryOnly / Structural / Unused), `cov:inData` / `cov:inQuery`, and
+  `cov:exercisedBy` the test spec IRIs. Every triple is kept, so the aggregate is
+  explainable from the graph.
+- **Quality issues** — `cov:QualityIssue` for *used but not declared* and *TBox in
+  test data*, linked to the term / test.
+- **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent and
+  `prov:used` the ontologies (and the commit in CI). All instances get **stable
+  minted IRIs** (run slug = commit SHA in CI, else `local`) — no blank nodes — so
+  runs merge and diff cleanly.
+
+Because the tests, competency questions and ontology terms are all real IRIs, a
+consumer can query across the merged graph — e.g. coverage % per ontology version
+over time, or which terms carry a quality issue. (Linking competency questions to
+the terms they pin down is the next step.) See
+[`report/term-coverage-example.ttl`](examples/geography-example/report/term-coverage-example.ttl).
+
 ### Known limitations / open questions
 
 - **Namespace filtering** — declared terms are read from the configured

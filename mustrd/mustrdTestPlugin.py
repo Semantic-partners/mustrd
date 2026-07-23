@@ -16,6 +16,7 @@ from mustrd.TestResult import (
 from mustrd.coverage import compute_coverage
 from mustrd.ontology import load_ontology, ontology_report
 from mustrd.cq import cq_only_view
+from mustrd.coverage_rdf import write_coverage_rdf
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -103,6 +104,17 @@ def pytest_addoption(parser):
              "--term-coverage it also shows how much of the ontology the CQs "
              "(vs all tests) cover.",
     )
+    group.addoption(
+        "--term-coverage-rdf",
+        action="store",
+        dest="term_coverage_rdf",
+        metavar="pathToRdf",
+        default=None,
+        help="Write ontology term coverage as RDF (Turtle, W3C DQV + PROV) to "
+             "this path — DQV quality measurements computedOn the ontology, a "
+             "per-term breakdown, and quality issues, for a knowledge graph. "
+             "Needs an ontology (:hasOntologyPath).",
+    )
     return
 
 
@@ -117,6 +129,7 @@ def pytest_configure(config) -> None:
                 config.getoption("ignore_focus"),
                 config.getoption("term_coverage"),
                 config.getoption("cq"),
+                config.getoption("term_coverage_rdf"),
             )
         )
 
@@ -292,13 +305,14 @@ class MustrdTestPlugin:
     collect_error: BaseException
 
     def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
-                 term_coverage=False, cq=False):
+                 term_coverage=False, cq=False, term_coverage_rdf=None):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.term_coverage = term_coverage
         self.cq = cq
+        self.term_coverage_rdf = term_coverage_rdf
         self.ontology_paths = []
         self.items = []
 
@@ -341,7 +355,7 @@ class MustrdTestPlugin:
         # Ontology term coverage needs an ontology to measure against. Resolve it
         # from the config now (and fail early with a helpful message if absent),
         # so the user is told before any tests run rather than after.
-        if self.term_coverage:
+        if self.term_coverage or self.term_coverage_rdf:
             self._resolve_ontology_paths_or_fail()
 
     def _resolve_ontology_paths_or_fail(self):
@@ -464,7 +478,9 @@ class MustrdTestPlugin:
 
     # Take all the test results in session, parse them, and generate the md file.
     def pytest_sessionfinish(self, session: Session, exitstatus):
-        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        # --term-coverage-rdf also needs coverage computed (and an ontology).
+        report_coverage = (self.term_coverage or bool(self.term_coverage_rdf)) \
+            and bool(self.ontology_paths)
         report_cq = self.cq
         # Nothing to do unless we're writing an md report or reporting to stdout.
         if not self.md_path and not report_coverage and not report_cq:
@@ -507,10 +523,38 @@ class MustrdTestPlugin:
             with open(self.md_path, "w") as file:
                 file.write(md)
 
-        # To stdout (links relative to the cwd, which the terminal linkifies).
-        if report_coverage or report_cq:
+        # RDF output (--term-coverage-rdf), for a knowledge graph.
+        if self.term_coverage_rdf and coverage is not None:
+            self._write_coverage_rdf(coverage)
+
+        # To stdout — only for the human-facing flags (not RDF-only runs).
+        if self.term_coverage or report_cq:
             body = self._build_report(coverage, cq_view, test_results, spec_by_uri, os.getcwd())
             self._report_to_terminal(session.config, body)
+
+    def _write_coverage_rdf(self, coverage):
+        """Serialise the coverage result to the --term-coverage-rdf path as
+        Turtle, minting a run IRI from the commit SHA in CI (else 'local')."""
+        ontologies = [{"uri": r["uri"], "version": r.get("version")}
+                      for r in ontology_report(self.ontology_paths) if r.get("uri")]
+        sha = os.environ.get("GITHUB_SHA")
+        server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+        repo = os.environ.get("GITHUB_REPOSITORY")
+        commit = f"{server}/{repo}/commit/{sha}" if (sha and repo) else None
+        try:
+            from importlib.metadata import version, PackageNotFoundError
+            try:
+                mustrd_version = version("mustrd")
+            except PackageNotFoundError:
+                mustrd_version = None
+        except Exception:
+            mustrd_version = None
+        parent = os.path.dirname(self.term_coverage_rdf)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        write_coverage_rdf(coverage, ontologies, self.term_coverage_rdf,
+                           run_slug=sha or "local", commit=commit,
+                           mustrd_version=mustrd_version)
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) and the

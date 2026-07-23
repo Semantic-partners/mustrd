@@ -178,6 +178,11 @@ as *fully exercised*, *data-only*, *query-only*, *structural*, or *unused* — s
 untested terms surface immediately. When you pass `--md`, the parent directory is
 created automatically if it doesn't exist.
 
+**RDF output.** `--term-coverage-rdf=coverage.ttl` writes the result as RDF (W3C
+DQV + PROV) for a knowledge graph: quality measurements `computedOn` the ontology
+IRI and its `owl:versionIRI` (value a decimal ratio), a per-term breakdown, and
+quality issues — all with stable IRIs, no blank nodes.
+
 See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
 full definition and [`docs/examples/geography-example/report/term-coverage-example.md`](docs/examples/geography-example/report/term-coverage-example.md)
 for sample output.

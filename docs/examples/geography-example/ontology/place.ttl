@@ -3,6 +3,7 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
 <http://example.org/place#> a owl:Ontology ;
+    owl:versionIRI <http://example.org/place/1.0.0> ;
     rdfs:comment "A minimal vocabulary for places and how they are geographically contained within one another." .
 
 # An ontology-level metadata property (relates this ontology to another). It is
