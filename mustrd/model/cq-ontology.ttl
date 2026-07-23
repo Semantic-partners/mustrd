@@ -1,0 +1,28 @@
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
+@prefix must: <https://mustrd.org/model/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://mustrd.org/competencyQuestion> rdf:type owl:Ontology ;
+    owl:imports <https://mustrd.org/model> ;
+    rdfs:label "MustRD competency questions" ;
+    rdfs:comment "Vocabulary for recording competency questions and linking them to the mustrd tests that answer them." .
+
+cq:CompetencyQuestion rdf:type owl:Class ;
+    rdfs:label "Competency Question" ;
+    rdfs:comment "A question the model/data must answer; optionally linked via cq:cqSpec to the mustrd test(s) demonstrating it." .
+
+cq:question rdf:type owl:AnnotationProperty ;
+    rdfs:subPropertyOf rdfs:label ;
+    rdfs:domain cq:CompetencyQuestion ;
+    rdfs:range xsd:string ;
+    rdfs:label "question" ;
+    rdfs:comment "The competency question text. A sub-property of rdfs:label." .
+
+cq:cqSpec rdf:type owl:ObjectProperty ;
+    rdfs:domain cq:CompetencyQuestion ;
+    rdfs:range must:TestSpec ;
+    rdfs:label "cq spec" ;
+    rdfs:comment "Links a competency question to a mustrd test spec that answers it." .

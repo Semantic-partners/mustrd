@@ -1,0 +1,22 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
+@prefix ex:   <http://example.org/> .
+@prefix :     <http://example.org/place/example/> .
+
+:countryOfRotterdamCQ
+    a cq:CompetencyQuestion ;
+    cq:question "In which country is Rotterdam?" ;
+    cq:cqSpec :countryOfRotterdam .
+
+:countryOfRotterdam
+    a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "country.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 must:queryText """PREFIX place: <http://example.org/place#>
+SELECT ?country WHERE {
+  ?city place:isLocatedIn ?country .
+  ?country a place:Country .
+}""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "country" ; must:boundValue ex:NL ] ] ] .

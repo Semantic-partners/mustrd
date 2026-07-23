@@ -1,0 +1,13 @@
+@prefix place: <http://example.org/place#> .
+@prefix ex:    <http://example.org/> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# The class hierarchy the query's rdfs:subClassOf* path walks. (Only the axioms
+# the query needs; the authoritative declarations live in ontology/place.ttl.)
+place:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .
+
+ex:Rotterdam   a place:City     ; place:isLocatedIn ex:ZuidHolland .
+ex:ZuidHolland a place:Province ; place:isLocatedIn ex:NL .
+ex:NL          a place:Country  ; place:isLocatedIn ex:Europe .
+ex:Europe      a place:Continent .

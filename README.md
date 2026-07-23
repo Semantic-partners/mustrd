@@ -104,6 +104,84 @@ We have a pytest plugin.
 4. VS Code should auto discover your tests and they'll show up in the flask icon 'tab'.
 ![alt text](image.png)
 
+## Competency questions & ontology coverage
+
+A competency question (CQ) is a first-class `cq:CompetencyQuestion` node (its
+vocabulary is `cq:` = `https://mustrd.org/competencyQuestion/`) — it owns the
+question (`cq:question`, a sub-property of `rdfs:label`) and *optionally* links
+to the test(s) that answer it with `cq:cqSpec`. CQ nodes live in any
+`.mustrd.ttl` in the suite:
+
+```ttl
+@prefix cq: <https://mustrd.org/competencyQuestion/> .
+
+:rotterdamCountryCQ a cq:CompetencyQuestion ;
+    cq:question "In which country is Rotterdam?" ;
+    cq:cqSpec :test_example .        # optional — omit for a CQ with no test yet
+```
+
+Because the link is optional, you can record a CQ *before* writing its test; the
+report lists such CQs as gaps (Test column "—").
+
+Two opt-in report flags build on this, and compose:
+
+- **`--cq`** adds a **Competency Questions** table (one row per CQ node — its
+  linked test(s) and status) and a per-CQ breakdown. Needs no ontology.
+- **`--term-coverage`** adds **ontology term coverage over all mustrd tests**
+  (see below). Needs an ontology.
+
+Plain `--md` (neither flag) is unchanged: it still writes the standard
+test-results summary.
+
+```bash
+pytest --mustrd --config=config.ttl --md=report.md            # test-results summary
+pytest --mustrd --config=config.ttl --cq --md=report.md       # + competency questions
+```
+
+### Ontology term coverage
+
+`--term-coverage` reports **how much of your ontology your tests actually
+exercise** — an overall percentage and a per-term table (to stdout, and the
+`--md` file if given). Add `--cq` too and it also shows how much is backed by a
+*competency question* (a stricter number) via a `CQ Term Coverage` column.
+
+Tell MustRD which ontology to measure against with `:hasOntologyPath` in your
+config — a file or a directory (scanned recursively), repeatable:
+
+```ttl
+:myTest a :MustrdTest ;
+    :hasSpecPath     "specs/" ;
+    :hasDataPath     "data/" ;
+    :hasOntologyPath "ontology/" ;   # file or directory; repeat for several
+    :filterOnTripleStore triplestore:RdfLib .
+```
+
+```bash
+pytest --mustrd --config=config.ttl --term-coverage             # coverage to stdout
+pytest --mustrd --config=config.ttl --term-coverage --cq --md=report.md
+```
+
+(If `--term-coverage` is set without `:hasOntologyPath`, MustRD fails early and
+tells you exactly what to add.)
+
+Coverage is **data-based**: a declared term counts as **covered** when a
+*passing* test **populates it in input data** (as an instance type or asserted
+predicate) — whether or not a query also names it. A term named *only* in a
+query but never instantiated is **query-only** and does *not* count (the test
+passes without it); it's often a sign a TBox axiom belongs in the ontology, not
+the fixture — the report flags those under **⚠️ TBox axioms in test data**.
+Terms that are only structurally referenced (the `rdfs:domain`/`rdfs:range` of a
+used property, a superclass of a used class, or a metadata property such as an
+`owl:AnnotationProperty`/`owl:OntologyProperty`) are reported separately as
+**structural** terms and excluded from the percentage. Every term is classified
+as *fully exercised*, *data-only*, *query-only*, *structural*, or *unused* — so
+untested terms surface immediately. When you pass `--md`, the parent directory is
+created automatically if it doesn't exist.
+
+See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
+full definition and [`docs/examples/geography-example/report/term-coverage-example.md`](docs/examples/geography-example/report/term-coverage-example.md)
+for sample output.
+
 ## When?
 
 MustRD is a work in progress, built to meet the needs of our projects across multiple clients and vendor stacks. While we find it useful, it may not meet your needs out of the box.

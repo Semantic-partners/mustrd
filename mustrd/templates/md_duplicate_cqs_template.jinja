@@ -1,0 +1,7 @@
+### ⚠️ Duplicate competency questions
+
+The same `cq:question` appears on more than one `cq:CompetencyQuestion` node (likely a copy/paste error). These CQs are **excluded from the coverage calculation**:
+{% for d in duplicate_cqs %}
+- "{{ d.question }}"
+{% for c in d.cqs %}  - {% if c.link %}[{{ c.name }}]({{ c.link }}){% else %}{{ c.name }}{% endif %}
+{% endfor %}{% endfor %}

@@ -1,0 +1,7 @@
+### ⚠️ TBox axioms in test data
+
+These tests define ontology structure (class/property declarations, `rdfs:subClassOf`/`domain`/`range`) in their **input data**. A `given` should hold *instance* data — schema belongs in the ontology. If a query only matches through one of these axioms (e.g. a `rdfs:subClassOf*` path), that is why the term shows as **query-only** rather than covered. Consider moving them into an ontology loaded via `:hasOntologyPath`:
+{% for t in tbox_in_data %}
+- {% if t.link %}[{{ t.name }}]({{ t.link }}){% else %}{{ t.name }}{% endif %}
+{% for a in t.axioms %}  - `{{ a }}`
+{% endfor %}{% endfor %}

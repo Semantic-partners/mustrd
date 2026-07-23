@@ -1,0 +1,9 @@
+@prefix gov:   <http://example.org/governance#> .
+@prefix place: <http://example.org/place#> .
+@prefix ex:    <http://example.org/> .
+
+ex:Aboutaleb a gov:Mayor ; gov:governs ex:Rotterdam .
+ex:Rotterdam a place:City .
+
+ex:Halsema   a gov:Mayor ; gov:governs ex:Amsterdam .
+ex:Amsterdam a place:City .

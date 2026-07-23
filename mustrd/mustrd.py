@@ -1,11 +1,11 @@
 import os
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pyparsing import ParseException
 from pathlib import Path
@@ -439,7 +439,6 @@ def get_spec(
                 default=Path("default.mustrd.ttl"),
             )
         )
-        # https://github.com/Semantic-partners/mustrd/issues/92
         return Specification(
             spec_uri,
             mustrd_triple_store,

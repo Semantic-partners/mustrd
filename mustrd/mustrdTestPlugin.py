@@ -8,7 +8,14 @@ from rdflib import Graph, RDF
 from pytest import Session
 
 from mustrd import logger_setup
-from mustrd.TestResult import ResultList, TestResult, get_result_list
+from mustrd.TestResult import (
+    TestResult, render_cq_table, render_term_coverage, render_ontologies,
+    render_duplicate_cqs, render_per_cq, render_cq_gaps, render_tbox_in_data,
+    ResultList, get_result_list,
+)
+from mustrd.coverage import compute_coverage
+from mustrd.ontology import load_ontology, ontology_report
+from mustrd.cq import cq_only_view
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -20,7 +27,7 @@ from mustrd.mustrd import (
     get_triple_stores,
     SpecInvalid
 )
-from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
+from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST, CQ
 from pyshacl import validate
 
 import pathlib
@@ -79,6 +86,23 @@ def pytest_addoption(parser):
         dest="ignore_focus",
         help="Activate/deactivate focus: if --ignore-focus is set, focus will be ignored.",
     )
+    group.addoption(
+        "--term-coverage",
+        action="store_true",
+        dest="term_coverage",
+        help="Report ontology term coverage across ALL mustrd tests: which "
+             "declared terms the passing tests exercise (in data or SPARQL). "
+             "Prints a percentage and table to stdout; also written to --md.",
+    )
+    group.addoption(
+        "--cq",
+        action="store_true",
+        dest="cq",
+        help="Add competency-question sections to the report: a Competency "
+             "Questions table and a per-CQ breakdown. Combined with "
+             "--term-coverage it also shows how much of the ontology the CQs "
+             "(vs all tests) cover.",
+    )
     return
 
 
@@ -91,6 +115,8 @@ def pytest_configure(config) -> None:
                 Path(config.getoption("configpath")),
                 config.getoption("secrets"),
                 config.getoption("ignore_focus"),
+                config.getoption("term_coverage"),
+                config.getoption("cq"),
             )
         )
 
@@ -146,6 +172,15 @@ def parse_config(config_path):
             root_path / Path(triplestore_spec_path) if triplestore_spec_path else None
         )
 
+        # hasOntologyPath may be repeated; each value is a file or a directory
+        # (scanned recursively), resolved relative to the config file.
+        ontology_paths = tuple(
+            root_path / Path(str(o))
+            for o in config_graph.objects(
+                subject=test_config_subject, predicate=MUSTRDTEST.hasOntologyPath
+            )
+        )
+
         test_configs.append(
             TestConfig(
                 spec_path=spec_path,
@@ -153,6 +188,7 @@ def parse_config(config_path):
                 triplestore_spec_path=triplestore_spec_path,
                 pytest_path=pytest_path,
                 filter_on_tripleStore=filter_on_tripleStore,
+                ontology_paths=ontology_paths,
             )
         )
     return test_configs
@@ -165,6 +201,72 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
     return convert_function(raw_value) if raw_value else None
 
 
+def _local_name(iri):
+    """The local part of an IRI (after the last # or /), for display."""
+    s = str(iri)
+    for sep in ("#", "/"):
+        if sep in s:
+            s = s.rsplit(sep, 1)[-1]
+    return s or str(iri)
+
+
+def _github_blob_prefix():
+    """In GitHub Actions, the '<server>/<repo>/blob/<sha>/' prefix for linking a
+    repo file on the GitHub web UI; None when not running as an Action."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return None
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    ref = os.environ.get("GITHUB_SHA") or os.environ.get("GITHUB_REF_NAME")
+    if not (repo and ref):
+        return None
+    return f"{server}/{repo}/blob/{ref}/"
+
+
+def _link_href(link_base):
+    """Return a function mapping a source-file path to its report href.
+
+    In a GitHub Actions run the job summary is rendered on the Actions page, where
+    report-relative links don't resolve — so links become absolute URLs into the
+    repo on the GitHub web UI (path taken relative to GITHUB_WORKSPACE). Otherwise
+    they stay relative to `link_base` (the report dir for --md, the cwd for
+    terminal output) so a Markdown previewer resolves them."""
+    prefix = _github_blob_prefix()
+    root = os.environ.get("GITHUB_WORKSPACE") or os.getcwd()
+
+    def href(src):
+        if not src or str(src) == "unknown.mustrd.ttl":
+            return None
+        src = str(src)
+        if prefix:
+            try:
+                return prefix + os.path.relpath(src, root).replace(os.sep, "/")
+            except ValueError:
+                return None
+        try:
+            return os.path.relpath(src, link_base or ".")
+        except ValueError:
+            return src
+    return href
+
+
+def _link_report_refs(coverage, href):
+    """Set the `link` (the href to the referencing spec file) on every spec
+    reference in the report — undeclared-term refs, per-term cover refs, CQ-gap
+    refs, duplicate-CQ nodes, and the TBox-in-data entries."""
+    if not coverage:
+        return
+    ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
+    ref_lists += [t.get("cover_refs", []) for t in coverage.get("terms", [])]
+    ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("cq_gaps", [])]
+    ref_lists += [d.get("cqs", []) for d in coverage.get("duplicate_cqs", [])]
+    # TBox-in-data entries carry their own source_file/link directly.
+    ref_lists += [coverage.get("tbox_in_data", [])]
+    for refs in ref_lists:
+        for ref in refs:
+            ref["link"] = href(ref.get("source_file"))
+
+
 @dataclass(frozen=True)
 class TestConfig:
     spec_path: Path
@@ -172,6 +274,7 @@ class TestConfig:
     triplestore_spec_path: Path
     pytest_path: str
     filter_on_tripleStore: str = None
+    ontology_paths: tuple = ()
 
 
 # Configure logging - do not use setup_logger in the pytest plugin, 
@@ -188,11 +291,15 @@ class MustrdTestPlugin:
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False):
+    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
+                 term_coverage=False, cq=False):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
+        self.term_coverage = term_coverage
+        self.cq = cq
+        self.ontology_paths = []
         self.items = []
 
     @pytest.hookimpl(tryfirst=True)
@@ -230,6 +337,35 @@ class MustrdTestPlugin:
             session.config.args = args
 
         logger.info(f"Final session.config.args: {session.config.args}")
+
+        # Ontology term coverage needs an ontology to measure against. Resolve it
+        # from the config now (and fail early with a helpful message if absent),
+        # so the user is told before any tests run rather than after.
+        if self.term_coverage:
+            self._resolve_ontology_paths_or_fail()
+
+    def _resolve_ontology_paths_or_fail(self):
+        # Reuse parse_config (which also SHACL-validates) so ontology paths come
+        # from the same TestConfig the tests are built from — one source of truth.
+        config_path = Path(self.test_config_file)
+        test_configs = parse_config(config_path)
+        self.ontology_paths = [p for tc in test_configs for p in tc.ontology_paths]
+        if not self.ontology_paths:
+            raise pytest.UsageError(self._missing_ontology_message(config_path))
+
+    def _missing_ontology_message(self, config_path):
+        config_graph = Graph().parse(config_path)
+        subjects = list(config_graph.subjects(RDF.type, MUSTRDTEST.MustrdTest))
+        subj = subjects[0] if subjects else "https://your.example/mustrdTest/yourTest"
+        return (
+            "--term-coverage needs an ontology to measure against, but no "
+            "mustrdTest:hasOntologyPath is set in the test configuration.\n"
+            f"  Config file to amend: {config_path}\n"
+            "  Add one or more ontology locations (a file, or a directory that "
+            "is scanned recursively), e.g.:\n\n"
+            f"      <{subj}> <https://mustrd.org/mustrdTest/hasOntologyPath> \"<insert ontology path here>\" .\n\n"
+            "  The property may be repeated for multiple ontologies."
+        )
 
     def get_file_name_from_arg(self, arg):
         if arg and len(arg) > 0 and "[" in arg and ".mustrd.ttl " in arg:
@@ -326,13 +462,64 @@ class MustrdTestPlugin:
             # Add the result of the test to the session
             item.session.results[item] = result
 
-    # Take all the test results in session, parse them, split them in mustrd and standard pytest  and generate md file
+    # Take all the test results in session, parse them, and generate the md file.
     def pytest_sessionfinish(self, session: Session, exitstatus):
-        # if md path has not been defined in argument, then do not generate md file
-        if not self.md_path:
+        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        report_cq = self.cq
+        # Nothing to do unless we're writing an md report or reporting to stdout.
+        if not self.md_path and not report_coverage and not report_cq:
             return
 
-        test_results = []
+        test_results, all_specs, spec_by_uri, last_is_mustrd = \
+            self._collect_results(session)
+
+        # Competency questions are first-class cq:CompetencyQuestion nodes found
+        # in the spec files; resolve their cq:cqSpec links against the collected
+        # specs so a CQ can point at 0..n tests (or none at all).
+        cq_defs = self._collect_cq_defs(spec_by_uri) if report_cq else []
+
+        # Ontology term coverage (--term-coverage) is measured over ALL mustrd
+        # tests. The CQ overlay (CQ %, per-CQ) is added only when --cq is also set.
+        # compute_coverage returns None if nothing is declared.
+        coverage = None
+        if report_coverage:
+            try:
+                coverage = compute_coverage(
+                    all_specs, ontology=load_ontology(self.ontology_paths),
+                    cq_defs=cq_defs if report_cq else None)
+            except Exception as e:
+                logger.warning(f"Could not compute ontology term coverage: {e}")
+        # --cq without --term-coverage: CQ sections with no ontology check.
+        cq_view = cq_only_view(cq_defs) if (report_cq and not report_coverage) else None
+
+        # Markdown report. With --term-coverage and/or --cq it is the assembled
+        # report; otherwise --md keeps its pre-existing form: a ResultList of
+        # every test.
+        if self.md_path:
+            if report_coverage or report_cq:
+                md = self._build_report(coverage, cq_view, test_results, spec_by_uri,
+                                        os.path.dirname(self.md_path) or ".")
+            else:
+                md = self._render_result_list(test_results, last_is_mustrd)
+            parent = os.path.dirname(self.md_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(self.md_path, "w") as file:
+                file.write(md)
+
+        # To stdout (links relative to the cwd, which the terminal linkifies).
+        if report_coverage or report_cq:
+            body = self._build_report(coverage, cq_view, test_results, spec_by_uri, os.getcwd())
+            self._report_to_terminal(session.config, body)
+
+    def _collect_results(self, session):
+        """Build a TestResult for every test (for the ResultList --md) and the
+        mustrd-spec dicts (all of them — coverage is over all tests), plus a
+        spec-IRI → spec-dict map so competency questions can resolve their
+        cq:cqSpec links.
+        Returns (test_results, all_specs, spec_by_uri, last_is_mustrd)."""
+        test_results, all_specs, spec_by_uri = [], [], {}
+        is_mustrd = False
         for test_conf, result in session.results.items():
             # Case auto generated tests
             if test_conf.originalname != test_conf.name:
@@ -351,12 +538,76 @@ class MustrdTestPlugin:
                 test_name = test_conf.originalname
                 is_mustrd = False
 
-            test_results.append(
-                TestResult(
-                    test_name, class_name, module_name, result.outcome, is_mustrd
-                )
+            spec = getattr(test_conf, 'spec', None)
+            test_result = TestResult(
+                test_name, class_name, module_name, result.outcome, is_mustrd,
             )
+            test_results.append(test_result)
 
+            if spec is not None:
+                cspec = self._coverage_spec(spec, result, test_name)
+                all_specs.append(cspec)
+                if cspec.get("uri"):
+                    spec_by_uri[cspec["uri"]] = cspec
+        return test_results, all_specs, spec_by_uri, is_mustrd
+
+    @staticmethod
+    def _coverage_spec(spec, result, test_name):
+        when = getattr(spec, 'when', None)
+        # `when` may be a single WhenSpec or a list of them.
+        when_list = when if isinstance(when, list) else ([when] if when is not None else [])
+        queries = [w.value for w in when_list if isinstance(getattr(w, 'value', None), str)]
+        uri = getattr(spec, 'spec_uri', None)
+        return {
+            "name": getattr(spec, 'spec_file_name', test_name),
+            "uri": str(uri) if uri is not None else None,
+            "passed": result.outcome == "passed",
+            "given": getattr(spec, 'given', None),
+            "queries": queries,
+            "source_file": getattr(spec, 'spec_source_file', None),
+        }
+
+    def _collect_cq_defs(self, spec_by_uri):
+        """Find every cq:CompetencyQuestion node in the suite's spec files and
+        resolve its cq:cqSpec links. A CQ may live in any *.mustrd.ttl under a
+        config's hasSpecPath, and may point at 0..n specs (or none). Unresolvable
+        cqSpec targets are kept in `missing_specs` so the table can flag them.
+        Returns [{id, name, question, questions, source_file, specs, missing_specs}]."""
+        try:
+            spec_paths = [tc.spec_path for tc in parse_config(Path(self.test_config_file))
+                          if tc.spec_path]
+        except Exception as e:
+            logger.warning(f"Could not read spec paths for competency questions: {e}")
+            return []
+        defs, seen = [], set()
+        for sp in spec_paths:
+            for ttl in sorted(Path(sp).glob("**/*.mustrd.ttl")):
+                g = Graph()
+                try:
+                    g.parse(ttl)
+                except Exception:
+                    continue
+                for cq in g.subjects(RDF.type, CQ.CompetencyQuestion):
+                    cid = str(cq)
+                    if cid in seen:
+                        continue
+                    seen.add(cid)
+                    questions = [str(o) for o in g.objects(cq, CQ.question)]
+                    specs, missing = [], []
+                    for u in (str(o) for o in g.objects(cq, CQ.cqSpec)):
+                        (specs.append(spec_by_uri[u]) if u in spec_by_uri
+                         else missing.append(u))
+                    defs.append({
+                        "id": cid, "name": _local_name(cid),
+                        "question": questions[0] if questions else None,
+                        "questions": questions, "source_file": str(ttl),
+                        "specs": specs, "missing_specs": missing,
+                    })
+        return sorted(defs, key=lambda d: (d.get("question") or "", d["name"]))
+
+    @staticmethod
+    def _render_result_list(test_results, is_mustrd):
+        """The pre-existing (master) --md report: a ResultList of every test."""
         result_list = ResultList(
             None,
             get_result_list(
@@ -366,10 +617,76 @@ class MustrdTestPlugin:
             ),
             False,
         )
+        return result_list.render()
 
-        md = result_list.render()
-        with open(self.md_path, "w") as file:
-            file.write(md)
+    def _build_report(self, coverage, cq_view, test_results, spec_by_uri, link_base):
+        """Assemble the report for the active flags, with links relative to
+        `link_base`. Two H2 sub-reports under a top title:
+
+          # Ontologies Report
+          ## Coverage Report            (--term-coverage)
+             ### Ontologies / Term Coverage / Not covered by any test / Structural / used-but-not-declared
+          ## Competency Questions Report  (--cq)
+             ### Competency Questions / Duplicate CQs / Not used by any CQ / Per competency question
+        """
+        parts = []
+        href = _link_href(link_base)
+        if coverage is not None:
+            parts.append("# Ontologies Report")
+            parts.append("## Coverage Report")
+            _link_report_refs(coverage, href)
+            ontologies = ontology_report(self.ontology_paths, href=href)
+            if ontologies:
+                parts.append(render_ontologies(ontologies))
+            parts.append(render_term_coverage(coverage))
+            if coverage.get("tbox_in_data"):
+                parts.append(render_tbox_in_data(coverage["tbox_in_data"]))
+        # CQ report — from coverage when available, else the no-ontology cq_view.
+        view = coverage if coverage is not None else cq_view
+        if self.cq and view is not None:
+            _link_report_refs(view, href)
+            per_cq = view.get("per_cq", [])
+            self._enrich_cq(per_cq, spec_by_uri, coverage, href)
+            parts.append("## Competency Questions Report" if coverage is not None
+                         else "# Competency Questions Report")
+            parts.append(render_cq_table(per_cq, show_coverage=coverage is not None))
+            if view.get("duplicate_cqs"):
+                parts.append(render_duplicate_cqs(view["duplicate_cqs"]))
+            if coverage is not None:
+                parts.append(render_cq_gaps(coverage.get("cq_gaps", [])))
+            if per_cq:
+                parts.append(render_per_cq(per_cq, view.get("unchecked", False)))
+        return "\n\n".join(parts)
+
+    def _enrich_cq(self, per_cq, spec_by_uri, coverage, href):
+        """In place: give each CQ entry its source-file link and, per linked test,
+        a link to its spec file and a coverage status (the undeclared terms it
+        references, else ✅ passed). Dangling cqSpec targets get a display name."""
+        issues = {}
+        for term in (coverage or {}).get("undeclared", []):
+            for ref in term["refs"]:
+                where = ("data & SPARQL" if ref["in_data"] and ref["in_query"]
+                         else "input data" if ref["in_data"] else "SPARQL")
+                issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
+        for entry in per_cq:
+            entry["cq_link"] = href(entry.get("source_file"))
+            entry["missing_names"] = [_local_name(u) for u in entry.get("missing_specs", [])]
+            for t in entry.get("tests", []):
+                t["test_link"] = href(spec_by_uri.get(t.get("uri"), {}).get("source_file"))
+                if coverage is not None:
+                    probs = issues.get(t["name"])
+                    t["coverage_status"] = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
+        return per_cq
+
+    def _report_to_terminal(self, config, body):
+        tr = config.pluginmanager.get_plugin("terminalreporter")
+        lines = (body or "No competency questions or ontology coverage to report.").splitlines()
+        if tr is not None:
+            tr.section("Mustrd report", sep="=")
+            for line in lines:
+                tr.write_line(line)
+        else:  # pragma: no cover - terminalreporter is normally present
+            print("\n".join(lines))
 
 
 class MustrdFile(pytest.File):

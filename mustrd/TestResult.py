@@ -24,6 +24,13 @@ TEMPLATE_FOLDER = Path(os.path.join(get_mustrd_root(), "templates/"))
 
 RESULT_LIST_MD_TEMPLATE = "md_ResultList_template.jinja"
 RESULT_LIST_LEAF_MD_TEMPLATE = "md_ResultList_leaf_template.jinja"
+CQ_TABLE_MD_TEMPLATE = "md_cq_table_template.jinja"
+TERM_COVERAGE_MD_TEMPLATE = "md_term_coverage_template.jinja"
+ONTOLOGIES_MD_TEMPLATE = "md_ontologies_template.jinja"
+DUPLICATE_CQS_MD_TEMPLATE = "md_duplicate_cqs_template.jinja"
+PER_CQ_MD_TEMPLATE = "md_per_cq_template.jinja"
+CQ_GAPS_MD_TEMPLATE = "md_cq_gaps_template.jinja"
+TBOX_IN_DATA_MD_TEMPLATE = "md_tbox_in_data_template.jinja"
 
 
 @dataclass
@@ -34,14 +41,19 @@ class TestResult:
     status: str
     is_mustrd: bool
     type: str
+    test_link: str = None
+    module_link: str = None
 
-    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool):
+    def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool,
+                 test_link: str = None, module_link: str = None):
         self.test_name = test_name
         self.class_name = class_name
         self.module_name = module_name
         self.status = status
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
+        self.test_link = test_link
+        self.module_link = module_link
 
 
 @dataclass
@@ -110,3 +122,43 @@ class ResultList:
         environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
         template = RESULT_LIST_LEAF_MD_TEMPLATE if self.is_leaf else RESULT_LIST_MD_TEMPLATE
         return environment.get_template(template).render(result_list=self.result_list, environment=environment)
+
+
+def render_cq_table(cqs: list, show_coverage: bool = False) -> str:
+    # CQ-first flat table: one row per competency-question node (enriched dicts
+    # from coverage/cq_only_view). Coverage Status column only when --term-coverage.
+    with_test = sum(1 for c in cqs if c.get("has_test"))
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(
+        cqs=cqs, show_coverage=show_coverage,
+        total=len(cqs), with_test=with_test, without_test=len(cqs) - with_test)
+
+
+def render_term_coverage(coverage: dict) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(TERM_COVERAGE_MD_TEMPLATE).render(coverage=coverage)
+
+
+def render_ontologies(ontologies: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(ONTOLOGIES_MD_TEMPLATE).render(ontologies=ontologies)
+
+
+def render_duplicate_cqs(duplicate_cqs: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(DUPLICATE_CQS_MD_TEMPLATE).render(duplicate_cqs=duplicate_cqs)
+
+
+def render_per_cq(per_cq: list, unchecked: bool = False) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(PER_CQ_MD_TEMPLATE).render(per_cq=per_cq, unchecked=unchecked)
+
+
+def render_cq_gaps(cq_gaps: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(CQ_GAPS_MD_TEMPLATE).render(cq_gaps=cq_gaps)
+
+
+def render_tbox_in_data(tbox_in_data: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(TBOX_IN_DATA_MD_TEMPLATE).render(tbox_in_data=tbox_in_data)

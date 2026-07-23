@@ -1,0 +1,13 @@
+@prefix :            <https://mustrd.org/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+
+:geographyCoverageExample
+    a :MustrdTest ;
+    :hasSpecPath     "specs" ;
+    :hasDataPath     "data" ;
+    # :hasOntologyPath is repeatable — name each ontology the suite validates.
+    # (A directory may also be given; it is scanned recursively.)
+    :hasOntologyPath "ontology/place.ttl" ;
+    :hasOntologyPath "ontology/governance.ttl" ;
+    :hasPytestPath   "rdflib" ;
+    :filterOnTripleStore triplestore:RdfLib .

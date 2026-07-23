@@ -1,0 +1,62 @@
+### Term Coverage
+
+**Overall: {{ coverage.covered }}/{{ coverage.denominator }} terms exercised by the tests = {{ coverage.pct }}%**
+{% if coverage.has_cq %}
+**By a competency question: {{ coverage.covered_by_cq }}/{{ coverage.denominator }} = {{ coverage.cq_pct }}%**
+{% endif %}
+{% if coverage.schema_count %}
+_({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural term(s) excluded from the denominator — see below.)_
+{% endif %}
+A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count.
+
+Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`). A term exercised by tests has a `•` sub-row per test, showing what *that* test contributes (input data / SPARQL).
+
+| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Term Coverage</abbr> |{% if coverage.has_cq %} <abbr title="Whether a competency question — not just any test — exercises the term">CQ Term Coverage</abbr> |{% endif %}
+|------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
+{% for t in coverage.terms -%}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else ('❌ query only' if t.status == 'query-only' else '❌ unused')) }} |{% if coverage.has_cq %} {{ '✅ covered' if t.cq_status == 'covered' else ('🔧 structural' if t.cq_status == 'schema' else ('❌ query only' if t.cq_status == 'query-only' else '❌ unused')) }} |{% endif %}
+{% for r in t.cover_refs or [] -%}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * (t.depth + 1) }}• [{{ r.name }}]({{ r.link }}) | | {{ '✅' if r.in_data else '❌' }} | {{ '✅' if r.in_query else '❌' }} | · | |{% if coverage.has_cq %} |{% endif %}
+{% endfor -%}
+{% endfor %}
+#### How to read this table
+
+The **In input data**, **In SPARQL** and **Structural** columns show *where* a term is exercised, classifying every term into a role. **Coverage is data-based**: a term must be populated in some passing test's input data to count.
+
+| Data | SPARQL | Structural | Role | Counts? |
+|:---:|:---:|:---:|------|---------|
+| ✅ | ✅ | | **fully exercised** | ✅ **covered** — populated in the data *and* queried (strongest evidence) |
+| ✅ | ❌ | | **data-only** | ✅ **covered** — instances exist; a property-path query may consume them by IRI without naming the class (to be confirmed by mutation testing). Candidate for a dedicated query. |
+| ❌ | ✅ | | **query-only** | ❌ **not covered** — matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated; the test can pass without it. Often a sign the query leans on a TBox axiom that belongs in the ontology. |
+| ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
+| ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
+{% if coverage.has_cq %}
+A term's **In input data** / **In SPARQL** columns aggregate across *all* tests, so a term whose data and SPARQL come from *different* tests still shows ✅/✅. The `•` **sub-rows** break that down: one per test, with that test's own input-data / SPARQL contribution — so you can see whether a single test exercises the term end to end. **CQ Term Coverage** applies the same verdict (✅ covered / ❌ query only / ❌ unused / 🔧 structural) but counting **only competency questions** — so a term a non-CQ test covers still reads *❌ unused* here (no CQ pins it down). Compare it with Test Term Coverage to see what only the non-CQ tests reach.
+{% endif %}
+### Not covered by any test
+
+{% if coverage.gaps -%}
+{% for t in coverage.gaps -%}
+- {{ t.term }} ({{ t.kind }}) — {% if t.query_only %}**query-only**: named by a query but never populated in any test's input data, so the test passes without it (consider moving the enabling TBox axiom into the ontology){% else %}declared in the ontology but not exercised by any test (nor structural to one){% endif %}
+{% endfor %}
+{%- else -%}
+_none — every declared term is covered or structural_
+{%- endif %}
+{% if coverage.schema_terms %}
+### Structural terms (excluded from coverage)
+
+Not directly exercised, but load-bearing — they define the structure of the terms the tests use:
+
+{% for t in coverage.schema_terms -%}
+- {{ t.term }} ({{ t.kind }}) — {{ t.reason }}
+{% endfor %}
+{%- endif %}
+{% if coverage.undeclared %}
+### ⚠️ Used but not declared
+
+Referenced by a test, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
+{% for u in coverage.undeclared %}
+- **{{ u.term }}**
+{% for r in u.refs %}  - {% if r.link %}[{{ r.name }}]({{ r.link }}){% else %}{{ r.name }}{% endif %} — {% if r.in_data and r.in_query %}input data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}
+{% endfor %}{% endfor %}
+{%- endif %}

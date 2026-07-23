@@ -1,0 +1,7 @@
+### Ontologies
+
+Coverage below is measured against {{ "this ontology" if ontologies | length == 1 else "these ontologies" }}:
+
+{% for o in ontologies -%}
+- [{{ o.path }}]({{ o.url }}){% if o.uri %} — `{{ o.uri }}`{% endif %}{% if o.description %} — {{ o.description }}{% endif %}
+{% endfor -%}

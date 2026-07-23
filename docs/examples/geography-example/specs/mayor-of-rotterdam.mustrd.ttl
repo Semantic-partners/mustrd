@@ -1,0 +1,28 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
+@prefix ex:   <http://example.org/> .
+@prefix :     <http://example.org/place/example/> .
+
+:mayorOfRotterdamCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Who is the mayor of Rotterdam?" ;
+    cq:cqSpec :mayorOfRotterdam .
+
+:mayorOfRotterdam
+    a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "mayor.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 # Bind the city the question asks about, rather than hard-coding
+                 # it in the query text.
+                 must:hasBinding [ must:variable "city" ; must:boundValue ex:Rotterdam ] ;
+                 must:queryText """PREFIX gov:   <http://example.org/governance#>
+PREFIX place: <http://example.org/place#>
+SELECT ?mayor WHERE {
+  ?mayor a gov:Mayor ;
+         gov:governs ?city .
+  OPTIONAL { ?mayor gov:appointedOn ?date }
+  ?city a place:City .
+}""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "mayor" ; must:boundValue ex:Aboutaleb ] ] ] .

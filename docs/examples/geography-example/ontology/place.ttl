@@ -1,0 +1,26 @@
+@prefix place: <http://example.org/place#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://example.org/place#> a owl:Ontology ;
+    rdfs:comment "A minimal vocabulary for places and how they are geographically contained within one another." .
+
+# An ontology-level metadata property (relates this ontology to another). It is
+# not part of the domain vocabulary the CQs exercise, so coverage reports it as a
+# schema term rather than a gap.
+place:basedOnStandard a owl:OntologyProperty ;
+    rdfs:comment "The published standard this vocabulary is based on." .
+
+place:Place a owl:Class ;
+    rdfs:comment "Anything with a geographic location." .
+place:Continent a owl:Class ; rdfs:subClassOf place:Place .
+place:Country a owl:Class ; rdfs:subClassOf place:Place .
+place:AdministrativeDivision a owl:Class ; rdfs:subClassOf place:Place .
+place:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .
+place:City a owl:Class ; rdfs:subClassOf place:Place .
+# Declared but never exercised by a CQ — shows up as a gap in the report.
+place:Region a owl:Class ; rdfs:subClassOf place:Place ;
+    rdfs:comment "A broad area of land; not yet exercised by any competency question." .
+place:isLocatedIn a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain place:Place ; rdfs:range place:Place ;
+    rdfs:comment "Relates a place to a place that geographically contains it." .

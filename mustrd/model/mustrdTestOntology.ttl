@@ -38,6 +38,13 @@
              rdfs:range xsd:string .
 
 
+###  https://mustrd.org/mustrdTest/hasOntologyPath
+:hasOntologyPath rdf:type owl:DatatypeProperty ;
+             rdfs:domain :MustrdTest ;
+             rdfs:range xsd:string ;
+             rdfs:comment "Path to an ontology file or a directory (scanned recursively). Its declared terms are what ontology term coverage is measured against. May be repeated for multiple ontologies." .
+
+
 #################################################################
 #    Classes
 #################################################################

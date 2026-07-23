@@ -1,0 +1,9 @@
+### Competency Questions
+
+_{{ total }} competency question{{ '' if total == 1 else 's' }} — {{ with_test }} with a test, {{ without_test }} without._
+
+| Competency Question | Test | Test Status |{% if show_coverage %} Coverage Status |{% endif %}
+|---------------------|------|-------------|{% if show_coverage %}-----------------|{% endif %}
+{% for c in cqs -%}
+| {% if c.question_error %}⚠️ **multiple questions** — {{ c.questions | join(' / ') }}{% else %}{{ c.question or "⚠️ **no question**" }}{% endif %} | {% if not c.tests and not c.missing_names %}—{% else %}{% for t in c.tests %}{% if t.test_link %}[{{ t.name }}]({{ t.test_link }}){% else %}{{ t.name }}{% endif %}{% if not loop.last or c.missing_names %}<br>{% endif %}{% endfor %}{% for m in c.missing_names %}⚠️ missing test: {{ m }}{% if not loop.last %}<br>{% endif %}{% endfor %}{% endif %} | {% if not c.tests %}—{% else %}{% for t in c.tests %}{{ '✅' if t.status == 'passed' else '❌' }} {{ t.status }}{% if not loop.last %}<br>{% endif %}{% endfor %}{% endif %} |{% if show_coverage %} {% if not c.tests %}—{% else %}{% for t in c.tests %}{{ t.coverage_status or '✅ passed' }}{% if not loop.last %}<br>{% endif %}{% endfor %}{% endif %} |{% endif %}
+{% endfor %}
