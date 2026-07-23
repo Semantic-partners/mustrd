@@ -106,15 +106,18 @@ We have a pytest plugin.
 
 ## Competency questions & ontology coverage
 
-A competency question (CQ) is a first-class `must:CompetencyQuestion` node — it
-owns the question (`must:question`, a sub-property of `rdfs:label`) and
-*optionally* links to the test(s) that answer it with `must:cqSpec`. CQ nodes
-live in any `.mustrd.ttl` in the suite:
+A competency question (CQ) is a first-class `cq:CompetencyQuestion` node (its
+vocabulary is `cq:` = `https://mustrd.org/competencyQuestion/`) — it owns the
+question (`cq:question`, a sub-property of `rdfs:label`) and *optionally* links
+to the test(s) that answer it with `cq:cqSpec`. CQ nodes live in any
+`.mustrd.ttl` in the suite:
 
 ```ttl
-:rotterdamCountryCQ a must:CompetencyQuestion ;
-    must:question "In which country is Rotterdam?" ;
-    must:cqSpec :test_example .        # optional — omit for a CQ with no test yet
+@prefix cq: <https://mustrd.org/competencyQuestion/> .
+
+:rotterdamCountryCQ a cq:CompetencyQuestion ;
+    cq:question "In which country is Rotterdam?" ;
+    cq:cqSpec :test_example .        # optional — omit for a CQ with no test yet
 ```
 
 Because the link is optional, you can record a CQ *before* writing its test; the

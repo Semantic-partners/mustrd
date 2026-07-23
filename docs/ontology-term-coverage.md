@@ -22,19 +22,21 @@ Two independent, opt-in flags:
   a **Per competency question** breakdown. Needs no ontology and can be used on
   its own.
 
-A competency question is a first-class **`must:CompetencyQuestion`** node —
-`must:question` (a sub-property of `rdfs:label`, exactly one) holds the text, and
-`must:cqSpec` optionally links the mustrd test(s) that answer it. CQ nodes are
-discovered in any `.mustrd.ttl` under the suite's `hasSpecPath`. Because the link
+A competency question is a first-class **`cq:CompetencyQuestion`** node — its
+vocabulary lives in its own ontology (`mustrd/model/cq-ontology.ttl`, prefix
+`cq:` = `https://mustrd.org/competencyQuestion/`). `cq:question` (a sub-property
+of `rdfs:label`, exactly one) holds the text, and `cq:cqSpec` optionally links
+the mustrd test(s) that answer it. CQ nodes are discovered in any `.mustrd.ttl`
+under the suite's `hasSpecPath`. Because the link
 is optional, a CQ can be recorded before its test exists; the table lists such
 CQs with an em-dash Test cell. The table also flags a CQ with more than one
-`must:question` and a `must:cqSpec` pointing at a non-existent spec.
+`cq:question` and a `cq:cqSpec` pointing at a non-existent spec.
 
 The flags **compose**. With both, coverage gains a CQ overlay: a second headline
 percentage (how much of the ontology the *competency questions* cover, vs all
 tests), a **CQ Term Coverage** column per term, a second **Not used by any CQ** gap list
 (CQ-scoped, alongside the all-tests one), a Coverage Status column in the CQ
-table, and — because a duplicated `must:question` is usually a copy/paste slip —
+table, and — because a duplicated `cq:question` is usually a copy/paste slip —
 those CQ nodes are excluded from the CQ overlay and listed under a *Duplicate
 competency questions* warning.
 
@@ -78,7 +80,7 @@ before this feature.
 ## Motivation
 
 The CQ table answers *"which competency questions have a passing test?"* — one
-row per `must:CompetencyQuestion` node, with its linked test(s) and their
+row per `cq:CompetencyQuestion` node, with its linked test(s) and their
 pass/fail status (and a row, marked "—", for a CQ that has no test yet). That is
 question-level coverage.
 
@@ -182,7 +184,7 @@ axiom the ontology should own.
 
 Two ontologies — a place vocabulary and a small governance vocabulary that
 reuses it (11 declared terms in total) — exercised by four mustrd tests, with
-four `must:CompetencyQuestion` nodes (three linked to a test via `must:cqSpec`,
+four `cq:CompetencyQuestion` nodes (three linked to a test via `cq:cqSpec`,
 one with no test yet), produce the report in
 [`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md),
 generated from the runnable fixtures in
@@ -218,8 +220,8 @@ Reuses what mustrd already parses — no new config:
 1. The flags opt in (checked in `pytest_configure`). In `pytest_sessionfinish`,
    for each collected `TestSpec` we read the merged `given` graph, the `when`
    query text(s), the pass/fail result, and the spec's IRI. Separately, every
-   `must:CompetencyQuestion` node in the suite's `*.mustrd.ttl` files is collected
-   and its `must:cqSpec` links resolved against those specs (a CQ may point at
+   `cq:CompetencyQuestion` node in the suite's `*.mustrd.ttl` files is collected
+   and its `cq:cqSpec` links resolved against those specs (a CQ may point at
    0..n specs, or none).
 2. Coverage is **data-based**: a declared term is covered when a *passing* test
    populates it in its input data (an `rdf:type` object or asserted predicate). A
@@ -251,16 +253,18 @@ The code is split into three layers, one-directional (`ontology.py` <-
   reasoning, the subClassOf term tree, "used but not declared", "TBox axioms in
   test data", and `compute_coverage`.
 - **`mustrd/cq.py`** — the competency-question overlay: duplicate-question
-  detection, `must:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
+  detection, `cq:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
   (`--cq` with no ontology).
 
 Also: `mustrd/TestResult.py` render helpers; the `--term-coverage` / `--cq`
 options, CQ-node collection, `:hasOntologyPath` parsing and the fail-early check
-in `mustrd/mustrdTestPlugin.py`; the `must:CompetencyQuestion` class,
-`must:question` and `must:cqSpec` in `mustrd/model/ontology.ttl` +
-`mustrd/model/mustrdShapes.ttl`; the `:hasOntologyPath` term in
-`mustrd/model/mustrdTestOntology.ttl`. Tests in `test/test_coverage.py` (unit)
-and `test/test_coverage_plugin.py` (end-to-end).
+in `mustrd/mustrdTestPlugin.py`; the competency-question vocabulary
+(`cq:CompetencyQuestion`, `cq:question`, `cq:cqSpec`; namespace
+`https://mustrd.org/competencyQuestion/`, prefix `cq:`) in its own
+`mustrd/model/cq-ontology.ttl` with the matching `cq:CompetencyQuestionShape` in
+`mustrd/model/mustrdShapes.ttl`; the `CQ` namespace in `mustrd/namespace.py`; the
+`:hasOntologyPath` term in `mustrd/model/mustrdTestOntology.ttl`. Tests in
+`test/test_coverage.py` (unit) and `test/test_coverage_plugin.py` (end-to-end).
 
 ### Known limitations / open questions
 

@@ -1,7 +1,7 @@
 """Competency-question reporting.
 
-Competency questions are first-class `must:CompetencyQuestion` nodes (question +
-optional `must:cqSpec` links to the tests that answer them). This module turns the
+Competency questions are first-class `cq:CompetencyQuestion` nodes (question +
+optional `cq:cqSpec` links to the tests that answer them). This module turns the
 collected CQ definitions into the report's CQ overlay and per-CQ breakdown; it
 depends on the low-level term helpers in `mustrd.coverage` (one direction only —
 coverage never imports this module at module load).
@@ -69,7 +69,7 @@ def _split_duplicate_cqs(cq_defs):
 
 
 def _linked_specs(cq_defs):
-    """Deduped list of the spec dicts linked (via must:cqSpec) by any CQ def."""
+    """Deduped list of the spec dicts linked (via cq:cqSpec) by any CQ def."""
     seen, out = set(), []
     for d in cq_defs:
         for s in d.get("specs", []):

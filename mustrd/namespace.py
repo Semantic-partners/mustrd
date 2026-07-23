@@ -110,3 +110,6 @@ MUST = Namespace("https://mustrd.org/model/")
 
 # Add SpadeEdnGroupSource to the namespace
 MUST.SpadeEdnGroupSource = MUST["SpadeEdnGroupSource"]
+
+# Competency questions have their own vocabulary (see model/cq-ontology.ttl).
+CQ = Namespace("https://mustrd.org/competencyQuestion/")

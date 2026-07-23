@@ -33,6 +33,7 @@ WELL_KNOWN = (
     "http://www.w3.org/2004/02/skos/core#",
     "http://www.w3.org/ns/shacl#",
     "https://mustrd.org/model/",
+    "https://mustrd.org/competencyQuestion/",
     "http://purl.org/dc/elements/1.1/",
     "http://purl.org/dc/terms/",
     "http://www.w3.org/ns/prov#",

@@ -27,7 +27,7 @@ from mustrd.mustrd import (
     get_triple_stores,
     SpecInvalid
 )
-from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST
+from mustrd.namespace import MUST, TRIPLESTORE, MUSTRDTEST, CQ
 from pyshacl import validate
 
 import pathlib
@@ -440,8 +440,8 @@ class MustrdTestPlugin:
         test_results, all_specs, spec_by_uri, last_is_mustrd = \
             self._collect_results(session)
 
-        # Competency questions are first-class must:CompetencyQuestion nodes found
-        # in the spec files; resolve their must:cqSpec links against the collected
+        # Competency questions are first-class cq:CompetencyQuestion nodes found
+        # in the spec files; resolve their cq:cqSpec links against the collected
         # specs so a CQ can point at 0..n tests (or none at all).
         cq_defs = self._collect_cq_defs(spec_by_uri) if report_cq else []
 
@@ -483,7 +483,7 @@ class MustrdTestPlugin:
         """Build a TestResult for every test (for the ResultList --md) and the
         mustrd-spec dicts (all of them — coverage is over all tests), plus a
         spec-IRI → spec-dict map so competency questions can resolve their
-        must:cqSpec links.
+        cq:cqSpec links.
         Returns (test_results, all_specs, spec_by_uri, last_is_mustrd)."""
         test_results, all_specs, spec_by_uri = [], [], {}
         is_mustrd = False
@@ -535,8 +535,8 @@ class MustrdTestPlugin:
         }
 
     def _collect_cq_defs(self, spec_by_uri):
-        """Find every must:CompetencyQuestion node in the suite's spec files and
-        resolve its must:cqSpec links. A CQ may live in any *.mustrd.ttl under a
+        """Find every cq:CompetencyQuestion node in the suite's spec files and
+        resolve its cq:cqSpec links. A CQ may live in any *.mustrd.ttl under a
         config's hasSpecPath, and may point at 0..n specs (or none). Unresolvable
         cqSpec targets are kept in `missing_specs` so the table can flag them.
         Returns [{id, name, question, questions, source_file, specs, missing_specs}]."""
@@ -554,14 +554,14 @@ class MustrdTestPlugin:
                     g.parse(ttl)
                 except Exception:
                     continue
-                for cq in g.subjects(RDF.type, MUST.CompetencyQuestion):
+                for cq in g.subjects(RDF.type, CQ.CompetencyQuestion):
                     cid = str(cq)
                     if cid in seen:
                         continue
                     seen.add(cid)
-                    questions = [str(o) for o in g.objects(cq, MUST.question)]
+                    questions = [str(o) for o in g.objects(cq, CQ.question)]
                     specs, missing = [], []
-                    for u in (str(o) for o in g.objects(cq, MUST.cqSpec)):
+                    for u in (str(o) for o in g.objects(cq, CQ.cqSpec)):
                         (specs.append(spec_by_uri[u]) if u in spec_by_uri
                          else missing.append(u))
                     defs.append({

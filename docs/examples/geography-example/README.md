@@ -4,8 +4,8 @@ A small, runnable mustrd suite that demonstrates the `--term-coverage` and `--cq
 features (see [`../../ontology-term-coverage.md`](../../ontology-term-coverage.md)
 for the design). **Two** ontologies — a place vocabulary and a small governance
 vocabulary that reuses it — are exercised by four mustrd tests. Four
-`must:CompetencyQuestion` nodes accompany them: three link to a test via
-`must:cqSpec`, and one records a question with **no test yet**. The report shows
+`cq:CompetencyQuestion` nodes accompany them: three link to a test via
+`cq:cqSpec`, and one records a question with **no test yet**. The report shows
 which declared terms the tests exercise across both ontologies, and how much of
 that is backed by a competency question.
 
@@ -17,7 +17,7 @@ that is backed by a competency question.
 | [`ontology/place.ttl`](ontology/place.ttl) | Places (`Place`, `City`, `Country`, …) and `isLocatedIn`, plus an ontology-level metadata property. |
 | [`ontology/governance.ttl`](ontology/governance.ttl) | A second ontology: `Mayor` (a subclass of `foaf:Person`) and `governs`, which ranges over `place:City` — so it reuses both an external vocabulary and the place one. |
 | [`data/`](data/) | The `given` instance data for each spec. |
-| [`specs/`](specs/) | Three test specs, each paired in-file with a `must:CompetencyQuestion` node (`must:question` + `must:cqSpec`), a `SELECT` `when`, and a `then` table; one **non-CQ** spec (`region-lookup.mustrd.ttl`); and [`population-of-rotterdam.mustrd.ttl`](specs/population-of-rotterdam.mustrd.ttl), a CQ node with **no test** at all. The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
+| [`specs/`](specs/) | Three test specs, each paired in-file with a `cq:CompetencyQuestion` node (`cq:question` + `cq:cqSpec`), a `SELECT` `when`, and a `then` table; one **non-CQ** spec (`region-lookup.mustrd.ttl`); and [`population-of-rotterdam.mustrd.ttl`](specs/population-of-rotterdam.mustrd.ttl), a CQ node with **no test** at all. The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
 | [`report/term-coverage-example.md`](report/term-coverage-example.md) | The generated report (committed so it can be viewed on GitHub). |
 | [`ontologies.html`](ontologies.html) | A standalone visual of the two ontologies — class hierarchy and properties, colour-coded by namespace. Open it in a browser. |
 
@@ -56,7 +56,7 @@ question**. Two things drive those numbers:
   but no test *instantiates* it (see *query-only* below), so it is **not
   covered** and drops the all-tests number to 89%.
 - `place:Region` is *covered* but not by a CQ: `region-lookup.mustrd.ttl` covers
-  it (in data and SPARQL) and passes, but no `must:CompetencyQuestion` links to it
+  it (in data and SPARQL) and passes, but no `cq:CompetencyQuestion` links to it
   — so its **CQ Term Coverage** column is ❌, taking the CQ number down to 78%.
 
 That's the point of the two metrics: all-test coverage says what's exercised at

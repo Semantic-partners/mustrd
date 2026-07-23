@@ -5,6 +5,7 @@
 @prefix ex:        <http://www.example.org/#> .
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
 @prefix must:      <https://mustrd.org/model/> .
+@prefix cq:        <https://mustrd.org/competencyQuestion/> .
 
 must:
     sh:declare [ sh:prefix    "must" ;
@@ -24,14 +25,14 @@ must:TestSpecShape
                      sh:class    must:Dataset ;
                      sh:minCount 1 ; ] .
 
-must:CompetencyQuestionShape
+cq:CompetencyQuestionShape
     a              sh:NodeShape ;
-    sh:targetClass must:CompetencyQuestion ;
-    sh:property    [ sh:path     must:question ;
+    sh:targetClass cq:CompetencyQuestion ;
+    sh:property    [ sh:path     cq:question ;
                      sh:datatype xsd:string ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ; ] ;
-    sh:property    [ sh:path     must:cqSpec ;
+    sh:property    [ sh:path     cq:cqSpec ;
                      sh:nodeKind sh:IRI ;
                      sh:class    must:TestSpec ;
                      sh:minCount 0 ; ] .

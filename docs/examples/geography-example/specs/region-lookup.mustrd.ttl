@@ -1,5 +1,5 @@
 # A valid mustrd test that exercises place:Region, but which NO
-# must:CompetencyQuestion links to. It shows the difference between the two
+# cq:CompetencyQuestion links to. It shows the difference between the two
 # coverage numbers: this test covers place:Region (so Test Term Coverage is
 # ✅ covered), yet no competency question does (so CQ Term Coverage is ❌ unused).
 @prefix must: <https://mustrd.org/model/> .

@@ -49,7 +49,7 @@ def _spec(passed=True, given=None, queries=(), name="a.mustrd.ttl", uri=None):
 
 
 def _cqdef(question, *specs, name="cq", questions=None, missing=()):
-    """A must:CompetencyQuestion node linking the given spec dicts."""
+    """A cq:CompetencyQuestion node linking the given spec dicts."""
     return {"id": f"http://ex/cq/{name}", "name": name, "source_file": None,
             "question": question,
             "questions": questions if questions is not None else ([question] if question else []),
@@ -201,7 +201,7 @@ def test_duplicate_competency_questions_are_excluded_and_warned():
 
 
 def test_cq_without_a_test_is_listed_and_credits_nothing():
-    # A must:CompetencyQuestion with no linked spec is reported (has_test False)
+    # A cq:CompetencyQuestion with no linked spec is reported (has_test False)
     # and adds nothing to the CQ coverage number.
     spec = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl")
     testless = _cqdef("Unanswered?", name="q")          # no specs

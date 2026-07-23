@@ -229,21 +229,6 @@ sh:order rdf:type owl:DatatypeProperty ;
           rdfs:range xsd:boolean ;
           .
 
-###  https://mustrd.org/model/question
-:question rdf:type owl:AnnotationProperty ;
-          rdfs:subPropertyOf rdfs:label ;
-          rdfs:domain :CompetencyQuestion ;
-          rdfs:range xsd:string ;
-          rdfs:comment "The competency question text. A sub-property of rdfs:label." ;
-          rdfs:label "question" .
-
-###  https://mustrd.org/model/cqSpec
-:cqSpec rdf:type owl:ObjectProperty ;
-        rdfs:domain :CompetencyQuestion ;
-        rdfs:range :TestSpec ;
-        rdfs:comment "Links a competency question to a mustrd test spec that answers it." ;
-        rdfs:label "cq spec" .
-
 #################################################################
 #    Classes
 #################################################################
@@ -252,11 +237,6 @@ sh:order rdf:type owl:DatatypeProperty ;
 :AnzoGraphmartDataset rdf:type owl:Class ;
                       rdfs:subClassOf :Dataset ;
                       rdfs:label "Anzo graphmart dataset" .
-
-###  https://mustrd.org/model/CompetencyQuestion
-:CompetencyQuestion rdf:type owl:Class ;
-                    rdfs:comment "A question the model/data must answer; optionally linked via must:cqSpec to the mustrd test(s) demonstrating it." ;
-                    rdfs:label "Competency Question" .
 
 
 ###  https://mustrd.org/model/Binding

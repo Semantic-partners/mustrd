@@ -1,11 +1,12 @@
 @prefix must: <https://mustrd.org/model/> .
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
 @prefix ex:   <http://example.org/> .
 @prefix :     <http://example.org/place/example/> .
 
 :mayorOfRotterdamCQ
-    a must:CompetencyQuestion ;
-    must:question "Who is the mayor of Rotterdam?" ;
-    must:cqSpec :mayorOfRotterdam .
+    a cq:CompetencyQuestion ;
+    cq:question "Who is the mayor of Rotterdam?" ;
+    cq:cqSpec :mayorOfRotterdam .
 
 :mayorOfRotterdam
     a must:TestSpec ;

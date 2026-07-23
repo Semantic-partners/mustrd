@@ -1,11 +1,12 @@
 @prefix must: <https://mustrd.org/model/> .
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
 @prefix ex:   <http://example.org/> .
 @prefix :     <http://example.org/place/example/> .
 
 :countryOfRotterdamCQ
-    a must:CompetencyQuestion ;
-    must:question "In which country is Rotterdam?" ;
-    must:cqSpec :countryOfRotterdam .
+    a cq:CompetencyQuestion ;
+    cq:question "In which country is Rotterdam?" ;
+    cq:cqSpec :countryOfRotterdam .
 
 :countryOfRotterdam
     a must:TestSpec ;
