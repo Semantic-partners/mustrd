@@ -476,14 +476,15 @@ def _reason_key(r):
     return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
 
-def _non_cq_usage(non_cq_specs, declared_set):
-    """Map each declared term to the *passing* non-CQ tests that exercise it.
+def _usage_by_term(specs, declared_set):
+    """Map each declared term to the *passing* tests that exercise it.
 
-    Used to explain a covered-but-not-by-a-CQ term: which plain test backs it.
+    Used to link a term to the tests behind it — the covering tests in the Test
+    Term Coverage column, and the non-CQ backer of a CQ-scoped gap.
     Returns {term_iri: [{name, source_file, in_data, in_query}, ...]}.
     """
     refs_by_term = {}
-    for s in non_cq_specs:
+    for s in specs:
         if not s.get("passed"):
             continue
         g = s.get("given")
@@ -593,9 +594,17 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
            "by_cq_state": "schema" if term in schema_only else ("yes" if term in ctx["cq_used_data"] else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
-    # A covered term that no CQ backs: name the non-CQ test(s) that do.
-    if status == "covered" and row["by_cq_state"] == "no" and term in ctx["non_cq_refs"]:
-        row["non_cq_refs"] = ctx["non_cq_refs"][term]
+    # Link the tests behind this term: those populating it in data when covered,
+    # those naming it in a query when query-only.
+    refs = ctx["test_refs"].get(term, [])
+    if status == "covered":
+        cover = [r for r in refs if r["in_data"]]
+    elif status == "query-only":
+        cover = [r for r in refs if r["in_query"]]
+    else:
+        cover = []
+    if cover:
+        row["cover_refs"] = sorted(cover, key=lambda r: r["name"])
     return row
 
 
@@ -629,7 +638,7 @@ def _walk_forest(node, depth, children, attached, ctx, rows):
             _walk_forest(child, depth + 1, children, attached, ctx, rows)
 
 
-def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, schema_only, non_cq_refs, short, tbox):
+def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, schema_only, test_refs, short, tbox):
     """The per-term matrix as an ordered list of rows: an indented subClassOf
     tree of classes, each with its domain-attached properties (▸) beneath it;
     properties with no domain trail at the end. `referenced` (data ∪ query) drives
@@ -647,7 +656,7 @@ def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, sc
         (attached.setdefault(domains[0], []).append(p) if domains else unattached.append(p))
 
     ctx = {"used_data": used_data, "used_query": used_query, "cq_used_data": cq_used_data,
-           "schema_only": schema_only, "non_cq_refs": non_cq_refs, "short": short,
+           "schema_only": schema_only, "test_refs": test_refs, "short": short,
            "external": external, "extra_parents": extra_parents}
     rows = []
     for root in roots:
@@ -753,9 +762,12 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     _fold_metadata_into_schema(schema_reasons, metadata, referenced)
     schema_only = {t for t in schema_reasons if t not in referenced}
 
-    non_cq_refs = _non_cq_usage([s for s in specs if s not in (cq_specs or [])], declared_set)
+    # Which passing tests back each term: all tests (for the Test Term Coverage
+    # links) and non-CQ tests only (to name the backer of a CQ-scoped gap).
+    test_refs = _usage_by_term(specs, declared_set)
+    non_cq_refs = _usage_by_term([s for s in specs if s not in (cq_specs or [])], declared_set)
     terms = _ordered_terms(declared, referenced, used_data, used_query, cq_used_data,
-                           schema_only, non_cq_refs, short, tbox)
+                           schema_only, test_refs, short, tbox)
     # "Not covered by any test": declared, non-structural terms no passing test
     # populates in data. Query-only terms (named by a query but never instantiated)
     # land here too, flagged so the report can distinguish them from the untouched.

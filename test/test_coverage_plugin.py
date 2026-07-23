@@ -67,10 +67,10 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     # place:basedOnStandard has no domain -> trails at top level (no connector).
     assert next(ln for ln in text.splitlines() if "place:basedOnStandard" in ln).startswith("| place:basedOnStandard ")
 
-    # place:Region (covered by a non-CQ test) names/links that test in CQ Term Coverage.
+    # place:Region: Test Term Coverage links the covering test; CQ Term Coverage is ❌.
     region_row = next(ln for ln in text.splitlines() if "↳ place:Region " in ln)
-    assert "| ✅ covered | ❌ unused by CQ — exercised by " in region_row
-    assert "region-lookup.mustrd.ttl](" in region_row and region_row.endswith("(data & SPARQL) |")
+    assert "✅ covered<br>[region-lookup.mustrd.ttl](" in region_row
+    assert region_row.endswith("| ❌ |")  # no competency question covers it
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))
     assert place_row.endswith("| 🔧 structural | 🔧 structural |")
     # place:AdministrativeDivision: query-only -> a gap, marked "❌ query only".
