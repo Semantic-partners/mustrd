@@ -215,11 +215,11 @@ def test_term_coverage_rdf_output(tmp_path):
     assert g.value(predicate=DQV.isMeasurementOf,
                    object=COV.termCoverageByCompetencyQuestions) is not None
 
-    # Per-term: AdministrativeDivision is query-only; Region covered but not by a CQ.
-    ad = URIRef("https://mustrd.org/coverage/run/local/term/place.AdministrativeDivision")
+    # Per-term (found by cov:term, since the run IRI carries the commit SHA in CI):
+    # AdministrativeDivision is query-only; Region covered but not by a CQ.
+    ad = g.value(predicate=COV["term"], object=URIRef("http://example.org/place#AdministrativeDivision"))
     assert (ad, COV.role, COV.QueryOnly) in g
-    assert (ad, COV["term"], URIRef("http://example.org/place#AdministrativeDivision")) in g
-    region = URIRef("https://mustrd.org/coverage/run/local/term/place.Region")
+    region = g.value(predicate=COV["term"], object=URIRef("http://example.org/place#Region"))
     assert (region, COV.role, COV.Covered) in g
     assert (region, COV.cqRole, COV.Unused) in g
 
