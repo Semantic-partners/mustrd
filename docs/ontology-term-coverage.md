@@ -77,8 +77,9 @@ before this feature.
 
 ## Motivation
 
-The CQ table added in `feature/cq_parsing` answers *"which competency questions
-have a passing test?"* — one row per spec, with a pass/fail status. That is
+The CQ table answers *"which competency questions have a passing test?"* — one
+row per `must:CompetencyQuestion` node, with its linked test(s) and their
+pass/fail status (and a row, marked "—", for a CQ that has no test yet). That is
 question-level coverage.
 
 What it cannot tell you is *how much of the ontology those questions actually
@@ -214,37 +215,52 @@ terms no CQ touches at all.
 
 Reuses what mustrd already parses — no new config:
 
-1. `--term-coverage` opts in (checked in `pytest_configure`). In
-   `pytest_sessionfinish`, for each collected `TestSpec` we read the merged
-   `given` graph, the `when` query text(s), and the pass/fail result mustrd
-   already has.
-2. `mustrd/coverage.py` computes ABox usage (`rdf:type` objects + asserted
-   predicates in the given) ∪ query usage (IRIs from the parsed SPARQL algebra),
-   crediting only specs whose result is `passed`.
+1. The flags opt in (checked in `pytest_configure`). In `pytest_sessionfinish`,
+   for each collected `TestSpec` we read the merged `given` graph, the `when`
+   query text(s), the pass/fail result, and the spec's IRI. Separately, every
+   `must:CompetencyQuestion` node in the suite's `*.mustrd.ttl` files is collected
+   and its `must:cqSpec` links resolved against those specs (a CQ may point at
+   0..n specs, or none).
+2. Coverage is **data-based**: a declared term is covered when a *passing* test
+   populates it in its input data (an `rdf:type` object or asserted predicate). A
+   term only named in a query but never instantiated is *query-only* — a gap, not
+   coverage. The CQ overlay measures the same way over the specs the CQs link to.
 3. **Declared terms** come from the ontology named by `mustrdTest:hasOntologyPath`
    (files and/or recursively-scanned directories, merged into one graph):
    subjects typed `owl:Class` / `rdf:Property` / …, restricted to non-well-known
    namespaces (so `rdfs:label` etc. aren't mistaken for the ontology under test).
    `--term-coverage` with no `hasOntologyPath` fails early.
-4. **Schema references** are found over the union of the given graphs: the
+4. **Structural references** are found over the union of the given graphs: the
    `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
-   used class. Declared terms that are only structurally referenced are excluded from
-   the denominator.
-5. The report is assembled from three templates — `md_ontologies_template.jinja`
-   (files + `owl:Ontology` IRI + description, via `coverage.ontology_report`),
-   `md_cq_table_template.jinja`, and `md_term_coverage_template.jinja` — printed
-   to stdout via the terminal reporter and written to the `--md` file (whose
-   parent directory is created if missing).
+   used class. Declared terms that are only structurally referenced are excluded
+   from the denominator.
+5. The report is assembled from per-section templates — `md_ontologies_template`,
+   `md_term_coverage_template`, `md_tbox_in_data_template`, `md_cq_table_template`,
+   `md_duplicate_cqs_template`, `md_cq_gaps_template`, `md_per_cq_template` —
+   printed to stdout via the terminal reporter and written to the `--md` file
+   (whose parent directory is created if missing).
 
-Files: `mustrd/coverage.py` (incl. `ontology_report`), the
-`md_ontologies_template.jinja` / `md_cq_table_template.jinja` (now headed
-"Competency Questions") / `md_term_coverage_template.jinja` templates,
-`mustrd/TestResult.py` (`render_ontologies` / `render_term_coverage`), the
-`--term-coverage` option,
-`:hasOntologyPath` config parsing and the fail-early check in
-`mustrd/mustrdTestPlugin.py`, the `:hasOntologyPath` term in
-`mustrd/namespace.py` + `mustrd/model/mustrdTest{Ontology,Shapes}.ttl`. Unit
-tests in `test/test_coverage.py`.
+The code is split into three layers, one-directional (`ontology.py` <-
+`coverage.py` <- `cq.py`):
+
+- **`mustrd/ontology.py`** — the pure RDF read layer: `load_ontology` /
+  `ontology_report` / `expand_ontology_files`, `declared_terms` /
+  `metadata_terms`, `abox_terms` / `query_uris`, and the namespace / prefix
+  helpers. Knows nothing about specs or coverage.
+- **`mustrd/coverage.py`** — term-coverage scoring: the structural (schema)
+  reasoning, the subClassOf term tree, "used but not declared", "TBox axioms in
+  test data", and `compute_coverage`.
+- **`mustrd/cq.py`** — the competency-question overlay: duplicate-question
+  detection, `must:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
+  (`--cq` with no ontology).
+
+Also: `mustrd/TestResult.py` render helpers; the `--term-coverage` / `--cq`
+options, CQ-node collection, `:hasOntologyPath` parsing and the fail-early check
+in `mustrd/mustrdTestPlugin.py`; the `must:CompetencyQuestion` class,
+`must:question` and `must:cqSpec` in `mustrd/model/ontology.ttl` +
+`mustrd/model/mustrdShapes.ttl`; the `:hasOntologyPath` term in
+`mustrd/model/mustrdTestOntology.ttl`. Tests in `test/test_coverage.py` (unit)
+and `test/test_coverage_plugin.py` (end-to-end).
 
 ### Known limitations / open questions
 
