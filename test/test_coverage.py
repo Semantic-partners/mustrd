@@ -133,6 +133,25 @@ def test_query_only_term_is_not_covered():
     assert gap["query_only"] is True
 
 
+def test_cover_refs_expose_data_sparql_split_across_tests():
+    # The scenario the aggregate columns can't show: one test supplies the data,
+    # a different test supplies the query. The term reads ✅/✅ overall, but the
+    # per-test cover_refs reveal that no single test does both.
+    a = _spec(given=_graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:c a onto:City .
+    """), queries=[], name="a.mustrd.ttl", cq=None)
+    b = _spec(given=_graph(), name="b.mustrd.ttl", cq=None, queries=[
+        "PREFIX onto: <http://onto.org/> SELECT ?x WHERE { ?x a onto:City . }"])
+    cov = compute_coverage([a, b], ontology=_graph(ONTO))
+    city = {t["term"]: t for t in cov["terms"]}["onto:City"]
+    assert city["status"] == "covered" and city["in_data"] and city["in_query"]
+    refs = {r["name"]: r for r in city["cover_refs"]}
+    assert refs["a.mustrd.ttl"]["in_data"] and not refs["a.mustrd.ttl"]["in_query"]
+    assert refs["b.mustrd.ttl"]["in_query"] and not refs["b.mustrd.ttl"]["in_data"]
+
+
 def test_tbox_axioms_in_given_are_flagged():
     # Class/property declarations and subClassOf in a test's given are schema that
     # belongs in the ontology -> surfaced under tbox_in_data so it can be moved.

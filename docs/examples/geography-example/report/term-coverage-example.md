@@ -21,21 +21,35 @@ _(11 declared; 2 structural term(s) excluded from the denominator — see below.
 
 A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count.
 
-Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
+Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`). A term exercised by tests has a `•` sub-row per test, showing what *that* test contributes (input data / SPARQL).
 
 | Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Term Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">CQ Term Coverage</abbr> |
 |------|------|:---:|:---:|:---:|:---:|:---:|
 | foaf:Person · _external_ | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
-| &nbsp;&nbsp;&nbsp;&nbsp;▸ gov:governs | property | ✅ | ✅ | · | ✅ covered<br>[mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ gov:Mayor | class | ✅ | ✅ | · | ✅ covered<br>[mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;▸ gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ gov:Mayor | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
-| &nbsp;&nbsp;&nbsp;&nbsp;▸ place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered<br>[country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl)<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:AdministrativeDivision | class | ❌ | ✅ | · | ❌ query only<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ❌ |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province | class | ✅ | ❌ | · | ✅ covered<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:City | class | ✅ | ✅ | · | ✅ covered<br>[country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl)<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl)<br>[mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Continent | class | ✅ | ❌ | · | ✅ covered<br>[country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl)<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Country | class | ✅ | ✅ | · | ✅ covered<br>[country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl)<br>[division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Region | class | ✅ | ✅ | · | ✅ covered<br>[region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) | ❌ |
+| &nbsp;&nbsp;&nbsp;&nbsp;▸ place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:AdministrativeDivision | class | ❌ | ✅ | · | ❌ query only | ❌ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ❌ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ✅ | ❌ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:City | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | | ✅ | ❌ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ✅ | ❌ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Continent | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | | ✅ | ❌ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ✅ | ❌ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Country | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | | ✅ | ✅ | · | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) | | ✅ | ✅ | · | | |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
 
 #### How to read this table
@@ -50,7 +64,7 @@ The **In input data**, **In SPARQL** and **Structural** columns show *where* a t
 | ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
 | ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
 
-**Test Term Coverage** links the test(s) behind each term — those populating it in data when *covered*, or naming it in a query when *query-only*. **CQ Term Coverage** shows whether a *competency question* (not just any test) covers the term: ✅ yes, ❌ no (it may still be covered by a non-CQ test — see the linked tests), 🔧 structural (excluded, so not applicable).
+A term's **In input data** / **In SPARQL** columns aggregate across *all* tests, so a term whose data and SPARQL come from *different* tests still shows ✅/✅. The `•` **sub-rows** break that down: one per test, with that test's own input-data / SPARQL contribution — so you can see whether a single test exercises the term end to end. **CQ Term Coverage** shows whether a *competency question* (not just any test) covers the term: ✅ yes, ❌ no (it may still be covered by a non-CQ test — see the linked tests), 🔧 structural (excluded, so not applicable).
 
 ### Not covered by any test
 

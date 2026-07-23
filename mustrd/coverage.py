@@ -594,17 +594,14 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
            "by_cq_state": "schema" if term in schema_only else ("yes" if term in ctx["cq_used_data"] else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
-    # Link the tests behind this term: those populating it in data when covered,
-    # those naming it in a query when query-only.
+    # Link the tests behind this term, each tagged with what it contributes
+    # (data / SPARQL / both). Listing every referencing test — not just the data
+    # ones — makes a split visible: a term whose data and SPARQL come from
+    # *different* tests reads as "fully exercised" in the aggregate columns, but
+    # its per-test tags show no single test does both.
     refs = ctx["test_refs"].get(term, [])
-    if status == "covered":
-        cover = [r for r in refs if r["in_data"]]
-    elif status == "query-only":
-        cover = [r for r in refs if r["in_query"]]
-    else:
-        cover = []
-    if cover:
-        row["cover_refs"] = sorted(cover, key=lambda r: r["name"])
+    if refs and status in ("covered", "query-only"):
+        row["cover_refs"] = sorted(refs, key=lambda r: r["name"])
     return row
 
 

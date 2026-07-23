@@ -9,12 +9,15 @@ _({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural
 {% endif %}
 A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count.
 
-Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
+Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`). A term exercised by tests has a `•` sub-row per test, showing what *that* test contributes (input data / SPARQL).
 
 | Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Term Coverage</abbr> |{% if coverage.has_cq %} <abbr title="Whether a competency question — not just any test — exercises the term">CQ Term Coverage</abbr> |{% endif %}
 |------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
 {% for t in coverage.terms -%}
-| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else ('❌ query only' if t.status == 'query-only' else '❌ unused')) }}{% if t.cover_refs %}{% for r in t.cover_refs %}<br>[{{ r.name }}]({{ r.link }}){% endfor %}{% endif %} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 structural{% elif t.by_cq_state == 'yes' %}✅{% else %}❌{% endif %} |{% endif %}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else ('❌ query only' if t.status == 'query-only' else '❌ unused')) }} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 structural{% elif t.by_cq_state == 'yes' %}✅{% else %}❌{% endif %} |{% endif %}
+{% for r in t.cover_refs or [] -%}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * (t.depth + 1) }}• [{{ r.name }}]({{ r.link }}) | | {{ '✅' if r.in_data else '❌' }} | {{ '✅' if r.in_query else '❌' }} | · | |{% if coverage.has_cq %} |{% endif %}
+{% endfor -%}
 {% endfor %}
 #### How to read this table
 
@@ -28,7 +31,7 @@ The **In input data**, **In SPARQL** and **Structural** columns show *where* a t
 | ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
 | ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
 {% if coverage.has_cq %}
-**Test Term Coverage** links the test(s) behind each term — those populating it in data when *covered*, or naming it in a query when *query-only*. **CQ Term Coverage** shows whether a *competency question* (not just any test) covers the term: ✅ yes, ❌ no (it may still be covered by a non-CQ test — see the linked tests), 🔧 structural (excluded, so not applicable).
+A term's **In input data** / **In SPARQL** columns aggregate across *all* tests, so a term whose data and SPARQL come from *different* tests still shows ✅/✅. The `•` **sub-rows** break that down: one per test, with that test's own input-data / SPARQL contribution — so you can see whether a single test exercises the term end to end. **CQ Term Coverage** shows whether a *competency question* (not just any test) covers the term: ✅ yes, ❌ no (it may still be covered by a non-CQ test — see the linked tests), 🔧 structural (excluded, so not applicable).
 {% endif %}
 ### Not covered by any test
 
