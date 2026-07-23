@@ -23,7 +23,7 @@ A term is *used* if a passing test exercises it — either in the **input data**
 
 Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
 
-| Term | Kind | In input data | In SPARQL | Structural | Test Coverage | By a CQ? |
+| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="Whether any passing test exercises the term: covered, structural (excluded), or unused">Test Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">By a CQ?</abbr> |
 |------|------|:---:|:---:|:---:|:---:|:---:|
 | foaf:Person · _external_ | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
 | &nbsp;&nbsp;&nbsp;&nbsp;▸ gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
