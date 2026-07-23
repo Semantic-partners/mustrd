@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geography example ontologies</title>
+<style>
+  :root {
+    --bg: #eaeef2; --surface: #ffffff; --surface-2: #f4f7f9;
+    --border: #d5dbe1; --hair: #e4e9ee;
+    --text: #2a333c; --muted: #5f6b76; --heading: #121d27;
+    --place: #0f7d69; --place-soft: #e4f2ef; --place-line: #9fcfc4;
+    --gov: #9a6212; --gov-soft: #f6eede; --gov-line: #dcc08a;
+    --external: #7a838d; --external-soft: #edeff2;
+    --shadow: 0 1px 2px rgba(18,29,39,.05), 0 8px 24px -12px rgba(18,29,39,.15);
+    --radius: 14px;
+    --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1317; --surface: #141c22; --surface-2: #1a232a;
+      --border: #29343c; --hair: #212b32;
+      --text: #cdd7de; --muted: #8b98a2; --heading: #eef4f7;
+      --place: #4fd1b5; --place-soft: #10302b; --place-line: #2c5b53;
+      --gov: #e3ad52; --gov-soft: #322611; --gov-line: #5c481f;
+      --external: #808a93; --external-soft: #1e262c;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eaeef2; --surface: #ffffff; --surface-2: #f4f7f9;
+    --border: #d5dbe1; --hair: #e4e9ee;
+    --text: #2a333c; --muted: #5f6b76; --heading: #121d27;
+    --place: #0f7d69; --place-soft: #e4f2ef; --place-line: #9fcfc4;
+    --gov: #9a6212; --gov-soft: #f6eede; --gov-line: #dcc08a;
+    --external: #7a838d; --external-soft: #edeff2;
+    --shadow: 0 1px 2px rgba(18,29,39,.05), 0 8px 24px -12px rgba(18,29,39,.15);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1317; --surface: #141c22; --surface-2: #1a232a;
+    --border: #29343c; --hair: #212b32;
+    --text: #cdd7de; --muted: #8b98a2; --heading: #eef4f7;
+    --place: #4fd1b5; --place-soft: #10302b; --place-line: #2c5b53;
+    --gov: #e3ad52; --gov-soft: #322611; --gov-line: #5c481f;
+    --external: #808a93; --external-soft: #1e262c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-body); line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
+
+  /* ---- header ---- */
+  header { margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 .6rem;
+  }
+  h1 {
+    font-family: var(--font-display); font-weight: 600; color: var(--heading);
+    font-size: clamp(1.9rem, 5vw, 2.9rem); line-height: 1.08; margin: 0;
+    text-wrap: balance; letter-spacing: -.01em;
+  }
+  .lede { color: var(--muted); max-width: 60ch; margin: .9rem 0 0; font-size: 1.02rem; }
+
+  .onto-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.8rem; }
+  @media (max-width: 620px) { .onto-summary { grid-template-columns: 1fr; } }
+  .onto-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.1rem 1.2rem; box-shadow: var(--shadow); border-top: 3px solid var(--accent);
+  }
+  .onto-card.place { --accent: var(--place); }
+  .onto-card.gov { --accent: var(--gov); }
+  .onto-card h2 {
+    font-family: var(--font-mono); font-size: 1.05rem; margin: 0; color: var(--accent);
+    font-weight: 600; display: flex; align-items: baseline; gap: .5rem;
+  }
+  .onto-card .iri { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); word-break: break-all; margin: .35rem 0 .6rem; }
+  .onto-card p { margin: 0; font-size: .9rem; }
+  .count { margin-left: auto; font-family: var(--font-body); font-size: .7rem; color: var(--muted); letter-spacing: .04em; }
+
+  /* ---- section scaffolding ---- */
+  section { margin-top: 3rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .8rem; margin-bottom: 1.3rem; }
+  .sec-head h3 {
+    font-family: var(--font-display); font-weight: 600; color: var(--heading);
+    font-size: 1.4rem; margin: 0; letter-spacing: -.01em;
+  }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--hair); }
+  .sec-head .n { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); }
+
+  /* ---- class hierarchy tree ---- */
+  .tree { list-style: none; margin: 0; padding: 0; }
+  .tree ul {
+    list-style: none; margin: .35rem 0 .35rem .55rem; padding-left: 1.1rem;
+    border-left: 1.5px solid var(--rail, var(--border));
+  }
+  .tree li { position: relative; padding: .2rem 0; }
+  .tree ul > li::before {
+    content: ""; position: absolute; left: -1.1rem; top: 1.05rem;
+    width: .85rem; height: 1.5px; background: var(--rail, var(--border));
+  }
+  .subtree.place { --rail: var(--place-line); }
+  .subtree.gov { --rail: var(--external); }
+
+  .node {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-family: var(--font-mono); font-size: .9rem; font-weight: 500;
+    padding: .28rem .6rem; border-radius: 8px; border: 1px solid var(--nb, var(--border));
+    background: var(--ns, var(--surface)); color: var(--nc, var(--text));
+    white-space: nowrap;
+  }
+  .node .glyph { font-family: var(--font-body); font-size: .62rem; opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
+  .node.place { --ns: var(--place-soft); --nb: var(--place-line); --nc: var(--place); }
+  .node.gov { --ns: var(--gov-soft); --nb: var(--gov-line); --nc: var(--gov); }
+  .node.external {
+    --ns: var(--external-soft); --nc: var(--external);
+    border-style: dashed; border-color: var(--external);
+  }
+  .row { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+  .term-desc { color: var(--muted); font-size: .82rem; }
+  .pill {
+    font-size: .66rem; font-family: var(--font-mono); letter-spacing: .03em;
+    padding: .12rem .45rem; border-radius: 999px; border: 1px solid var(--border);
+    color: var(--muted); background: var(--surface-2);
+  }
+  .roots { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; align-items: start; }
+  @media (max-width: 720px) { .roots { grid-template-columns: 1fr; } }
+  .root-label { font-size: .74rem; color: var(--muted); margin: 0 0 .6rem; font-family: var(--font-mono); letter-spacing: .04em; }
+
+  /* ---- properties ---- */
+  .props { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 720px) { .props { grid-template-columns: 1fr; } }
+  .prop {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.1rem 1.2rem; box-shadow: var(--shadow); border-left: 3px solid var(--accent);
+  }
+  .prop.place { --accent: var(--place); }
+  .prop.gov { --accent: var(--gov); }
+  .prop .pname { font-family: var(--font-mono); font-weight: 600; color: var(--accent); font-size: .98rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0 .8rem; }
+  .badge {
+    font-size: .66rem; font-family: var(--font-mono); letter-spacing: .02em;
+    padding: .16rem .5rem; border-radius: 6px; background: var(--surface-2);
+    color: var(--muted); border: 1px solid var(--border);
+  }
+  .signature { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .7rem; font-family: var(--font-mono); font-size: .82rem; }
+  .signature .arrow { color: var(--muted); }
+  .chip {
+    padding: .2rem .5rem; border-radius: 7px; font-size: .8rem;
+    border: 1px solid var(--nb, var(--border)); background: var(--ns, var(--surface-2)); color: var(--nc, var(--text));
+  }
+  .chip.place { --ns: var(--place-soft); --nb: var(--place-line); --nc: var(--place); }
+  .chip.external { --ns: var(--external-soft); --nc: var(--external); border-style: dashed; border-color: var(--external); }
+  .chip.self { font-style: italic; }
+  .prop p { margin: 0; font-size: .88rem; color: var(--text); }
+  .meta-note { color: var(--muted); font-size: .82rem; font-style: italic; }
+
+  /* ---- legend ---- */
+  .legend {
+    margin-top: 3rem; border-top: 1px solid var(--hair); padding-top: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 1.4rem 2rem; font-size: .8rem; color: var(--muted);
+  }
+  .legend .key { display: flex; align-items: center; gap: .5rem; }
+  .swatch { width: 1rem; height: 1rem; border-radius: 4px; border: 1px solid var(--border); flex: none; }
+  .swatch.place { background: var(--place-soft); border-color: var(--place-line); }
+  .swatch.gov { background: var(--gov-soft); border-color: var(--gov-line); }
+  .swatch.external { background: var(--external-soft); border: 1px dashed var(--external); }
+  footer { margin-top: 2.5rem; font-size: .76rem; color: var(--muted); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">mustrd · term-coverage example</p>
+    <h1>Two little ontologies for places &amp; the people who govern them</h1>
+    <p class="lede">
+      The geography example measures term coverage across a pair of cross-referencing
+      vocabularies. <strong>place</strong> describes geographic things and how they nest;
+      <strong>governance</strong> adds a civic role that reuses both <strong>place</strong>
+      and an external vocabulary (<span style="font-family:var(--font-mono)">foaf</span>).
+    </p>
+
+    <div class="onto-summary">
+      <div class="onto-card place">
+        <h2>place: <span class="count">6 classes · 2 properties</span></h2>
+        <div class="iri">http://example.org/place#</div>
+        <p>A minimal vocabulary for places and how they are geographically contained within one another.</p>
+      </div>
+      <div class="onto-card gov">
+        <h2>gov: <span class="count">1 class · 1 property</span></h2>
+        <div class="iri">http://example.org/governance#</div>
+        <p>A tiny vocabulary for governance roles and the places they govern.</p>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <span class="n">01</span>
+      <h3>Class hierarchy</h3>
+      <span class="rule"></span>
+    </div>
+    <div class="roots">
+      <div>
+        <p class="root-label">place — rooted at place:Place</p>
+        <ul class="tree">
+          <li>
+            <div class="row">
+              <span class="node place"><span class="glyph">class</span>place:Place</span>
+              <span class="term-desc">Anything with a geographic location.</span>
+            </div>
+            <ul class="subtree place">
+              <li><span class="node place"><span class="glyph">class</span>place:Continent</span></li>
+              <li><span class="node place"><span class="glyph">class</span>place:Country</span></li>
+              <li>
+                <div class="row">
+                  <span class="node place"><span class="glyph">class</span>place:City</span>
+                  <span class="pill">range of gov:governs</span>
+                </div>
+              </li>
+              <li>
+                <div class="row">
+                  <span class="node place"><span class="glyph">class</span>place:Region</span>
+                  <span class="pill">no competency question</span>
+                </div>
+              </li>
+              <li>
+                <span class="node place"><span class="glyph">class</span>place:AdministrativeDivision</span>
+                <ul class="subtree place">
+                  <li><span class="node place"><span class="glyph">class</span>place:Province</span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <p class="root-label">governance — reuses an external root</p>
+        <ul class="tree">
+          <li>
+            <div class="row">
+              <span class="node external"><span class="glyph">external</span>foaf:Person</span>
+              <span class="term-desc">referenced, not declared here</span>
+            </div>
+            <ul class="subtree gov">
+              <li>
+                <div class="row">
+                  <span class="node gov"><span class="glyph">class</span>gov:Mayor</span>
+                  <span class="term-desc">A person who governs a city.</span>
+                </div>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="n">02</span>
+      <h3>Properties</h3>
+      <span class="rule"></span>
+    </div>
+    <div class="props">
+      <div class="prop place">
+        <div class="pname">place:isLocatedIn</div>
+        <div class="badges">
+          <span class="badge">owl:ObjectProperty</span>
+          <span class="badge">owl:TransitiveProperty</span>
+        </div>
+        <div class="signature">
+          <span class="chip place">place:Place</span>
+          <span class="arrow">→</span>
+          <span class="chip place">place:Place</span>
+        </div>
+        <p>Relates a place to a place that geographically contains it. Transitive, so containment chains (a city in a country in a continent) close automatically.</p>
+      </div>
+
+      <div class="prop gov">
+        <div class="pname">gov:governs</div>
+        <div class="badges">
+          <span class="badge">owl:ObjectProperty</span>
+        </div>
+        <div class="signature">
+          <span class="chip external">foaf:Person</span>
+          <span class="arrow">→</span>
+          <span class="chip place">place:City</span>
+        </div>
+        <p>Relates a person to a place they are responsible for governing — the cross-ontology link from <strong>governance</strong> into <strong>place</strong>.</p>
+      </div>
+
+      <div class="prop place">
+        <div class="pname">place:basedOnStandard</div>
+        <div class="badges">
+          <span class="badge">owl:OntologyProperty</span>
+        </div>
+        <div class="signature">
+          <span class="meta-note">ontology-level metadata — no domain / range</span>
+        </div>
+        <p>The published standard this vocabulary is based on. Documentation metadata rather than a domain term, so coverage treats it as schema, not a gap.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="legend">
+    <span class="key"><span class="swatch place"></span> place: namespace</span>
+    <span class="key"><span class="swatch gov"></span> governance: namespace</span>
+    <span class="key"><span class="swatch external"></span> external (foaf:) — referenced, not declared</span>
+    <span class="key">→ domain to range</span>
+  </div>
+
+  <footer>docs/examples/geography-example · place.ttl + governance.ttl</footer>
+</div>
+
+</body>
+</html>

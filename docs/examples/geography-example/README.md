@@ -18,6 +18,7 @@ competency question.
 | [`data/`](data/) | The `given` instance data for each spec. |
 | [`specs/`](specs/) | The three competency-question specs (`must:competencyQuestion`, a `SELECT` `when`, and a `then` table), plus one **non-CQ** spec (`region-lookup.mustrd.ttl`). The mayor spec binds the city with `must:hasBinding` (`?city` → `ex:Rotterdam`) rather than hard-coding it, and its data includes a second city's mayor as a distractor to prove the query really discriminates. |
 | [`report/term-coverage-example.md`](report/term-coverage-example.md) | The generated report (committed so it can be viewed on GitHub). |
+| [`ontologies.html`](ontologies.html) | A standalone visual of the two ontologies — class hierarchy and properties, colour-coded by namespace. Open it in a browser. |
 
 ## Run it
 
