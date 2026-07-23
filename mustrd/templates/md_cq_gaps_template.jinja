@@ -2,7 +2,7 @@
 
 {% if cq_gaps -%}
 {% for t in cq_gaps -%}
-- {{ t.term }} ({{ t.kind }}) — not covered by any competency question{% if t.non_cq_refs %}; covered by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% elif t.query_only %}; a CQ query names it but no CQ populates it in data (**query-only**){% else %} (nor any test){% endif %}
+- {% if t.link %}[{{ t.term }}]({{ t.link }}){% else %}{{ t.term }}{% endif %} ({{ t.kind }}) — not covered by any competency question{% if t.non_cq_refs %}; covered by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% elif t.query_only %}; a CQ query names it but no CQ populates it in data (**query-only**){% else %} (nor any test){% endif %}
 {% endfor %}
 {%- else -%}
 _none — every declared term is exercised by a competency question or is structural_

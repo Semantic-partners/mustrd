@@ -13,7 +13,7 @@ from mustrd.TestResult import (
     render_duplicate_cqs, render_per_cq, render_cq_gaps, render_tbox_in_data,
     ResultList, get_result_list,
 )
-from mustrd.coverage import compute_coverage
+from mustrd.coverage import compute_coverage, apply_term_links
 from mustrd.ontology import load_ontology, ontology_report
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
@@ -117,6 +117,18 @@ def pytest_addoption(parser):
              "per-term breakdown, and quality issues, for a knowledge graph. "
              "Needs an ontology (:hasOntologyPath).",
     )
+    group.addoption(
+        "--term-links",
+        action="store",
+        dest="term_links",
+        metavar="off|file|iri",
+        choices=("off", "file", "iri"),
+        default="off",
+        help="Linkify terms in the coverage report. 'file' deep-links each term "
+             "to its declaration in the ontology source (path#Lline), for local "
+             "browsing; 'iri' links to the term's full IRI, for environments "
+             "where it HTTP-resolves; 'off' (default) leaves terms as plain text.",
+    )
     return
 
 
@@ -132,6 +144,7 @@ def pytest_configure(config) -> None:
                 config.getoption("term_coverage"),
                 config.getoption("cq"),
                 config.getoption("term_coverage_rdf"),
+                config.getoption("term_links"),
             )
         )
 
@@ -307,7 +320,7 @@ class MustrdTestPlugin:
     collect_error: BaseException
 
     def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
-                 term_coverage=False, cq=False, term_coverage_rdf=None):
+                 term_coverage=False, cq=False, term_coverage_rdf=None, term_links="off"):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
@@ -315,6 +328,7 @@ class MustrdTestPlugin:
         self.term_coverage = term_coverage
         self.cq = cq
         self.term_coverage_rdf = term_coverage_rdf
+        self.term_links = term_links
         self.ontology_paths = []
         self.items = []
 
@@ -693,6 +707,7 @@ class MustrdTestPlugin:
         if coverage is not None and graph is not None and ontology_graph is not None:
             ctx = coverage_context(graph, ontology_graph)
             _link_report_refs(ctx, href)
+            apply_term_links(ctx, self.term_links, self.ontology_paths, link_base)
             parts.append("# Ontologies Report")
             parts.append("## Coverage Report")
             ontologies = read_ontologies(graph)
@@ -705,6 +720,7 @@ class MustrdTestPlugin:
                 parts.append(render_tbox_in_data(ctx["tbox_in_data"]))
         if self.cq and graph is not None:
             cqr = cq_report(graph, ontology_graph, href)
+            apply_term_links(cqr, self.term_links, self.ontology_paths, link_base)
             parts.append("## Competency Questions Report" if coverage is not None
                          else "# Competency Questions Report")
             parts.append(render_cq_table(cqr["per_cq"], show_coverage=cqr["has_ontology"]))

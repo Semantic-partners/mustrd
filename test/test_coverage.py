@@ -463,3 +463,45 @@ def test_load_ontology_merges_files(tmp_path):
 
 def test_load_ontology_empty_returns_none(tmp_path):
     assert load_ontology([tmp_path / "does-not-exist"]) is None
+
+
+# --- term links (apply_term_links / term_source_index) ----------------------
+from pathlib import Path
+from mustrd.coverage import apply_term_links, term_source_index
+
+
+def _cov():
+    return {"terms": [{"term": "onto:City", "iri": "http://onto.org/City"}],
+            "gaps": [], "cq_gaps": [], "schema_terms": [], "undeclared": []}
+
+
+def test_term_links_off_leaves_terms_plain():
+    cov = _cov()
+    apply_term_links(cov, "off")
+    assert "link" not in cov["terms"][0]
+    assert apply_term_links(None, "file") is None  # tolerates no coverage
+
+
+def test_term_links_iri_uses_full_iri():
+    cov = _cov()
+    apply_term_links(cov, "iri")
+    assert cov["terms"][0]["link"] == "http://onto.org/City"
+
+
+def test_term_links_file_deep_links_to_declaration_line(tmp_path):
+    onto = tmp_path / "onto.ttl"
+    onto.write_text(ONTO)  # onto:City is declared on its own line
+    idx = term_source_index([onto])
+    assert idx["http://onto.org/City"]["file"] == Path(onto)
+    line = idx["http://onto.org/City"]["line"]
+    assert onto.read_text().splitlines()[line - 1].startswith("onto:City ")
+
+    cov = _cov()
+    apply_term_links(cov, "file", paths=[onto], link_base=tmp_path)
+    assert cov["terms"][0]["link"] == f"onto.ttl#L{line}"
+
+
+def test_term_links_file_no_source_leaves_unlinked(tmp_path):
+    cov = _cov()  # term not declared in any given file
+    apply_term_links(cov, "file", paths=[tmp_path], link_base=tmp_path)
+    assert "link" not in cov["terms"][0]

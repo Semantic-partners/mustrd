@@ -117,11 +117,11 @@ def coverage_context(graph, ontology_graph) -> dict:
     denominator = len(declared) - len(schema_only)
     has_cq = (None, DQV.isMeasurementOf, COV.termCoverageByCompetencyQuestions) in graph
 
-    gaps = [{"term": short(t), "kind": declared[t],
+    gaps = [{"term": short(t), "iri": t, "kind": declared[t],
              "query_only": facts[t]["role"] == "query-only"}
             for t in sorted(declared)
             if facts[t]["role"] in ("query-only", "unused")]
-    schema_terms = [{"term": short(t), "kind": declared[t],
+    schema_terms = [{"term": short(t), "iri": t, "kind": declared[t],
                      "reason": "; ".join(sorted(reasons[t], key=_reason_key)[:3])}
                     for t in sorted(declared) if t in schema_only]
 
