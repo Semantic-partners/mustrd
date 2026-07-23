@@ -6,8 +6,8 @@
 
 Coverage below is measured against these ontologies:
 
-- [ontology/place.ttl](../ontology/place.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
 - [ontology/governance.ttl](../ontology/governance.ttl) — `http://example.org/governance#` — A tiny vocabulary for governance roles and the places they govern.
+- [ontology/place.ttl](../ontology/place.ttl) — `http://example.org/place#` — A minimal vocabulary for places and how they are geographically contained within one another.
 
 
 ### Term Coverage

@@ -257,11 +257,13 @@
 
 <http://example.org/governance#> a owl:Ontology ;
     rdfs:comment "A tiny vocabulary for governance roles and the places they govern." ;
-    owl:versionIRI <http://example.org/governance/1.0.0> .
+    owl:versionIRI <http://example.org/governance/1.0.0> ;
+    cov:sourceFile "ontology/governance.ttl" .
 
 <http://example.org/place#> a owl:Ontology ;
     rdfs:comment "A minimal vocabulary for places and how they are geographically contained within one another." ;
-    owl:versionIRI <http://example.org/place/1.0.0> .
+    owl:versionIRI <http://example.org/place/1.0.0> ;
+    cov:sourceFile "ontology/place.ttl" .
 
 <http://example.org/place/example/mayorOfRotterdam> a must:TestSpec ;
     must:specFileName "mayor-of-rotterdam.mustrd.ttl" ;

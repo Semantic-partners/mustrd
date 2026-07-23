@@ -53,6 +53,8 @@ def _add_provenance(g, run, ontologies, commit, mustrd_version):
         subjects.append(uri)
         g.add((run, PROV.used, uri))
         g.add((uri, RDF.type, OWL.Ontology))
+        if o.get("path"):
+            g.add((uri, COV.sourceFile, Literal(o["path"])))
         if o.get("description"):
             g.add((uri, RDFS.comment, Literal(o["description"])))
         if o.get("version"):

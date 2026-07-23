@@ -17,7 +17,7 @@ from mustrd.coverage import compute_coverage
 from mustrd.ontology import load_ontology, ontology_report
 from mustrd.cq import cq_only_view
 from mustrd.coverage_rdf import coverage_graph
-from mustrd.coverage_render import coverage_context
+from mustrd.coverage_render import coverage_context, read_ontologies
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -555,7 +555,7 @@ class MustrdTestPlugin:
         """Build the canonical coverage RDF graph, minting a run IRI from the
         commit SHA in CI (else 'local')."""
         ontologies = [{"uri": r["uri"], "version": r.get("version"),
-                       "description": r.get("description")}
+                       "description": r.get("description"), "path": r.get("path")}
                       for r in ontology_report(self.ontology_paths) if r.get("uri")]
         sha = os.environ.get("GITHUB_SHA")
         server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
@@ -699,7 +699,9 @@ class MustrdTestPlugin:
             _link_report_refs(ctx, href)
             parts.append("# Ontologies Report")
             parts.append("## Coverage Report")
-            ontologies = ontology_report(self.ontology_paths, href=href)
+            ontologies = read_ontologies(graph)   # from the graph, not the files
+            for o in ontologies:
+                o["url"] = href(o["path"])
             if ontologies:
                 parts.append(render_ontologies(ontologies))
             parts.append(render_term_coverage(ctx))

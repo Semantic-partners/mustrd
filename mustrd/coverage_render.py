@@ -10,6 +10,7 @@ The CQ Report is still built from the compute dict (see the plugin); only the
 `## Coverage Report` half comes through here for now.
 """
 from rdflib import Namespace, RDF
+from rdflib.namespace import RDFS
 
 from mustrd.ontology import shortener
 from mustrd.coverage import _ordered_terms, _reason_key
@@ -86,6 +87,18 @@ def _read_tbox(graph, meta):
         out.append({"name": m.get("name"), "source_file": m.get("source_file"),
                     "axioms": sorted(str(a) for a in graph.objects(issue, COV.detail))})
     return sorted(out, key=lambda t: t["name"] or "")
+
+
+def read_ontologies(graph):
+    """The ontologies the run measured, from the graph — {uri, path, description}
+    (the file link's href is computed by the caller). Sorted by IRI for a stable
+    order (the graph has none)."""
+    rows = []
+    for s in graph.subjects(COV.sourceFile, None):
+        desc = graph.value(s, RDFS.comment)
+        rows.append({"uri": str(s), "path": str(graph.value(s, COV.sourceFile)),
+                     "description": str(desc) if desc is not None else None})
+    return sorted(rows, key=lambda r: r["uri"])
 
 
 def coverage_context(graph, ontology_graph) -> dict:

@@ -43,6 +43,11 @@ cov:CoverageRun a owl:Class ;
     rdfs:label "Coverage run" ;
     rdfs:comment "One mustrd coverage computation over one or more ontologies." .
 
+cov:sourceFile a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "source file" ;
+    rdfs:comment "The file an ontology was read from, as a path relative to the run's working directory (for report links)." .
+
 ##  Per-term coverage #############################################################
 
 cov:TermCoverage a owl:Class ;
