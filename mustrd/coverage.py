@@ -1,13 +1,15 @@
-"""Ontology term coverage from competency-question specs.
+"""Ontology term coverage over mustrd tests.
 
 See docs/ontology-term-coverage.md for the design. In short: given the specs
-mustrd already parsed, work out which ontology terms the *passing* CQ tests
-actually exercise — in their input data (ABox) or their SPARQL — and which
-declared terms nothing touches.
+mustrd already parsed, work out which ontology terms the *passing* tests actually
+exercise — in their input data (ABox) or their SPARQL — and which declared terms
+nothing touches. The competency-question overlay (per-CQ breakdown, CQ coverage
+%, duplicate detection) lives in the sibling module `mustrd.cq`, which reuses the
+term helpers here.
 
-A term is COVERED if a passing spec references it either:
-  * in the input data: as an object of rdf:type, or as an asserted predicate; or
-  * in the SPARQL query: as an IRI in the parsed query algebra.
+A term is COVERED if a passing spec populates it in its input data (as an object
+of rdf:type, or as an asserted predicate); a term only named in a SPARQL query
+but never instantiated is *query-only* — reported as a gap, not coverage.
 
 TBox declarations do NOT count as usage — detecting usage via rdf:type objects
 and asserted predicates structurally ignores owl:Class / rdfs:subClassOf /
@@ -20,7 +22,6 @@ ontology under test.
 import logging
 import os
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -85,17 +86,6 @@ def _wk_qname(uri) -> str:
         if s.startswith(ns):
             return f"{pfx}:{s[len(ns):]}"
     return s
-
-
-@dataclass
-class SpecUsage:
-    """One spec's contribution to coverage."""
-    name: str
-    uri: Optional[str]
-    passed: bool
-    data_terms: List[str] = field(default_factory=list)
-    query_terms: List[str] = field(default_factory=list)
-    requires_ontology: bool = False
 
 
 def _is_domain_term(uri) -> bool:
@@ -426,13 +416,13 @@ def _build_tbox(given_graphs, ontology):
     return tbox
 
 
-def _scan_specs(specs, declared_set, declared, tbox, short):
+def _scan_specs(specs, declared_set):
     """Walk each spec's data + queries once. Returns the credited used sets, the
-    domain-namespace terms referenced anywhere (split data/query), one SpecUsage
-    per spec, and per-spec reference tuples for the undeclared report."""
+    domain-namespace terms referenced anywhere (split data/query), and per-spec
+    reference tuples for the undeclared report. (Per-CQ usage lives in cq.py.)"""
     used_data, used_query = set(), set()
     referenced_data, referenced_query = set(), set()
-    spec_refs, usages = [], []
+    spec_refs = []
     for s in specs:
         g = s.get("given")
         raw_data = abox_terms(g) if isinstance(g, Graph) else set()
@@ -445,20 +435,10 @@ def _scan_specs(specs, declared_set, declared, tbox, short):
         referenced_data |= s_data
         referenced_query |= s_query
         spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
-        d_terms = raw_data & declared_set
-        q_terms = raw_query & declared_set
         if s.get("passed"):
-            used_data |= d_terms
-            used_query |= q_terms
-        usages.append(SpecUsage(
-            name=s.get("name", "?"),
-            uri=s.get("uri"),
-            passed=bool(s.get("passed")),
-            data_terms=sorted(short(t) for t in d_terms),
-            query_terms=sorted(short(t) for t in q_terms),
-            requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox),
-        ))
-    return used_data, used_query, referenced_data, referenced_query, usages, spec_refs
+            used_data |= raw_data & declared_set
+            used_query |= raw_query & declared_set
+    return used_data, used_query, referenced_data, referenced_query, spec_refs
 
 
 def _fold_metadata_into_schema(schema_reasons, metadata, used):
@@ -696,68 +676,6 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
     return undeclared
 
 
-def _split_duplicate_cqs(cq_defs):
-    """Partition CQ defs into (duplicate_cqs, kept).
-
-    Two competency-question nodes sharing the same question text is almost always
-    a copy/paste error, so every def carrying a duplicated question is dropped
-    from the calculation. `duplicate_cqs` describes what was excluded, for a
-    warning: [{question, cqs: [{name, source_file}, ...]}].
-    """
-    counts = {}
-    for d in cq_defs:
-        counts[d.get("question")] = counts.get(d.get("question"), 0) + 1
-    dup_values = {q for q, n in counts.items() if q is not None and n > 1}
-    kept = [d for d in cq_defs if d.get("question") not in dup_values]
-    duplicate_cqs = [{
-        "question": q,
-        "cqs": [{"name": d.get("name", "?"),
-                 "source_file": str(d.get("source_file")) if d.get("source_file") else None}
-                for d in cq_defs if d.get("question") == q],
-    } for q in sorted(dup_values)]
-    return duplicate_cqs, kept
-
-
-def _linked_specs(cq_defs):
-    """Deduped list of the spec dicts linked (via must:cqSpec) by any CQ def."""
-    seen, out = set(), []
-    for d in cq_defs:
-        for s in d.get("specs", []):
-            key = s.get("uri") or id(s)
-            if key not in seen:
-                seen.add(key)
-                out.append(s)
-    return out
-
-
-def _per_cq_entries(cq_defs, usage_by_uri):
-    """One report entry per CQ node: its question, the linked test(s) with their
-    status/terms, and the two error flags (multiple questions, dangling cqSpec).
-    A CQ with no (resolvable) test gets has_test=False and empty terms."""
-    entries = []
-    for d in cq_defs:
-        tests, data, query, credited = [], set(), set(), False
-        for s in d.get("specs", []):
-            u = usage_by_uri.get(s.get("uri"))
-            if u is None:
-                continue
-            tests.append({"name": u.name, "uri": u.uri, "status": _status(u),
-                          "credited": u.passed, "requires_ontology": u.requires_ontology})
-            data.update(u.data_terms)
-            query.update(u.query_terms)
-            credited = credited or u.passed
-        entries.append({
-            "id": d.get("id"), "name": d.get("name"),
-            "source_file": d.get("source_file"),
-            "question": d.get("question"), "questions": d.get("questions", []),
-            "question_error": len(d.get("questions", [])) > 1,
-            "missing_specs": d.get("missing_specs", []),
-            "has_test": bool(tests), "tests": tests,
-            "data": sorted(data), "query": sorted(query), "credited": credited,
-        })
-    return entries
-
-
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
                      cq_defs: Optional[List[dict]] = None) -> Optional[dict]:
     """Ontology term coverage across ALL mustrd tests.
@@ -790,18 +708,17 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # testing). A term named only in a query, never instantiated, is *not* covered
     # (the test can pass without it) — it is a query-only gap. `referenced` is the
     # looser union (data ∪ query), used for structural support and the class tree.
-    used_data, used_query, referenced_data, referenced_query, _, spec_refs = \
-        _scan_specs(specs, declared_set, declared, tbox, short)
+    used_data, used_query, referenced_data, referenced_query, spec_refs = \
+        _scan_specs(specs, declared_set)
     referenced = used_data | used_query
 
-    # CQ overlay: which declared terms competency questions exercise. CQ nodes
-    # sharing a question are dropped (copy/paste); the rest contribute the specs
-    # they link to. Per-CQ breakdown is then assembled per CQ node.
-    duplicate_cqs, cq_kept = _split_duplicate_cqs(cq_defs or [])
-    cq_specs = _linked_specs(cq_kept)
-    cq_used_data, cq_used_query, _, _, cq_usages, _ = \
-        _scan_specs(cq_specs, declared_set, declared, tbox, short)
-    per_cq = _per_cq_entries(cq_kept, {u.uri: u for u in cq_usages})
+    # CQ overlay (built in cq.py): which declared terms competency questions
+    # exercise, the per-CQ breakdown, and the duplicate-question warning. Imported
+    # locally so coverage.py stays free of a module-load dependency on cq.py.
+    from mustrd.cq import compute_cq_overlay
+    overlay = compute_cq_overlay(cq_defs or [], declared_set, declared, tbox, short)
+    cq_used_data, cq_used_query = overlay["cq_used_data"], overlay["cq_used_query"]
+    per_cq, duplicate_cqs = overlay["per_cq"], overlay["duplicate_cqs"]
 
     schema_reasons = schema_references(tbox, referenced, declared, short)
     _fold_metadata_into_schema(schema_reasons, metadata, referenced)
@@ -810,8 +727,8 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # Which passing tests back each term: all tests (for the Test Term Coverage
     # links) and non-CQ tests only (to name the backer of a CQ-scoped gap).
     test_refs = _usage_by_term(specs, declared_set)
-    cq_uris = {s.get("uri") for s in cq_specs}
-    non_cq_refs = _usage_by_term([s for s in specs if s.get("uri") not in cq_uris], declared_set)
+    non_cq_refs = _usage_by_term(
+        [s for s in specs if s.get("uri") not in overlay["cq_uris"]], declared_set)
     terms = _ordered_terms(declared, referenced, used_data, used_query, cq_used_data,
                            cq_used_query, schema_only, test_refs, short, tbox)
     # "Not covered by any test": declared, non-structural terms no passing test
@@ -850,36 +767,3 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "tbox_in_data": _tbox_in_data(specs, short),
         "per_cq": per_cq,
     }
-
-
-def cq_only_view(cq_defs: List[dict]) -> dict:
-    """Competency-question breakdown WITHOUT an ontology (for --cq on its own).
-
-    Lists every non-well-known term each CQ's linked test references — unchecked,
-    so it may include terms no ontology declares — plus duplicate-question
-    detection. `unchecked` flags that no ontology was consulted, so the report can
-    say so. Test-less CQ nodes are listed with no terms.
-    """
-    duplicate_cqs, kept = _split_duplicate_cqs(cq_defs or [])
-    linked = _linked_specs(kept)
-    given_graphs = [s["given"] for s in linked if isinstance(s.get("given"), Graph)]
-    all_queries = [q for s in linked for q in (s.get("queries") or []) if isinstance(q, str)]
-    short = _shortener(given_graphs, all_queries)
-    usage_by_uri = {}
-    for s in linked:
-        g = s.get("given")
-        d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set()) if _is_domain_term(URIRef(t))}
-        q = set()
-        for query in (s.get("queries") or []):
-            if isinstance(query, str):
-                q |= {t for t in query_uris(query) if _is_domain_term(URIRef(t))}
-        usage_by_uri[s.get("uri")] = SpecUsage(
-            name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
-            data_terms=sorted(short(t) for t in d), query_terms=sorted(short(t) for t in q),
-            requires_ontology=False)
-    return {"per_cq": _per_cq_entries(kept, usage_by_uri),
-            "duplicate_cqs": duplicate_cqs, "unchecked": True}
-
-
-def _status(u: SpecUsage) -> str:
-    return "passed" if u.passed else "not passed"

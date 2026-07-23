@@ -13,7 +13,8 @@ from mustrd.TestResult import (
     render_duplicate_cqs, render_per_cq, render_cq_gaps, render_tbox_in_data,
     ResultList, get_result_list,
 )
-from mustrd.coverage import compute_coverage, cq_only_view, load_ontology, ontology_report
+from mustrd.coverage import compute_coverage, load_ontology, ontology_report
+from mustrd.cq import cq_only_view
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
