@@ -30,6 +30,7 @@ ONTOLOGIES_MD_TEMPLATE = "md_ontologies_template.jinja"
 DUPLICATE_CQS_MD_TEMPLATE = "md_duplicate_cqs_template.jinja"
 PER_CQ_MD_TEMPLATE = "md_per_cq_template.jinja"
 CQ_GAPS_MD_TEMPLATE = "md_cq_gaps_template.jinja"
+TBOX_IN_DATA_MD_TEMPLATE = "md_tbox_in_data_template.jinja"
 
 
 @dataclass
@@ -174,3 +175,8 @@ def render_per_cq(per_cq: list, unchecked: bool = False) -> str:
 def render_cq_gaps(cq_gaps: list) -> str:
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     return environment.get_template(CQ_GAPS_MD_TEMPLATE).render(cq_gaps=cq_gaps)
+
+
+def render_tbox_in_data(tbox_in_data: list) -> str:
+    environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+    return environment.get_template(TBOX_IN_DATA_MD_TEMPLATE).render(tbox_in_data=tbox_in_data)

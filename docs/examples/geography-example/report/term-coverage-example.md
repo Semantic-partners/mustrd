@@ -12,25 +12,25 @@ Coverage below is measured against these ontologies:
 
 ### Term Coverage
 
-**Overall: 9/9 terms exercised by the tests = 100%**
+**Overall: 8/9 terms exercised by the tests = 89%**
 
-**By a competency question: 8/9 = 89%**
+**By a competency question: 7/9 = 78%**
 
 
 _(11 declared; 2 structural term(s) excluded from the denominator — see below.)_
 
-A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
+A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count.
 
 Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
 
-| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="Whether any passing test exercises the term: covered, structural (excluded), or unused">Test Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">By a CQ?</abbr> |
+| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">By a CQ?</abbr> |
 |------|------|:---:|:---:|:---:|:---:|:---:|
 | foaf:Person · _external_ | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
 | &nbsp;&nbsp;&nbsp;&nbsp;▸ gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
 | &nbsp;&nbsp;&nbsp;&nbsp;↳ gov:Mayor | class | ✅ | ✅ | · | ✅ covered | ✅ |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
 | &nbsp;&nbsp;&nbsp;&nbsp;▸ place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered | ✅ |
-| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:AdministrativeDivision | class | ❌ | ✅ | · | ❌ query only | ❌ |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
 | &nbsp;&nbsp;&nbsp;&nbsp;↳ place:City | class | ✅ | ✅ | · | ✅ covered | ✅ |
 | &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Continent | class | ✅ | ❌ | · | ✅ covered | ✅ |
@@ -40,21 +40,22 @@ Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass
 
 #### How to read this table
 
-The **In input data**, **In SPARQL** and **Structural** columns show *where* a term is exercised, classifying every term into a role:
+The **In input data**, **In SPARQL** and **Structural** columns show *where* a term is exercised, classifying every term into a role. **Coverage is data-based**: a term must be populated in some passing test's input data to count.
 
-| Data | SPARQL | Structural | Role | Meaning |
+| Data | SPARQL | Structural | Role | Counts? |
 |:---:|:---:|:---:|------|---------|
-| ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
-| ✅ | ❌ | | **data-only** | instances exist but no test queries it — candidate for a new query |
-| ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
-| ❌ | ❌ | ✅ | **structural** | not instantiated/queried, but load-bearing — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
-| ❌ | ❌ | | **unused** | not exercised by any test, nor structural to one |
+| ✅ | ✅ | | **fully exercised** | ✅ **covered** — populated in the data *and* queried (strongest evidence) |
+| ✅ | ❌ | | **data-only** | ✅ **covered** — instances exist; a property-path query may consume them by IRI without naming the class (to be confirmed by mutation testing). Candidate for a dedicated query. |
+| ❌ | ✅ | | **query-only** | ❌ **not covered** — matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated; the test can pass without it. Often a sign the query leans on a TBox axiom that belongs in the ontology. |
+| ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
+| ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
 
 **By a CQ?** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 structural (excluded, so not applicable).
 
-### Not used by any test
+### Not covered by any test
 
-_none — every declared term is exercised or structural_
+- place:AdministrativeDivision (class) — **query-only**: named by a query but never populated in any test's input data, so the test passes without it (consider moving the enabling TBox axiom into the ontology)
+
 
 ### Structural terms (excluded from coverage)
 
@@ -75,6 +76,15 @@ Referenced by a test, and in an ontology's namespace, but **not declared** in an
   - [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) — input data
 
 
+### ⚠️ TBox axioms in test data
+
+These tests define ontology structure (class/property declarations, `rdfs:subClassOf`/`domain`/`range`) in their **input data**. A `given` should hold *instance* data — schema belongs in the ontology. If a query only matches through one of these axioms (e.g. a `rdfs:subClassOf*` path), that is why the term shows as **query-only** rather than covered. Consider moving them into an ontology loaded via `:hasOntologyPath`:
+
+- [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl)
+  - `place:Province a owl:Class`
+  - `place:Province rdfs:subClassOf place:AdministrativeDivision`
+
+
 ## Competency Questions Report
 
 ### Competency Questions
@@ -93,7 +103,8 @@ _3 of 4 tests are competency questions._
 
 ### Not used by any CQ
 
-- place:Region (class) — not exercised by any competency question; exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL)
+- place:AdministrativeDivision (class) — not covered by any competency question; a CQ query names it but no CQ populates it in data (**query-only**)
+- place:Region (class) — not covered by any competency question; covered by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL)
 
 
 ### Per competency question

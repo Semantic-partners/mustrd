@@ -47,9 +47,11 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
 
-    # Two coverage metrics: all tests 9/9=100%, competency questions 8/9=89%.
-    assert "9/9 terms exercised by the tests = 100%" in text
-    assert "By a competency question: 8/9 = 89%" in text
+    # Two coverage metrics, data-based: all tests 8/9=89%, CQs 7/9=78%.
+    # place:AdministrativeDivision is query-only (named by the division query but
+    # never instantiated), so it is NOT covered.
+    assert "8/9 terms exercised by the tests = 89%" in text
+    assert "By a competency question: 7/9 = 78%" in text
     assert "11 declared; 2 structural term(s) excluded" in text
 
     # Class rows form a subClassOf tree. The external superclass foaf:Person is a
@@ -71,13 +73,24 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "region-lookup.mustrd.ttl](" in region_row and region_row.endswith("(data & SPARQL) |")
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))
     assert place_row.endswith("| 🔧 structural | 🔧 structural |")
-    # Nothing is dead across all tests, but place:Region is a CQ-scoped gap.
-    assert "### Not used by any test" in text
+    # place:AdministrativeDivision: query-only -> a gap, marked "❌ query only".
+    ad_row = next(ln for ln in text.splitlines() if "place:AdministrativeDivision" in ln and ln.startswith("|"))
+    assert "❌ query only" in ad_row
+    # Not covered by any test lists the query-only term (with the move-it hint).
+    assert "### Not covered by any test" in text
+    gaps = text.split("### Not covered by any test", 1)[1].split("\n### ", 1)[0]
+    assert "place:AdministrativeDivision" in gaps and "query-only" in gaps
     assert "### Not used by any CQ" in text
     cq_gaps = text.split("### Not used by any CQ", 1)[1].split("\n### ", 1)[0]
     assert "place:Region" in cq_gaps
     assert "region-lookup.mustrd.ttl](" in cq_gaps  # links the non-CQ test that uses it
     assert "place:basedOnStandard (property) — ontology property" in text
+
+    # TBox-in-data hint: the division fixture declares schema in its given.
+    assert "### ⚠️ TBox axioms in test data" in text
+    tbox = text.split("### ⚠️ TBox axioms in test data", 1)[1].split("\n## ", 1)[0]
+    assert "division-and-country-of-rotterdam.mustrd.ttl](" in tbox
+    assert "place:Province rdfs:subClassOf place:AdministrativeDivision" in tbox
 
     # Used but not declared: one input-data term, one SPARQL term, each linked.
     assert "### ⚠️ Used but not declared" in text
@@ -102,8 +115,8 @@ def test_term_coverage_alone_has_no_cq_sections(tmp_path):
     _run(md, term_coverage=True, cq=False)
     text = md.read_text()
     assert "## Coverage Report" in text
-    assert "9/9 terms exercised by the tests = 100%" in text
-    assert "### Not used by any test" in text
+    assert "8/9 terms exercised by the tests = 89%" in text
+    assert "### Not covered by any test" in text
     # No CQ report / overlay.
     assert "Competency Questions Report" not in text
     assert "By a competency question" not in text

@@ -66,6 +66,26 @@ METADATA_PROPERTY_TYPES = {
     OWL.OntologyProperty: "ontology property",
 }
 
+CLASS_TYPES = (OWL.Class, RDFS.Class)
+
+# rdf:type objects and predicates that make a triple a TBox (schema) axiom. When
+# these appear in a test's `given`, the fixture is defining ontology structure —
+# which belongs in the ontology, not the test data — so the report hints they be
+# moved. Type set is derived from the property types above so it can't drift.
+TBOX_TYPES = CLASS_TYPES + tuple(PROPERTY_TYPES)
+TBOX_PREDICATES = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
+
+_WELL_KNOWN_PREFIXES = ((str(OWL), "owl"), (str(RDFS), "rdfs"), (str(RDF), "rdf"))
+
+
+def _wk_qname(uri) -> str:
+    """Render an rdf/rdfs/owl IRI with its conventional prefix (owl:Class …)."""
+    s = str(uri)
+    for ns, pfx in _WELL_KNOWN_PREFIXES:
+        if s.startswith(ns):
+            return f"{pfx}:{s[len(ns):]}"
+    return s
+
 
 @dataclass
 class SpecUsage:
@@ -482,6 +502,44 @@ def _non_cq_usage(non_cq_specs, declared_set):
     return refs_by_term
 
 
+def _tbox_axioms(g, short):
+    """The TBox (schema) axioms in one given graph, as readable strings —
+    class/property declarations and rdfs:subClassOf/domain/range on domain terms."""
+    axioms = set()
+    for ty in TBOX_TYPES:
+        axioms.update(f"{short(str(s))} a {_wk_qname(ty)}"
+                      for s in g.subjects(RDF.type, ty) if _is_domain_term(s))
+    for pred in TBOX_PREDICATES:
+        for subj, obj in g.subject_objects(pred):
+            if _is_domain_term(subj):
+                tail = short(str(obj)) if isinstance(obj, URIRef) else str(obj)
+                axioms.add(f"{short(str(subj))} {_wk_qname(pred)} {tail}")
+    return sorted(axioms)
+
+
+def _tbox_in_data(specs, short):
+    """Find TBox (schema) axioms sitting in tests' input data.
+
+    A `given` should hold instance data; class/property declarations and
+    `rdfs:subClassOf`/`domain`/`range` axioms belong in the ontology. When a
+    query only matches through such an axiom (e.g. a `subClassOf*` path), the
+    axiom has been smuggled into the fixture — worth surfacing so it can be moved.
+    Returns [{name, source_file, axioms: ["place:Province rdfs:subClassOf …", …]}].
+    """
+    results = []
+    for s in specs:
+        g = s.get("given")
+        if not isinstance(g, Graph):
+            continue
+        axioms = _tbox_axioms(g, short)
+        if axioms:
+            results.append({
+                "name": s.get("name", "?"),
+                "source_file": str(s.get("source_file")) if s.get("source_file") else None,
+                "axioms": axioms})
+    return results
+
+
 def _class_forest(declared, used, short, tbox, extra_external=()):
     """Arrange declared classes into a subClassOf forest for the term matrix.
 
@@ -519,16 +577,24 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
         return {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": True,
                 "connector": connector, "in_data": False, "in_query": False,
                 "in_schema": True, "status": "schema", "by_cq_state": "schema"}
-    schema_only, used, cq_used = ctx["schema_only"], ctx["used"], ctx["cq_used"]
-    status = "covered" if term in used else ("schema" if term in schema_only else "unused")
+    schema_only, used_data, used_query = ctx["schema_only"], ctx["used_data"], ctx["used_query"]
+    if term in schema_only:
+        status = "schema"
+    elif term in used_data:          # populated in a passing test's data -> covered
+        status = "covered"
+    elif term in used_query:         # named by a query but never instantiated
+        status = "query-only"
+    else:
+        status = "unused"
     row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": False,
-           "connector": connector, "in_data": term in ctx["used_data"],
-           "in_query": term in ctx["used_query"], "in_schema": term in schema_only,
+           "connector": connector, "in_data": term in used_data,
+           "in_query": term in used_query, "in_schema": term in schema_only,
            "status": status,
-           "by_cq_state": "schema" if term in schema_only else ("yes" if term in cq_used else "no")}
+           "by_cq_state": "schema" if term in schema_only else ("yes" if term in ctx["cq_used_data"] else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
-    if row["by_cq_state"] == "no" and term in ctx["non_cq_refs"]:
+    # A covered term that no CQ backs: name the non-CQ test(s) that do.
+    if status == "covered" and row["by_cq_state"] == "no" and term in ctx["non_cq_refs"]:
         row["non_cq_refs"] = ctx["non_cq_refs"][term]
     return row
 
@@ -563,15 +629,16 @@ def _walk_forest(node, depth, children, attached, ctx, rows):
             _walk_forest(child, depth + 1, children, attached, ctx, rows)
 
 
-def _ordered_terms(declared, used, used_data, used_query, cq_used, schema_only, non_cq_refs, short, tbox):
+def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, schema_only, non_cq_refs, short, tbox):
     """The per-term matrix as an ordered list of rows: an indented subClassOf
     tree of classes, each with its domain-attached properties (▸) beneath it;
-    properties with no domain trail at the end."""
+    properties with no domain trail at the end. `referenced` (data ∪ query) drives
+    the class tree's external-ancestor detection; coverage status is data-based."""
     props = [t for t in declared if declared[t] == "property"]
     ext_domains = {str(d) for p in props for d in tbox.objects(URIRef(p), RDFS.domain)
                    if str(d) not in declared and _is_domain_term(d)}
     roots, children, extra_parents, external, nodes = \
-        _class_forest(declared, used, short, tbox, ext_domains)
+        _class_forest(declared, referenced, short, tbox, ext_domains)
 
     attached, unattached = {}, []
     for p in sorted(props, key=short):
@@ -579,7 +646,7 @@ def _ordered_terms(declared, used, used_data, used_query, cq_used, schema_only, 
                          key=short)
         (attached.setdefault(domains[0], []).append(p) if domains else unattached.append(p))
 
-    ctx = {"used": used, "used_data": used_data, "used_query": used_query, "cq_used": cq_used,
+    ctx = {"used_data": used_data, "used_query": used_query, "cq_used_data": cq_used_data,
            "schema_only": schema_only, "non_cq_refs": non_cq_refs, "short": short,
            "external": external, "extra_parents": extra_parents}
     rows = []
@@ -667,34 +734,41 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     tbox = _build_tbox(given_graphs, ontology)
     declared_set = set(declared)
 
-    # Coverage over every test.
+    # Coverage over every test. A term is COVERED when a passing test populates
+    # it in its input data (data-only counts — a property-path query may consume
+    # the instance by IRI without naming the class; we revisit that with mutation
+    # testing). A term named only in a query, never instantiated, is *not* covered
+    # (the test can pass without it) — it is a query-only gap. `referenced` is the
+    # looser union (data ∪ query), used for structural support and the class tree.
     used_data, used_query, referenced_data, referenced_query, _, spec_refs = \
         _scan_specs(specs, declared_set, declared, tbox, short)
-    used = used_data | used_query
+    referenced = used_data | used_query
 
     # CQ overlay: which declared terms competency questions exercise (deduped).
     duplicate_cqs, cq_kept = _split_duplicate_cqs(cq_specs or [])
     cq_used_data, cq_used_query, _, _, per_cq, _ = \
         _scan_specs(cq_kept, declared_set, declared, tbox, short)
-    cq_used = cq_used_data | cq_used_query
 
-    schema_reasons = schema_references(tbox, used, declared, short)
-    _fold_metadata_into_schema(schema_reasons, metadata, used)
-    schema_only = {t for t in schema_reasons if t not in used}
+    schema_reasons = schema_references(tbox, referenced, declared, short)
+    _fold_metadata_into_schema(schema_reasons, metadata, referenced)
+    schema_only = {t for t in schema_reasons if t not in referenced}
 
     non_cq_refs = _non_cq_usage([s for s in specs if s not in (cq_specs or [])], declared_set)
-    terms = _ordered_terms(declared, used, used_data, used_query, cq_used,
+    terms = _ordered_terms(declared, referenced, used_data, used_query, cq_used_data,
                            schema_only, non_cq_refs, short, tbox)
-    gaps = [{"term": short(t), "kind": declared[t]}
-            for t in sorted(declared) if t not in used and t not in schema_only]
-    # CQ-scoped gaps: declared, non-schema terms no competency question exercises
-    # (a superset of `gaps` — includes terms only a non-CQ test covers). Where a
-    # non-CQ test does exercise it, carry that test so the report can name it.
+    # "Not covered by any test": declared, non-structural terms no passing test
+    # populates in data. Query-only terms (named by a query but never instantiated)
+    # land here too, flagged so the report can distinguish them from the untouched.
+    gaps = [{"term": short(t), "kind": declared[t], "query_only": t in used_query}
+            for t in sorted(declared) if t not in used_data and t not in schema_only]
+    # CQ-scoped gaps: declared, non-structural terms no competency question covers
+    # in data. Where a non-CQ test does cover it, carry that test so the report can
+    # name it; where only a CQ *query* names it, flag it query-only.
     cq_gaps = []
     for t in sorted(declared):
-        if t in schema_only or t in cq_used:
+        if t in schema_only or t in cq_used_data:
             continue
-        entry = {"term": short(t), "kind": declared[t]}
+        entry = {"term": short(t), "kind": declared[t], "query_only": t in cq_used_query}
         if t in non_cq_refs:
             entry["non_cq_refs"] = non_cq_refs[t]
         cq_gaps.append(entry)
@@ -703,8 +777,8 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
                                    declared_set, spec_refs, short)
 
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
-    covered = sum(1 for t in declared if t in used)
-    covered_by_cq = sum(1 for t in declared if t in cq_used)
+    covered = sum(1 for t in declared if t in used_data)
+    covered_by_cq = sum(1 for t in declared if t in cq_used_data)
 
     return {
         "covered": covered, "denominator": denominator,
@@ -715,6 +789,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
         "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
+        "tbox_in_data": _tbox_in_data(specs, short),
         "per_cq": _serialize_per_cq(per_cq),
     }
 

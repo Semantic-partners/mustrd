@@ -46,13 +46,29 @@ their combined declared terms (11 declared, 2 excluded as **structural**):
   classes the tests use.
 - `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata.
 
-**Two coverage numbers:** the tests exercise **9/9 = 100%** of the (non-structural)
-terms, but only **8/9 = 89%** are backed by a **competency question**. The one
-difference is `place:Region`: `region-lookup.mustrd.ttl` exercises it (in data
-and SPARQL) and passes, but it has no `must:competencyQuestion` — so `place:Region`
-is *covered* yet its **By a CQ?** column is ❌. That's the whole point of the two
-metrics: all-test coverage says nothing's dead; CQ coverage says which
-*requirements* actually pin the term down.
+**Two coverage numbers:** coverage is *data-based* (a term must be populated in
+some passing test's input data to count). The tests cover **8/9 = 89%** of the
+(non-structural) terms, and **7/9 = 78%** are backed by a **competency
+question**. Two things drive those numbers:
+
+- `place:AdministrativeDivision` is **query-only** — the division CQ *queries* it
+  but no test *instantiates* it (see *query-only* below), so it is **not
+  covered** and drops the all-tests number to 89%.
+- `place:Region` is *covered* but not by a CQ: `region-lookup.mustrd.ttl` covers
+  it (in data and SPARQL) and passes, but has no `must:competencyQuestion` — so
+  its **By a CQ?** column is ❌, taking the CQ number down to 78%.
+
+That's the point of the two metrics: all-test coverage says what's exercised at
+all; CQ coverage says which *requirements* actually pin a term down.
+
+**Query-only is a gap, not coverage:** `place:AdministrativeDivision` shows how a
+term can be *named* by a query yet prove nothing. The division CQ asks for
+`place:AdministrativeDivision`, but its `given` holds a `place:Province` and a
+`place:Province rdfs:subClassOf place:AdministrativeDivision` axiom — so the query
+only matches *through* that axiom. The report marks the term **❌ query only**,
+lists it under **Not covered by any test**, and — because that `subClassOf` axiom
+is TBox living in a fixture — surfaces it under **⚠️ TBox axioms in test data**
+with a suggestion to move it into the ontology.
 
 **Failure signals:** `place:hasEconomicArea` (in the country spec's data) and
 `gov:appointedOn` (in the mayor spec's SPARQL) are used but never declared in

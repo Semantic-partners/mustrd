@@ -10,7 +10,8 @@ from pytest import Session
 from mustrd import logger_setup
 from mustrd.TestResult import (
     TestResult, render_cq_table, render_term_coverage, render_ontologies,
-    render_duplicate_cqs, render_per_cq, render_cq_gaps, ResultList, get_result_list,
+    render_duplicate_cqs, render_per_cq, render_cq_gaps, render_tbox_in_data,
+    ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, cq_only_view, load_ontology, ontology_report
 from mustrd.utils import get_mustrd_root
@@ -208,6 +209,8 @@ def _link_report_refs(coverage, base):
     ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("terms", [])]
     ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("cq_gaps", [])]
     ref_lists += [d.get("specs", []) for d in coverage.get("duplicate_cqs", [])]
+    # TBox-in-data entries carry their own source_file/link directly.
+    ref_lists += [coverage.get("tbox_in_data", [])]
     for refs in ref_lists:
         for ref in refs:
             src = ref.get("source_file")
@@ -552,6 +555,8 @@ class MustrdTestPlugin:
             if ontologies:
                 parts.append(render_ontologies(ontologies))
             parts.append(render_term_coverage(coverage))
+            if coverage.get("tbox_in_data"):
+                parts.append(render_tbox_in_data(coverage["tbox_in_data"]))
         # CQ report — from coverage when available, else the no-ontology cq_view.
         view = coverage if coverage is not None else cq_view
         if self.cq and view is not None:

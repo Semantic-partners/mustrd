@@ -117,6 +117,45 @@ def test_term_used_only_by_a_non_cq_test_is_covered_but_not_by_cq():
     assert by["onto:Country"]["by_cq_state"] == "yes"  # the CQ does cover Country
 
 
+def test_query_only_term_is_not_covered():
+    # A class named by a query but never instantiated is *query-only*: the test
+    # can pass without it, so it is NOT covered — it is a gap, flagged query_only.
+    q = """PREFIX onto: <http://onto.org/>
+    SELECT ?x WHERE { ?x a onto:AdministrativeDivision . }"""
+    cov = compute_coverage([_spec(given=_graph(ONTO, DATA), queries=[q])])
+    by = {t["term"]: t for t in cov["terms"]}
+    admin = by["onto:AdministrativeDivision"]
+    assert admin["in_query"] and not admin["in_data"]
+    assert admin["status"] == "query-only"
+    # covered stays City/Country/isLocatedIn (all data-backed); query-only excluded.
+    assert cov["covered"] == 3
+    gap = next(g for g in cov["gaps"] if g["term"] == "onto:AdministrativeDivision")
+    assert gap["query_only"] is True
+
+
+def test_tbox_axioms_in_given_are_flagged():
+    # Class/property declarations and subClassOf in a test's given are schema that
+    # belongs in the ontology -> surfaced under tbox_in_data so it can be moved.
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    onto:Province a owl:Class ; rdfs:subClassOf onto:AdministrativeDivision .
+    ex:zh a onto:Province .
+    """)
+    cov = compute_coverage([_spec(given=data, queries=[], name="t.mustrd.ttl")],
+                           ontology=_graph(ONTO))
+    tb = cov["tbox_in_data"]
+    assert len(tb) == 1 and tb[0]["name"] == "t.mustrd.ttl"
+    assert "onto:Province a owl:Class" in tb[0]["axioms"]
+    assert "onto:Province rdfs:subClassOf onto:AdministrativeDivision" in tb[0]["axioms"]
+    # A given with only instance data flags nothing.
+    clean = compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])],
+                             ontology=_graph(ONTO))
+    assert clean["tbox_in_data"] == []
+
+
 def test_duplicate_competency_questions_are_excluded_and_warned():
     # Two CQ specs share the same CQ text (copy/paste). Both are excluded from the
     # CQ overlay and reported under duplicate_cqs; a spec with a unique CQ counts.

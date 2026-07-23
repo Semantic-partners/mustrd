@@ -85,21 +85,21 @@ For an ontology that is *specified by* its competency questions, "which declared
 terms does no CQ need?" is a first-class question. An unused term is either a
 missing CQ or dead weight in the model — and today nothing surfaces it.
 
-## What "used" means
+## What "covered" means
 
-To *answer* a competency question you need both the input data and the query,
-and ontology terms are split across the two. So this proposal defines a declared
-term as **used** if a **passing** CQ test exercises it in **either** place:
+Coverage is **data-based**: a declared term is **covered** when a **passing**
+test **populates it in its input data (ABox)** — the term appears as an instance
+type (`?x a ex:C`) or an asserted predicate (`?s ex:p ?o`). Data-only counts:
+even when no query names the class, a property-path query can still consume the
+instance by IRI, so the instance may well be load-bearing (a stronger, per-test
+check via *mutation testing* is future work).
 
-- **in the input data (ABox):** the term appears as an instance type
-  (`?x a ex:C`) or as an asserted predicate (`?s ex:p ?o`); **or**
-- **in the SPARQL query:** the term's IRI appears in the parsed query algebra.
-
-This split is deliberate — it captures both:
-
-- **query-only** terms: named by the query but never instantiated (e.g. a
-  superclass reached through an `a/rdfs:subClassOf*` path); and
-- **data-only** terms: populated in the fixture but never named by any query.
+Both dimensions are still recorded and shown per term, because a term named
+**only** in a query but never instantiated — a **query-only** term (e.g. a
+superclass reached through an `a/rdfs:subClassOf*` path) — is treated as a
+**gap, not coverage**: the test can pass without any instance of it, so it
+proves nothing about the term. Query-only is often a symptom of a TBox axiom
+that has been smuggled into the fixture (see *TBox axioms in test data* below).
 
 ### TBox declarations must not count
 
@@ -120,13 +120,13 @@ results are available, only specs with status `passed` are credited.
 Three source signals — data / SPARQL / structural — classify every declared term.
 This is the real documentation value of the report:
 
-| In data | In SPARQL | Structural | Role | Meaning |
+| In data | In SPARQL | Structural | Role | Counts? |
 |:---:|:---:|:---:|------|---------|
-| ✅ | ✅ | | **fully exercised** | populated *and* queried — strongest evidence the term works |
-| ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
-| ❌ | ✅ | | **query-only** | matched by a query (e.g. via `subClassOf*`) but never instantiated — relies on inference, not asserted data |
-| ❌ | ❌ | ✅ | **structural** | not instantiated/queried, but structural rather than dead weight — the domain/range of a *used* property, the superclass of a *used* class, or a metadata property (`owl:AnnotationProperty` / `owl:OntologyProperty`) — so **excluded from the coverage denominator** rather than counted as a gap |
-| ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced — dead weight until a CQ needs it |
+| ✅ | ✅ | | **fully exercised** | ✅ **covered** — populated *and* queried; strongest evidence the term works |
+| ✅ | ❌ | | **data-only** | ✅ **covered** — instances exist; a property-path query may consume them by IRI without naming the class (to be confirmed by mutation testing). Candidate for a dedicated query. |
+| ❌ | ✅ | | **query-only** | ❌ **not covered** — matched by a query (e.g. via `subClassOf*`) but never instantiated; the test passes without it. Usually means a TBox axiom belongs in the ontology, not the fixture. |
+| ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but structural rather than dead weight: the domain/range of a *used* property, the superclass of a *used* class, or a metadata property (`owl:AnnotationProperty` / `owl:OntologyProperty`). Excluded from the denominator, not counted as a gap. |
+| ❌ | ❌ | · | **unused** | ❌ **not covered** — declared but neither instantiated, queried, nor structurally referenced — dead weight until a test needs it |
 
 ### Why a "structural" category
 
@@ -157,6 +157,18 @@ required input dataset for the test to pass. Such CQs are flagged **requires
 ontology to pass** in the per-CQ section. A CQ whose query matches the data
 directly (the queried types are the instantiated types) is not flagged.
 
+### TBox axioms in test data
+
+The same detection that keeps declarations from inflating the score also tells
+us when a fixture is carrying schema it shouldn't. A `given` should hold
+*instance* data; class/property declarations and `rdfs:subClassOf`/`domain`/
+`range` axioms belong in the ontology. When they appear in a `given` — often so
+a `subClassOf*` query path resolves — the report lists them under **⚠️ TBox
+axioms in test data**, per test, with a suggestion to move them into an ontology
+loaded via `:hasOntologyPath`. This is usually the root cause behind a
+**query-only** term: the query only matches because the fixture supplied the
+axiom the ontology should own.
+
 ## Worked example
 
 Two ontologies — a place vocabulary and a small governance vocabulary that
@@ -166,20 +178,24 @@ with a competency question, one without) produce the report in
 generated from the runnable fixtures in
 [`examples/geography-example/`](examples/geography-example/) — see the README
 there for the command, and `test/test_coverage_plugin.py` which asserts it stays
-correct. The headline: **9/9 terms (100%)** exercised by the tests, of which
-**8/9 (89%)** are backed by a competency question. Two declared terms are
+correct. The headline: **8/9 terms (89%)** covered by the tests, of which
+**7/9 (78%)** are backed by a competency question. Two declared terms are
 reported as **structural** and excluded from the denominator: `place:Place` (the
 abstract root) and `place:basedOnStandard` (an `owl:OntologyProperty`).
 `gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is only referenced,
 not declared, so it is not counted.
 
-The single-term gap between the two percentages is `place:Region`: the non-CQ
-`region-lookup` test exercises it (so it is **covered**), but no competency
-question does (so its **By a CQ?** column is ❌). The example also shows two
-**⚠️ Used but not declared** terms — `place:hasEconomicArea` (in a `given`,
-tagged *input data*) and `gov:appointedOn` (in the mayor query, tagged *SPARQL*)
-— each likely a typo or missing definition, listed with the test that references
-it.
+The all-tests gap is `place:AdministrativeDivision`: the division CQ *queries* it
+but no test ever *instantiates* it (the data holds a `place:Province` and relies
+on a `subClassOf` axiom smuggled into the fixture), so it is **query-only** — not
+covered — and the report both flags it and lists that axiom under **⚠️ TBox
+axioms in test data**. The gap between the two percentages is `place:Region`: the
+non-CQ `region-lookup` test covers it in data (so it is **covered**), but no
+competency question does (so its **By a CQ?** column is ❌). The example also
+shows two **⚠️ Used but not declared** terms — `place:hasEconomicArea` (in a
+`given`, tagged *input data*) and `gov:appointedOn` (in the mayor query, tagged
+*SPARQL*) — each likely a typo or missing definition, listed with the test that
+references it.
 
 The value the CQ table cannot give today: a percentage, the structural
 terms called out separately, and — when one exists — the exact list of declared
