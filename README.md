@@ -134,7 +134,7 @@ pytest --mustrd --config=config.ttl --cq --md=report.md       # + competency que
 `--term-coverage` reports **how much of your ontology your tests actually
 exercise** — an overall percentage and a per-term table (to stdout, and the
 `--md` file if given). Add `--cq` too and it also shows how much is backed by a
-*competency question* (a stricter number) and marks each term `By a CQ?`.
+*competency question* (a stricter number) via a `CQ Term Coverage` column.
 
 Tell MustRD which ontology to measure against with `:hasOntologyPath` in your
 config — a file or a directory (scanned recursively), repeatable:

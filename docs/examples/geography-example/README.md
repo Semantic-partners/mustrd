@@ -56,7 +56,7 @@ question**. Two things drive those numbers:
   covered** and drops the all-tests number to 89%.
 - `place:Region` is *covered* but not by a CQ: `region-lookup.mustrd.ttl` covers
   it (in data and SPARQL) and passes, but has no `must:competencyQuestion` — so
-  its **By a CQ?** column is ❌, taking the CQ number down to 78%.
+  its **CQ Term Coverage** column is ❌, taking the CQ number down to 78%.
 
 That's the point of the two metrics: all-test coverage says what's exercised at
 all; CQ coverage says which *requirements* actually pin a term down.

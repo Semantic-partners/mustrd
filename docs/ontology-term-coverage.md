@@ -24,7 +24,7 @@ Two independent, opt-in flags:
 
 The flags **compose**. With both, coverage gains a CQ overlay: a second headline
 percentage (how much of the ontology the *competency questions* cover, vs all
-tests), a **By a CQ?** column per term, a second **Not used by any CQ** gap list
+tests), a **CQ Term Coverage** column per term, a second **Not used by any CQ** gap list
 (CQ-scoped, alongside the all-tests one), a Coverage Status column in the CQ
 table, and — because duplicate `must:competencyQuestion` values are usually a
 copy/paste slip — those CQs are excluded from the CQ overlay and listed under a
@@ -191,7 +191,7 @@ on a `subClassOf` axiom smuggled into the fixture), so it is **query-only** — 
 covered — and the report both flags it and lists that axiom under **⚠️ TBox
 axioms in test data**. The gap between the two percentages is `place:Region`: the
 non-CQ `region-lookup` test covers it in data (so it is **covered**), but no
-competency question does (so its **By a CQ?** column is ❌). The example also
+competency question does (so its **CQ Term Coverage** column is ❌). The example also
 shows two **⚠️ Used but not declared** terms — `place:hasEconomicArea` (in a
 `given`, tagged *input data*) and `gov:appointedOn` (in the mayor query, tagged
 *SPARQL*) — each likely a typo or missing definition, listed with the test that

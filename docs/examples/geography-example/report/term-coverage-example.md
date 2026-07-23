@@ -23,7 +23,7 @@ A term counts as **covered** when a passing test **populates it in input data** 
 
 Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
 
-| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">By a CQ?</abbr> |
+| Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Term Coverage</abbr> | <abbr title="Whether a competency question — not just any test — exercises the term">CQ Term Coverage</abbr> |
 |------|------|:---:|:---:|:---:|:---:|:---:|
 | foaf:Person · _external_ | class | ❌ | ❌ | ✅ | 🔧 structural | 🔧 structural |
 | &nbsp;&nbsp;&nbsp;&nbsp;▸ gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
@@ -50,7 +50,7 @@ The **In input data**, **In SPARQL** and **Structural** columns show *where* a t
 | ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
 | ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
 
-**By a CQ?** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 structural (excluded, so not applicable).
+**CQ Term Coverage** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 structural (excluded, so not applicable).
 
 ### Not covered by any test
 
