@@ -70,7 +70,7 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     # place:Region: term row carries the status; a • sub-row links the covering
     # test with that test's own input-data / SPARQL contribution.
     region_row = next(ln for ln in text.splitlines() if "↳ place:Region " in ln)
-    assert region_row.endswith("| ✅ covered | ❌ |")  # covered, but no CQ covers it
+    assert region_row.endswith("| ✅ covered | ❌ unused |")  # covered, but no CQ covers it
     region_sub = next(ln for ln in text.splitlines() if "• [region-lookup.mustrd.ttl](" in ln)
     assert region_sub.count("✅") == 2  # this test contributes both data + SPARQL
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))

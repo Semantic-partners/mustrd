@@ -572,26 +572,35 @@ def _class_forest(declared, used, short, tbox, extra_external=()):
     return roots, children, extra_parents, external, nodes
 
 
+def _coverage_status(term, schema_only, in_data, in_query):
+    """covered (populated in data) / query-only (named by a query, never
+    instantiated) / schema (structural, excluded) / unused. Used for both the
+    all-tests verdict and the CQ-only verdict, over the relevant data/query sets."""
+    if term in schema_only:
+        return "schema"
+    if term in in_data:
+        return "covered"
+    if term in in_query:
+        return "query-only"
+    return "unused"
+
+
 def _matrix_row(term, kind, depth, connector, ctx, external=False):
     """One term's matrix row (columns + depth + connector). External = schema."""
     if external:
         return {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": True,
                 "connector": connector, "in_data": False, "in_query": False,
-                "in_schema": True, "status": "schema", "by_cq_state": "schema"}
+                "in_schema": True, "status": "schema", "cq_status": "schema",
+                "by_cq_state": "schema"}
     schema_only, used_data, used_query = ctx["schema_only"], ctx["used_data"], ctx["used_query"]
-    if term in schema_only:
-        status = "schema"
-    elif term in used_data:          # populated in a passing test's data -> covered
-        status = "covered"
-    elif term in used_query:         # named by a query but never instantiated
-        status = "query-only"
-    else:
-        status = "unused"
+    cq_data, cq_query = ctx["cq_used_data"], ctx["cq_used_query"]
+    status = _coverage_status(term, schema_only, used_data, used_query)
+    cq_status = _coverage_status(term, schema_only, cq_data, cq_query)
     row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": False,
            "connector": connector, "in_data": term in used_data,
            "in_query": term in used_query, "in_schema": term in schema_only,
-           "status": status,
-           "by_cq_state": "schema" if term in schema_only else ("yes" if term in ctx["cq_used_data"] else "no")}
+           "status": status, "cq_status": cq_status,
+           "by_cq_state": "schema" if term in schema_only else ("yes" if term in cq_data else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
     # Link the tests behind this term, each tagged with what it contributes
@@ -624,7 +633,7 @@ def _walk_forest(node, depth, children, attached, ctx, rows):
                      "external": all(c in external for c in run),
                      "connector": "sub" if depth else None,
                      "in_data": False, "in_query": False, "in_schema": True,
-                     "status": "schema", "by_cq_state": "schema"})
+                     "status": "schema", "cq_status": "schema", "by_cq_state": "schema"})
         _walk_forest(cur, depth + 1, children, attached, ctx, rows)
     else:
         rows.append(_matrix_row(node, "class", depth, "sub" if depth else None, ctx,
@@ -635,7 +644,7 @@ def _walk_forest(node, depth, children, attached, ctx, rows):
             _walk_forest(child, depth + 1, children, attached, ctx, rows)
 
 
-def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, schema_only, test_refs, short, tbox):
+def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, cq_used_query, schema_only, test_refs, short, tbox):
     """The per-term matrix as an ordered list of rows: an indented subClassOf
     tree of classes, each with its domain-attached properties (▸) beneath it;
     properties with no domain trail at the end. `referenced` (data ∪ query) drives
@@ -652,7 +661,8 @@ def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, sc
                          key=short)
         (attached.setdefault(domains[0], []).append(p) if domains else unattached.append(p))
 
-    ctx = {"used_data": used_data, "used_query": used_query, "cq_used_data": cq_used_data,
+    ctx = {"used_data": used_data, "used_query": used_query,
+           "cq_used_data": cq_used_data, "cq_used_query": cq_used_query,
            "schema_only": schema_only, "test_refs": test_refs, "short": short,
            "external": external, "extra_parents": extra_parents}
     rows = []
@@ -764,7 +774,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     test_refs = _usage_by_term(specs, declared_set)
     non_cq_refs = _usage_by_term([s for s in specs if s not in (cq_specs or [])], declared_set)
     terms = _ordered_terms(declared, referenced, used_data, used_query, cq_used_data,
-                           schema_only, test_refs, short, tbox)
+                           cq_used_query, schema_only, test_refs, short, tbox)
     # "Not covered by any test": declared, non-structural terms no passing test
     # populates in data. Query-only terms (named by a query but never instantiated)
     # land here too, flagged so the report can distinguish them from the untouched.
