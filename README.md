@@ -106,18 +106,24 @@ We have a pytest plugin.
 
 ## Competency questions & ontology coverage
 
-A test spec can record the competency question (CQ) it answers:
+A competency question (CQ) is a first-class `must:CompetencyQuestion` node — it
+owns the question (`must:question`, a sub-property of `rdfs:label`) and
+*optionally* links to the test(s) that answer it with `must:cqSpec`. CQ nodes
+live in any `.mustrd.ttl` in the suite:
 
 ```ttl
-:test_example a :TestSpec ;
-    :competencyQuestion "In which country is Rotterdam?" ;
-    :given ... ; :when ... ; :then ... .
+:rotterdamCountryCQ a must:CompetencyQuestion ;
+    must:question "In which country is Rotterdam?" ;
+    must:cqSpec :test_example .        # optional — omit for a CQ with no test yet
 ```
+
+Because the link is optional, you can record a CQ *before* writing its test; the
+report lists such CQs as gaps (Test column "—").
 
 Two opt-in report flags build on this, and compose:
 
-- **`--cq`** adds a **Competency Questions** table (one row per CQ, its test
-  status) and a per-CQ breakdown. Needs no ontology.
+- **`--cq`** adds a **Competency Questions** table (one row per CQ node — its
+  linked test(s) and status) and a per-CQ breakdown. Needs no ontology.
 - **`--term-coverage`** adds **ontology term coverage over all mustrd tests**
   (see below). Needs an ontology.
 

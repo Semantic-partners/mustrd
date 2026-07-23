@@ -2,9 +2,13 @@
 @prefix ex:   <http://example.org/> .
 @prefix :     <http://example.org/place/example/> .
 
+:mayorOfRotterdamCQ
+    a must:CompetencyQuestion ;
+    must:question "Who is the mayor of Rotterdam?" ;
+    must:cqSpec :mayorOfRotterdam .
+
 :mayorOfRotterdam
     a must:TestSpec ;
-    must:competencyQuestion "Who is the mayor of Rotterdam?" ;
     must:given [ a must:FileDataset ; must:file "mayor.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;

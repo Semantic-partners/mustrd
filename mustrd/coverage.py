@@ -91,7 +91,7 @@ def _wk_qname(uri) -> str:
 class SpecUsage:
     """One spec's contribution to coverage."""
     name: str
-    competency_question: Optional[str]
+    uri: Optional[str]
     passed: bool
     data_terms: List[str] = field(default_factory=list)
     query_terms: List[str] = field(default_factory=list)
@@ -432,7 +432,7 @@ def _scan_specs(specs, declared_set, declared, tbox, short):
     per spec, and per-spec reference tuples for the undeclared report."""
     used_data, used_query = set(), set()
     referenced_data, referenced_query = set(), set()
-    spec_refs, per_cq = [], []
+    spec_refs, usages = [], []
     for s in specs:
         g = s.get("given")
         raw_data = abox_terms(g) if isinstance(g, Graph) else set()
@@ -450,15 +450,15 @@ def _scan_specs(specs, declared_set, declared, tbox, short):
         if s.get("passed"):
             used_data |= d_terms
             used_query |= q_terms
-        per_cq.append(SpecUsage(
+        usages.append(SpecUsage(
             name=s.get("name", "?"),
-            competency_question=s.get("cq"),
+            uri=s.get("uri"),
             passed=bool(s.get("passed")),
             data_terms=sorted(short(t) for t in d_terms),
             query_terms=sorted(short(t) for t in q_terms),
             requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox),
         ))
-    return used_data, used_query, referenced_data, referenced_query, per_cq, spec_refs
+    return used_data, used_query, referenced_data, referenced_query, usages, spec_refs
 
 
 def _fold_metadata_into_schema(schema_reasons, metadata, used):
@@ -696,47 +696,82 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
     return undeclared
 
 
-def _split_duplicate_cqs(specs):
-    """Partition specs into (duplicate_cqs, kept).
+def _split_duplicate_cqs(cq_defs):
+    """Partition CQ defs into (duplicate_cqs, kept).
 
-    A competency-question value shared by more than one spec is almost always a
-    copy/paste error, so every spec carrying a duplicated value is dropped from
-    the calculation. `duplicate_cqs` describes what was excluded, for a warning:
-    [{cq, specs: [{name, source_file}, ...]}].
+    Two competency-question nodes sharing the same question text is almost always
+    a copy/paste error, so every def carrying a duplicated question is dropped
+    from the calculation. `duplicate_cqs` describes what was excluded, for a
+    warning: [{question, cqs: [{name, source_file}, ...]}].
     """
     counts = {}
-    for s in specs:
-        counts[s.get("cq")] = counts.get(s.get("cq"), 0) + 1
-    dup_values = {cq for cq, n in counts.items() if cq is not None and n > 1}
-    kept = [s for s in specs if s.get("cq") not in dup_values]
+    for d in cq_defs:
+        counts[d.get("question")] = counts.get(d.get("question"), 0) + 1
+    dup_values = {q for q, n in counts.items() if q is not None and n > 1}
+    kept = [d for d in cq_defs if d.get("question") not in dup_values]
     duplicate_cqs = [{
-        "cq": cq,
-        "specs": [{"name": s.get("name", "?"),
-                   "source_file": str(s.get("source_file")) if s.get("source_file") else None}
-                  for s in specs if s.get("cq") == cq],
-    } for cq in sorted(dup_values)]
+        "question": q,
+        "cqs": [{"name": d.get("name", "?"),
+                 "source_file": str(d.get("source_file")) if d.get("source_file") else None}
+                for d in cq_defs if d.get("question") == q],
+    } for q in sorted(dup_values)]
     return duplicate_cqs, kept
 
 
-def _serialize_per_cq(per_cq):
-    return [{"name": u.name, "cq": u.competency_question, "status": _status(u),
-             "credited": u.passed, "data": u.data_terms, "query": u.query_terms,
-             "requires_ontology": u.requires_ontology} for u in per_cq]
+def _linked_specs(cq_defs):
+    """Deduped list of the spec dicts linked (via must:cqSpec) by any CQ def."""
+    seen, out = set(), []
+    for d in cq_defs:
+        for s in d.get("specs", []):
+            key = s.get("uri") or id(s)
+            if key not in seen:
+                seen.add(key)
+                out.append(s)
+    return out
+
+
+def _per_cq_entries(cq_defs, usage_by_uri):
+    """One report entry per CQ node: its question, the linked test(s) with their
+    status/terms, and the two error flags (multiple questions, dangling cqSpec).
+    A CQ with no (resolvable) test gets has_test=False and empty terms."""
+    entries = []
+    for d in cq_defs:
+        tests, data, query, credited = [], set(), set(), False
+        for s in d.get("specs", []):
+            u = usage_by_uri.get(s.get("uri"))
+            if u is None:
+                continue
+            tests.append({"name": u.name, "uri": u.uri, "status": _status(u),
+                          "credited": u.passed, "requires_ontology": u.requires_ontology})
+            data.update(u.data_terms)
+            query.update(u.query_terms)
+            credited = credited or u.passed
+        entries.append({
+            "id": d.get("id"), "name": d.get("name"),
+            "source_file": d.get("source_file"),
+            "question": d.get("question"), "questions": d.get("questions", []),
+            "question_error": len(d.get("questions", [])) > 1,
+            "missing_specs": d.get("missing_specs", []),
+            "has_test": bool(tests), "tests": tests,
+            "data": sorted(data), "query": sorted(query), "credited": credited,
+        })
+    return entries
 
 
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
-                     cq_specs: Optional[List[dict]] = None) -> Optional[dict]:
+                     cq_defs: Optional[List[dict]] = None) -> Optional[dict]:
     """Ontology term coverage across ALL mustrd tests.
 
-    `specs` is a list of dicts: {name, passed, given (Graph), queries [str]} —
-    every mustrd test in the suite; coverage is measured over them.
+    `specs` is a list of dicts: {name, uri, passed, given (Graph), queries [str]}
+    — every mustrd test in the suite; coverage is measured over them.
     `ontology` is the graph whose declared terms coverage is measured against;
     when omitted (e.g. in unit tests), declared terms fall back to the union of
     the specs' given graphs.
-    `cq_specs` is the competency-question subset (each also carrying a `cq`
-    value). When given, it adds a CQ overlay: per-term `by_cq`, a CQ coverage
-    percentage, the per-CQ breakdown, and duplicate-CQ detection. CQs sharing a
-    value are excluded from that overlay (likely copy/paste).
+    `cq_defs` is the list of competency-question nodes — each
+    {id, name, question, questions, specs (linked spec dicts), missing_specs}.
+    When given, it adds a CQ overlay: per-term CQ coverage, a CQ coverage
+    percentage, the per-CQ breakdown, and duplicate-question detection. CQ nodes
+    sharing a question are excluded from that overlay (likely copy/paste).
 
     Returns a template context dict, or None if no ontology terms are declared.
     """
@@ -745,8 +780,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     if not declared:
         return None
 
-    all_specs = specs + [s for s in (cq_specs or []) if s not in specs]
-    short = _build_shortener(all_specs, given_graphs, ontology)
+    short = _build_shortener(specs, given_graphs, ontology)
     tbox = _build_tbox(given_graphs, ontology)
     declared_set = set(declared)
 
@@ -760,10 +794,14 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         _scan_specs(specs, declared_set, declared, tbox, short)
     referenced = used_data | used_query
 
-    # CQ overlay: which declared terms competency questions exercise (deduped).
-    duplicate_cqs, cq_kept = _split_duplicate_cqs(cq_specs or [])
-    cq_used_data, cq_used_query, _, _, per_cq, _ = \
-        _scan_specs(cq_kept, declared_set, declared, tbox, short)
+    # CQ overlay: which declared terms competency questions exercise. CQ nodes
+    # sharing a question are dropped (copy/paste); the rest contribute the specs
+    # they link to. Per-CQ breakdown is then assembled per CQ node.
+    duplicate_cqs, cq_kept = _split_duplicate_cqs(cq_defs or [])
+    cq_specs = _linked_specs(cq_kept)
+    cq_used_data, cq_used_query, _, _, cq_usages, _ = \
+        _scan_specs(cq_specs, declared_set, declared, tbox, short)
+    per_cq = _per_cq_entries(cq_kept, {u.uri: u for u in cq_usages})
 
     schema_reasons = schema_references(tbox, referenced, declared, short)
     _fold_metadata_into_schema(schema_reasons, metadata, referenced)
@@ -772,7 +810,8 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # Which passing tests back each term: all tests (for the Test Term Coverage
     # links) and non-CQ tests only (to name the backer of a CQ-scoped gap).
     test_refs = _usage_by_term(specs, declared_set)
-    non_cq_refs = _usage_by_term([s for s in specs if s not in (cq_specs or [])], declared_set)
+    cq_uris = {s.get("uri") for s in cq_specs}
+    non_cq_refs = _usage_by_term([s for s in specs if s.get("uri") not in cq_uris], declared_set)
     terms = _ordered_terms(declared, referenced, used_data, used_query, cq_used_data,
                            cq_used_query, schema_only, test_refs, short, tbox)
     # "Not covered by any test": declared, non-structural terms no passing test
@@ -803,42 +842,43 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "covered": covered, "denominator": denominator,
         "pct": round(100.0 * covered / denominator) if denominator else 0,
         "declared_total": len(declared), "schema_count": len(schema_only),
-        "has_cq": bool(cq_specs),
+        "has_cq": bool(cq_defs),
         "covered_by_cq": covered_by_cq,
         "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
         "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
         "tbox_in_data": _tbox_in_data(specs, short),
-        "per_cq": _serialize_per_cq(per_cq),
+        "per_cq": per_cq,
     }
 
 
-def cq_only_view(cq_specs: List[dict]) -> dict:
+def cq_only_view(cq_defs: List[dict]) -> dict:
     """Competency-question breakdown WITHOUT an ontology (for --cq on its own).
 
-    Lists every non-well-known term each CQ references — unchecked, so it may
-    include terms no ontology declares — plus duplicate-CQ detection. `unchecked`
-    flags that no ontology was consulted, so the report can say so.
+    Lists every non-well-known term each CQ's linked test references — unchecked,
+    so it may include terms no ontology declares — plus duplicate-question
+    detection. `unchecked` flags that no ontology was consulted, so the report can
+    say so. Test-less CQ nodes are listed with no terms.
     """
-    given_graphs = [s["given"] for s in cq_specs if isinstance(s.get("given"), Graph)]
-    all_queries = [q for s in cq_specs for q in (s.get("queries") or []) if isinstance(q, str)]
+    duplicate_cqs, kept = _split_duplicate_cqs(cq_defs or [])
+    linked = _linked_specs(kept)
+    given_graphs = [s["given"] for s in linked if isinstance(s.get("given"), Graph)]
+    all_queries = [q for s in linked for q in (s.get("queries") or []) if isinstance(q, str)]
     short = _shortener(given_graphs, all_queries)
-    duplicate_cqs, kept = _split_duplicate_cqs(cq_specs)
-    per_cq = []
-    for s in kept:
+    usage_by_uri = {}
+    for s in linked:
         g = s.get("given")
         d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set()) if _is_domain_term(URIRef(t))}
         q = set()
         for query in (s.get("queries") or []):
             if isinstance(query, str):
                 q |= {t for t in query_uris(query) if _is_domain_term(URIRef(t))}
-        per_cq.append({"name": s.get("name", "?"), "cq": s.get("cq"),
-                       "status": "passed" if s.get("passed") else "not passed",
-                       "credited": bool(s.get("passed")),
-                       "data": sorted(short(t) for t in d),
-                       "query": sorted(short(t) for t in q),
-                       "requires_ontology": False})
-    return {"per_cq": per_cq, "duplicate_cqs": duplicate_cqs, "unchecked": True}
+        usage_by_uri[s.get("uri")] = SpecUsage(
+            name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
+            data_terms=sorted(short(t) for t in d), query_terms=sorted(short(t) for t in q),
+            requires_ontology=False)
+    return {"per_cq": _per_cq_entries(kept, usage_by_uri),
+            "duplicate_cqs": duplicate_cqs, "unchecked": True}
 
 
 def _status(u: SpecUsage) -> str:

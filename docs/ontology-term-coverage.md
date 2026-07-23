@@ -22,13 +22,21 @@ Two independent, opt-in flags:
   a **Per competency question** breakdown. Needs no ontology and can be used on
   its own.
 
+A competency question is a first-class **`must:CompetencyQuestion`** node —
+`must:question` (a sub-property of `rdfs:label`, exactly one) holds the text, and
+`must:cqSpec` optionally links the mustrd test(s) that answer it. CQ nodes are
+discovered in any `.mustrd.ttl` under the suite's `hasSpecPath`. Because the link
+is optional, a CQ can be recorded before its test exists; the table lists such
+CQs with an em-dash Test cell. The table also flags a CQ with more than one
+`must:question` and a `must:cqSpec` pointing at a non-existent spec.
+
 The flags **compose**. With both, coverage gains a CQ overlay: a second headline
 percentage (how much of the ontology the *competency questions* cover, vs all
 tests), a **CQ Term Coverage** column per term, a second **Not used by any CQ** gap list
 (CQ-scoped, alongside the all-tests one), a Coverage Status column in the CQ
-table, and — because duplicate `must:competencyQuestion` values are usually a
-copy/paste slip — those CQs are excluded from the CQ overlay and listed under a
-*Duplicate competency questions* warning.
+table, and — because a duplicated `must:question` is usually a copy/paste slip —
+those CQ nodes are excluded from the CQ overlay and listed under a *Duplicate
+competency questions* warning.
 
 It is printed to **stdout**; adding `--md` also writes it to the report file
 The report is printed to **stdout**; adding `--md` also writes it to the file
@@ -172,8 +180,9 @@ axiom the ontology should own.
 ## Worked example
 
 Two ontologies — a place vocabulary and a small governance vocabulary that
-reuses it (11 declared terms in total) — exercised by four mustrd tests (three
-with a competency question, one without) produce the report in
+reuses it (11 declared terms in total) — exercised by four mustrd tests, with
+four `must:CompetencyQuestion` nodes (three linked to a test via `must:cqSpec`,
+one with no test yet), produce the report in
 [`examples/geography-example/report/term-coverage-example.md`](examples/geography-example/report/term-coverage-example.md),
 generated from the runnable fixtures in
 [`examples/geography-example/`](examples/geography-example/) — see the README

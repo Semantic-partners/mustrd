@@ -199,6 +199,15 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
     return convert_function(raw_value) if raw_value else None
 
 
+def _local_name(iri):
+    """The local part of an IRI (after the last # or /), for display."""
+    s = str(iri)
+    for sep in ("#", "/"):
+        if sep in s:
+            s = s.rsplit(sep, 1)[-1]
+    return s or str(iri)
+
+
 def _link_report_refs(coverage, base):
     """Set the `link` (to the referencing spec file) on every spec reference in
     the report — the undeclared-term refs and the per-term non-CQ refs — relative
@@ -208,7 +217,7 @@ def _link_report_refs(coverage, base):
     ref_lists = [t.get("refs", []) for t in coverage.get("undeclared", [])]
     ref_lists += [t.get("cover_refs", []) for t in coverage.get("terms", [])]
     ref_lists += [t.get("non_cq_refs", []) for t in coverage.get("cq_gaps", [])]
-    ref_lists += [d.get("specs", []) for d in coverage.get("duplicate_cqs", [])]
+    ref_lists += [d.get("cqs", []) for d in coverage.get("duplicate_cqs", [])]
     # TBox-in-data entries carry their own source_file/link directly.
     ref_lists += [coverage.get("tbox_in_data", [])]
     for refs in ref_lists:
@@ -426,29 +435,34 @@ class MustrdTestPlugin:
         if not self.md_path and not report_coverage and not report_cq:
             return
 
-        test_results, cq_results, all_specs, cq_specs, last_is_mustrd = \
+        test_results, all_specs, spec_by_uri, last_is_mustrd = \
             self._collect_results(session)
 
+        # Competency questions are first-class must:CompetencyQuestion nodes found
+        # in the spec files; resolve their must:cqSpec links against the collected
+        # specs so a CQ can point at 0..n tests (or none at all).
+        cq_defs = self._collect_cq_defs(spec_by_uri) if report_cq else []
+
         # Ontology term coverage (--term-coverage) is measured over ALL mustrd
-        # tests. The CQ overlay (by-a-CQ signal, CQ %, per-CQ) is added only when
-        # --cq is also set. compute_coverage returns None if nothing is declared.
+        # tests. The CQ overlay (CQ %, per-CQ) is added only when --cq is also set.
+        # compute_coverage returns None if nothing is declared.
         coverage = None
         if report_coverage:
             try:
                 coverage = compute_coverage(
                     all_specs, ontology=load_ontology(self.ontology_paths),
-                    cq_specs=cq_specs if report_cq else None)
+                    cq_defs=cq_defs if report_cq else None)
             except Exception as e:
                 logger.warning(f"Could not compute ontology term coverage: {e}")
         # --cq without --term-coverage: CQ sections with no ontology check.
-        cq_view = cq_only_view(cq_specs) if (report_cq and not report_coverage) else None
+        cq_view = cq_only_view(cq_defs) if (report_cq and not report_coverage) else None
 
         # Markdown report. With --term-coverage and/or --cq it is the assembled
         # report; otherwise --md keeps its pre-existing form: a ResultList of
         # every test.
         if self.md_path:
             if report_coverage or report_cq:
-                md = self._build_report(cq_results, coverage, cq_view, test_results,
+                md = self._build_report(coverage, cq_view, test_results, spec_by_uri,
                                         os.path.dirname(self.md_path) or ".")
             else:
                 md = self._render_result_list(test_results, last_is_mustrd)
@@ -460,15 +474,16 @@ class MustrdTestPlugin:
 
         # To stdout (links relative to the cwd, which the terminal linkifies).
         if report_coverage or report_cq:
-            body = self._build_report(cq_results, coverage, cq_view, test_results, os.getcwd())
+            body = self._build_report(coverage, cq_view, test_results, spec_by_uri, os.getcwd())
             self._report_to_terminal(session.config, body)
 
     def _collect_results(self, session):
-        """Build a TestResult for every test (for the ResultList --md), plus the
-        mustrd-spec dicts — all of them (coverage is over all tests) and the
-        competency-question subset (the CQ overlay / sections).
-        Returns (test_results, cq_results, all_specs, cq_specs, last_is_mustrd)."""
-        test_results, cq_results, all_specs, cq_specs = [], [], [], []
+        """Build a TestResult for every test (for the ResultList --md) and the
+        mustrd-spec dicts (all of them — coverage is over all tests), plus a
+        spec-IRI → spec-dict map so competency questions can resolve their
+        must:cqSpec links.
+        Returns (test_results, all_specs, spec_by_uri, last_is_mustrd)."""
+        test_results, all_specs, spec_by_uri = [], [], {}
         is_mustrd = False
         for test_conf, result in session.results.items():
             # Case auto generated tests
@@ -489,38 +504,71 @@ class MustrdTestPlugin:
                 is_mustrd = False
 
             spec = getattr(test_conf, 'spec', None)
-            cq = getattr(spec, 'competency_question', None)
             test_result = TestResult(
                 test_name, class_name, module_name, result.outcome, is_mustrd,
-                competency_question=cq,
             )
-            # Stash the spec's source file so the CQ table can link to it once we
-            # know the report location (link must be relative to the report dir).
-            test_result._spec_source_file = getattr(spec, 'spec_source_file', None)
             test_results.append(test_result)
 
             if spec is not None:
-                cspec = self._coverage_spec(spec, result, test_name, cq)
+                cspec = self._coverage_spec(spec, result, test_name)
                 all_specs.append(cspec)
-                if cq is not None:
-                    cq_results.append(test_result)
-                    cq_specs.append(cspec)
-        return test_results, cq_results, all_specs, cq_specs, is_mustrd
+                if cspec.get("uri"):
+                    spec_by_uri[cspec["uri"]] = cspec
+        return test_results, all_specs, spec_by_uri, is_mustrd
 
     @staticmethod
-    def _coverage_spec(spec, result, test_name, cq):
+    def _coverage_spec(spec, result, test_name):
         when = getattr(spec, 'when', None)
         # `when` may be a single WhenSpec or a list of them.
         when_list = when if isinstance(when, list) else ([when] if when is not None else [])
         queries = [w.value for w in when_list if isinstance(getattr(w, 'value', None), str)]
+        uri = getattr(spec, 'spec_uri', None)
         return {
             "name": getattr(spec, 'spec_file_name', test_name),
-            "cq": cq,
+            "uri": str(uri) if uri is not None else None,
             "passed": result.outcome == "passed",
             "given": getattr(spec, 'given', None),
             "queries": queries,
             "source_file": getattr(spec, 'spec_source_file', None),
         }
+
+    def _collect_cq_defs(self, spec_by_uri):
+        """Find every must:CompetencyQuestion node in the suite's spec files and
+        resolve its must:cqSpec links. A CQ may live in any *.mustrd.ttl under a
+        config's hasSpecPath, and may point at 0..n specs (or none). Unresolvable
+        cqSpec targets are kept in `missing_specs` so the table can flag them.
+        Returns [{id, name, question, questions, source_file, specs, missing_specs}]."""
+        try:
+            spec_paths = [tc.spec_path for tc in parse_config(Path(self.test_config_file))
+                          if tc.spec_path]
+        except Exception as e:
+            logger.warning(f"Could not read spec paths for competency questions: {e}")
+            return []
+        defs, seen = [], set()
+        for sp in spec_paths:
+            for ttl in sorted(Path(sp).glob("**/*.mustrd.ttl")):
+                g = Graph()
+                try:
+                    g.parse(ttl)
+                except Exception:
+                    continue
+                for cq in g.subjects(RDF.type, MUST.CompetencyQuestion):
+                    cid = str(cq)
+                    if cid in seen:
+                        continue
+                    seen.add(cid)
+                    questions = [str(o) for o in g.objects(cq, MUST.question)]
+                    specs, missing = [], []
+                    for u in (str(o) for o in g.objects(cq, MUST.cqSpec)):
+                        (specs.append(spec_by_uri[u]) if u in spec_by_uri
+                         else missing.append(u))
+                    defs.append({
+                        "id": cid, "name": _local_name(cid),
+                        "question": questions[0] if questions else None,
+                        "questions": questions, "source_file": str(ttl),
+                        "specs": specs, "missing_specs": missing,
+                    })
+        return sorted(defs, key=lambda d: (d.get("question") or "", d["name"]))
 
     @staticmethod
     def _render_result_list(test_results, is_mustrd):
@@ -536,13 +584,13 @@ class MustrdTestPlugin:
         )
         return result_list.render()
 
-    def _build_report(self, cq_results, coverage, cq_view, all_results, link_base):
+    def _build_report(self, coverage, cq_view, test_results, spec_by_uri, link_base):
         """Assemble the report for the active flags, with links relative to
         `link_base`. Two H2 sub-reports under a top title:
 
           # Ontologies Report
           ## Coverage Report            (--term-coverage)
-             ### Ontologies / Term Coverage / Not used by any test / schema / used-but-not-declared
+             ### Ontologies / Term Coverage / Not covered by any test / Structural / used-but-not-declared
           ## Competency Questions Report  (--cq)
              ### Competency Questions / Duplicate CQs / Not used by any CQ / Per competency question
         """
@@ -561,62 +609,46 @@ class MustrdTestPlugin:
         view = coverage if coverage is not None else cq_view
         if self.cq and view is not None:
             _link_report_refs(view, link_base)
-            self._link_cq_specs(cq_results, link_base)
-            if coverage is not None:
-                self._apply_coverage_status(cq_results, coverage)
-            group_totals = {}
-            for tr in all_results:
-                group_totals[tr.class_name] = group_totals.get(tr.class_name, 0) + 1
+            per_cq = view.get("per_cq", [])
+            self._enrich_cq(per_cq, spec_by_uri, coverage, link_base)
             parts.append("## Competency Questions Report" if coverage is not None
                          else "# Competency Questions Report")
-            parts.append(render_cq_table(cq_results, group_totals))
+            parts.append(render_cq_table(per_cq, show_coverage=coverage is not None))
             if view.get("duplicate_cqs"):
                 parts.append(render_duplicate_cqs(view["duplicate_cqs"]))
             if coverage is not None:
                 parts.append(render_cq_gaps(coverage.get("cq_gaps", [])))
-            if view.get("per_cq"):
-                parts.append(render_per_cq(view["per_cq"], view.get("unchecked", False)))
+            if per_cq:
+                parts.append(render_per_cq(per_cq, view.get("unchecked", False)))
         return "\n\n".join(parts)
 
-    def _link_cq_specs(self, cq_results, parent):
-        """Link each CQ's Test cell to its .mustrd.ttl spec and its Module cell to
-        the suite config file, relative to the report dir."""
-        config_path = Path(self.test_config_file)
-        try:
-            config_link = os.path.relpath(str(config_path.resolve()), parent or ".")
-        except ValueError:
-            config_link = str(config_path)
-        for tr in cq_results:
-            src = getattr(tr, "_spec_source_file", None)
-            if src and str(src) != "unknown.mustrd.ttl":
-                try:
-                    tr.test_link = os.path.relpath(str(src), parent or ".")
-                except ValueError:
-                    tr.test_link = str(src)
-                tr.module_name = config_path.name
-                tr.module_link = config_link
+    def _enrich_cq(self, per_cq, spec_by_uri, coverage, link_base):
+        """In place: give each CQ entry its source-file link and, per linked test,
+        a link to its spec file and a coverage status (the undeclared terms it
+        references, else ✅ passed). Dangling cqSpec targets get a display name."""
+        def rel(src):
+            if not src or str(src) == "unknown.mustrd.ttl":
+                return None
+            try:
+                return os.path.relpath(str(src), link_base or ".")
+            except ValueError:
+                return str(src)
 
-    @staticmethod
-    def _apply_coverage_status(cq_results, coverage):
-        """Per-CQ Coverage Status: excluded (duplicate CQ), else the undeclared
-        terms the CQ references (from 'used but not declared'), else ✅ passed."""
-        dup_names = {s["name"] for d in coverage.get("duplicate_cqs", []) for s in d["specs"]}
         issues = {}
-        for term in coverage.get("undeclared", []):
+        for term in (coverage or {}).get("undeclared", []):
             for ref in term["refs"]:
-                if ref["in_data"] and ref["in_query"]:
-                    where = "data & SPARQL"
-                elif ref["in_data"]:
-                    where = "input data"
-                else:
-                    where = "SPARQL"
+                where = ("data & SPARQL" if ref["in_data"] and ref["in_query"]
+                         else "input data" if ref["in_data"] else "SPARQL")
                 issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
-        for tr in cq_results:
-            if tr.test_name in dup_names:
-                tr.coverage_status = "⚠️ excluded (duplicate competency question)"
-                continue
-            probs = issues.get(tr.test_name)
-            tr.coverage_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
+        for entry in per_cq:
+            entry["cq_link"] = rel(entry.get("source_file"))
+            entry["missing_names"] = [_local_name(u) for u in entry.get("missing_specs", [])]
+            for t in entry.get("tests", []):
+                t["test_link"] = rel(spec_by_uri.get(t.get("uri"), {}).get("source_file"))
+                if coverage is not None:
+                    probs = issues.get(t["name"])
+                    t["coverage_status"] = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
+        return per_cq
 
     def _report_to_terminal(self, config, body):
         tr = config.pluginmanager.get_plugin("terminalreporter")

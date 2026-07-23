@@ -41,24 +41,19 @@ class TestResult:
     status: str
     is_mustrd: bool
     type: str
-    competency_question: str = None
     test_link: str = None
     module_link: str = None
-    coverage_status: str = None
 
     def __init__(self, test_name: str, class_name: str, module_name: str, status: str, is_mustrd: bool,
-                 competency_question: str = None, test_link: str = None, module_link: str = None,
-                 coverage_status: str = None):
+                 test_link: str = None, module_link: str = None):
         self.test_name = test_name
         self.class_name = class_name
         self.module_name = module_name
         self.status = status
         self.is_mustrd = is_mustrd
         self.type = testType.MUSTRD.value if self.is_mustrd else testType.PYTEST.value
-        self.competency_question = competency_question
         self.test_link = test_link
         self.module_link = module_link
-        self.coverage_status = coverage_status
 
 
 @dataclass
@@ -129,27 +124,14 @@ class ResultList:
         return environment.get_template(template).render(result_list=self.result_list, environment=environment)
 
 
-def render_cq_table(test_results: list, group_totals: dict = None) -> str:
-    # Group by (module, class) — rendered as a heading — so those columns drop
-    # out of the table. Insertion order is preserved (session result order).
-    group_totals = group_totals or {}
-    groups = {}
-    for r in test_results:
-        key = (r.module_name, r.class_name)
-        if key not in groups:
-            groups[key] = {"module_name": r.module_name, "module_link": r.module_link,
-                           "class_name": r.class_name, "results": []}
-        groups[key]["results"].append(r)
-    group_list = list(groups.values())
-    # Per group: how many CQs are shown out of all tests in that group.
-    for g in group_list:
-        g["cq_count"] = len(g["results"])
-        g["total_tests"] = group_totals.get(g["class_name"], g["cq_count"])
-    # The Coverage Status column only appears when term coverage was computed.
-    show_coverage = any(getattr(r, "coverage_status", None) is not None for r in test_results)
+def render_cq_table(cqs: list, show_coverage: bool = False) -> str:
+    # CQ-first flat table: one row per competency-question node (enriched dicts
+    # from coverage/cq_only_view). Coverage Status column only when --term-coverage.
+    with_test = sum(1 for c in cqs if c.get("has_test"))
     environment = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     return environment.get_template(CQ_TABLE_MD_TEMPLATE).render(
-        groups=group_list, show_coverage=show_coverage)
+        cqs=cqs, show_coverage=show_coverage,
+        total=len(cqs), with_test=with_test, without_test=len(cqs) - with_test)
 
 
 def render_term_coverage(coverage: dict) -> str:

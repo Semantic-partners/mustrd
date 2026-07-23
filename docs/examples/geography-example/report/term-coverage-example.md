@@ -103,16 +103,14 @@ These tests define ontology structure (class/property declarations, `rdfs:subCla
 
 ### Competency Questions
 
-#### [mustrd-config.ttl](../mustrd-config.ttl) — rdflib
-
-_3 of 4 tests are competency questions._
+_4 competency questions — 3 with a test, 1 without._
 
 | Competency Question | Test | Test Status | Coverage Status |
 |---------------------|------|-------------|-----------------|
-| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |
 | In what administrative division of what country is Rotterdam? | [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) | ✅ passed | ✅ passed |
+| In which country is Rotterdam? | [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: place:hasEconomicArea (input data) |
+| What is the population of Rotterdam? | — | — | — |
 | Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: gov:appointedOn (SPARQL) |
-
 
 
 ### Not used by any CQ
@@ -126,14 +124,20 @@ _3 of 4 tests are competency questions._
 🧩 **requires ontology to pass** marks a CQ whose query only matches its data through the ontology's class hierarchy (it queries a class but the data holds instances of a *subclass*), so the ontology must be loaded as an input dataset for the test to pass.
 
 
-- **country-of-rotterdam.mustrd.ttl** — In which country is Rotterdam? — _passed_
-  - in data:  place:City, place:Continent, place:Country, place:isLocatedIn
-  - in query: place:Country, place:isLocatedIn
-
-- **division-and-country-of-rotterdam.mustrd.ttl** — In what administrative division of what country is Rotterdam? — _passed_ — 🧩 **requires ontology to pass**
+- **In what administrative division of what country is Rotterdam?**
+  - test: [division-and-country-of-rotterdam.mustrd.ttl](../specs/division-and-country-of-rotterdam.mustrd.ttl) — _passed_ — 🧩 **requires ontology to pass**
   - in data:  place:City, place:Continent, place:Country, place:Province, place:isLocatedIn
   - in query: place:AdministrativeDivision, place:Country, place:isLocatedIn
 
-- **mayor-of-rotterdam.mustrd.ttl** — Who is the mayor of Rotterdam? — _passed_
+- **In which country is Rotterdam?**
+  - test: [country-of-rotterdam.mustrd.ttl](../specs/country-of-rotterdam.mustrd.ttl) — _passed_
+  - in data:  place:City, place:Continent, place:Country, place:isLocatedIn
+  - in query: place:Country, place:isLocatedIn
+
+- **What is the population of Rotterdam?**
+  - _no linked test_
+
+- **Who is the mayor of Rotterdam?**
+  - test: [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) — _passed_
   - in data:  gov:Mayor, gov:governs, place:City
   - in query: gov:Mayor, gov:governs, place:City

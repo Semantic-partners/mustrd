@@ -1,7 +1,7 @@
 ### ⚠️ Duplicate competency questions
 
-These `must:competencyQuestion` values appear on more than one spec (likely a copy/paste error). The affected specs are **excluded from the coverage calculation**:
+The same `must:question` appears on more than one `must:CompetencyQuestion` node (likely a copy/paste error). These CQs are **excluded from the coverage calculation**:
 {% for d in duplicate_cqs %}
-- "{{ d.cq }}"
-{% for s in d.specs %}  - {% if s.link %}[{{ s.name }}]({{ s.link }}){% else %}{{ s.name }}{% endif %}
+- "{{ d.question }}"
+{% for c in d.cqs %}  - {% if c.link %}[{{ c.name }}]({{ c.link }}){% else %}{{ c.name }}{% endif %}
 {% endfor %}{% endfor %}

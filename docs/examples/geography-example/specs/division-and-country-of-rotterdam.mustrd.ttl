@@ -2,9 +2,13 @@
 @prefix ex:   <http://example.org/> .
 @prefix :     <http://example.org/place/example/> .
 
+:divisionAndCountryOfRotterdamCQ
+    a must:CompetencyQuestion ;
+    must:question "In what administrative division of what country is Rotterdam?" ;
+    must:cqSpec :divisionAndCountryOfRotterdam .
+
 :divisionAndCountryOfRotterdam
     a must:TestSpec ;
-    must:competencyQuestion "In what administrative division of what country is Rotterdam?" ;
     must:given [ a must:FileDataset ; must:file "division.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;

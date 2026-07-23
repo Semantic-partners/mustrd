@@ -2,9 +2,13 @@
 @prefix ex:   <http://example.org/> .
 @prefix :     <http://example.org/place/example/> .
 
+:countryOfRotterdamCQ
+    a must:CompetencyQuestion ;
+    must:question "In which country is Rotterdam?" ;
+    must:cqSpec :countryOfRotterdam .
+
 :countryOfRotterdam
     a must:TestSpec ;
-    must:competencyQuestion "In which country is Rotterdam?" ;
     must:given [ a must:FileDataset ; must:file "country.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
                  must:queryType must:SelectSparql ;

@@ -1,0 +1,10 @@
+# A competency question with NO linked test yet — it records a requirement the
+# ontology should answer, before any mustrd test demonstrates it. This file has
+# no must:TestSpec at all; the CQ is still discovered and reported as a gap
+# (Test column "—") to show that CQs are first-class and can precede their test.
+@prefix must: <https://mustrd.org/model/> .
+@prefix :     <http://example.org/place/example/> .
+
+:populationOfRotterdamCQ
+    a must:CompetencyQuestion ;
+    must:question "What is the population of Rotterdam?" .

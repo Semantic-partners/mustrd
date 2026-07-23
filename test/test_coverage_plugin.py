@@ -38,11 +38,16 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "place.ttl" in text and "http://example.org/place#" in text
     assert "governance.ttl" in text and "http://example.org/governance#" in text
 
-    # CQ table: three CQs, Test + Coverage Status columns, 3-of-4 count.
+    # CQ-first table: four CQ nodes (3 with a test, 1 without), Test + Coverage
+    # Status columns. The test-less CQ shows an em-dash.
     assert "In which country is Rotterdam?" in text
     assert "Who is the mayor of Rotterdam?" in text
     assert "Test Status" in text and "Coverage Status" in text
-    assert "3 of 4 tests are competency questions" in text
+    assert "4 competency questions — 3 with a test, 1 without." in text
+    assert "What is the population of Rotterdam?" in text  # the test-less CQ
+    cq_table = text.split("### Competency Questions", 1)[1].split("\n### ", 1)[0]
+    pop_row = next(ln for ln in cq_table.splitlines() if "population of Rotterdam" in ln)
+    assert pop_row.endswith("| — | — | — |")  # no test, no status
     assert "Duplicate competency questions" not in text
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
@@ -102,12 +107,15 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "mayor-of-rotterdam.mustrd.ttl" in sparql_line and "](" in sparql_line
 
     # Per-CQ: the division CQ needs the class hierarchy; the country CQ doesn't.
+    # The flag now sits on the test sub-line under each question bullet.
     assert "requires ontology to pass" in text
-    bullets = [ln for ln in text.splitlines() if ln.startswith("- **")]
-    division = next(ln for ln in bullets if ln.startswith("- **division-and-country"))
-    country = next(ln for ln in bullets if ln.startswith("- **country-of-rotterdam"))
+    per_cq = text.split("### Per competency question", 1)[1]
+    division = per_cq.split("administrative division", 1)[1].split("- **", 1)[0]
+    country = per_cq.split("In which country is Rotterdam?", 1)[1].split("- **", 1)[0]
     assert "requires ontology to pass" in division
     assert "requires ontology to pass" not in country
+    # The test-less CQ is listed with no linked test.
+    assert "_no linked test_" in per_cq
 
 
 def test_term_coverage_alone_has_no_cq_sections(tmp_path):

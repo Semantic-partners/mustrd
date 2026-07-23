@@ -77,7 +77,6 @@ class Specification:
     then: ThenSpec
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
-    competency_question: Optional[str] = None
 
 
 @dataclass
@@ -440,8 +439,6 @@ def get_spec(
                 default=Path("default.mustrd.ttl"),
             )
         )
-        # https://github.com/Semantic-partners/mustrd/issues/92
-        cq_node = spec_graph.value(subject=spec_uri, predicate=MUST.competencyQuestion)
         return Specification(
             spec_uri,
             mustrd_triple_store,
@@ -450,7 +447,6 @@ def get_spec(
             components[2],
             spec_file_name,
             spec_file_path,
-            competency_question=str(cq_node) if cq_node is not None else None,
         )
 
     except (ValueError, FileNotFoundError) as e:

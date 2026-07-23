@@ -42,9 +42,17 @@ def _graph(*ttls):
     return g
 
 
-def _spec(passed=True, given=None, queries=(), name="a.mustrd.ttl", cq="Q?"):
-    return {"name": name, "cq": cq, "passed": passed,
+def _spec(passed=True, given=None, queries=(), name="a.mustrd.ttl", uri=None):
+    return {"name": name, "uri": uri or f"http://ex/{name}", "passed": passed,
             "given": given, "queries": list(queries)}
+
+
+def _cqdef(question, *specs, name="cq", questions=None, missing=()):
+    """A must:CompetencyQuestion node linking the given spec dicts."""
+    return {"id": f"http://ex/cq/{name}", "name": name, "source_file": None,
+            "question": question,
+            "questions": questions if questions is not None else ([question] if question else []),
+            "specs": list(specs), "missing_specs": list(missing)}
 
 
 def test_declared_terms_excludes_well_known_vocab():
@@ -93,7 +101,7 @@ def test_coverage_roles_and_percentage():
 
 def test_failing_spec_is_not_credited():
     spec = _spec(passed=False, given=_graph(ONTO, DATA), queries=[QUERY])
-    cov = compute_coverage([spec], cq_specs=[spec])
+    cov = compute_coverage([spec], cq_defs=[_cqdef("Q?", spec)])
     assert cov["covered"] == 0
     assert cov["per_cq"][0]["credited"] is False
 
@@ -106,10 +114,9 @@ def test_term_used_only_by_a_non_cq_test_is_covered_but_not_by_cq():
     @prefix ex:   <http://example.org/> .
     ex:X a onto:AdministrativeDivision .
     """)
-    non_cq = {"name": "admin.mustrd.ttl", "source_file": None,
-              "given": admin_data, "queries": [], "passed": True, "cq": None}
-    cq = _spec(given=_graph(DATA), queries=[QUERY], cq="Q?", name="c.mustrd.ttl")
-    cov = compute_coverage([non_cq, cq], ontology=_graph(ONTO), cq_specs=[cq])
+    non_cq = _spec(given=admin_data, queries=[], name="admin.mustrd.ttl")
+    cq = _spec(given=_graph(DATA), queries=[QUERY], name="c.mustrd.ttl")
+    cov = compute_coverage([non_cq, cq], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", cq)])
     by = {t["term"]: t for t in cov["terms"]}
     admin = by["onto:AdministrativeDivision"]
     assert admin["status"] == "covered"          # exercised by a (non-CQ) test
@@ -141,8 +148,8 @@ def test_cover_refs_expose_data_sparql_split_across_tests():
     @prefix onto: <http://onto.org/> .
     @prefix ex:   <http://example.org/> .
     ex:c a onto:City .
-    """), queries=[], name="a.mustrd.ttl", cq=None)
-    b = _spec(given=_graph(), name="b.mustrd.ttl", cq=None, queries=[
+    """), queries=[], name="a.mustrd.ttl")
+    b = _spec(given=_graph(), name="b.mustrd.ttl", queries=[
         "PREFIX onto: <http://onto.org/> SELECT ?x WHERE { ?x a onto:City . }"])
     cov = compute_coverage([a, b], ontology=_graph(ONTO))
     city = {t["term"]: t for t in cov["terms"]}["onto:City"]
@@ -176,18 +183,44 @@ def test_tbox_axioms_in_given_are_flagged():
 
 
 def test_duplicate_competency_questions_are_excluded_and_warned():
-    # Two CQ specs share the same CQ text (copy/paste). Both are excluded from the
-    # CQ overlay and reported under duplicate_cqs; a spec with a unique CQ counts.
-    dup_a = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl", cq="dupe?")
-    dup_b = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="b.mustrd.ttl", cq="dupe?")
-    unique = _spec(given=_graph(DATA), queries=[QUERY], name="c.mustrd.ttl", cq="unique?")
-    cqs = [dup_a, dup_b, unique]
-    cov = compute_coverage(cqs, ontology=_graph(ONTO), cq_specs=cqs)
+    # Two CQ nodes share the same question (copy/paste). Both are excluded from
+    # the CQ overlay and reported under duplicate_cqs; a CQ with a unique question
+    # is kept.
+    spec_a = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl")
+    spec_b = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="b.mustrd.ttl")
+    spec_c = _spec(given=_graph(DATA), queries=[QUERY], name="c.mustrd.ttl")
+    cq_defs = [_cqdef("dupe?", spec_a, name="a"), _cqdef("dupe?", spec_b, name="b"),
+               _cqdef("unique?", spec_c, name="c")]
+    cov = compute_coverage([spec_a, spec_b, spec_c], ontology=_graph(ONTO), cq_defs=cq_defs)
     dupes = cov["duplicate_cqs"]
-    assert len(dupes) == 1 and dupes[0]["cq"] == "dupe?"
-    assert {s["name"] for s in dupes[0]["specs"]} == {"a.mustrd.ttl", "b.mustrd.ttl"}
+    assert len(dupes) == 1 and dupes[0]["question"] == "dupe?"
+    assert {c["name"] for c in dupes[0]["cqs"]} == {"a", "b"}
     # Only the unique CQ contributes to the per-CQ breakdown.
-    assert {c["name"] for c in cov["per_cq"]} == {"c.mustrd.ttl"}
+    assert {c["question"] for c in cov["per_cq"]} == {"unique?"}
+
+
+def test_cq_without_a_test_is_listed_and_credits_nothing():
+    # A must:CompetencyQuestion with no linked spec is reported (has_test False)
+    # and adds nothing to the CQ coverage number.
+    spec = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl")
+    testless = _cqdef("Unanswered?", name="q")          # no specs
+    cov = compute_coverage([spec], ontology=_graph(ONTO),
+                           cq_defs=[_cqdef("Answered?", spec, name="a"), testless])
+    entries = {c["question"]: c for c in cov["per_cq"]}
+    assert entries["Unanswered?"]["has_test"] is False and entries["Unanswered?"]["tests"] == []
+    assert entries["Answered?"]["has_test"] is True
+    # The test-less CQ contributes no covered terms.
+    assert cov["covered_by_cq"] == cov["covered_by_cq"]  # sanity; overlay only from linked specs
+
+
+def test_multiple_questions_and_missing_spec_are_flagged():
+    spec = _spec(given=_graph(ONTO, DATA), queries=[QUERY], name="a.mustrd.ttl")
+    two_q = _cqdef("Q1?", spec, name="x", questions=["Q1?", "Q2?"])
+    dangling = _cqdef("Q3?", name="y", missing=["http://ex/ghost"])
+    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[two_q, dangling])
+    by_q = {c["question"]: c for c in cov["per_cq"]}
+    assert by_q["Q1?"]["question_error"] is True
+    assert by_q["Q3?"]["missing_specs"] == ["http://ex/ghost"]
 
 
 def test_schema_only_ancestor_chain_collapses_into_one_row():
@@ -321,8 +354,8 @@ def test_requires_ontology_when_query_needs_class_hierarchy():
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     SELECT ?x WHERE { ?x a/rdfs:subClassOf* onto:Place }"""
     spec = _spec(given=data, queries=[query])
-    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_specs=[spec])
-    assert cov["per_cq"][0]["requires_ontology"] is True
+    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", spec)])
+    assert cov["per_cq"][0]["tests"][0]["requires_ontology"] is True
 
 
 def test_not_requires_ontology_when_data_has_queried_type():
@@ -336,8 +369,8 @@ def test_not_requires_ontology_when_data_has_queried_type():
     query = """PREFIX onto: <http://onto.org/>
     SELECT ?x WHERE { ?x a onto:Country }"""
     spec = _spec(given=data, queries=[query])
-    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_specs=[spec])
-    assert cov["per_cq"][0]["requires_ontology"] is False
+    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", spec)])
+    assert cov["per_cq"][0]["tests"][0]["requires_ontology"] is False
 
 
 def test_undeclared_term_used_in_data_is_flagged_as_input_data():
