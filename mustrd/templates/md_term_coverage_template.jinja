@@ -9,12 +9,12 @@ _({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural
 {% endif %}
 A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
 
-Classes are arranged by `rdfs:subClassOf` (indented under their superclass); properties follow.
+Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
 
 | Term | Kind | In input data | In SPARQL | In schema | Test Coverage |{% if coverage.has_cq %} By a CQ? |{% endif %}
 |------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
 {% for t in coverage.terms -%}
-| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.depth %}↳ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 schema{% elif t.by_cq_state == 'yes' %}✅{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌{% endif %} |{% endif %}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 schema{% elif t.by_cq_state == 'yes' %}✅{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌{% endif %} |{% endif %}
 {% endfor %}
 #### How to read this table
 

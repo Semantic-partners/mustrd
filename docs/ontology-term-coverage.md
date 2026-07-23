@@ -11,9 +11,11 @@ Two independent, opt-in flags:
      `owl:Ontology` IRI and description;
   2. **Ontology term coverage** — the percentage and a per-term matrix. Class
      rows are arranged as a `rdfs:subClassOf` **tree** (indented under their
-     superclass); an *external* superclass of a used class (e.g. `foaf:Person`)
+     superclass); each class's properties sit beneath it (`▸`, by
+     `rdfs:domain`). An *external* superclass or domain (e.g. `foaf:Person`)
      appears as its own schema row, and a linear run of schema-only ancestors
-     collapses into a single grouped row. Then the schema terms, the terms
+     collapses into a single grouped row (a property on an ancestor keeps it
+     visible). Then the schema terms, the terms
      **not used by any test**, and any terms a test references that are *not*
      declared (likely typos / missing definitions).
 - **`--cq`** — competency-question sections: a **Competency Questions** table and

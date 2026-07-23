@@ -482,16 +482,16 @@ def _non_cq_usage(non_cq_specs, declared_set):
     return refs_by_term
 
 
-def _class_forest(declared, used, short, tbox):
+def _class_forest(declared, used, short, tbox, extra_external=()):
     """Arrange declared classes into a subClassOf forest for the term matrix.
 
-    Nodes are declared classes plus the *external* superclasses of used classes
-    (e.g. foaf:Person). Each class hangs under its alphabetically-first parent
-    (extra parents are annotated, not duplicated). Returns
-    (roots, children, extra_parents, external), all keyed by term IRI.
+    Nodes are declared classes plus the *external* classes that a used class
+    subclasses or a property's domain names (e.g. foaf:Person). Each class hangs
+    under its alphabetically-first parent (extra parents are annotated, not
+    duplicated). Returns (roots, children, extra_parents, external, nodes).
     """
     classes = {t for t in declared if declared[t] == "class"}
-    external = set()
+    external = set(extra_external)
     for c in (classes & used):
         for anc in tbox.transitive_objects(URIRef(c), RDFS.subClassOf):
             if str(anc) != c and str(anc) not in declared and _is_domain_term(anc):
@@ -510,20 +510,21 @@ def _class_forest(declared, used, short, tbox):
             roots.append(c)
     for kids in children.values():
         kids.sort(key=short)
-    return roots, children, extra_parents, external
+    return roots, children, extra_parents, external, nodes
 
 
-def _matrix_row(term, kind, depth, ctx, external=False):
-    """One term's matrix row (columns + depth). External terms are schema."""
+def _matrix_row(term, kind, depth, connector, ctx, external=False):
+    """One term's matrix row (columns + depth + connector). External = schema."""
     if external:
         return {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": True,
-                "in_data": False, "in_query": False, "in_schema": True,
-                "status": "schema", "by_cq_state": "schema"}
+                "connector": connector, "in_data": False, "in_query": False,
+                "in_schema": True, "status": "schema", "by_cq_state": "schema"}
     schema_only, used, cq_used = ctx["schema_only"], ctx["used"], ctx["cq_used"]
     status = "covered" if term in used else ("schema" if term in schema_only else "unused")
     row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": False,
-           "in_data": term in ctx["used_data"], "in_query": term in ctx["used_query"],
-           "in_schema": term in schema_only, "status": status,
+           "connector": connector, "in_data": term in ctx["used_data"],
+           "in_query": term in ctx["used_query"], "in_schema": term in schema_only,
+           "status": status,
            "by_cq_state": "schema" if term in schema_only else ("yes" if term in cq_used else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
@@ -532,40 +533,60 @@ def _matrix_row(term, kind, depth, ctx, external=False):
     return row
 
 
-def _walk_forest(node, depth, children, ctx, rows):
-    """Emit `node` and its subtree, collapsing a linear run of schema-only
-    ancestors (each with a single child) into one grouped row."""
+def _walk_forest(node, depth, children, attached, ctx, rows):
+    """Emit `node`, its attached properties (▸), and its subclass subtree (↳).
+    A linear run of schema-only ancestors with no attached property collapses
+    into one grouped row — a property forces its domain class to stay visible."""
     external, schema_only, short = ctx["external"], ctx["schema_only"], ctx["short"]
+
+    def collapsible(c):
+        return (c in external or c in schema_only) and len(children.get(c, [])) == 1 and not attached.get(c)
+
     run, cur = [], node
-    while (cur in external or cur in schema_only) and len(children.get(cur, [])) == 1:
+    while collapsible(cur):
         run.append(cur)
         cur = children[cur][0]
     if len(run) >= 2:
         rows.append({"depth": depth, "kind": "class", "grouped": True,
                      "term": ", ".join(short(c) for c in run),
                      "external": all(c in external for c in run),
+                     "connector": "sub" if depth else None,
                      "in_data": False, "in_query": False, "in_schema": True,
                      "status": "schema", "by_cq_state": "schema"})
-        _walk_forest(cur, depth + 1, children, ctx, rows)
+        _walk_forest(cur, depth + 1, children, attached, ctx, rows)
     else:
-        rows.append(_matrix_row(node, "class", depth, ctx, external=node in external))
+        rows.append(_matrix_row(node, "class", depth, "sub" if depth else None, ctx,
+                                external=node in external))
+        for prop in attached.get(node, []):
+            rows.append(_matrix_row(prop, "property", depth + 1, "prop", ctx))
         for child in children.get(node, []):
-            _walk_forest(child, depth + 1, children, ctx, rows)
+            _walk_forest(child, depth + 1, children, attached, ctx, rows)
 
 
 def _ordered_terms(declared, used, used_data, used_query, cq_used, schema_only, non_cq_refs, short, tbox):
-    """The per-term matrix as an ordered list of rows: classes first, arranged as
-    an indented subClassOf tree (a linear run of schema-only ancestors collapses
-    into one grouped row), then properties flat."""
-    roots, children, extra_parents, external = _class_forest(declared, used, short, tbox)
+    """The per-term matrix as an ordered list of rows: an indented subClassOf
+    tree of classes, each with its domain-attached properties (▸) beneath it;
+    properties with no domain trail at the end."""
+    props = [t for t in declared if declared[t] == "property"]
+    ext_domains = {str(d) for p in props for d in tbox.objects(URIRef(p), RDFS.domain)
+                   if str(d) not in declared and _is_domain_term(d)}
+    roots, children, extra_parents, external, nodes = \
+        _class_forest(declared, used, short, tbox, ext_domains)
+
+    attached, unattached = {}, []
+    for p in sorted(props, key=short):
+        domains = sorted((str(d) for d in tbox.objects(URIRef(p), RDFS.domain) if str(d) in nodes),
+                         key=short)
+        (attached.setdefault(domains[0], []).append(p) if domains else unattached.append(p))
+
     ctx = {"used": used, "used_data": used_data, "used_query": used_query, "cq_used": cq_used,
            "schema_only": schema_only, "non_cq_refs": non_cq_refs, "short": short,
            "external": external, "extra_parents": extra_parents}
     rows = []
     for root in roots:
-        _walk_forest(root, 0, children, ctx, rows)
-    for p in sorted((t for t in declared if declared[t] == "property"), key=short):
-        rows.append(_matrix_row(p, "property", 0, ctx))
+        _walk_forest(root, 0, children, attached, ctx, rows)
+    for p in unattached:
+        rows.append(_matrix_row(p, "property", 0, None, ctx))
     return rows
 
 

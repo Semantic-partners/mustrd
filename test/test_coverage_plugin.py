@@ -56,9 +56,14 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     # root row (marked external + schema); gov:Mayor is indented under it.
     foaf_row = next(ln for ln in text.splitlines() if ln.startswith("| foaf:Person "))
     assert "· _external_" in foaf_row and foaf_row.endswith("| 🔧 schema | 🔧 schema |")
-    assert "↳ gov:Mayor" in text          # child indented under foaf:Person
+    assert "↳ gov:Mayor" in text          # subclass indented under foaf:Person
     assert "↳↳ " not in text              # (indent uses nbsp, not repeated glyphs)
     assert "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province" in text  # depth-2
+    # Properties nest (▸) under their rdfs:domain class.
+    assert "▸ place:isLocatedIn" in text  # domain place:Place
+    assert "▸ gov:governs" in text        # domain foaf:Person
+    # place:basedOnStandard has no domain -> trails at top level (no connector).
+    assert next(ln for ln in text.splitlines() if "place:basedOnStandard" in ln).startswith("| place:basedOnStandard ")
 
     # place:Region (covered by a non-CQ test) names/links that test in By a CQ?.
     region_row = next(ln for ln in text.splitlines() if "↳ place:Region " in ln)
