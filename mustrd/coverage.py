@@ -482,31 +482,91 @@ def _non_cq_usage(non_cq_specs, declared_set):
     return refs_by_term
 
 
-def _classify_terms(declared, used, used_data, used_query, schema_only, short, cq_used, non_cq_refs):
-    """Per-term matrix rows and the list of genuine gaps (unused by any test).
+def _class_forest(declared, used, short, tbox):
+    """Arrange declared classes into a subClassOf forest for the term matrix.
 
-    `cq_used` is the subset of declared terms a competency question exercises
-    (drives `by_cq`). A covered term that no CQ exercises carries the non-CQ
-    tests that do (`non_cq_refs`), so the report can name them.
+    Nodes are declared classes plus the *external* superclasses of used classes
+    (e.g. foaf:Person). Each class hangs under its alphabetically-first parent
+    (extra parents are annotated, not duplicated). Returns
+    (roots, children, extra_parents, external), all keyed by term IRI.
     """
-    def status(t):
-        if t in used:
-            return "covered"
-        return "schema" if t in schema_only else "unused"
+    classes = {t for t in declared if declared[t] == "class"}
+    external = set()
+    for c in (classes & used):
+        for anc in tbox.transitive_objects(URIRef(c), RDFS.subClassOf):
+            if str(anc) != c and str(anc) not in declared and _is_domain_term(anc):
+                external.add(str(anc))
+    nodes = classes | external
 
-    def row(t):
-        r = {"term": short(t), "kind": declared[t],
-             "in_data": t in used_data, "in_query": t in used_query,
-             "in_schema": t in schema_only, "status": status(t),
-             "by_cq": t in cq_used}
-        if t not in cq_used and t in non_cq_refs:
-            r["non_cq_refs"] = non_cq_refs[t]
-        return r
+    children, roots, extra_parents = {}, [], {}
+    for c in sorted(nodes, key=short):
+        parents = sorted((str(p) for p in tbox.objects(URIRef(c), RDFS.subClassOf)
+                          if str(p) in nodes and str(p) != c), key=short)
+        if parents:
+            children.setdefault(parents[0], []).append(c)
+            if len(parents) > 1:
+                extra_parents[c] = [short(p) for p in parents[1:]]
+        else:
+            roots.append(c)
+    for kids in children.values():
+        kids.sort(key=short)
+    return roots, children, extra_parents, external
 
-    terms = [row(t) for t in sorted(declared, key=lambda x: (declared[x], short(x)))]
-    gaps = [{"term": short(t), "kind": declared[t]}
-            for t in sorted(declared) if status(t) == "unused"]
-    return terms, gaps
+
+def _matrix_row(term, kind, depth, ctx, external=False):
+    """One term's matrix row (columns + depth). External terms are schema."""
+    if external:
+        return {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": True,
+                "in_data": False, "in_query": False, "in_schema": True,
+                "status": "schema", "by_cq_state": "schema"}
+    schema_only, used, cq_used = ctx["schema_only"], ctx["used"], ctx["cq_used"]
+    status = "covered" if term in used else ("schema" if term in schema_only else "unused")
+    row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": False,
+           "in_data": term in ctx["used_data"], "in_query": term in ctx["used_query"],
+           "in_schema": term in schema_only, "status": status,
+           "by_cq_state": "schema" if term in schema_only else ("yes" if term in cq_used else "no")}
+    if term in ctx["extra_parents"]:
+        row["extra_parents"] = ctx["extra_parents"][term]
+    if row["by_cq_state"] == "no" and term in ctx["non_cq_refs"]:
+        row["non_cq_refs"] = ctx["non_cq_refs"][term]
+    return row
+
+
+def _walk_forest(node, depth, children, ctx, rows):
+    """Emit `node` and its subtree, collapsing a linear run of schema-only
+    ancestors (each with a single child) into one grouped row."""
+    external, schema_only, short = ctx["external"], ctx["schema_only"], ctx["short"]
+    run, cur = [], node
+    while (cur in external or cur in schema_only) and len(children.get(cur, [])) == 1:
+        run.append(cur)
+        cur = children[cur][0]
+    if len(run) >= 2:
+        rows.append({"depth": depth, "kind": "class", "grouped": True,
+                     "term": ", ".join(short(c) for c in run),
+                     "external": all(c in external for c in run),
+                     "in_data": False, "in_query": False, "in_schema": True,
+                     "status": "schema", "by_cq_state": "schema"})
+        _walk_forest(cur, depth + 1, children, ctx, rows)
+    else:
+        rows.append(_matrix_row(node, "class", depth, ctx, external=node in external))
+        for child in children.get(node, []):
+            _walk_forest(child, depth + 1, children, ctx, rows)
+
+
+def _ordered_terms(declared, used, used_data, used_query, cq_used, schema_only, non_cq_refs, short, tbox):
+    """The per-term matrix as an ordered list of rows: classes first, arranged as
+    an indented subClassOf tree (a linear run of schema-only ancestors collapses
+    into one grouped row), then properties flat."""
+    roots, children, extra_parents, external = _class_forest(declared, used, short, tbox)
+    ctx = {"used": used, "used_data": used_data, "used_query": used_query, "cq_used": cq_used,
+           "schema_only": schema_only, "non_cq_refs": non_cq_refs, "short": short,
+           "external": external, "extra_parents": extra_parents}
+    rows = []
+    for root in roots:
+        _walk_forest(root, 0, children, ctx, rows)
+    for p in sorted((t for t in declared if declared[t] == "property"), key=short):
+        rows.append(_matrix_row(p, "property", 0, ctx))
+    return rows
 
 
 def _schema_term_rows(schema_only, schema_reasons, declared, short):
@@ -602,8 +662,10 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     schema_only = {t for t in schema_reasons if t not in used}
 
     non_cq_refs = _non_cq_usage([s for s in specs if s not in (cq_specs or [])], declared_set)
-    terms, gaps = _classify_terms(declared, used, used_data, used_query,
-                                  schema_only, short, cq_used, non_cq_refs)
+    terms = _ordered_terms(declared, used, used_data, used_query, cq_used,
+                           schema_only, non_cq_refs, short, tbox)
+    gaps = [{"term": short(t), "kind": declared[t]}
+            for t in sorted(declared) if t not in used and t not in schema_only]
     # CQ-scoped gaps: declared, non-schema terms no competency question exercises
     # (a superset of `gaps` — includes terms only a non-CQ test covers). Where a
     # non-CQ test does exercise it, carry that test so the report can name it.

@@ -112,9 +112,9 @@ def test_term_used_only_by_a_non_cq_test_is_covered_but_not_by_cq():
     cov = compute_coverage([non_cq, cq], ontology=_graph(ONTO), cq_specs=[cq])
     by = {t["term"]: t for t in cov["terms"]}
     admin = by["onto:AdministrativeDivision"]
-    assert admin["status"] == "covered"   # exercised by a (non-CQ) test
-    assert admin["by_cq"] is False        # but no competency question covers it
-    assert by["onto:Country"]["by_cq"] is True  # the CQ does cover Country
+    assert admin["status"] == "covered"          # exercised by a (non-CQ) test
+    assert admin["by_cq_state"] == "no"          # but no competency question covers it
+    assert by["onto:Country"]["by_cq_state"] == "yes"  # the CQ does cover Country
 
 
 def test_duplicate_competency_questions_are_excluded_and_warned():
@@ -130,6 +130,52 @@ def test_duplicate_competency_questions_are_excluded_and_warned():
     assert {s["name"] for s in dupes[0]["specs"]} == {"a.mustrd.ttl", "b.mustrd.ttl"}
     # Only the unique CQ contributes to the per-CQ breakdown.
     assert {c["name"] for c in cov["per_cq"]} == {"c.mustrd.ttl"}
+
+
+def test_schema_only_ancestor_chain_collapses_into_one_row():
+    # :Animal -> :Mammal -> :Dog, with :Dog used: the two schema-only ancestors
+    # collapse into a single grouped row above the used class.
+    onto = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    onto:Animal a owl:Class .
+    onto:Mammal a owl:Class ; rdfs:subClassOf onto:Animal .
+    onto:Dog a owl:Class ; rdfs:subClassOf onto:Mammal .
+    """)
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rex a onto:Dog .
+    """)
+    rows = compute_coverage([_spec(given=data, queries=[])], ontology=onto)["terms"]
+    grouped = next(r for r in rows if r.get("grouped"))
+    assert grouped["term"] == "onto:Animal, onto:Mammal"
+    assert grouped["status"] == "schema" and grouped["depth"] == 0
+    dog = next(r for r in rows if r["term"] == "onto:Dog")
+    assert dog["status"] == "covered" and dog["depth"] == 1
+
+
+def test_multiple_parents_are_annotated_not_duplicated():
+    # :Dog has two parents; it hangs under the alphabetically-first (Mammal) and
+    # annotates the other (Pet) rather than appearing twice.
+    onto = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    onto:Mammal a owl:Class .
+    onto:Pet a owl:Class .
+    onto:Dog a owl:Class ; rdfs:subClassOf onto:Mammal, onto:Pet .
+    """)
+    data = _graph("""
+    @prefix onto: <http://onto.org/> .
+    @prefix ex:   <http://example.org/> .
+    ex:Rex a onto:Dog .
+    """)
+    rows = compute_coverage([_spec(given=data, queries=[])], ontology=onto)["terms"]
+    dogs = [r for r in rows if r["term"] == "onto:Dog"]
+    assert len(dogs) == 1
+    assert dogs[0]["extra_parents"] == ["onto:Pet"]
 
 
 def test_tbox_only_given_yields_no_usage():

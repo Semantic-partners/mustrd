@@ -51,12 +51,17 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "9/9 terms exercised by the tests = 100%" in text
     assert "By a competency question: 8/9 = 89%" in text
     assert "11 declared; 2 structural/schema term(s) excluded" in text
-    assert "foaf:Person" not in text and "foaf" not in text  # external, uncounted
 
-    # Term Coverage then By a CQ? (last column): place:Region is covered by a
-    # test, so By a CQ? names the non-CQ test that exercises it (linked); a
-    # schema term shows 🔧 schema in both.
-    region_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Region "))
+    # Class rows form a subClassOf tree. The external superclass foaf:Person is a
+    # root row (marked external + schema); gov:Mayor is indented under it.
+    foaf_row = next(ln for ln in text.splitlines() if ln.startswith("| foaf:Person "))
+    assert "· _external_" in foaf_row and foaf_row.endswith("| 🔧 schema | 🔧 schema |")
+    assert "↳ gov:Mayor" in text          # child indented under foaf:Person
+    assert "↳↳ " not in text              # (indent uses nbsp, not repeated glyphs)
+    assert "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province" in text  # depth-2
+
+    # place:Region (covered by a non-CQ test) names/links that test in By a CQ?.
+    region_row = next(ln for ln in text.splitlines() if "↳ place:Region " in ln)
     assert "| ✅ covered | ❌ unused by CQ — exercised by " in region_row
     assert "region-lookup.mustrd.ttl](" in region_row and region_row.endswith("(data & SPARQL) |")
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))

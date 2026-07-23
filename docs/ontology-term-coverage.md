@@ -9,9 +9,13 @@ Two independent, opt-in flags:
   1. **Ontologies** — the files measured against, as clickable links (relative to
      the report so they render in a Markdown previewer), each with the
      `owl:Ontology` IRI and description;
-  2. **Ontology term coverage** — the percentage, a per-term matrix, the schema
-     terms, the declared terms **not used by any test**, and any terms a test
-     references that are *not* declared (likely typos / missing definitions).
+  2. **Ontology term coverage** — the percentage and a per-term matrix. Class
+     rows are arranged as a `rdfs:subClassOf` **tree** (indented under their
+     superclass); an *external* superclass of a used class (e.g. `foaf:Person`)
+     appears as its own schema row, and a linear run of schema-only ancestors
+     collapses into a single grouped row. Then the schema terms, the terms
+     **not used by any test**, and any terms a test references that are *not*
+     declared (likely typos / missing definitions).
 - **`--cq`** — competency-question sections: a **Competency Questions** table and
   a **Per competency question** breakdown. Needs no ontology and can be used on
   its own.

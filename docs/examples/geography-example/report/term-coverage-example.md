@@ -21,16 +21,19 @@ _(11 declared; 2 structural/schema term(s) excluded from the denominator — see
 
 A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
 
+Classes are arranged by `rdfs:subClassOf` (indented under their superclass); properties follow.
+
 | Term | Kind | In input data | In SPARQL | In schema | Test Coverage | By a CQ? |
 |------|------|:---:|:---:|:---:|:---:|:---:|
-| gov:Mayor | class | ✅ | ✅ | · | ✅ covered | ✅ |
-| place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered | ✅ |
-| place:City | class | ✅ | ✅ | · | ✅ covered | ✅ |
-| place:Continent | class | ✅ | ❌ | · | ✅ covered | ✅ |
-| place:Country | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| foaf:Person · _external_ | class | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ gov:Mayor | class | ✅ | ✅ | · | ✅ covered | ✅ |
 | place:Place | class | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
-| place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
-| place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ unused by CQ — exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL) |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:AdministrativeDivision | class | ❌ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:City | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Continent | class | ✅ | ❌ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Country | class | ✅ | ✅ | · | ✅ covered | ✅ |
+| &nbsp;&nbsp;&nbsp;&nbsp;↳ place:Region | class | ✅ | ✅ | · | ✅ covered | ❌ unused by CQ — exercised by [region-lookup.mustrd.ttl](../specs/region-lookup.mustrd.ttl) (data & SPARQL) |
 | gov:governs | property | ✅ | ✅ | · | ✅ covered | ✅ |
 | place:basedOnStandard | property | ❌ | ❌ | ✅ | 🔧 schema | 🔧 schema |
 | place:isLocatedIn | property | ✅ | ✅ | · | ✅ covered | ✅ |
