@@ -64,18 +64,34 @@ cov:cqRole a owl:ObjectProperty ;
     rdfs:label "cq role" ;
     rdfs:comment "As cov:role, but counting only competency-question tests." .
 
+cov:kind a owl:DatatypeProperty ;
+    rdfs:domain cov:TermCoverage ; rdfs:range xsd:string ;
+    rdfs:label "kind" ;
+    rdfs:comment "Whether the term is a 'class' or a 'property'." .
+
 cov:inData a owl:DatatypeProperty ;
-    rdfs:domain cov:TermCoverage ; rdfs:range xsd:boolean ;
-    rdfs:label "in data" .
+    rdfs:range xsd:boolean ; rdfs:label "in data" .
 
 cov:inQuery a owl:DatatypeProperty ;
-    rdfs:domain cov:TermCoverage ; rdfs:range xsd:boolean ;
-    rdfs:label "in query" .
+    rdfs:range xsd:boolean ; rdfs:label "in query" .
 
-cov:exercisedBy a owl:ObjectProperty ;
-    rdfs:domain cov:TermCoverage ; rdfs:range must:TestSpec ;
-    rdfs:label "exercised by" ;
-    rdfs:comment "A passing test that exercises the term (in its data or SPARQL)." .
+cov:structuralReason a owl:DatatypeProperty ;
+    rdfs:domain cov:TermCoverage ; rdfs:range xsd:string ;
+    rdfs:label "structural reason" ;
+    rdfs:comment "Why a structural term is load-bearing (e.g. domain/range of a used property)." .
+
+cov:exercise a owl:ObjectProperty ;
+    rdfs:domain cov:TermCoverage ; rdfs:range cov:Exercise ;
+    rdfs:label "exercise" ;
+    rdfs:comment "A per-test record of how one test exercises the term." .
+
+cov:Exercise a owl:Class ;
+    rdfs:label "Exercise" ;
+    rdfs:comment "One test's contribution to a term: whether it appears in that test's data and/or SPARQL." .
+
+cov:test a owl:ObjectProperty ;
+    rdfs:range must:TestSpec ; rdfs:label "test" ;
+    rdfs:comment "The mustrd test spec of an exercise or reference." .
 
 cov:CoverageRole a owl:Class ;
     rdfs:subClassOf skos:Concept ;
@@ -108,6 +124,15 @@ cov:aboutTerm a owl:ObjectProperty ;
 cov:aboutTest a owl:ObjectProperty ;
     rdfs:domain cov:QualityIssue ; rdfs:range must:TestSpec ;
     rdfs:label "about test" .
+
+cov:reference a owl:ObjectProperty ;
+    rdfs:domain cov:QualityIssue ; rdfs:range cov:Reference ;
+    rdfs:label "reference" ;
+    rdfs:comment "A per-test record of where a term is referenced (data and/or SPARQL)." .
+
+cov:Reference a owl:Class ;
+    rdfs:label "Reference" ;
+    rdfs:comment "One test's reference to an undeclared term (in its data and/or SPARQL)." .
 
 cov:detail a owl:DatatypeProperty ;
     rdfs:domain cov:QualityIssue ; rdfs:range xsd:string ;

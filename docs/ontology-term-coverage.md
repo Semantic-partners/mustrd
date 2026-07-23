@@ -256,6 +256,12 @@ The code is split into three layers, one-directional (`ontology.py` <-
 - **`mustrd/cq.py`** — the competency-question overlay: duplicate-question
   detection, `cq:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
   (`--cq` with no ontology).
+- **`mustrd/coverage_rdf.py`** — serialises a run to the canonical RDF graph.
+- **`mustrd/coverage_render.py`** — rebuilds the Coverage Report's template
+  context **from that graph** (+ the ontology, for the tree). The Coverage Report
+  Markdown is therefore a pure function of the RDF, tested at two levels:
+  `compute → graph` (data) and `graph → Markdown` (rendering). The CQ Report is
+  still built from the compute dict until CQ↔term linking lands.
 
 Also: `mustrd/TestResult.py` render helpers; the `--term-coverage` / `--cq`
 options, CQ-node collection, `:hasOntologyPath` parsing and the fail-early check
@@ -284,10 +290,12 @@ those links point depends on where the report is read:
 
 ### RDF output (`--term-coverage-rdf`)
 
-Coverage is a **quality of the ontology** (as exercised by the tests), so it can
-be published as RDF and merged into a knowledge graph. `--term-coverage-rdf=PATH`
-writes a Turtle graph using **W3C DQV** (Data Quality Vocabulary) + **PROV-O**,
-plus a small `cov:` vocabulary in
+Coverage is a **quality of the ontology** (as exercised by the tests), so it is
+published as RDF and merged into a knowledge graph. This graph is the
+**canonical output** of a coverage run — the Coverage Report Markdown is rendered
+*from it* (see the module list above), not the other way round.
+`--term-coverage-rdf=PATH` writes a Turtle graph using **W3C DQV** (Data Quality
+Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
 [`mustrd/model/coverage-ontology.ttl`](../mustrd/model/coverage-ontology.ttl)
 (namespace `https://mustrd.org/coverage/`):
 
@@ -296,9 +304,11 @@ plus a small `cov:` vocabulary in
   (0–1; the % is display-only), `dqv:computedOn` **each ontology IRI and its
   `owl:versionIRI`**, `prov:wasGeneratedBy` the run.
 - **Per term** — a `cov:TermCoverage` for every declared term: `cov:term` the
-  actual term IRI, `cov:role` / `cov:cqRole` a `cov:CoverageRole`
-  (Covered / QueryOnly / Structural / Unused), `cov:inData` / `cov:inQuery`, and
-  `cov:exercisedBy` the test spec IRIs. Every triple is kept, so the aggregate is
+  actual term IRI, `cov:kind`, `cov:role` / `cov:cqRole` a `cov:CoverageRole`
+  (Covered / QueryOnly / Structural / Unused), `cov:inData` / `cov:inQuery`, a
+  `cov:structuralReason` when structural, and a `cov:exercise` per backing test
+  (`cov:Exercise` → `cov:test` + its own `cov:inData` / `cov:inQuery`). Every
+  triple is kept, so the whole report is reconstructable and the aggregate is
   explainable from the graph.
 - **Quality issues** — `cov:QualityIssue` for *used but not declared* and *TBox in
   test data*, linked to the term / test.

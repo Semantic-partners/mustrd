@@ -1,5 +1,6 @@
 @prefix cov: <https://mustrd.org/coverage/> .
 @prefix dqv: <http://www.w3.org/ns/dqv#> .
+@prefix must: <https://mustrd.org/model/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -16,13 +17,15 @@
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:aboutTerm <http://example.org/governance#appointedOn> ;
     cov:aboutTest <http://example.org/place/example/mayorOfRotterdam> ;
-    cov:issueType cov:UsedButNotDeclared .
+    cov:issueType cov:UsedButNotDeclared ;
+    cov:reference <https://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam> .
 
 <https://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea> a cov:QualityIssue ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:aboutTerm <http://example.org/place#hasEconomicArea> ;
     cov:aboutTest <http://example.org/place/example/countryOfRotterdam> ;
-    cov:issueType cov:UsedButNotDeclared .
+    cov:issueType cov:UsedButNotDeclared ;
+    cov:reference <https://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam> .
 
 <https://mustrd.org/coverage/run/local/measurement/termCoverageByCompetencyQuestions> a dqv:QualityMeasurement ;
     dqv:computedOn <http://example.org/governance#>,
@@ -45,58 +48,64 @@
 <https://mustrd.org/coverage/run/local/term/gov.Mayor> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/mayorOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/governance#Mayor> .
 
 <https://mustrd.org/coverage/run/local/term/gov.governs> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/mayorOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "property" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/governance#governs> .
 
 <https://mustrd.org/coverage/run/local/term/place.AdministrativeDivision> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:QueryOnly ;
-    cov:exercisedBy <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam> ;
     cov:inData false ;
     cov:inQuery true ;
+    cov:kind "class" ;
     cov:role cov:QueryOnly ;
     cov:term <http://example.org/place#AdministrativeDivision> .
 
 <https://mustrd.org/coverage/run/local/term/place.City> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/countryOfRotterdam>,
-        <http://example.org/place/example/divisionAndCountryOfRotterdam>,
-        <http://example.org/place/example/mayorOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam>,
+        <https://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam>,
+        <https://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#City> .
 
 <https://mustrd.org/coverage/run/local/term/place.Continent> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/countryOfRotterdam>,
-        <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam>,
+        <https://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam> ;
     cov:inData true ;
     cov:inQuery false ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#Continent> .
 
 <https://mustrd.org/coverage/run/local/term/place.Country> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/countryOfRotterdam>,
-        <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam>,
+        <https://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#Country> .
 
@@ -105,24 +114,35 @@
     cov:cqRole cov:Structural ;
     cov:inData false ;
     cov:inQuery false ;
+    cov:kind "class" ;
     cov:role cov:Structural ;
+    cov:structuralReason "domain of place:isLocatedIn",
+        "range of place:isLocatedIn",
+        "superclass of place:AdministrativeDivision",
+        "superclass of place:City",
+        "superclass of place:Continent",
+        "superclass of place:Country",
+        "superclass of place:Province",
+        "superclass of place:Region" ;
     cov:term <http://example.org/place#Place> .
 
 <https://mustrd.org/coverage/run/local/term/place.Province> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam> ;
     cov:inData true ;
     cov:inQuery false ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#Province> .
 
 <https://mustrd.org/coverage/run/local/term/place.Region> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Unused ;
-    cov:exercisedBy <http://example.org/place/example/regionLookup> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "class" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#Region> .
 
@@ -131,26 +151,129 @@
     cov:cqRole cov:Structural ;
     cov:inData false ;
     cov:inQuery false ;
+    cov:kind "property" ;
     cov:role cov:Structural ;
+    cov:structuralReason "ontology property" ;
     cov:term <http://example.org/place#basedOnStandard> .
 
 <https://mustrd.org/coverage/run/local/term/place.isLocatedIn> a cov:TermCoverage ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:cqRole cov:Covered ;
-    cov:exercisedBy <http://example.org/place/example/countryOfRotterdam>,
-        <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
+    cov:exercise <https://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam>,
+        <https://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam> ;
     cov:inData true ;
     cov:inQuery true ;
+    cov:kind "property" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#isLocatedIn> .
+
+<http://example.org/place/example/regionLookup> a must:TestSpec ;
+    must:specFileName "region-lookup.mustrd.ttl" ;
+    must:specSourceFile "specs/region-lookup.mustrd.ttl" .
 
 <https://mustrd.org/#tool> a prov:SoftwareAgent ;
     rdfs:label "mustrd" ;
     owl:versionInfo "0.7.4" .
 
-<http://example.org/governance#> owl:versionIRI <http://example.org/governance/1.0.0> .
+<https://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam> a cov:Reference ;
+    cov:inData false ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/mayorOfRotterdam> .
 
-<http://example.org/place#> owl:versionIRI <http://example.org/place/1.0.0> .
+<https://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam> a cov:Reference ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/countryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/mayorOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/mayorOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData false ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/countryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/mayorOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/countryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/countryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery false ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/regionLookup> .
+
+<https://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/countryOfRotterdam> .
+
+<https://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam> a cov:Exercise ;
+    cov:inData true ;
+    cov:inQuery true ;
+    cov:test <http://example.org/place/example/divisionAndCountryOfRotterdam> .
+
+<http://example.org/governance#> a owl:Ontology ;
+    rdfs:comment "A tiny vocabulary for governance roles and the places they govern." ;
+    owl:versionIRI <http://example.org/governance/1.0.0> .
+
+<http://example.org/place#> a owl:Ontology ;
+    rdfs:comment "A minimal vocabulary for places and how they are geographically contained within one another." ;
+    owl:versionIRI <http://example.org/place/1.0.0> .
+
+<http://example.org/place/example/mayorOfRotterdam> a must:TestSpec ;
+    must:specFileName "mayor-of-rotterdam.mustrd.ttl" ;
+    must:specSourceFile "specs/mayor-of-rotterdam.mustrd.ttl" .
+
+<http://example.org/place/example/countryOfRotterdam> a must:TestSpec ;
+    must:specFileName "country-of-rotterdam.mustrd.ttl" ;
+    must:specSourceFile "specs/country-of-rotterdam.mustrd.ttl" .
+
+<http://example.org/place/example/divisionAndCountryOfRotterdam> a must:TestSpec ;
+    must:specFileName "division-and-country-of-rotterdam.mustrd.ttl" ;
+    must:specSourceFile "specs/division-and-country-of-rotterdam.mustrd.ttl" .
 
 <https://mustrd.org/coverage/run/local> a cov:CoverageRun ;
     prov:used <http://example.org/governance#>,
