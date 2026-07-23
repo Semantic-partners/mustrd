@@ -7,6 +7,7 @@
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
 
 <https://mustrd.org/coverage> rdf:type owl:Ontology ;
     owl:imports <http://www.w3.org/ns/dqv#> , <http://www.w3.org/ns/prov#> ,
@@ -151,3 +152,47 @@ cov:UsedButNotDeclared a cov:IssueType ; skos:prefLabel "used but not declared" 
     skos:definition "A term referenced by a test, in a declared ontology's namespace, but not itself declared — likely a typo or a missing definition." .
 cov:TBoxInTestData a cov:IssueType ; skos:prefLabel "TBox in test data" ;
     skos:definition "Class/property declarations or rdfs:subClassOf/domain/range axioms found in a test's input data, where only instance data belongs." .
+
+##  Competency-question results ###################################################
+# CQ *nodes* use the cq: vocabulary (cq:CompetencyQuestion / cq:question /
+# cq:cqSpec); these terms record what a run found about them.
+
+cov:Assertion a owl:Class ;
+    rdfs:label "Assertion" ;
+    rdfs:comment "One test's verification of a competency question in a run." .
+
+cov:onCompetencyQuestion a owl:ObjectProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range cq:CompetencyQuestion ;
+    rdfs:label "on competency question" .
+
+cov:onTest a owl:ObjectProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range must:TestSpec ;
+    rdfs:label "on test" .
+
+cov:outcome a owl:ObjectProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range cov:Outcome ;
+    rdfs:label "outcome" .
+
+cov:requiresOntology a owl:DatatypeProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range xsd:boolean ;
+    rdfs:label "requires ontology" ;
+    rdfs:comment "The test matches its data only through the ontology's class hierarchy, so the ontology must be loaded as an input for it to pass." .
+
+cov:Outcome a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Outcome" .
+cov:Passed a cov:Outcome ; skos:prefLabel "passed" .
+cov:Failed a cov:Outcome ; skos:prefLabel "not passed" .
+
+cov:duplicate a owl:DatatypeProperty ;
+    rdfs:domain cq:CompetencyQuestion ; rdfs:range xsd:boolean ;
+    rdfs:label "duplicate" ;
+    rdfs:comment "This CQ shares its question with another and was excluded from the coverage calculation." .
+
+cov:usesInData a owl:ObjectProperty ;
+    rdfs:domain must:TestSpec ;
+    rdfs:label "uses in data" ;
+    rdfs:comment "A domain term (declared or not) the test asserts in its input data." .
+
+cov:usesInQuery a owl:ObjectProperty ;
+    rdfs:domain must:TestSpec ;
+    rdfs:label "uses in query" ;
+    rdfs:comment "A domain term (declared or not) the test names in its SPARQL." .

@@ -256,12 +256,15 @@ The code is split into three layers, one-directional (`ontology.py` <-
 - **`mustrd/cq.py`** — the competency-question overlay: duplicate-question
   detection, `cq:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
   (`--cq` with no ontology).
-- **`mustrd/coverage_rdf.py`** — serialises a run to the canonical RDF graph.
-- **`mustrd/coverage_render.py`** — rebuilds the Coverage Report's template
-  context **from that graph** (+ the ontology, for the tree). The Coverage Report
-  Markdown is therefore a pure function of the RDF, tested at two levels:
-  `compute → graph` (data) and `graph → Markdown` (rendering). The CQ Report is
-  still built from the compute dict until CQ↔term linking lands.
+- **`mustrd/coverage_rdf.py`** — serialises a run to the canonical RDF graph
+  (both halves): coverage measurements/terms/issues, and CQ nodes with a
+  `cov:Assertion` per linked test. `cq_graph` builds a CQ-only graph for `--cq`
+  with no ontology.
+- **`mustrd/coverage_render.py`** / **`mustrd/cq_render.py`** — rebuild the
+  Coverage Report and Competency Questions Report template contexts **from that
+  graph** (+ the ontology, for the tree). The **whole report** is therefore a pure
+  function of the RDF, tested at two levels: `compute → graph` (data) and
+  `graph → Markdown` (rendering).
 
 Also: `mustrd/TestResult.py` render helpers; the `--term-coverage` / `--cq`
 options, CQ-node collection, `:hasOntologyPath` parsing and the fail-early check
@@ -312,6 +315,12 @@ Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
   explainable from the graph.
 - **Quality issues** — `cov:QualityIssue` for *used but not declared* and *TBox in
   test data*, linked to the term / test.
+- **Competency questions** — each `cq:CompetencyQuestion` node (its `cq:question`
+  and `cq:cqSpec` links) with a `cov:Assertion` per linked test (`cov:onTest`,
+  `cov:outcome` Passed/Failed, `cov:requiresOntology`); duplicate-question CQs
+  carry `cov:duplicate`. Each test also records its `cov:usesInData`/`usesInQuery`
+  domain terms. This is what CQ↔test/term linking looks like in the graph, and
+  what the Competency Questions Report is rendered from.
 - **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent and
   `prov:used` the ontologies (and the commit in CI). All instances get **stable
   minted IRIs** (run slug = commit SHA in CI, else `local`) — no blank nodes — so
@@ -319,8 +328,8 @@ Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
 
 Because the tests, competency questions and ontology terms are all real IRIs, a
 consumer can query across the merged graph — e.g. coverage % per ontology version
-over time, or which terms carry a quality issue. (Linking competency questions to
-the terms they pin down is the next step.) See
+over time, which terms carry a quality issue, or which competency question pins
+down a given term. See
 [`report/term-coverage-example.ttl`](examples/geography-example/report/term-coverage-example.ttl).
 
 ### Known limitations / open questions

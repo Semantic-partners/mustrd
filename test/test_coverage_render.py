@@ -9,7 +9,8 @@ from pathlib import Path
 from rdflib import Graph
 
 from mustrd.coverage_render import coverage_context
-from mustrd.TestResult import render_term_coverage
+from mustrd.cq_render import cq_report
+from mustrd.TestResult import render_term_coverage, render_cq_table, render_per_cq
 from mustrd.mustrdTestPlugin import _link_report_refs, _link_href
 
 EXAMPLE = Path("docs/examples/geography-example")
@@ -54,3 +55,23 @@ def test_structural_and_undeclared_sections_render_from_the_graph():
     assert "place:Place" in md and "isLocatedIn" in md          # structural reason
     assert "### ⚠️ Used but not declared" in md
     assert "place:hasEconomicArea" in md and "gov:appointedOn" in md
+
+
+def test_cq_report_renders_from_the_graph():
+    # The CQ half is a pure function of the graph too.
+    graph = Graph()
+    graph.parse(str(GRAPH_TTL), format="turtle")
+    ontology = Graph()
+    for f in ONTOLOGY_FILES:
+        ontology.parse(str(f))
+    cqr = cq_report(graph, ontology, _link_href("."))
+    assert cqr["has_ontology"]
+    questions = {c["question"] for c in cqr["per_cq"]}
+    assert "Who is the mayor of Rotterdam?" in questions
+    assert "What is the population of Rotterdam?" in questions   # the test-less CQ
+    table = render_cq_table(cqr["per_cq"], show_coverage=True)
+    assert "In which country is Rotterdam?" in table
+    pop = next(c for c in cqr["per_cq"] if "population" in c["question"])
+    assert pop["has_test"] is False
+    detail = render_per_cq(cqr["per_cq"], unchecked=False)
+    assert "requires ontology to pass" in detail          # the division CQ

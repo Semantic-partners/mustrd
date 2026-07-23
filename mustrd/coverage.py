@@ -524,4 +524,10 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
         "tbox_in_data": _tbox_in_data(specs, short),
         "per_cq": per_cq, "term_records": term_records,
+        # Per-spec domain-term usage (full IRIs, declared or not) for the RDF
+        # output's cov:usesInData/usesInQuery — lets the CQ report be rebuilt.
+        "spec_usage": {uri: {"name": name,
+                             "source_file": str(src) if src else None,
+                             "data": sorted(sd), "query": sorted(sq)}
+                       for (name, src, sd, sq, uri) in spec_refs if uri},
     }

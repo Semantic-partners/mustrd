@@ -76,3 +76,42 @@ def test_structural_term_carries_a_reason():
     assert (place, COV.role, COV.Structural) in g
     reasons = [str(r) for r in g.objects(place, COV.structuralReason)]
     assert any("isLocatedIn" in r for r in reasons)   # domain/range of the used property
+
+
+CQ = Namespace("https://mustrd.org/competencyQuestion/")
+
+
+def _cqdef(spec, question="Q?", name="a", missing=()):
+    return {"id": f"http://ex/cq/{name}", "name": name, "question": question,
+            "questions": [question], "source_file": None,
+            "specs": [spec], "missing_specs": list(missing)}
+
+
+def test_cq_nodes_and_assertions_in_graph():
+    spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
+            "given": _graph(ONTO, DATA), "queries": [QUERY]}
+    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef(spec)])
+    g = coverage_graph(cov, [{"uri": "http://onto.org/"}], run_slug="test")
+    cq = URIRef("http://ex/cq/a")
+    assert (cq, RDF.type, CQ.CompetencyQuestion) in g
+    assert (cq, CQ.question, Literal("Q?")) in g
+    assert (cq, CQ.cqSpec, URIRef("http://ex/a")) in g
+    # a cov:Assertion links the CQ to the passing test
+    a = g.value(predicate=COV.onCompetencyQuestion, object=cq)
+    assert a is not None
+    assert (a, COV.onTest, URIRef("http://ex/a")) in g
+    assert (a, COV.outcome, COV.Passed) in g
+    # per-spec term usage is recorded (declared or not)
+    assert (URIRef("http://ex/a"), COV.usesInData, URIRef("http://onto.org/City")) in g
+
+
+def test_cq_only_graph_without_ontology():
+    from mustrd.cq import cq_facts
+    from mustrd.coverage_rdf import cq_graph
+    spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
+            "given": _graph(DATA), "queries": [QUERY]}
+    g = cq_graph(cq_facts([_cqdef(spec)]), run_slug="t")
+    assert (URIRef("http://ex/cq/a"), RDF.type, CQ.CompetencyQuestion) in g
+    assert (URIRef("http://ex/a"), COV.usesInData, URIRef("http://onto.org/City")) in g
+    # a CQ-only graph carries no term-coverage measurements
+    assert (None, RDF.type, COV.TermCoverage) not in g

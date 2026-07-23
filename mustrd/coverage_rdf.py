@@ -13,7 +13,7 @@ import os
 from rdflib import Graph, URIRef, Literal, Namespace, RDF, RDFS, OWL, XSD
 from rdflib.namespace import SKOS
 
-from mustrd.namespace import MUST
+from mustrd.namespace import MUST, CQ
 from mustrd.coverage import _slug
 
 COV = Namespace("https://mustrd.org/coverage/")
@@ -24,6 +24,13 @@ _BASE = "https://mustrd.org/coverage/"
 _AGENT = URIRef("https://mustrd.org/#tool")
 _ROLE = {"covered": COV.Covered, "query-only": COV.QueryOnly,
          "schema": COV.Structural, "unused": COV.Unused}
+
+
+def _relpath(p):
+    try:
+        return os.path.relpath(str(p))
+    except ValueError:
+        return str(p)
 
 
 def _local(iri: str) -> str:
@@ -139,35 +146,71 @@ def _add_issues(g, run, run_slug, coverage):
             g.add((issue, COV.detail, Literal(ax)))
 
 
-def _collect_spec_meta(coverage):
-    """{spec IRI: (file name, source path)} for every test the report references."""
-    meta = {}
-    ref_lists = [rec.get("exercises", []) for rec in coverage.get("term_records", [])]
-    ref_lists += [u.get("refs", []) for u in coverage.get("undeclared", [])]
-    ref_lists.append(coverage.get("tbox_in_data", []))
-    for refs in ref_lists:
-        for r in refs:
-            if r.get("uri"):
-                meta.setdefault(r["uri"], (r.get("name"), r.get("source_file")))
-    return meta
-
-
 def _add_spec_metadata(g, coverage):
-    """Emit each referenced test spec's file name + source path, so the renderer
-    can label and link tests straight from the graph."""
-    for uri, (name, src) in sorted(_collect_spec_meta(coverage).items()):
+    """Emit each test spec's file name + (cwd-relative) source path and its
+    domain-term usage (cov:usesInData/usesInQuery), so the renderer can label and
+    link tests and rebuild per-CQ term lists straight from the graph."""
+    for uri, u in sorted(coverage.get("spec_usage", {}).items()):
         s = URIRef(uri)
         g.add((s, RDF.type, MUST.TestSpec))
-        if name:
-            g.add((s, MUST.specFileName, Literal(name)))
-        if src:
-            # Store a cwd-relative path so the graph is portable/committable; the
-            # renderer resolves it to a report link (relative or GitHub) later.
-            try:
-                rel = os.path.relpath(str(src))
-            except ValueError:
-                rel = str(src)
-            g.add((s, MUST.specSourceFile, Literal(rel)))
+        if u.get("name"):
+            g.add((s, MUST.specFileName, Literal(u["name"])))
+        if u.get("source_file"):
+            g.add((s, MUST.specSourceFile, Literal(_relpath(u["source_file"]))))
+        for t in u.get("data", []):
+            g.add((s, COV.usesInData, URIRef(t)))
+        for t in u.get("query", []):
+            g.add((s, COV.usesInQuery, URIRef(t)))
+
+
+def _add_cq_assertions(g, run, cq, tests):
+    for t in tests:
+        if not t.get("uri"):
+            continue
+        spec = URIRef(t["uri"])
+        g.add((cq, CQ.cqSpec, spec))
+        a = URIRef(f"{run}/assertion/{_local(cq)}/{_local(t['uri'])}")
+        g.add((a, RDF.type, COV.Assertion))
+        g.add((a, COV.onCompetencyQuestion, cq))
+        g.add((a, COV.onTest, spec))
+        g.add((a, COV.outcome, COV.Passed if t.get("status") == "passed" else COV.Failed))
+        g.add((a, COV.requiresOntology, Literal(bool(t.get("requires_ontology")))))
+        g.add((a, PROV.wasGeneratedBy, run))
+
+
+def _add_competency_questions(g, run, per_cq, duplicate_cqs):
+    """Emit each CQ node (cq:CompetencyQuestion + cq:question + cq:cqSpec) and,
+    per linked test, a cov:Assertion carrying the outcome and requires-ontology
+    flag. Duplicate-question CQs are emitted with cov:duplicate true."""
+    for e in per_cq:
+        if not e.get("id"):
+            continue
+        cq = URIRef(e["id"])
+        g.add((cq, RDF.type, CQ.CompetencyQuestion))
+        for q in e.get("questions", []):
+            g.add((cq, CQ.question, Literal(q)))
+        if e.get("source_file"):
+            g.add((cq, COV.sourceFile, Literal(_relpath(e["source_file"]))))
+        g.add((cq, PROV.wasGeneratedBy, run))
+        _add_cq_assertions(g, run, cq, e.get("tests", []))
+        for m in e.get("missing_specs", []):
+            g.add((cq, CQ.cqSpec, URIRef(m)))   # dangling: no spec metadata -> flagged
+    _add_duplicate_cqs(g, run, duplicate_cqs)
+
+
+def _add_duplicate_cqs(g, run, duplicate_cqs):
+    for d in duplicate_cqs:
+        for c in d.get("cqs", []):
+            if not c.get("id"):
+                continue
+            cq = URIRef(c["id"])
+            g.add((cq, RDF.type, CQ.CompetencyQuestion))
+            for q in (c.get("questions") or [d["question"]]):
+                g.add((cq, CQ.question, Literal(q)))
+            if c.get("source_file"):
+                g.add((cq, COV.sourceFile, Literal(_relpath(c["source_file"]))))
+            g.add((cq, COV.duplicate, Literal(True)))
+            g.add((cq, PROV.wasGeneratedBy, run))
 
 
 def coverage_graph(coverage, ontologies, run_slug="local",
@@ -176,7 +219,7 @@ def coverage_graph(coverage, ontologies, run_slug="local",
     `run_slug` seeds the minted run IRI (e.g. a commit SHA, else 'local')."""
     g = Graph()
     for p, ns in (("cov", COV), ("dqv", DQV), ("prov", PROV), ("must", MUST),
-                  ("skos", SKOS), ("owl", OWL)):
+                  ("cq", CQ), ("skos", SKOS), ("owl", OWL)):
         g.bind(p, ns)
     run = URIRef(f"{_BASE}run/{run_slug}")
     subjects = _add_provenance(g, run, ontologies, commit, mustrd_version)
@@ -184,6 +227,26 @@ def coverage_graph(coverage, ontologies, run_slug="local",
     _add_term_records(g, run, run_slug, coverage)
     _add_issues(g, run, run_slug, coverage)
     _add_spec_metadata(g, coverage)
+    _add_competency_questions(g, run, coverage.get("per_cq", []),
+                              coverage.get("duplicate_cqs", []))
+    return g
+
+
+def cq_graph(cq_facts, run_slug="local", commit=None, mustrd_version=None) -> Graph:
+    """A CQ-only graph for `--cq` with no ontology: CQ nodes + assertions + per-spec
+    term usage, no coverage measurements. `cq_facts` (from `cq.cq_facts`) carries
+    per_cq, duplicate_cqs, spec_usage and the domain prefixes to bind (so the
+    renderer can shorten term IRIs without the ontology)."""
+    g = Graph()
+    for p, ns in (("cov", COV), ("prov", PROV), ("must", MUST), ("cq", CQ)):
+        g.bind(p, ns)
+    for prefix, ns in cq_facts.get("prefixes", {}).items():
+        g.bind(prefix, ns)
+    run = URIRef(f"{_BASE}run/{run_slug}")
+    _add_provenance(g, run, [], commit, mustrd_version)
+    _add_spec_metadata(g, cq_facts)
+    _add_competency_questions(g, run, cq_facts.get("per_cq", []),
+                              cq_facts.get("duplicate_cqs", []))
     return g
 
 
