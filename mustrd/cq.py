@@ -15,9 +15,8 @@ from typing import List, Optional
 
 from rdflib import Graph, URIRef
 
-from mustrd.coverage import (
-    abox_terms, query_uris, _is_domain_term, requires_ontology_to_pass, _shortener,
-)
+from mustrd.ontology import abox_terms, query_uris, is_domain_term, shortener
+from mustrd.coverage import requires_ontology_to_pass
 
 
 @dataclass
@@ -149,12 +148,12 @@ def cq_only_view(cq_defs: List[dict]) -> dict:
     linked = _linked_specs(kept)
     given_graphs = [s["given"] for s in linked if isinstance(s.get("given"), Graph)]
     all_queries = [q for s in linked for q in (s.get("queries") or []) if isinstance(q, str)]
-    short = _shortener(given_graphs, all_queries)
+    short = shortener(given_graphs, all_queries)
     usage_by_uri = {}
     for s in linked:
         raw_data, raw_query = _raw_terms(s)
-        d = {t for t in raw_data if _is_domain_term(URIRef(t))}
-        q = {t for t in raw_query if _is_domain_term(URIRef(t))}
+        d = {t for t in raw_data if is_domain_term(URIRef(t))}
+        q = {t for t in raw_query if is_domain_term(URIRef(t))}
         usage_by_uri[s.get("uri")] = SpecUsage(
             name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
             data_terms=sorted(short(t) for t in d), query_terms=sorted(short(t) for t in q),

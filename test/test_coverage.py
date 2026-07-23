@@ -1,8 +1,9 @@
 """Unit tests for ontology term coverage (mustrd/coverage.py)."""
 from rdflib import Graph
 
-from mustrd.coverage import (
-    compute_coverage, declared_terms, query_uris, abox_terms,
+from mustrd.coverage import compute_coverage
+from mustrd.ontology import (
+    declared_terms, query_uris, abox_terms,
     expand_ontology_files, load_ontology, ontology_report,
 )
 

@@ -20,288 +20,26 @@ namespaces so vocabulary terms like rdfs:label are not mistaken for the
 ontology under test.
 """
 import logging
-import os
-import re
-from pathlib import Path
 from typing import List, Optional
 
-from rdflib import Graph, URIRef, RDF, RDFS, OWL, XSD
-from rdflib.namespace import DCTERMS, DC, SKOS
-from rdflib.plugins.sparql import prepareQuery
+from rdflib import Graph, URIRef, RDF, RDFS
 
-# Predicates checked, in order, for an ontology's human description.
-DESCRIPTION_PREDICATES = (RDFS.comment, DCTERMS.description, DC.description,
-                          SKOS.definition, RDFS.label)
+from mustrd.ontology import (
+    CLASS_TYPES, PROPERTY_TYPES,
+    wk_qname, is_domain_term, namespace,
+    declared_terms, metadata_terms, query_uris, abox_terms, shortener,
+)
+
 
 log = logging.getLogger(__name__)
 
-# RDF serialisations recognised when scanning an ontology directory.
-ONTOLOGY_SUFFIXES = {".ttl", ".trig", ".nt", ".nq", ".n3", ".jsonld", ".rdf", ".owl", ".xml"}
-
-# Namespaces whose terms are infrastructure, not "the ontology under test".
-WELL_KNOWN = (
-    str(RDF), str(RDFS), str(OWL), str(XSD),
-    "http://www.w3.org/2004/02/skos/core#",
-    "http://www.w3.org/ns/shacl#",
-    "https://mustrd.org/model/",
-    "http://purl.org/dc/elements/1.1/",
-    "http://purl.org/dc/terms/",
-    "http://www.w3.org/ns/prov#",
-)
-
-CLASS_TYPES = (OWL.Class, RDFS.Class)
-PROPERTY_TYPES = frozenset((
-    RDF.Property,
-    OWL.ObjectProperty, OWL.DatatypeProperty, OWL.AnnotationProperty,
-    OWL.OntologyProperty,
-    OWL.FunctionalProperty, OWL.InverseFunctionalProperty,
-    OWL.SymmetricProperty, OWL.TransitiveProperty,
-))
-
-# Property types that describe documentation/metadata rather than the domain
-# vocabulary CQs are meant to exercise. A term declared *only* as one of these
-# is treated as a schema term (excluded from the coverage %) when unused, rather
-# than flagged as a gap. Mapped to the reason shown in the report.
-METADATA_PROPERTY_TYPES = {
-    OWL.AnnotationProperty: "annotation property",
-    OWL.OntologyProperty: "ontology property",
-}
-
-CLASS_TYPES = (OWL.Class, RDFS.Class)
 
 # rdf:type objects and predicates that make a triple a TBox (schema) axiom. When
 # these appear in a test's `given`, the fixture is defining ontology structure —
 # which belongs in the ontology, not the test data — so the report hints they be
-# moved. Type set is derived from the property types above so it can't drift.
+# moved. The type set is derived from ontology.PROPERTY_TYPES so it can't drift.
 TBOX_TYPES = CLASS_TYPES + tuple(PROPERTY_TYPES)
 TBOX_PREDICATES = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
-
-_WELL_KNOWN_PREFIXES = ((str(OWL), "owl"), (str(RDFS), "rdfs"), (str(RDF), "rdf"))
-
-
-def _wk_qname(uri) -> str:
-    """Render an rdf/rdfs/owl IRI with its conventional prefix (owl:Class …)."""
-    s = str(uri)
-    for ns, pfx in _WELL_KNOWN_PREFIXES:
-        if s.startswith(ns):
-            return f"{pfx}:{s[len(ns):]}"
-    return s
-
-
-def _is_domain_term(uri) -> bool:
-    return isinstance(uri, URIRef) and not any(str(uri).startswith(ns) for ns in WELL_KNOWN)
-
-
-def _namespace(iri: str) -> str:
-    """The namespace of an IRI — up to and including its last '#' or '/'."""
-    for sep in ("#", "/"):
-        idx = iri.rfind(sep)
-        if idx != -1:
-            return iri[:idx + 1]
-    return iri
-
-
-def expand_ontology_files(paths) -> list:
-    """Expand a list of file/directory paths into a sorted list of RDF files.
-
-    Files are kept as-is; directories are scanned recursively for files with a
-    recognised RDF suffix. Non-existent paths are skipped with a warning.
-    """
-    files = []
-    for p in paths:
-        p = Path(p)
-        if p.is_dir():
-            files.extend(sorted(f for f in p.rglob("*")
-                                if f.is_file() and f.suffix.lower() in ONTOLOGY_SUFFIXES))
-        elif p.is_file():
-            files.append(p)
-        else:
-            log.warning(f"hasOntologyPath does not exist, skipping: {p}")
-    # de-duplicate while preserving order
-    seen, unique = set(), []
-    for f in files:
-        rp = f.resolve()
-        if rp not in seen:
-            seen.add(rp)
-            unique.append(f)
-    return unique
-
-
-def ontology_report(paths, link_base=None) -> list:
-    """Per-file summary of the ontologies under `paths`, for the report header.
-
-    Each entry: {path, url, uri, description} — the file link (href relative to
-    `link_base`, see `_source_link`), the owl:Ontology IRI declared in that file
-    (if any), and its description (rdfs:comment / dcterms:description / … ). A
-    file with no owl:Ontology still appears (uri/description None); a file
-    declaring several yields one row each.
-    """
-    rows = []
-    for f in expand_ontology_files(paths):
-        link = _source_link(f, link_base)
-        g = Graph()
-        try:
-            g.parse(str(f))
-        except Exception as e:
-            log.warning(f"Could not parse ontology file {f}: {e}")
-            rows.append({**link, "uri": None, "description": None})
-            continue
-        ontologies = sorted(str(s) for s in g.subjects(RDF.type, OWL.Ontology))
-        if not ontologies:
-            rows.append({**link, "uri": None, "description": None})
-        for uri in ontologies:
-            rows.append({**link, "uri": uri,
-                         "description": _first_literal(g, URIRef(uri), DESCRIPTION_PREDICATES)})
-    return rows
-
-
-def _first_literal(graph: Graph, subject, predicates) -> Optional[str]:
-    for p in predicates:
-        val = graph.value(subject=subject, predicate=p)
-        if val is not None:
-            return str(val)
-    return None
-
-
-def load_ontology(paths) -> Optional[Graph]:
-    """Parse every ontology file under `paths` (files or dirs) into one graph."""
-    files = expand_ontology_files(paths)
-    if not files:
-        return None
-    g = Graph()
-    for f in files:
-        try:
-            g.parse(str(f))
-        except Exception as e:
-            log.warning(f"Could not parse ontology file {f}: {e}")
-    return g
-
-
-def declared_terms(graph: Graph) -> dict:
-    """Map each declared class/property IRI in the graph to 'class' or 'property'.
-
-    Restricted to non-well-known namespaces (the ontology under test, not the
-    RDF/RDFS/OWL/SKOS vocabulary it is written in).
-    """
-    terms = {}
-    for t in CLASS_TYPES:
-        for s in graph.subjects(RDF.type, t):
-            if _is_domain_term(s):
-                terms.setdefault(str(s), "class")
-    for t in PROPERTY_TYPES:
-        for s in graph.subjects(RDF.type, t):
-            if _is_domain_term(s):
-                terms[str(s)] = "property"  # a property label wins over a class collision
-    return terms
-
-
-def metadata_terms(graph: Graph) -> dict:
-    """Domain terms declared *only* as annotation/ontology properties.
-
-    Maps each such IRI to a reason label ("annotation property" /
-    "ontology property"). These are documentation/metadata vocabulary, not the
-    substantive classes and properties CQs exercise, so coverage reports an
-    unused one as a schema term rather than a gap. A term also declared as a
-    class or a substantive property is excluded — it is not "just metadata".
-    """
-    meta = {}
-    for typ, label in METADATA_PROPERTY_TYPES.items():
-        for s in graph.subjects(RDF.type, typ):
-            if _is_domain_term(s):
-                meta.setdefault(str(s), label)
-    substantive = set()
-    for typ in CLASS_TYPES:
-        substantive |= {str(s) for s in graph.subjects(RDF.type, typ)}
-    for typ in PROPERTY_TYPES - set(METADATA_PROPERTY_TYPES):
-        substantive |= {str(s) for s in graph.subjects(RDF.type, typ)}
-    return {iri: label for iri, label in meta.items() if iri not in substantive}
-
-
-def _collect_uris(root) -> set:
-    """Every URIRef reachable from a parsed-algebra node, walked iteratively.
-
-    Descends dicts, sequences and objects' ``__dict__``; a seen-set on object
-    identity guards against cycles.
-    """
-    found, seen, stack = set(), set(), [root]
-    while stack:
-        obj = stack.pop()
-        if id(obj) in seen:
-            continue
-        seen.add(id(obj))
-        if isinstance(obj, URIRef):
-            found.add(str(obj))
-        elif isinstance(obj, dict):
-            stack.extend(obj.values())
-        elif isinstance(obj, (list, tuple, set)):
-            stack.extend(obj)
-        elif hasattr(obj, "__dict__"):
-            stack.extend(vars(obj).values())
-    return found
-
-
-def query_uris(query_text: str) -> set:
-    """Every IRI referenced in a query's parsed algebra (ignores comments).
-
-    Handles SELECT/CONSTRUCT/ASK/DESCRIBE and, as a fallback, SPARQL Update.
-    """
-    try:
-        algebra = prepareQuery(query_text).algebra
-    except Exception as query_exc:
-        try:
-            from rdflib.plugins.sparql.parser import parseUpdate
-            from rdflib.plugins.sparql.algebra import translateUpdate
-            algebra = translateUpdate(parseUpdate(query_text))
-        except Exception as update_exc:
-            log.debug("query_uris: could not parse as query (%s) nor update (%s); "
-                      "extracting no query terms from: %s",
-                      query_exc, update_exc, query_text)
-            return set()
-    return _collect_uris(algebra)
-
-
-def abox_terms(graph: Graph) -> set:
-    """Terms USED by instance data: rdf:type objects + asserted predicates."""
-    used = {str(o) for o in graph.objects(None, RDF.type) if isinstance(o, URIRef)}
-    used |= {str(p) for p in set(graph.predicates()) if isinstance(p, URIRef)}
-    return used
-
-
-_PREFIX_RE = re.compile(r"PREFIX\s+([A-Za-z][\w.\-]*)\s*:\s*<([^>]*)>", re.IGNORECASE)
-
-
-def _shortener(graphs, query_texts=()):
-    """Build a prefix map -> function turning an IRI into a qname.
-
-    Sources both the given graphs and the `PREFIX` declarations in the query
-    text. mustrd's given graph often loses author prefixes (rdflib
-    auto-generates `ns1`, `ns2`, ... on collisions), whereas the SPARQL
-    `PREFIX ex: <...>` lines are author-chosen and clean. Per namespace we pick
-    the cleanest prefix: prefer one not ending in a digit, then the shortest.
-    """
-    candidates = {}  # namespace -> set of prefixes
-    for g in graphs:
-        for prefix, ns in g.namespaces():
-            if prefix:  # skip the default (empty) prefix
-                candidates.setdefault(str(ns), set()).add(prefix)
-    for text in query_texts:
-        for prefix, ns in _PREFIX_RE.findall(text or ""):
-            candidates.setdefault(ns, set()).add(prefix)
-
-    def best(prefixes):
-        return sorted(prefixes, key=lambda p: (p[-1].isdigit(), len(p), p))[0]
-
-    ns_to_prefix = {ns: best(pfx) for ns, pfx in candidates.items()}
-    # longest namespace first, so the most specific binding wins
-    ordered = sorted(ns_to_prefix.items(), key=lambda kv: len(kv[0]), reverse=True)
-
-    def short(uri: str) -> str:
-        for ns, prefix in ordered:
-            if uri.startswith(ns):
-                return f"{prefix}:{uri[len(ns):]}"
-        return uri
-
-    return short
 
 
 def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
@@ -362,29 +100,6 @@ def requires_ontology_to_pass(data_terms: set, query_terms: set, declared: dict,
     return False
 
 
-def _source_link(p, link_base=None) -> dict:
-    """Display label + a link href relative to `link_base`.
-
-    Markdown previewers (e.g. VS Code) block absolute `file://` links under their
-    content-security policy, so we emit a RELATIVE href instead — resolved by the
-    viewer against the report's own location. `link_base` should be the directory
-    the link is relative to: the report file's directory for an `--md` file, or
-    the cwd for terminal output (which linkifies cwd-relative paths). The label
-    stays relative to the cwd for readability.
-    """
-    p = Path(p)
-    base = Path(link_base) if link_base is not None else Path.cwd()
-    try:
-        label = os.path.relpath(p)
-    except ValueError:  # e.g. different drive on Windows
-        label = str(p)
-    try:
-        url = os.path.relpath(p, base)
-    except ValueError:
-        url = str(p)
-    return {"path": label, "url": url}
-
-
 def _derive_declared(given_graphs, ontology):
     """(declared, metadata) from the ontology when given, else the given graphs.
 
@@ -402,7 +117,7 @@ def _build_shortener(specs, given_graphs, ontology):
     prefix_graphs = list(given_graphs)
     if ontology is not None:
         prefix_graphs.append(ontology)
-    return _shortener(prefix_graphs, all_queries)
+    return shortener(prefix_graphs, all_queries)
 
 
 def _build_tbox(given_graphs, ontology):
@@ -430,8 +145,8 @@ def _scan_specs(specs, declared_set):
         for q in (s.get("queries") or []):
             if isinstance(q, str):
                 raw_query |= query_uris(q)
-        s_data = {t for t in raw_data if _is_domain_term(URIRef(t))}
-        s_query = {t for t in raw_query if _is_domain_term(URIRef(t))}
+        s_data = {t for t in raw_data if is_domain_term(URIRef(t))}
+        s_query = {t for t in raw_query if is_domain_term(URIRef(t))}
         referenced_data |= s_data
         referenced_query |= s_query
         spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query))
@@ -469,11 +184,11 @@ def _usage_by_term(specs, declared_set):
             continue
         g = s.get("given")
         d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set())
-             if _is_domain_term(URIRef(t))} & declared_set
+             if is_domain_term(URIRef(t))} & declared_set
         q = set()
         for query in (s.get("queries") or []):
             if isinstance(query, str):
-                q |= {t for t in query_uris(query) if _is_domain_term(URIRef(t))}
+                q |= {t for t in query_uris(query) if is_domain_term(URIRef(t))}
         q &= declared_set
         for t in d | q:
             refs_by_term.setdefault(t, []).append({
@@ -488,13 +203,13 @@ def _tbox_axioms(g, short):
     class/property declarations and rdfs:subClassOf/domain/range on domain terms."""
     axioms = set()
     for ty in TBOX_TYPES:
-        axioms.update(f"{short(str(s))} a {_wk_qname(ty)}"
-                      for s in g.subjects(RDF.type, ty) if _is_domain_term(s))
+        axioms.update(f"{short(str(s))} a {wk_qname(ty)}"
+                      for s in g.subjects(RDF.type, ty) if is_domain_term(s))
     for pred in TBOX_PREDICATES:
         for subj, obj in g.subject_objects(pred):
-            if _is_domain_term(subj):
+            if is_domain_term(subj):
                 tail = short(str(obj)) if isinstance(obj, URIRef) else str(obj)
-                axioms.add(f"{short(str(subj))} {_wk_qname(pred)} {tail}")
+                axioms.add(f"{short(str(subj))} {wk_qname(pred)} {tail}")
     return sorted(axioms)
 
 
@@ -533,7 +248,7 @@ def _class_forest(declared, used, short, tbox, extra_external=()):
     external = set(extra_external)
     for c in (classes & used):
         for anc in tbox.transitive_objects(URIRef(c), RDFS.subClassOf):
-            if str(anc) != c and str(anc) not in declared and _is_domain_term(anc):
+            if str(anc) != c and str(anc) not in declared and is_domain_term(anc):
                 external.add(str(anc))
     nodes = classes | external
 
@@ -631,7 +346,7 @@ def _ordered_terms(declared, referenced, used_data, used_query, cq_used_data, cq
     the class tree's external-ancestor detection; coverage status is data-based."""
     props = [t for t in declared if declared[t] == "property"]
     ext_domains = {str(d) for p in props for d in tbox.objects(URIRef(p), RDFS.domain)
-                   if str(d) not in declared and _is_domain_term(d)}
+                   if str(d) not in declared and is_domain_term(d)}
     roots, children, extra_parents, external, nodes = \
         _class_forest(declared, referenced, short, tbox, ext_domains)
 
@@ -664,9 +379,9 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
     namespace but are not themselves declared — likely typos or missing
     definitions. External vocabularies (other namespaces) are ignored. Each is
     tagged with where it was referenced and which CQs reference it."""
-    ontology_namespaces = {_namespace(t) for t in declared}
+    ontology_namespaces = {namespace(t) for t in declared}
     iris = [t for t in (referenced_data | referenced_query)
-            if t not in declared_set and _namespace(t) in ontology_namespaces]
+            if t not in declared_set and namespace(t) in ontology_namespaces]
     undeclared = []
     for t in sorted(iris, key=short):
         refs = [{"name": name, "source_file": str(src) if src else None,
