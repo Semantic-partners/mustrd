@@ -5,30 +5,30 @@
 **By a competency question: {{ coverage.covered_by_cq }}/{{ coverage.denominator }} = {{ coverage.cq_pct }}%**
 {% endif %}
 {% if coverage.schema_count %}
-_({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural/schema term(s) excluded from the denominator — see below.)_
+_({{ coverage.declared_total }} declared; {{ coverage.schema_count }} structural term(s) excluded from the denominator — see below.)_
 {% endif %}
 A term is *used* if a passing test exercises it — either in the **input data** (as an instance type or asserted predicate) or in its **SPARQL** query. Ontology declarations alone do not count.
 
 Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`).
 
-| Term | Kind | In input data | In SPARQL | In schema | Test Coverage |{% if coverage.has_cq %} By a CQ? |{% endif %}
+| Term | Kind | In input data | In SPARQL | Structural | Test Coverage |{% if coverage.has_cq %} By a CQ? |{% endif %}
 |------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
 {% for t in coverage.terms -%}
-| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 schema' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 schema{% elif t.by_cq_state == 'yes' %}✅{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌{% endif %} |{% endif %}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else '❌ unused') }} |{% if coverage.has_cq %} {% if t.by_cq_state == 'schema' %}🔧 structural{% elif t.by_cq_state == 'yes' %}✅{% elif t.non_cq_refs %}❌ unused by CQ — exercised by {% for r in t.non_cq_refs %}[{{ r.name }}]({{ r.link }}) ({% if r.in_data and r.in_query %}data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}❌{% endif %} |{% endif %}
 {% endfor %}
 #### How to read this table
 
-The **In input data**, **In SPARQL** and **In schema** columns show *where* a term is exercised, classifying every term into a role:
+The **In input data**, **In SPARQL** and **Structural** columns show *where* a term is exercised, classifying every term into a role:
 
-| Data | SPARQL | Schema | Role | Meaning |
+| Data | SPARQL | Structural | Role | Meaning |
 |:---:|:---:|:---:|------|---------|
 | ✅ | ✅ | | **fully exercised** | populated in the data *and* queried |
 | ✅ | ❌ | | **data-only** | instances exist but no test queries it — candidate for a new query |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated |
-| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
+| ❌ | ❌ | ✅ | **structural** | not instantiated/queried, but load-bearing — domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property); good for documentation & inferencing; **excluded from coverage** |
 | ❌ | ❌ | | **unused** | not exercised by any test, nor structural to one |
 {% if coverage.has_cq %}
-**By a CQ?** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 schema (excluded, so not applicable).
+**By a CQ?** shows whether a *competency question* (not just any test) exercises the term: ✅ yes, ❌ covered only by non-CQ tests (so it lacks CQ coverage), 🔧 structural (excluded, so not applicable).
 {% endif %}
 ### Not used by any test
 
@@ -40,9 +40,9 @@ The **In input data**, **In SPARQL** and **In schema** columns show *where* a te
 _none — every declared term is exercised or structural_
 {%- endif %}
 {% if coverage.schema_terms %}
-### Structural / schema terms (excluded from coverage)
+### Structural terms (excluded from coverage)
 
-Not directly exercised, but they define the schema of terms the tests use:
+Not directly exercised, but load-bearing — they define the structure of the terms the tests use:
 
 {% for t in coverage.schema_terms -%}
 - {{ t.term }} ({{ t.kind }}) — {{ t.reason }}

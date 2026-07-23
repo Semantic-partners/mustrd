@@ -13,9 +13,9 @@ Two independent, opt-in flags:
      rows are arranged as a `rdfs:subClassOf` **tree** (indented under their
      superclass); each class's properties sit beneath it (`▸`, by
      `rdfs:domain`). An *external* superclass or domain (e.g. `foaf:Person`)
-     appears as its own schema row, and a linear run of schema-only ancestors
+     appears as its own structural row, and a linear run of structural-only ancestors
      collapses into a single grouped row (a property on an ancestor keeps it
-     visible). Then the schema terms, the terms
+     visible). Then the structural terms, the terms
      **not used by any test**, and any terms a test references that are *not*
      declared (likely typos / missing definitions).
 - **`--cq`** — competency-question sections: a **Competency Questions** table and
@@ -117,18 +117,18 @@ results are available, only specs with status `passed` are credited.
 
 ## The term roles
 
-Three source signals — data / SPARQL / schema — classify every declared term.
+Three source signals — data / SPARQL / structural — classify every declared term.
 This is the real documentation value of the report:
 
-| In data | In SPARQL | In schema | Role | Meaning |
+| In data | In SPARQL | Structural | Role | Meaning |
 |:---:|:---:|:---:|------|---------|
 | ✅ | ✅ | | **fully exercised** | populated *and* queried — strongest evidence the term works |
 | ✅ | ❌ | | **data-only** | instances exist but no CQ asks about it — candidate for a new CQ |
 | ❌ | ✅ | | **query-only** | matched by a query (e.g. via `subClassOf*`) but never instantiated — relies on inference, not asserted data |
-| ❌ | ❌ | ✅ | **schema** | not instantiated/queried, but structural rather than dead weight — the domain/range of a *used* property, the superclass of a *used* class, or a metadata property (`owl:AnnotationProperty` / `owl:OntologyProperty`) — so **excluded from the coverage denominator** rather than counted as a gap |
+| ❌ | ❌ | ✅ | **structural** | not instantiated/queried, but structural rather than dead weight — the domain/range of a *used* property, the superclass of a *used* class, or a metadata property (`owl:AnnotationProperty` / `owl:OntologyProperty`) — so **excluded from the coverage denominator** rather than counted as a gap |
 | ❌ | ❌ | · | **unused** | declared but neither instantiated, queried, nor structurally referenced — dead weight until a CQ needs it |
 
-### Why a "schema" category
+### Why a "structural" category
 
 A root class like `place:Place` is rarely instantiated or named in a query, yet
 it is the `rdfs:domain`/`rdfs:range` of `place:isLocatedIn` and the superclass of
@@ -137,13 +137,13 @@ documentation and inferencing — so flagging it as an untested "gap" would be
 misleading. Such terms are reported separately and excluded from the coverage
 percentage; the headline `covered/denominator` counts only terms that *could*
 be directly exercised. The denominator's total is still shown, so nothing is
-hidden. A term is only schema-classified when it supports a **used** term — a
+hidden. A term is only classified structural when it supports a **used** term — a
 superclass of only-unused classes stays a genuine gap.
 
 Annotation and ontology properties (`owl:AnnotationProperty`,
 `owl:OntologyProperty`) are documentation/metadata vocabulary rather than the
 domain terms CQs are meant to exercise, so an unused one is likewise reported as
-**schema** rather than flagged as a gap. If a CQ actually exercises one (in data
+**structural** rather than flagged as a gap. If a CQ actually exercises one (in data
 or SPARQL) it still counts as covered.
 
 ### "Requires ontology to pass"
@@ -168,7 +168,7 @@ generated from the runnable fixtures in
 there for the command, and `test/test_coverage_plugin.py` which asserts it stays
 correct. The headline: **9/9 terms (100%)** exercised by the tests, of which
 **8/9 (89%)** are backed by a competency question. Two declared terms are
-reported as **schema** and excluded from the denominator: `place:Place` (the
+reported as **structural** and excluded from the denominator: `place:Place` (the
 abstract root) and `place:basedOnStandard` (an `owl:OntologyProperty`).
 `gov:Mayor` is a subclass of `foaf:Person`, but `foaf:Person` is only referenced,
 not declared, so it is not counted.
@@ -181,7 +181,7 @@ tagged *input data*) and `gov:appointedOn` (in the mayor query, tagged *SPARQL*)
 — each likely a typo or missing definition, listed with the test that references
 it.
 
-The value the CQ table cannot give today: a percentage, the schema/structural
+The value the CQ table cannot give today: a percentage, the structural
 terms called out separately, and — when one exists — the exact list of declared
 terms no CQ touches at all.
 
@@ -203,7 +203,7 @@ Reuses what mustrd already parses — no new config:
    `--term-coverage` with no `hasOntologyPath` fails early.
 4. **Schema references** are found over the union of the given graphs: the
    `rdfs:domain`/`rdfs:range` of each used property and the superclasses of each
-   used class. Declared terms that are only schema-referenced are excluded from
+   used class. Declared terms that are only structurally referenced are excluded from
    the denominator.
 5. The report is assembled from three templates — `md_ontologies_template.jinja`
    (files + `owl:Ontology` IRI + description, via `coverage.ontology_report`),

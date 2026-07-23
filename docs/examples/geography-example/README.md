@@ -39,14 +39,14 @@ the report stays correct.
 
 **Multiple ontologies:** the report's *Ontologies* section lists both files
 (each with its `owl:Ontology` IRI and description); coverage is measured against
-their combined declared terms (11 declared, 2 excluded as **schema**):
+their combined declared terms (11 declared, 2 excluded as **structural**):
 
 - `place:Place` — the abstract root; not instantiated or queried, but the
   `rdfs:domain`/`rdfs:range` of `place:isLocatedIn` and the superclass of the
   classes the tests use.
 - `place:basedOnStandard` — an `owl:OntologyProperty`; ontology-level metadata.
 
-**Two coverage numbers:** the tests exercise **9/9 = 100%** of the (non-schema)
+**Two coverage numbers:** the tests exercise **9/9 = 100%** of the (non-structural)
 terms, but only **8/9 = 89%** are backed by a **competency question**. The one
 difference is `place:Region`: `region-lookup.mustrd.ttl` exercises it (in data
 and SPARQL) and passes, but it has no `must:competencyQuestion` — so `place:Region`
@@ -61,11 +61,12 @@ typos or missing definitions. Each lists the referencing test and whether it was
 seen in the input data or the SPARQL.
 
 **External vocabularies aren't counted:** `gov:Mayor` is a subclass of
-`foaf:Person` and `gov:governs`'s domain is `foaf:Person`, but `foaf:Person`
-is only *referenced*, not *declared* here — so it never appears in coverage. Only
-terms the ontologies under test actually declare are measured. (Contrast with
-`place:hasEconomicArea`, which *is* in an ontology's namespace, so its absence is
-flagged.)
+`foaf:Person` and `gov:governs`'s domain is `foaf:Person`. `foaf:Person` is only
+*referenced*, not *declared* here, so it shows in the term tree as an *external*
+**structural** row (the head of the `gov:Mayor` / `gov:governs` branch) but is
+**excluded from the percentage** — only terms the ontologies under test declare
+count. (Contrast with `place:hasEconomicArea`, which *is* in an ontology's
+namespace, so its absence is flagged as *used but not declared*.)
 
 It also shows the **requires ontology to pass** flag: the division CQ queries
 `place:AdministrativeDivision` but its data holds a `place:Province`, so it only

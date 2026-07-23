@@ -50,12 +50,12 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     # Two coverage metrics: all tests 9/9=100%, competency questions 8/9=89%.
     assert "9/9 terms exercised by the tests = 100%" in text
     assert "By a competency question: 8/9 = 89%" in text
-    assert "11 declared; 2 structural/schema term(s) excluded" in text
+    assert "11 declared; 2 structural term(s) excluded" in text
 
     # Class rows form a subClassOf tree. The external superclass foaf:Person is a
     # root row (marked external + schema); gov:Mayor is indented under it.
     foaf_row = next(ln for ln in text.splitlines() if ln.startswith("| foaf:Person "))
-    assert "· _external_" in foaf_row and foaf_row.endswith("| 🔧 schema | 🔧 schema |")
+    assert "· _external_" in foaf_row and foaf_row.endswith("| 🔧 structural | 🔧 structural |")
     assert "↳ gov:Mayor" in text          # subclass indented under foaf:Person
     assert "↳↳ " not in text              # (indent uses nbsp, not repeated glyphs)
     assert "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ place:Province" in text  # depth-2
@@ -70,7 +70,7 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     assert "| ✅ covered | ❌ unused by CQ — exercised by " in region_row
     assert "region-lookup.mustrd.ttl](" in region_row and region_row.endswith("(data & SPARQL) |")
     place_row = next(ln for ln in text.splitlines() if ln.startswith("| place:Place "))
-    assert place_row.endswith("| 🔧 schema | 🔧 schema |")
+    assert place_row.endswith("| 🔧 structural | 🔧 structural |")
     # Nothing is dead across all tests, but place:Region is a CQ-scoped gap.
     assert "### Not used by any test" in text
     assert "### Not used by any CQ" in text
