@@ -14,7 +14,11 @@ export type Format = { accept: string; mime: string; suffix: string };
 export const SLUGS = new Set(['model', 'triplestore', 'mustrdTest', 'coverage', 'competencyQuestion']);
 
 export const FORMATS: Record<string, Format> = {
-  html:   { accept: 'text/html',             mime: 'text/html; charset=utf-8',   suffix: '-doc.html' },
+  // The HTML doc is written to disk as <slug>-doc.html, but Pages' automatic
+  // HTML handling 308-redirects a ".html" URL to its extensionless clean URL.
+  // The ASSETS binding follows that into the not-found fallback, so we must
+  // fetch the clean URL (<slug>-doc) — never the ".html" path.
+  html:   { accept: 'text/html',             mime: 'text/html; charset=utf-8',   suffix: '-doc' },
   ttl:    { accept: 'text/turtle',           mime: 'text/turtle; charset=utf-8', suffix: '.ttl' },
   rdf:    { accept: 'application/rdf+xml',   mime: 'application/rdf+xml',        suffix: '.rdf' },
   jsonld: { accept: 'application/ld+json',   mime: 'application/ld+json',        suffix: '.jsonld' },
