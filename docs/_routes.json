@@ -32,5 +32,11 @@
     "/coverage/*",
     "/competencyQuestion/*"
   ],
-  "exclude": []
+  "exclude": [
+    "/model/",
+    "/triplestore/",
+    "/mustrdTest/",
+    "/coverage/",
+    "/competencyQuestion/"
+  ]
 }
