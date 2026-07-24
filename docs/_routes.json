@@ -25,7 +25,12 @@
     "/competencyQuestion.ttl",
     "/competencyQuestion.rdf",
     "/competencyQuestion.jsonld",
-    "/competencyQuestion.nt"
+    "/competencyQuestion.nt",
+    "/model/*",
+    "/triplestore/*",
+    "/mustrdTest/*",
+    "/coverage/*",
+    "/competencyQuestion/*"
   ],
   "exclude": []
 }
