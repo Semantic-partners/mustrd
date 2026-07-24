@@ -43,6 +43,12 @@ ONTOLOGIES: list[tuple[str, list[str]]] = [
         "mustrd/model/mustrdTestOntology.ttl",
         "mustrd/model/mustrdTestShapes.ttl",
     ]),
+    ("coverage", [
+        "mustrd/model/coverage-ontology.ttl",
+    ]),
+    ("competencyQuestion", [
+        "mustrd/model/cq-ontology.ttl",
+    ]),
 ]
 
 

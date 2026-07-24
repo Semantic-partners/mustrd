@@ -5,8 +5,8 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-<https://mustrd.org/competencyQuestion> rdf:type owl:Ontology ;
-    owl:imports <https://mustrd.org/model> ;
+<https://mustrd.org/competencyQuestion/> rdf:type owl:Ontology ;
+    owl:imports <https://mustrd.org/model/> ;
     rdfs:label "MustRD competency questions" ;
     rdfs:comment "Vocabulary for recording competency questions and linking them to the mustrd tests that answer them." .
 

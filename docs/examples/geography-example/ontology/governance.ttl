@@ -5,6 +5,7 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
 <http://example.org/governance#> a owl:Ontology ;
+    owl:versionIRI <http://example.org/governance/1.0.0> ;
     rdfs:comment "A tiny vocabulary for governance roles and the places they govern." .
 
 # Mayor reuses foaf:Person from an external vocabulary. foaf:Person is referenced

@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from rdflib import Graph, URIRef
 
-from mustrd.ontology import abox_terms, query_uris, is_domain_term, shortener
+from mustrd.ontology import abox_terms, query_uris, is_domain_term
 from mustrd.coverage import requires_ontology_to_pass
 
 
@@ -61,7 +61,8 @@ def _split_duplicate_cqs(cq_defs):
     kept = [d for d in cq_defs if d.get("question") not in dup_values]
     duplicate_cqs = [{
         "question": q,
-        "cqs": [{"name": d.get("name", "?"),
+        "cqs": [{"id": d.get("id"), "name": d.get("name", "?"),
+                 "questions": d.get("questions", []),
                  "source_file": str(d.get("source_file")) if d.get("source_file") else None}
                 for d in cq_defs if d.get("question") == q],
     } for q in sorted(dup_values)]
@@ -136,27 +137,34 @@ def compute_cq_overlay(cq_defs, declared_set, declared, tbox, short):
     }
 
 
-def cq_only_view(cq_defs: List[dict]) -> dict:
-    """Competency-question breakdown WITHOUT an ontology (for --cq on its own).
+def cq_facts(cq_defs: List[dict]) -> dict:
+    """The facts for a CQ-only RDF graph (for `--cq` with no ontology).
 
-    Lists every non-well-known term each CQ's linked test references — unchecked,
-    so it may include terms no ontology declares — plus duplicate-question
-    detection. `unchecked` flags that no ontology was consulted, so the report can
-    say so. Test-less CQ nodes are listed with no terms.
+    Returns {per_cq, duplicate_cqs, spec_usage, prefixes}: the per-CQ breakdown
+    (test statuses; requires-ontology is n/a without a TBox), each linked spec's
+    domain-term usage (declared or not — nothing to check against), and the
+    domain namespace prefixes to bind into the graph so the renderer can shorten
+    term IRIs. The graph builder is `coverage_rdf.cq_graph`.
     """
     duplicate_cqs, kept = _split_duplicate_cqs(cq_defs or [])
     linked = _linked_specs(kept)
-    given_graphs = [s["given"] for s in linked if isinstance(s.get("given"), Graph)]
-    all_queries = [q for s in linked for q in (s.get("queries") or []) if isinstance(q, str)]
-    short = shortener(given_graphs, all_queries)
-    usage_by_uri = {}
+    usage_by_uri, spec_usage, prefixes = {}, {}, {}
     for s in linked:
         raw_data, raw_query = _raw_terms(s)
-        d = {t for t in raw_data if is_domain_term(URIRef(t))}
-        q = {t for t in raw_query if is_domain_term(URIRef(t))}
-        usage_by_uri[s.get("uri")] = SpecUsage(
-            name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
-            data_terms=sorted(short(t) for t in d), query_terms=sorted(short(t) for t in q),
-            requires_ontology=False)
+        d = sorted(t for t in raw_data if is_domain_term(URIRef(t)))
+        q = sorted(t for t in raw_query if is_domain_term(URIRef(t)))
+        uri = s.get("uri")
+        spec_usage[uri] = {
+            "name": s.get("name", "?"),
+            "source_file": str(s.get("source_file")) if s.get("source_file") else None,
+            "data": d, "query": q}
+        usage_by_uri[uri] = SpecUsage(name=s.get("name", "?"), uri=uri,
+                                      passed=bool(s.get("passed")), requires_ontology=False)
+        g = s.get("given")
+        if isinstance(g, Graph):
+            for prefix, ns in g.namespaces():
+                if prefix:
+                    prefixes[prefix] = str(ns)
     return {"per_cq": _per_cq_entries(kept, usage_by_uri),
-            "duplicate_cqs": duplicate_cqs, "unchecked": True}
+            "duplicate_cqs": duplicate_cqs, "spec_usage": spec_usage,
+            "prefixes": prefixes}

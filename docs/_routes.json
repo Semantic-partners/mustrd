@@ -15,7 +15,22 @@
     "/mustrdTest.ttl",
     "/mustrdTest.rdf",
     "/mustrdTest.jsonld",
-    "/mustrdTest.nt"
+    "/mustrdTest.nt",
+    "/coverage",
+    "/coverage.ttl",
+    "/coverage.rdf",
+    "/coverage.jsonld",
+    "/coverage.nt",
+    "/competencyQuestion",
+    "/competencyQuestion.ttl",
+    "/competencyQuestion.rdf",
+    "/competencyQuestion.jsonld",
+    "/competencyQuestion.nt",
+    "/model/*",
+    "/triplestore/*",
+    "/mustrdTest/*",
+    "/coverage/*",
+    "/competencyQuestion/*"
   ],
   "exclude": []
 }

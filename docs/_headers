@@ -12,3 +12,11 @@
 /mustrdTest/*.ttl
   Content-Type: text/turtle; charset=utf-8
   Cache-Control: public, max-age=300, s-maxage=3600
+
+/coverage/*.ttl
+  Content-Type: text/turtle; charset=utf-8
+  Cache-Control: public, max-age=300, s-maxage=3600
+
+/competencyQuestion/*.ttl
+  Content-Type: text/turtle; charset=utf-8
+  Cache-Control: public, max-age=300, s-maxage=3600

@@ -135,9 +135,11 @@ def ontology_report(paths, link_base=None, href=None) -> list:
             continue
         ontologies = sorted(str(s) for s in g.subjects(RDF.type, OWL.Ontology))
         if not ontologies:
-            rows.append({**link, "uri": None, "description": None})
+            rows.append({**link, "uri": None, "version": None, "description": None})
         for uri in ontologies:
+            version = g.value(subject=URIRef(uri), predicate=OWL.versionIRI)
             rows.append({**link, "uri": uri,
+                         "version": str(version) if version is not None else None,
                          "description": _first_literal(g, URIRef(uri), DESCRIPTION_PREDICATES)})
     return rows
 

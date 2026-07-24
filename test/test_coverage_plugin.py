@@ -16,10 +16,10 @@ EXAMPLE = Path("docs/examples/geography-example")
 CONFIG = EXAMPLE / "mustrd-config.ttl"
 
 
-def _run(md_path, term_coverage=False, cq=False):
+def _run(md_path, term_coverage=False, cq=False, term_coverage_rdf=None):
     plugin = MustrdTestPlugin(
         str(md_path) if md_path else None, CONFIG, None,
-        term_coverage=term_coverage, cq=cq,
+        term_coverage=term_coverage, cq=cq, term_coverage_rdf=term_coverage_rdf,
     )
     pytest.main([str(EXAMPLE), "-p", "no:cacheprovider"], plugins=[plugin])
     return plugin
@@ -187,6 +187,48 @@ def test_github_actions_links_are_absolute(tmp_path, monkeypatch):
     # no report-relative links survive
     assert "](../specs/" not in text
     assert "](ontology/" not in text
+
+
+def test_term_coverage_rdf_output(tmp_path):
+    # --term-coverage-rdf writes a DQV + PROV graph: measurements computedOn the
+    # ontology IRI + its versionIRI, a per-term breakdown, and quality issues.
+    from rdflib import Graph, URIRef, Namespace, BNode
+    COV = Namespace("https://mustrd.org/coverage/")
+    DQV = Namespace("http://www.w3.org/ns/dqv#")
+
+    ttl = tmp_path / "coverage.ttl"
+    _run(None, term_coverage=True, cq=True, term_coverage_rdf=str(ttl))
+    g = Graph()
+    g.parse(str(ttl), format="turtle")
+
+    place = URIRef("http://example.org/place#")
+    place_v = URIRef("http://example.org/place/1.0.0")
+
+    # Aggregate: term coverage by tests = 8/9, computedOn the ontology + versionIRI.
+    m = g.value(predicate=DQV.isMeasurementOf, object=COV.termCoverageByTests)
+    assert m is not None
+    assert float(g.value(m, DQV.value)) == 0.8889
+    assert (m, DQV.computedOn, place) in g
+    assert (m, DQV.computedOn, place_v) in g            # the versionIRI too
+    assert (place, URIRef("http://www.w3.org/2002/07/owl#versionIRI"), place_v) in g
+    # The CQ metric is present because --cq was set.
+    assert g.value(predicate=DQV.isMeasurementOf,
+                   object=COV.termCoverageByCompetencyQuestions) is not None
+
+    # Per-term (found by cov:term, since the run IRI carries the commit SHA in CI):
+    # AdministrativeDivision is query-only; Region covered but not by a CQ.
+    ad = g.value(predicate=COV["term"], object=URIRef("http://example.org/place#AdministrativeDivision"))
+    assert (ad, COV.role, COV.QueryOnly) in g
+    region = g.value(predicate=COV["term"], object=URIRef("http://example.org/place#Region"))
+    assert (region, COV.role, COV.Covered) in g
+    assert (region, COV.cqRole, COV.Unused) in g
+
+    # A TBox-in-data quality issue points at the division spec.
+    assert (None, COV.issueType, COV.TBoxInTestData) in g
+    assert (None, COV.issueType, COV.UsedButNotDeclared) in g
+
+    # Stable minted IRIs — no blank nodes anywhere.
+    assert not any(isinstance(n, BNode) for t in g for n in t)
 
 
 def test_missing_ontology_path_fails_early():

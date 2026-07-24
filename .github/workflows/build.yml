@@ -39,7 +39,7 @@ jobs:
         # Runs the runnable geography example with --term-coverage --cq so its
         # report shows up in the job summary below and the committed report is
         # regenerated. Collection is scoped to the example dir.
-        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --cq --md=docs/examples/geography-example/report/term-coverage-example.md
+        run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --cq --md=docs/examples/geography-example/report/term-coverage-example.md --term-coverage-rdf=docs/examples/geography-example/report/term-coverage-example.ttl
         if: ${{ always() }}
       - name: Upload pytest test results
         if: ${{ always() }}
@@ -47,6 +47,15 @@ jobs:
         with:
           name: pytest-results-${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
+      - name: Upload ontology coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.python-version }}
+          path: |
+            docs/examples/geography-example/report/term-coverage-example.ttl
+            docs/examples/geography-example/report/term-coverage-example.md
+          if-no-files-found: warn
       - name: Define Job summary
         run: |
           cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY

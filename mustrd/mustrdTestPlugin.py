@@ -15,7 +15,10 @@ from mustrd.TestResult import (
 )
 from mustrd.coverage import compute_coverage
 from mustrd.ontology import load_ontology, ontology_report
-from mustrd.cq import cq_only_view
+from mustrd.cq import cq_facts
+from mustrd.coverage_rdf import coverage_graph, cq_graph
+from mustrd.coverage_render import coverage_context, read_ontologies
+from mustrd.cq_render import cq_report
 from mustrd.utils import get_mustrd_root
 from mustrd.mustrd import (
     validate_specs,
@@ -103,6 +106,17 @@ def pytest_addoption(parser):
              "--term-coverage it also shows how much of the ontology the CQs "
              "(vs all tests) cover.",
     )
+    group.addoption(
+        "--term-coverage-rdf",
+        action="store",
+        dest="term_coverage_rdf",
+        metavar="pathToRdf",
+        default=None,
+        help="Write ontology term coverage as RDF (Turtle, W3C DQV + PROV) to "
+             "this path — DQV quality measurements computedOn the ontology, a "
+             "per-term breakdown, and quality issues, for a knowledge graph. "
+             "Needs an ontology (:hasOntologyPath).",
+    )
     return
 
 
@@ -117,6 +131,7 @@ def pytest_configure(config) -> None:
                 config.getoption("ignore_focus"),
                 config.getoption("term_coverage"),
                 config.getoption("cq"),
+                config.getoption("term_coverage_rdf"),
             )
         )
 
@@ -292,13 +307,14 @@ class MustrdTestPlugin:
     collect_error: BaseException
 
     def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
-                 term_coverage=False, cq=False):
+                 term_coverage=False, cq=False, term_coverage_rdf=None):
         self.md_path = md_path
         self.test_config_file = test_config_file
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.term_coverage = term_coverage
         self.cq = cq
+        self.term_coverage_rdf = term_coverage_rdf
         self.ontology_paths = []
         self.items = []
 
@@ -341,7 +357,7 @@ class MustrdTestPlugin:
         # Ontology term coverage needs an ontology to measure against. Resolve it
         # from the config now (and fail early with a helpful message if absent),
         # so the user is told before any tests run rather than after.
-        if self.term_coverage:
+        if self.term_coverage or self.term_coverage_rdf:
             self._resolve_ontology_paths_or_fail()
 
     def _resolve_ontology_paths_or_fail(self):
@@ -464,7 +480,9 @@ class MustrdTestPlugin:
 
     # Take all the test results in session, parse them, and generate the md file.
     def pytest_sessionfinish(self, session: Session, exitstatus):
-        report_coverage = self.term_coverage and bool(self.ontology_paths)
+        # --term-coverage-rdf also needs coverage computed (and an ontology).
+        report_coverage = (self.term_coverage or bool(self.term_coverage_rdf)) \
+            and bool(self.ontology_paths)
         report_cq = self.cq
         # Nothing to do unless we're writing an md report or reporting to stdout.
         if not self.md_path and not report_coverage and not report_cq:
@@ -478,26 +496,22 @@ class MustrdTestPlugin:
         # specs so a CQ can point at 0..n tests (or none at all).
         cq_defs = self._collect_cq_defs(spec_by_uri) if report_cq else []
 
-        # Ontology term coverage (--term-coverage) is measured over ALL mustrd
-        # tests. The CQ overlay (CQ %, per-CQ) is added only when --cq is also set.
-        # compute_coverage returns None if nothing is declared.
-        coverage = None
-        if report_coverage:
-            try:
-                coverage = compute_coverage(
-                    all_specs, ontology=load_ontology(self.ontology_paths),
-                    cq_defs=cq_defs if report_cq else None)
-            except Exception as e:
-                logger.warning(f"Could not compute ontology term coverage: {e}")
-        # --cq without --term-coverage: CQ sections with no ontology check.
-        cq_view = cq_only_view(cq_defs) if (report_cq and not report_coverage) else None
+        # The RDF graph is the CANONICAL run output; the whole report is rendered
+        # from it. With an ontology it's the full coverage graph (with a CQ
+        # overlay when --cq); with `--cq` alone it's a CQ-only graph (no
+        # measurements). compute_coverage returns None if nothing is declared.
+        coverage, ontology_graph, graph = \
+            self._coverage(all_specs, cq_defs, report_cq) if report_coverage \
+            else (None, None, None)
+        if graph is None and report_cq:              # --cq with no ontology
+            graph = cq_graph(cq_facts(cq_defs), **self._run_ident())
 
         # Markdown report. With --term-coverage and/or --cq it is the assembled
         # report; otherwise --md keeps its pre-existing form: a ResultList of
         # every test.
         if self.md_path:
             if report_coverage or report_cq:
-                md = self._build_report(coverage, cq_view, test_results, spec_by_uri,
+                md = self._build_report(graph, ontology_graph, coverage,
                                         os.path.dirname(self.md_path) or ".")
             else:
                 md = self._render_result_list(test_results, last_is_mustrd)
@@ -507,10 +521,57 @@ class MustrdTestPlugin:
             with open(self.md_path, "w", encoding="utf-8") as file:
                 file.write(md)
 
-        # To stdout (links relative to the cwd, which the terminal linkifies).
-        if report_coverage or report_cq:
-            body = self._build_report(coverage, cq_view, test_results, spec_by_uri, os.getcwd())
+        # RDF output (--term-coverage-rdf), for a knowledge graph.
+        if self.term_coverage_rdf and graph is not None:
+            parent = os.path.dirname(self.term_coverage_rdf)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            graph.serialize(destination=self.term_coverage_rdf, format="turtle")
+
+        # To stdout — only for the human-facing flags (not RDF-only runs).
+        if self.term_coverage or report_cq:
+            body = self._build_report(graph, ontology_graph, coverage, os.getcwd())
             self._report_to_terminal(session.config, body)
+
+    def _coverage(self, all_specs, cq_defs, report_cq):
+        """Compute coverage and build its canonical RDF graph. Returns
+        (coverage_dict, ontology_graph, graph); (None, None, None) on failure or
+        when nothing is declared."""
+        try:
+            ontology_graph = load_ontology(self.ontology_paths)
+            coverage = compute_coverage(all_specs, ontology=ontology_graph,
+                                        cq_defs=cq_defs if report_cq else None)
+            if coverage is None:
+                return None, None, None
+            return coverage, ontology_graph, self._coverage_graph(coverage)
+        except Exception as e:
+            logger.warning(f"Could not compute ontology term coverage: {e}")
+            return None, None, None
+
+    @staticmethod
+    def _run_ident():
+        """run_slug / commit / mustrd_version for a graph, from the CI env."""
+        sha = os.environ.get("GITHUB_SHA")
+        server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+        repo = os.environ.get("GITHUB_REPOSITORY")
+        try:
+            from importlib.metadata import version, PackageNotFoundError
+            try:
+                mustrd_version = version("mustrd")
+            except PackageNotFoundError:
+                mustrd_version = None
+        except Exception:
+            mustrd_version = None
+        return {"run_slug": sha or "local",
+                "commit": f"{server}/{repo}/commit/{sha}" if (sha and repo) else None,
+                "mustrd_version": mustrd_version}
+
+    def _coverage_graph(self, coverage):
+        """Build the canonical coverage RDF graph."""
+        ontologies = [{"uri": r["uri"], "version": r.get("version"),
+                       "description": r.get("description"), "path": r.get("path")}
+                      for r in ontology_report(self.ontology_paths) if r.get("uri")]
+        return coverage_graph(coverage, ontologies, **self._run_ident())
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) and the
@@ -619,64 +680,41 @@ class MustrdTestPlugin:
         )
         return result_list.render()
 
-    def _build_report(self, coverage, cq_view, test_results, spec_by_uri, link_base):
-        """Assemble the report for the active flags, with links relative to
-        `link_base`. Two H2 sub-reports under a top title:
+    def _build_report(self, graph, ontology_graph, coverage, link_base):
+        """Assemble the report, rendered entirely FROM the RDF graph (+ the
+        ontology for the subClassOf tree). Two H2 sub-reports under a top title:
 
           # Ontologies Report
-          ## Coverage Report            (--term-coverage)
-             ### Ontologies / Term Coverage / Not covered by any test / Structural / used-but-not-declared
+          ## Coverage Report              (when an ontology was checked)
           ## Competency Questions Report  (--cq)
-             ### Competency Questions / Duplicate CQs / Not used by any CQ / Per competency question
         """
         parts = []
         href = _link_href(link_base)
-        if coverage is not None:
+        if coverage is not None and graph is not None and ontology_graph is not None:
+            ctx = coverage_context(graph, ontology_graph)
+            _link_report_refs(ctx, href)
             parts.append("# Ontologies Report")
             parts.append("## Coverage Report")
-            _link_report_refs(coverage, href)
-            ontologies = ontology_report(self.ontology_paths, href=href)
+            ontologies = read_ontologies(graph)
+            for o in ontologies:
+                o["url"] = href(o["path"])
             if ontologies:
                 parts.append(render_ontologies(ontologies))
-            parts.append(render_term_coverage(coverage))
-            if coverage.get("tbox_in_data"):
-                parts.append(render_tbox_in_data(coverage["tbox_in_data"]))
-        # CQ report — from coverage when available, else the no-ontology cq_view.
-        view = coverage if coverage is not None else cq_view
-        if self.cq and view is not None:
-            _link_report_refs(view, href)
-            per_cq = view.get("per_cq", [])
-            self._enrich_cq(per_cq, spec_by_uri, coverage, href)
+            parts.append(render_term_coverage(ctx))
+            if ctx.get("tbox_in_data"):
+                parts.append(render_tbox_in_data(ctx["tbox_in_data"]))
+        if self.cq and graph is not None:
+            cqr = cq_report(graph, ontology_graph, href)
             parts.append("## Competency Questions Report" if coverage is not None
                          else "# Competency Questions Report")
-            parts.append(render_cq_table(per_cq, show_coverage=coverage is not None))
-            if view.get("duplicate_cqs"):
-                parts.append(render_duplicate_cqs(view["duplicate_cqs"]))
-            if coverage is not None:
-                parts.append(render_cq_gaps(coverage.get("cq_gaps", [])))
-            if per_cq:
-                parts.append(render_per_cq(per_cq, view.get("unchecked", False)))
+            parts.append(render_cq_table(cqr["per_cq"], show_coverage=cqr["has_ontology"]))
+            if cqr["duplicate_cqs"]:
+                parts.append(render_duplicate_cqs(cqr["duplicate_cqs"]))
+            if cqr["has_ontology"]:
+                parts.append(render_cq_gaps(cqr["cq_gaps"]))
+            if cqr["per_cq"]:
+                parts.append(render_per_cq(cqr["per_cq"], unchecked=not cqr["has_ontology"]))
         return "\n\n".join(parts)
-
-    def _enrich_cq(self, per_cq, spec_by_uri, coverage, href):
-        """In place: give each CQ entry its source-file link and, per linked test,
-        a link to its spec file and a coverage status (the undeclared terms it
-        references, else ✅ passed). Dangling cqSpec targets get a display name."""
-        issues = {}
-        for term in (coverage or {}).get("undeclared", []):
-            for ref in term["refs"]:
-                where = ("data & SPARQL" if ref["in_data"] and ref["in_query"]
-                         else "input data" if ref["in_data"] else "SPARQL")
-                issues.setdefault(ref["name"], []).append(f"{term['term']} ({where})")
-        for entry in per_cq:
-            entry["cq_link"] = href(entry.get("source_file"))
-            entry["missing_names"] = [_local_name(u) for u in entry.get("missing_specs", [])]
-            for t in entry.get("tests", []):
-                t["test_link"] = href(spec_by_uri.get(t.get("uri"), {}).get("source_file"))
-                if coverage is not None:
-                    probs = issues.get(t["name"])
-                    t["coverage_status"] = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
-        return per_cq
 
     def _report_to_terminal(self, config, body):
         tr = config.pluginmanager.get_plugin("terminalreporter")

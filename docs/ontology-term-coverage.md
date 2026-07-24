@@ -256,6 +256,15 @@ The code is split into three layers, one-directional (`ontology.py` <-
 - **`mustrd/cq.py`** — the competency-question overlay: duplicate-question
   detection, `cq:cqSpec` resolution, the per-CQ breakdown, and `cq_only_view`
   (`--cq` with no ontology).
+- **`mustrd/coverage_rdf.py`** — serialises a run to the canonical RDF graph
+  (both halves): coverage measurements/terms/issues, and CQ nodes with a
+  `cov:Assertion` per linked test. `cq_graph` builds a CQ-only graph for `--cq`
+  with no ontology.
+- **`mustrd/coverage_render.py`** / **`mustrd/cq_render.py`** — rebuild the
+  Coverage Report and Competency Questions Report template contexts **from that
+  graph** (+ the ontology, for the tree). The **whole report** is therefore a pure
+  function of the RDF, tested at two levels: `compute → graph` (data) and
+  `graph → Markdown` (rendering).
 
 Also: `mustrd/TestResult.py` render helpers; the `--term-coverage` / `--cq`
 options, CQ-node collection, `:hasOntologyPath` parsing and the fail-early check
@@ -281,6 +290,47 @@ those links point depends on where the report is read:
   into the repo web UI — `{GITHUB_SERVER_URL}/{GITHUB_REPOSITORY}/blob/{GITHUB_SHA}/{path}`
   (path relative to `GITHUB_WORKSPACE`). No configuration is needed; those
   variables are injected by the Actions runner.
+
+### RDF output (`--term-coverage-rdf`)
+
+Coverage is a **quality of the ontology** (as exercised by the tests), so it is
+published as RDF and merged into a knowledge graph. This graph is the
+**canonical output** of a coverage run — the Coverage Report Markdown is rendered
+*from it* (see the module list above), not the other way round.
+`--term-coverage-rdf=PATH` writes a Turtle graph using **W3C DQV** (Data Quality
+Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
+[`mustrd/model/coverage-ontology.ttl`](../mustrd/model/coverage-ontology.ttl)
+(namespace `https://mustrd.org/coverage/`):
+
+- **Aggregate** — a `dqv:QualityMeasurement` for `cov:termCoverageByTests` (and,
+  with `--cq`, `cov:termCoverageByCompetencyQuestions`), value a decimal **ratio**
+  (0–1; the % is display-only), `dqv:computedOn` **each ontology IRI and its
+  `owl:versionIRI`**, `prov:wasGeneratedBy` the run.
+- **Per term** — a `cov:TermCoverage` for every declared term: `cov:term` the
+  actual term IRI, `cov:kind`, `cov:role` / `cov:cqRole` a `cov:CoverageRole`
+  (Covered / QueryOnly / Structural / Unused), `cov:inData` / `cov:inQuery`, a
+  `cov:structuralReason` when structural, and a `cov:exercise` per backing test
+  (`cov:Exercise` → `cov:test` + its own `cov:inData` / `cov:inQuery`). Every
+  triple is kept, so the whole report is reconstructable and the aggregate is
+  explainable from the graph.
+- **Quality issues** — `cov:QualityIssue` for *used but not declared* and *TBox in
+  test data*, linked to the term / test.
+- **Competency questions** — each `cq:CompetencyQuestion` node (its `cq:question`
+  and `cq:cqSpec` links) with a `cov:Assertion` per linked test (`cov:onTest`,
+  `cov:outcome` Passed/Failed, `cov:requiresOntology`); duplicate-question CQs
+  carry `cov:duplicate`. Each test also records its `cov:usesInData`/`usesInQuery`
+  domain terms. This is what CQ↔test/term linking looks like in the graph, and
+  what the Competency Questions Report is rendered from.
+- **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent and
+  `prov:used` the ontologies (and the commit in CI). All instances get **stable
+  minted IRIs** (run slug = commit SHA in CI, else `local`) — no blank nodes — so
+  runs merge and diff cleanly.
+
+Because the tests, competency questions and ontology terms are all real IRIs, a
+consumer can query across the merged graph — e.g. coverage % per ontology version
+over time, which terms carry a quality issue, or which competency question pins
+down a given term. See
+[`report/term-coverage-example.ttl`](examples/geography-example/report/term-coverage-example.ttl).
 
 ### Known limitations / open questions
 
