@@ -1,55 +1,100 @@
 # .github/workflows/publish.yml
 #
-# Publish mustrd to PyPI. The version is taken from the trigger, not from the
-# committed pyproject.toml, so the git tag / release is the single source of
-# truth for what gets published.
+# Publish mustrd to PyPI. The pushed git tag is the single source of truth for
+# what ships and under what version — the committed pyproject.toml version is
+# overwritten at build time. Version numbers are plain ordinals, not semver
+# promises (see RELEASING.md).
 #
-# Full release:
-#   Create a GitHub Release with tag `v0.7.5` (leave "pre-release" unticked).
+# Cut a release:
+#   git tag 0.7.5 <sha>        # tag string == PyPI version, no "v" prefix
+#   git push origin 0.7.5      # -> builds that SHA, publishes 0.7.5, cuts a GH Release
 #
-# Beta / pre-release (PEP 440 a/b/rc suffix — pip ignores these unless the user
-# passes --pre or pins the exact version, so they never reach `pip install mustrd`
-# by accident):
-#   Create a GitHub Release with tag `v0.7.5b1` and tick "Set as a pre-release",
-#   or run this workflow manually (Actions -> Publish to PyPI -> Run workflow)
-#   and enter a version like `0.7.5b1`.
+# Cut a candidate / beta (PEP 440 a/b/rc suffix — pip hides these from
+# `pip install mustrd` unless the user passes --pre or pins the exact version):
+#   git tag 0.8.0rc1 <sha>
+#   git push origin 0.8.0rc1
+#
+# Manual run (Actions -> Publish to PyPI -> Run workflow) re-publishes a one-off
+# version without tagging (no GitHub Release is cut in that case).
+#
+# Rehearsing without touching real PyPI: pushing a candidate tag (e.g. 0.7.5rc1)
+# is already a safe rehearsal — pip hides pre-releases from normal installs. If
+# you ever want a fully isolated sandbox instead, TestPyPI (https://test.pypi.org)
+# is a separate throwaway instance with its own account/token; add a
+# TESTPYPI_API_TOKEN secret and a publish step pointing at
+# https://test.pypi.org/legacy/. Deliberately not wired up here to keep this simple.
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      # Any tag that starts with a digit is a version tag (0.7.5, 0.8.0rc1,
+      # 2026.7.24, ...). Branch-style tags starting with a letter are ignored.
+      - "[0-9]*"
   workflow_dispatch:
     inputs:
       version:
-        description: "PEP 440 version to publish, e.g. 0.7.5 (final) or 0.7.5b1 (beta)"
+        description: "PEP 440 version to publish, e.g. 0.7.5 (final) or 0.8.0rc1 (beta)"
         required: true
         type: string
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      # Needed to create the GitHub Release from the tag.
+      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
-      - name: Resolve version (release tag or manual input)
+
+      - name: Resolve version + channel
         id: v
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            V="${GITHUB_REF_NAME#v}"      # tag v0.7.5b1 -> 0.7.5b1
+          set -euo pipefail
+          python -m pip install --quiet packaging
+          if [ "${{ github.event_name }}" = "push" ]; then
+            V="${GITHUB_REF_NAME}"        # the pushed tag, verbatim
           else
             V="${{ github.event.inputs.version }}"
           fi
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Publishing mustrd $V"
+          V="${V#v}"                      # tolerate an accidental leading "v"
+          # Fail fast on a typo'd tag, and normalise (e.g. 0.8.0-rc1 -> 0.8.0rc1).
+          NORM="$(python -c "from packaging.version import Version; print(Version('$V'))")"
+          IS_PRE="$(python -c "from packaging.version import Version; print(str(Version('$V').is_prerelease).lower())")"
+          echo "version=$NORM"       >> "$GITHUB_OUTPUT"
+          echo "prerelease=$IS_PRE"  >> "$GITHUB_OUTPUT"
+          echo "Publishing mustrd $NORM (prerelease=$IS_PRE)"
+
       - name: Stamp the version onto the package
         run: poetry version "${{ steps.v.outputs.version }}"
-      - name: Build and publish
+
+      - name: Build (clean dist first)
+        run: |
+          rm -rf dist
+          poetry build
+
+      - name: Publish to PyPI
         env:
           # Poetry reads this env var as the PyPI upload token automatically.
           POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        run: poetry publish --build
+        run: poetry publish
+
+      - name: Create GitHub Release
+        # Only on a tag push — a manual dispatch has no tag to attach notes to.
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag \
+            ${{ steps.v.outputs.prerelease == 'true' && '--prerelease' || '' }}
