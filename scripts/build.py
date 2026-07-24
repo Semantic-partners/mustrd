@@ -8,7 +8,7 @@ and emits serialisations under the slug that matches the namespace's URL path:
   docs/<slug>.rdf       (merged RDF/XML)
   docs/<slug>.jsonld    (merged JSON-LD)
   docs/<slug>.nt        (merged N-Triples)
-  docs/<slug>-doc.html  (browser view)
+  docs/<slug>.html      (browser view; served at the canonical /<slug>)
 
 The original source files are also copied verbatim so they can still be fetched
 individually:
@@ -140,6 +140,10 @@ def render_html(g: Graph, slug: str) -> str:
 <meta charset="utf-8">
 <title>{e(str(label or slug))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="alternate" type="text/turtle" href="/{e(slug)}.ttl">
+<link rel="alternate" type="application/rdf+xml" href="/{e(slug)}.rdf">
+<link rel="alternate" type="application/ld+json" href="/{e(slug)}.jsonld">
+<link rel="alternate" type="application/n-triples" href="/{e(slug)}.nt">
 <style>
   body {{ font: 16px/1.5 system-ui, -apple-system, sans-serif; max-width: 52rem; margin: 0 auto; padding: 0 1rem 3rem; color: #222; }}
   h1 {{ font-size: 1.6rem; margin: 1.5rem 0 0.25rem; }}
@@ -201,10 +205,14 @@ def build_ontology(slug: str, sources: list[str]) -> None:
     for fmt, ext in (("turtle", "ttl"), ("pretty-xml", "rdf"), ("json-ld", "jsonld"), ("nt", "nt")):
         g.serialize(destination=f"{base}.{ext}", format=fmt)
 
-    # Emit HTML under a -doc suffix so Pages' clean-URL behavior doesn't serve
-    # it for the canonical /<slug> (which must reach the Function for
-    # content negotiation).
-    Path(f"{base}-doc.html").write_text(render_html(g, slug), encoding="utf-8")
+    # Emit the browser view as <slug>.html. Pages' clean-URL handling serves it
+    # at the canonical /<slug>, straight from the edge. (Content negotiation via
+    # a Function is not possible for the bare /<slug>: the project serves its
+    # not-found page for any path without a backing file *before* Functions run,
+    # so the Function is never reached. A real file at /<slug> is served; RDF
+    # stays available at /<slug>.ttl etc. and is advertised via <link rel=
+    # "alternate"> in the page head.)
+    Path(f"{base}.html").write_text(render_html(g, slug), encoding="utf-8")
 
     slug_dir = OUT / slug
     slug_dir.mkdir(parents=True, exist_ok=True)
