@@ -14,7 +14,7 @@ Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass
 | Term | Kind | <abbr title="A passing test asserts the term in its given data — as an rdf:type object or an asserted predicate">In input data</abbr> | <abbr title="A passing test's SPARQL query names the term as an IRI (from the parsed query algebra; comments ignored)">In SPARQL</abbr> | <abbr title="Not instantiated or queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property. Excluded from the coverage %">Structural</abbr> | <abbr title="covered = populated in a passing test's input data; query-only = named by a query but never instantiated (not covered); structural = excluded; unused = untouched">Test Term Coverage</abbr> |{% if coverage.has_cq %} <abbr title="Whether a competency question — not just any test — exercises the term">CQ Term Coverage</abbr> |{% endif %}
 |------|------|:---:|:---:|:---:|:---:|{% if coverage.has_cq %}:---:|{% endif %}
 {% for t in coverage.terms -%}
-| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{{ t.term }}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else ('❌ query only' if t.status == 'query-only' else '❌ unused')) }} |{% if coverage.has_cq %} {{ '✅ covered' if t.cq_status == 'covered' else ('🔧 structural' if t.cq_status == 'schema' else ('❌ query only' if t.cq_status == 'query-only' else '❌ unused')) }} |{% endif %}
+| {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * t.depth }}{% if t.connector == 'sub' %}↳ {% elif t.connector == 'prop' %}▸ {% endif %}{% if t.link %}[{{ t.term }}]({{ t.link }}){% else %}{{ t.term }}{% endif %}{% if t.external %} · _external_{% endif %}{% if t.extra_parents %} _(also ⊑ {{ t.extra_parents | join(', ') }})_{% endif %} | {{ t.kind }} | {{ '✅' if t.in_data else '❌' }} | {{ '✅' if t.in_query else '❌' }} | {{ '✅' if t.in_schema else '·' }} | {{ '✅ covered' if t.status == 'covered' else ('🔧 structural' if t.status == 'schema' else ('❌ query only' if t.status == 'query-only' else '❌ unused')) }} |{% if coverage.has_cq %} {{ '✅ covered' if t.cq_status == 'covered' else ('🔧 structural' if t.cq_status == 'schema' else ('❌ query only' if t.cq_status == 'query-only' else '❌ unused')) }} |{% endif %}
 {% for r in t.cover_refs or [] -%}
 | {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * (t.depth + 1) }}• [{{ r.name }}]({{ r.link }}) | | {{ '✅' if r.in_data else '❌' }} | {{ '✅' if r.in_query else '❌' }} | · | |{% if coverage.has_cq %} |{% endif %}
 {% endfor -%}
@@ -37,7 +37,7 @@ A term's **In input data** / **In SPARQL** columns aggregate across *all* tests,
 
 {% if coverage.gaps -%}
 {% for t in coverage.gaps -%}
-- {{ t.term }} ({{ t.kind }}) — {% if t.query_only %}**query-only**: named by a query but never populated in any test's input data, so the test passes without it (consider moving the enabling TBox axiom into the ontology){% else %}declared in the ontology but not exercised by any test (nor structural to one){% endif %}
+- {% if t.link %}[{{ t.term }}]({{ t.link }}){% else %}{{ t.term }}{% endif %} ({{ t.kind }}) — {% if t.query_only %}**query-only**: named by a query but never populated in any test's input data, so the test passes without it (consider moving the enabling TBox axiom into the ontology){% else %}declared in the ontology but not exercised by any test (nor structural to one){% endif %}
 {% endfor %}
 {%- else -%}
 _none — every declared term is covered or structural_
@@ -48,7 +48,7 @@ _none — every declared term is covered or structural_
 Not directly exercised, but load-bearing — they define the structure of the terms the tests use:
 
 {% for t in coverage.schema_terms -%}
-- {{ t.term }} ({{ t.kind }}) — {{ t.reason }}
+- {% if t.link %}[{{ t.term }}]({{ t.link }}){% else %}{{ t.term }}{% endif %} ({{ t.kind }}) — {{ t.reason }}
 {% endfor %}
 {%- endif %}
 {% if coverage.undeclared %}
@@ -56,7 +56,7 @@ Not directly exercised, but load-bearing — they define the structure of the te
 
 Referenced by a test, and in an ontology's namespace, but **not declared** in any loaded ontology — a likely typo or a missing definition:
 {% for u in coverage.undeclared %}
-- **{{ u.term }}**
+- **{% if u.link %}[{{ u.term }}]({{ u.link }}){% else %}{{ u.term }}{% endif %}**
 {% for r in u.refs %}  - {% if r.link %}[{{ r.name }}]({{ r.link }}){% else %}{{ r.name }}{% endif %} — {% if r.in_data and r.in_query %}input data & SPARQL{% elif r.in_data %}input data{% else %}SPARQL{% endif %}
 {% endfor %}{% endfor %}
 {%- endif %}

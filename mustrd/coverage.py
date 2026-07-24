@@ -20,6 +20,9 @@ namespaces so vocabulary terms like rdfs:label are not mistaken for the
 ontology under test.
 """
 import logging
+import os
+import re
+from pathlib import Path
 from typing import List, Optional
 
 from rdflib import Graph, URIRef, RDF, RDFS
@@ -28,6 +31,7 @@ from mustrd.ontology import (
     CLASS_TYPES, PROPERTY_TYPES,
     wk_qname, is_domain_term, namespace,
     declared_terms, metadata_terms, query_uris, abox_terms, shortener,
+    expand_ontology_files,
 )
 
 
@@ -296,13 +300,13 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
     term (not just data ones) so a term whose data and SPARQL come from
     *different* tests is visible in its per-test sub-rows."""
     if external:
-        return {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": True,
+        return {"depth": depth, "kind": kind, "term": ctx["short"](term), "iri": term, "external": True,
                 "connector": connector, "in_data": False, "in_query": False,
                 "in_schema": True, "status": "schema", "cq_status": "schema",
                 "by_cq_state": "schema"}
     f = ctx["facts"].get(term, {})
     role, cq_role = f.get("role", "unused"), f.get("cq_role", "unused")
-    row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "external": False,
+    row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "iri": term, "external": False,
            "connector": connector, "in_data": bool(f.get("in_data")),
            "in_query": bool(f.get("in_query")), "in_schema": role == "schema",
            "status": role, "cq_status": cq_role,
@@ -396,7 +400,7 @@ def _build_facts(declared, used_data, used_query, cq_used_data, cq_used_query,
 
 
 def _schema_term_rows(schema_only, schema_reasons, declared, short):
-    return [{"term": short(t), "kind": declared[t],
+    return [{"term": short(t), "iri": t, "kind": declared[t],
              "reason": "; ".join(sorted(schema_reasons[t], key=_reason_key)[:3])}
             for t in sorted(schema_only)]
 
@@ -416,6 +420,87 @@ def _build_undeclared(referenced_data, referenced_query, declared, declared_set,
                 for (name, src, sd, sq, uri) in spec_refs if t in sd or t in sq]
         undeclared.append({"term": short(t), "iri": t, "refs": refs})
     return undeclared
+
+
+def _find_decl_line(iri, lines) -> Optional[int]:
+    """Best-effort 1-based line of a term's declaration in TTL/N3 source text:
+    the first line whose subject is that term, written either as `<...local>` or
+    `prefix:local` (matching the exact local name, not a longer one)."""
+    local = re.split(r"[#/]", str(iri))[-1]
+    if not local:
+        return None
+    pat = re.compile(
+        r"^\s*(?:<[^>]*[#/]" + re.escape(local) + r">|[\w.\-]*:" + re.escape(local) + r")(?![A-Za-z0-9_])"
+    )
+    for i, ln in enumerate(lines, 1):
+        if pat.match(ln):
+            return i
+    return None
+
+
+def term_source_index(paths) -> dict:
+    """Map each declared term IRI -> {'file': Path, 'line': int|None}: the file
+    that declares it and the (best-effort) line of its declaration. First file to
+    declare a term wins."""
+    index = {}
+    for f in expand_ontology_files(paths):
+        try:
+            g = Graph()
+            g.parse(str(f))
+        except Exception as e:
+            log.warning(f"Could not parse ontology file {f}: {e}")
+            continue
+        decl = declared_terms(g)
+        if not decl:
+            continue
+        try:
+            lines = Path(f).read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            lines = []
+        for iri in decl:
+            index.setdefault(iri, {"file": Path(f), "line": _find_decl_line(iri, lines)})
+    return index
+
+
+def apply_term_links(coverage, mode, paths=None, link_base=None):
+    """Attach a markdown link `href` to each term row, per `mode`:
+
+      'file' — a relative deep link into the declaring ontology file, anchored at
+               the term's declaration line (`path#L<line>`). For local viewers
+               (VS Code / GitHub) browsing the ontology sources.
+      'iri'  — the term's full IRI, for environments where the IRI HTTP-resolves
+               (a published ontology / triplestore).
+      'off' / None — no links (entries left unchanged).
+
+    Mutates and returns `coverage`. Safe to call when coverage is None.
+    """
+    if not coverage or mode in (None, "off", "none"):
+        return coverage
+    index = term_source_index(paths) if mode == "file" else {}
+    base = Path(link_base) if link_base is not None else Path.cwd()
+
+    def link_for(iri):
+        if not iri:
+            return None
+        if mode == "iri":
+            return str(iri)
+        entry = index.get(iri)
+        if not entry:
+            return None
+        try:
+            href = os.path.relpath(entry["file"], base)
+        except ValueError:
+            href = str(entry["file"])
+        if entry.get("line"):
+            href += f"#L{entry['line']}"
+        return href
+
+    for key in ("terms", "gaps", "cq_gaps", "schema_terms", "undeclared"):
+        for entry in coverage.get(key) or []:
+            href = link_for(entry.get("iri"))
+            if href:
+                entry["link"] = href
+    return coverage
 
 
 def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
@@ -477,7 +562,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # "Not covered by any test": declared, non-structural terms no passing test
     # populates in data. Query-only terms (named by a query but never instantiated)
     # land here too, flagged so the report can distinguish them from the untouched.
-    gaps = [{"term": short(t), "kind": declared[t], "query_only": t in used_query}
+    gaps = [{"term": short(t), "iri": t, "kind": declared[t], "query_only": t in used_query}
             for t in sorted(declared) if t not in used_data and t not in schema_only]
     # CQ-scoped gaps: declared, non-structural terms no competency question covers
     # in data. Where a non-CQ test does cover it, carry that test so the report can
@@ -486,7 +571,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     for t in sorted(declared):
         if t in schema_only or t in cq_used_data:
             continue
-        entry = {"term": short(t), "kind": declared[t], "query_only": t in cq_used_query}
+        entry = {"term": short(t), "iri": t, "kind": declared[t], "query_only": t in cq_used_query}
         if t in non_cq_refs:
             entry["non_cq_refs"] = non_cq_refs[t]
         cq_gaps.append(entry)

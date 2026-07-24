@@ -1,0 +1,55 @@
+# .github/workflows/publish.yml
+#
+# Publish mustrd to PyPI. The version is taken from the trigger, not from the
+# committed pyproject.toml, so the git tag / release is the single source of
+# truth for what gets published.
+#
+# Full release:
+#   Create a GitHub Release with tag `v0.7.5` (leave "pre-release" unticked).
+#
+# Beta / pre-release (PEP 440 a/b/rc suffix — pip ignores these unless the user
+# passes --pre or pins the exact version, so they never reach `pip install mustrd`
+# by accident):
+#   Create a GitHub Release with tag `v0.7.5b1` and tick "Set as a pre-release",
+#   or run this workflow manually (Actions -> Publish to PyPI -> Run workflow)
+#   and enter a version like `0.7.5b1`.
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "PEP 440 version to publish, e.g. 0.7.5 (final) or 0.7.5b1 (beta)"
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Resolve version (release tag or manual input)
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            V="${GITHUB_REF_NAME#v}"      # tag v0.7.5b1 -> 0.7.5b1
+          else
+            V="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Publishing mustrd $V"
+      - name: Stamp the version onto the package
+        run: poetry version "${{ steps.v.outputs.version }}"
+      - name: Build and publish
+        env:
+          # Poetry reads this env var as the PyPI upload token automatically.
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+        run: poetry publish --build
