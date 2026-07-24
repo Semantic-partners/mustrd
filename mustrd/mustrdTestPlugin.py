@@ -504,7 +504,7 @@ class MustrdTestPlugin:
             parent = os.path.dirname(self.md_path)
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            with open(self.md_path, "w") as file:
+            with open(self.md_path, "w", encoding="utf-8") as file:
                 file.write(md)
 
         # To stdout (links relative to the cwd, which the terminal linkifies).

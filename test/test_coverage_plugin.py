@@ -28,7 +28,7 @@ def _run(md_path, term_coverage=False, cq=False):
 def test_full_report_term_coverage_and_cq(tmp_path):
     md = tmp_path / "report.md"
     _run(md, term_coverage=True, cq=True)
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
 
     # Two sub-reports under the top title.
     assert "# Ontologies Report" in text
@@ -124,7 +124,7 @@ def test_term_coverage_alone_has_no_cq_sections(tmp_path):
     # none of the competency-question extras.
     md = tmp_path / "report.md"
     _run(md, term_coverage=True, cq=False)
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
     assert "## Coverage Report" in text
     assert "8/9 terms exercised by the tests = 89%" in text
     assert "### Not covered by any test" in text
@@ -140,7 +140,7 @@ def test_cq_alone_has_no_ontology_sections(tmp_path):
     # --cq without --term-coverage: CQ table + per-CQ, no ontology check.
     md = tmp_path / "report.md"
     _run(md, cq=True)
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
     assert "# Competency Questions Report" in text  # standalone -> H1
     assert "### Competency Questions" in text
     assert "In which country is Rotterdam?" in text
@@ -160,7 +160,7 @@ def test_md_without_flags_is_the_result_list(tmp_path):
     # ResultList of every test; no report sections.
     md = tmp_path / "report.md"
     _run(md)
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
     assert "total:" in text  # ResultList summary line
     assert "# Ontologies Report" not in text
     assert "Competency Questions Report" not in text
@@ -178,7 +178,7 @@ def test_github_actions_links_are_absolute(tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_WORKSPACE", os.getcwd())
     md = tmp_path / "report.md"
     _run(md, term_coverage=True, cq=True)
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
 
     base = "https://github.com/Semantic-partners/mustrd/blob/abc123/"
     # an ontology file and a spec file both link to the GitHub web UI
@@ -199,4 +199,5 @@ def test_missing_ontology_path_fails_early():
         plugin._resolve_ontology_paths_or_fail()
     msg = str(exc.value)
     assert "hasOntologyPath" in msg
-    assert "test/test_config_local.ttl" in msg
+    # normalise separators: the message shows a native path (backslashes on Windows)
+    assert "test/test_config_local.ttl" in msg.replace("\\", "/")

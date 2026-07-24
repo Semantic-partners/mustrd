@@ -9,11 +9,18 @@ on:
 
 jobs:
   test:
-    name: Run tests & display coverage
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
+      # Report every cell; a Windows/3.13 failure must not cancel the rest.
+      fail-fast: false
       matrix:
-        python-version: [ "3.11.11" ]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        # git-bash on the Windows runners so echo -e / heredocs behave identically.
+        shell: bash
     permissions:
       # Gives the action the necessary permissions for publishing new
       # comments in pull requests.
@@ -44,15 +51,18 @@ jobs:
         run: |
           # install our working copy of mustrd as a local package, and run the tests as a mustrdPlugin
           poetry run pip install -e .
-          poetry run pytest --mustrd --config="test/test_config_local.ttl"      
+          poetry run pytest --mustrd --config="test/test_config_local.ttl"
+      # Coverage comment runs once, from a single canonical cell, so the
+      # matrix does not post six duplicate comments / race the coverage branch.
       - name: Coverage comment
         id: coverage_comment
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Store Pull Request comment to be posted
         uses: actions/upload-artifact@v4
-        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' && steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
         with:
           name: python-coverage-comment-action
           path: python-coverage-comment-action.txt
