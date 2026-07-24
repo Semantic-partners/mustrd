@@ -202,3 +202,15 @@ docs/mustrdTest.jsonld
 docs/mustrdTest.nt
 docs/mustrdTest-doc.html
 docs/mustrdTest/
+docs/coverage.ttl
+docs/coverage.rdf
+docs/coverage.jsonld
+docs/coverage.nt
+docs/coverage-doc.html
+docs/coverage/
+docs/competencyQuestion.ttl
+docs/competencyQuestion.rdf
+docs/competencyQuestion.jsonld
+docs/competencyQuestion.nt
+docs/competencyQuestion-doc.html
+docs/competencyQuestion/

@@ -9,9 +9,9 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix cq:   <https://mustrd.org/competencyQuestion/> .
 
-<https://mustrd.org/coverage> rdf:type owl:Ontology ;
+<https://mustrd.org/coverage/> rdf:type owl:Ontology ;
     owl:imports <http://www.w3.org/ns/dqv#> , <http://www.w3.org/ns/prov#> ,
-                <https://mustrd.org/model> ;
+                <https://mustrd.org/model/> ;
     rdfs:label "MustRD ontology coverage" ;
     rdfs:comment "An RDF view of a mustrd term-coverage run: how well a test suite exercises an ontology, expressed as W3C DQV quality measurements plus a per-term breakdown, so it can be merged into a knowledge graph and queried over time. This is a quality of the ONTOLOGY (measured by the tests), not of the test suite." .
 

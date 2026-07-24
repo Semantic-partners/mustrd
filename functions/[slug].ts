@@ -17,7 +17,7 @@ interface Env {
 
 type Format = { accept: string; mime: string; suffix: string };
 
-const SLUGS = new Set(['model', 'triplestore', 'mustrdTest']);
+const SLUGS = new Set(['model', 'triplestore', 'mustrdTest', 'coverage', 'competencyQuestion']);
 
 const FORMATS: Record<string, Format> = {
   html:   { accept: 'text/html',             mime: 'text/html; charset=utf-8',   suffix: '-doc.html' },
