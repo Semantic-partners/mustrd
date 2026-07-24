@@ -19,7 +19,9 @@ individually:
 from __future__ import annotations
 
 import html
+import re
 import shutil
+import subprocess
 from pathlib import Path
 
 from rdflib import Graph, URIRef
@@ -65,6 +67,95 @@ def shorten(iri: str, prefixes: list[tuple[str, str]]) -> str:
             suffix = iri[len(ns):]
             return f"{pfx}:{suffix}" if pfx else f":{suffix}"
     return f"<{iri}>"
+
+
+# --- schema diagram (graphviz) --------------------------------------------
+# UML/ER-style class cards (data properties folded into attribute rows),
+# object properties as labelled relations, subClassOf as hollow-triangle
+# generalization. SP colour triad, clean sans, transparent background.
+_DG = dict(
+    hdr="#1f8fc4", hdr_t="#ffffff", border="#cbd0d8", ink="#2b2f36",
+    muted="#9aa0ab", edge="#989fb0", edge_t="#5b6270", sub="#c2c7d0", font="Helvetica",
+)
+
+
+def _data_rows(g: Graph, cls: URIRef) -> list[tuple[str, str]]:
+    rows = []
+    for p in g.subjects(RDF.type, OWL.DatatypeProperty):
+        if g.value(p, RDFS.domain) == cls:
+            r = g.value(p, RDFS.range)
+            rows.append((local_name(str(p)), local_name(str(r)) if r else ""))
+    return sorted(rows)
+
+
+def _card(g: Graph, cls: URIRef) -> str:
+    e = html.escape
+    body = ""
+    for n, r in _data_rows(g, cls):
+        rng = e(r) if r else "&#8212;"
+        body += (
+            f'<TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11" COLOR="{_DG["ink"]}">{e(n)}</FONT></TD>'
+            f'<TD ALIGN="LEFT"><FONT POINT-SIZE="10" COLOR="{_DG["muted"]}">{rng}</FONT></TD></TR>'
+        )
+    return (
+        f'<<TABLE BORDER="1" COLOR="{_DG["border"]}" CELLBORDER="0" CELLSPACING="0" CELLPADDING="7">'
+        f'<TR><TD COLSPAN="2" BGCOLOR="{_DG["hdr"]}" ALIGN="CENTER">'
+        f'<FONT COLOR="{_DG["hdr_t"]}" POINT-SIZE="13"><B>{e(local_name(str(cls)))}</B></FONT></TD></TR>'
+        f'{body}</TABLE>>'
+    )
+
+
+def schema_svg(g: Graph, slug: str) -> str:
+    """Inline SVG for the ontology's object-property relation graph.
+
+    Node set = classes that are the domain or range of an object property
+    (leaf subclasses that only carry a subClassOf edge are left to a future
+    hierarchy view, so this stays legible). Returns "" if graphviz is absent
+    or the ontology has no object-property structure.
+    """
+    if not shutil.which("dot"):
+        print("  (graphviz 'dot' not found — skipping diagram)")
+        return ""
+    e = html.escape
+    objs = []
+    for p in g.subjects(RDF.type, OWL.ObjectProperty):
+        d, r = g.value(p, RDFS.domain), g.value(p, RDFS.range)
+        if isinstance(d, URIRef) and isinstance(r, URIRef):
+            objs.append((d, r, local_name(str(p))))
+    nodeset = {c for d, r, _ in objs for c in (d, r)}
+    if not nodeset:
+        return ""
+    subs = [(s, o) for s, o in g.subject_objects(RDFS.subClassOf)
+            if s in nodeset and isinstance(o, URIRef) and o in nodeset]
+
+    nid = lambda c: local_name(str(c))
+    names = {nid(c) for c in nodeset}
+    dot = [
+        "digraph G {",
+        f'  graph [bgcolor="transparent", rankdir=LR, nodesep=0.5, ranksep=1.0, pad=0.3, fontname="{_DG["font"]}"];',
+        f'  node  [shape=plain, fontname="{_DG["font"]}"];',
+        f'  edge  [fontname="{_DG["font"]}", fontsize=10, color="{_DG["edge"]}", '
+        f'fontcolor="{_DG["edge_t"]}", penwidth=1.2, arrowsize=0.8];',
+    ]
+    for c in nodeset:
+        dot.append(f'  "{nid(c)}" [label={_card(g, c)}];')
+    for d, r, lbl in objs:
+        dot.append(f'  "{nid(d)}" -> "{nid(r)}" [label="{e(lbl)}"];')
+    for s, o in subs:
+        dot.append(f'  "{nid(s)}" -> "{nid(o)}" [arrowhead="onormal", color="{_DG["sub"]}", arrowsize=1.0];')
+    # TEMP (until the curation sidecar lands): pin canonical Given/When/Then order.
+    gwt = [x for x in ("Given", "When", "Then") if x in names]
+    if slug == "model" and len(gwt) > 1:
+        dot.append("  { rank=same; " + "; ".join(f'"{x}"' for x in gwt) + "; }")
+        dot.append("  " + " -> ".join(f'"{x}"' for x in gwt) + " [style=invis, weight=100];")
+    dot.append("}")
+
+    svg = subprocess.run(["dot", "-Tsvg"], input="\n".join(dot),
+                         capture_output=True, text=True, check=True).stdout
+    svg = svg[svg.index("<svg"):]                                   # drop xml/doctype preamble
+    svg = re.sub(r'<svg width="[\d.]+pt" height="[\d.]+pt"', "<svg", svg, count=1)
+    svg = svg.replace("<svg ", '<svg style="max-width:100%;height:auto" ', 1)  # responsive
+    return svg
 
 
 def render_html(g: Graph, slug: str) -> str:
@@ -134,6 +225,14 @@ def render_html(g: Graph, slug: str) -> str:
     version_line = f" &middot; Version {e(str(version))}" if version else ""
     display_iri = iri or f"https://mustrd.org/{slug}/"
 
+    diagram = schema_svg(g, slug)
+    diagram_html = (
+        f'<h2>Diagram</h2>\n<div class="diagram">{diagram}</div>\n'
+        f'<p class="diagram-legend"><span class="sw"></span>&nbsp;class '
+        f'&middot; &rarr; object property &middot; &#9655; subClassOf '
+        f'&middot; rows are data properties</p>\n'
+    ) if diagram else ""
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -163,6 +262,10 @@ def render_html(g: Graph, slug: str) -> str:
   .meta {{ color: #777; font-size: 0.85em; margin-top: 0.3rem; }}
   p.home {{ margin-top: 2rem; font-size: 0.9em; }}
   p.home a {{ color: #0645ad; }}
+  .diagram {{ margin: 1.25rem 0 0.5rem; overflow-x: auto; }}
+  .diagram svg {{ max-width: 100%; height: auto; }}
+  .diagram-legend {{ color: #777; font-size: 0.82em; margin: 0.25rem 0 0; }}
+  .diagram-legend .sw {{ display: inline-block; width: 13px; height: 10px; border-radius: 2px; background: #1f8fc4; vertical-align: middle; }}
 </style>
 </head>
 <body>
@@ -179,6 +282,7 @@ def render_html(g: Graph, slug: str) -> str:
   <a href="/{e(slug)}.nt">N-Triples</a>
 </div>
 
+{diagram_html}
 <h2>Classes</h2>
 <dl>{section(classes, "entity")}</dl>
 

@@ -30,6 +30,9 @@ jobs:
 
       - run: pip install -r scripts/requirements.txt
 
+      - name: Install graphviz (schema diagrams)
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
       - name: Build ontology artifacts
         run: python scripts/build.py
 
