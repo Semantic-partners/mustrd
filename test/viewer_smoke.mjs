@@ -143,6 +143,19 @@ if (embedded.length) {
   }
 }
 
+// Each test's sources read in the order you would want them: the spec that
+// defines it, then the query it runs, then the data it loads, then the SPARQL as
+// executed. Alphabetically the spec sorts behind the files it references.
+for (const spec of Object.values(specs)) {
+  const order = (spec.sources || []).map((src) =>
+    !src.path ? 3 : /\.mustrd\.ttl$/.test(src.path) ? 0 : /sparql/i.test(src.media) ? 1 : 2);
+  for (let i = 1; i < order.length; i++) {
+    if (order[i] < order[i - 1]) {
+      fail(`${spec.name}: sources are out of reading order ${JSON.stringify(order)}`);
+    }
+  }
+}
+
 if (expectPath) {
   const want = JSON.parse(readFileSync(expectPath, "utf8"));
   for (const [k, v] of Object.entries(want)) {

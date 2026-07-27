@@ -28,9 +28,18 @@ function readSources(st, s) {
       media: text(st.one(n, COV + "mediaType")) || "text/turtle",
       body: text(st.one(n, COV + "fileText")) || ""
     };
-  }).sort(function (a, b) {                     // the spec first, then its queries
-    return (a.path ? 0 : 1) - (b.path ? 0 : 1) || (a.path || "").localeCompare(b.path || "");
+  }).sort(function (a, b) {
+    return sourceOrder(a) - sourceOrder(b) || (a.path || "").localeCompare(b.path || "");
   });
+}
+
+/** Reading order for a test's sources: the spec that defines it, then the query it
+    runs, then the data it loads, then the SPARQL as executed. Alphabetical order
+    put the spec last, behind the files it references. */
+function sourceOrder(src) {
+  if (!src.path) return 3;                      // the query as executed
+  if (/\.mustrd\.ttl$/.test(src.path)) return 0;
+  return /sparql/i.test(src.media) ? 1 : 2;
 }
 
 /** {iri: {name, source, sources, …}} for every must:TestSpec in the graph. */

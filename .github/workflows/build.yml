@@ -52,6 +52,11 @@ jobs:
           --viewer-title="Geography example — mustrd run report"
           --viewer-src-base="../"
         if: ${{ always() }}
+      - name: Check the example viewer renders
+        # The page's own JavaScript, run against a stub DOM: catches a broken
+        # template include or a view that throws before the page is published.
+        run: node test/viewer_smoke.mjs docs/examples/geography-example/report/index.html
+        if: ${{ always() }}
       - name: Upload pytest test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
