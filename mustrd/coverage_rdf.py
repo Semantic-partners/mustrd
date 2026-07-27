@@ -158,7 +158,18 @@ def _add_spec_metadata(g, coverage):
             g.add((s, COV.usesInQuery, URIRef(t)))
 
 
-def _add_cq_assertions(g, run, cq, tests):
+def _ontology_for_term(term, term_ontology, ont_uris):
+    """The run ontology IRI that declares `term`. Authoritative: the term->ontology
+    map (built from actual declarations). Falls back to the longest ontology IRI
+    that lexically prefixes the term only when the map has no entry (e.g. a
+    directly-constructed graph with no ontology files behind it)."""
+    if term in term_ontology:
+        return term_ontology[term]
+    matches = [u for u in ont_uris if term.startswith(u)]
+    return max(matches, key=len) if matches else None
+
+
+def _add_cq_assertions(g, run, cq, tests, term_ontology, ont_uris):
     for t in tests:
         if not t.get("uri"):
             continue
@@ -169,14 +180,23 @@ def _add_cq_assertions(g, run, cq, tests):
         g.add((a, COV.onCompetencyQuestion, cq))
         g.add((a, COV.onTest, spec))
         g.add((a, COV.outcome, COV.Passed if t.get("status") == "passed" else COV.Failed))
-        g.add((a, COV.requiresOntology, Literal(bool(t.get("requires_ontology")))))
+        # cov:requiresOntology -> the ontology IRI(s) whose class hierarchy the test
+        # matches its data through (was a boolean). One per driving declared class,
+        # resolved to its declaring ontology; falls back to all run ontologies if a
+        # term can't be matched, so the "requires ontology" signal is never lost.
+        for term in t.get("requires_ontology_terms", []):
+            matched = _ontology_for_term(term, term_ontology, ont_uris)
+            for ont in ([matched] if matched else ont_uris):
+                g.add((a, COV.requiresOntology, URIRef(ont)))
         g.add((a, PROV.wasGeneratedBy, run))
 
 
-def _add_competency_questions(g, run, per_cq, duplicate_cqs):
+def _add_competency_questions(g, run, per_cq, duplicate_cqs,
+                              term_ontology=None, ont_uris=()):
     """Emit each CQ node (cq:CompetencyQuestion + cq:question + cq:cqSpec) and,
-    per linked test, a cov:Assertion carrying the outcome and requires-ontology
-    flag. Duplicate-question CQs are emitted with cov:duplicate true."""
+    per linked test, a cov:Assertion carrying the outcome and any
+    cov:requiresOntology links. Duplicate-question CQs link to their peers with
+    cov:duplicateOf."""
     for e in per_cq:
         if not e.get("id"):
             continue
@@ -187,7 +207,7 @@ def _add_competency_questions(g, run, per_cq, duplicate_cqs):
         if e.get("source_file"):
             g.add((cq, COV.sourceFile, Literal(_relpath(e["source_file"]))))
         g.add((cq, PROV.wasGeneratedBy, run))
-        _add_cq_assertions(g, run, cq, e.get("tests", []))
+        _add_cq_assertions(g, run, cq, e.get("tests", []), term_ontology or {}, ont_uris)
         for m in e.get("missing_specs", []):
             g.add((cq, CQ.cqSpec, URIRef(m)))   # dangling: no spec metadata -> flagged
     _add_duplicate_cqs(g, run, duplicate_cqs)
@@ -195,16 +215,17 @@ def _add_competency_questions(g, run, per_cq, duplicate_cqs):
 
 def _add_duplicate_cqs(g, run, duplicate_cqs):
     for d in duplicate_cqs:
-        for c in d.get("cqs", []):
-            if not c.get("id"):
-                continue
+        members = [c for c in d.get("cqs", []) if c.get("id")]
+        for c in members:
             cq = URIRef(c["id"])
             g.add((cq, RDF.type, CQ.CompetencyQuestion))
             for q in (c.get("questions") or [d["question"]]):
                 g.add((cq, CQ.question, Literal(q)))
             if c.get("source_file"):
                 g.add((cq, COV.sourceFile, Literal(_relpath(c["source_file"]))))
-            g.add((cq, COV.duplicate, Literal(True)))
+            for other in members:                      # symmetric links to the peers
+                if other["id"] != c["id"]:
+                    g.add((cq, COV.duplicateOf, URIRef(other["id"])))
             g.add((cq, PROV.wasGeneratedBy, run))
 
 
@@ -217,9 +238,12 @@ def _bind_prefixes(g, extra=()):
 
 
 def coverage_graph(coverage, ontologies, run_slug="local",
-                   commit=None, mustrd_version=None) -> Graph:
+                   commit=None, mustrd_version=None, term_ontology=None) -> Graph:
     """Build the RDF graph. `ontologies` is [{uri, version}] (uri required);
-    `run_slug` seeds the minted run IRI (e.g. a commit SHA, else 'local')."""
+    `run_slug` seeds the minted run IRI (e.g. a commit SHA, else 'local').
+    `term_ontology` maps term IRI -> its declaring owl:Ontology IRI (see
+    `ontology.term_ontology_index`) — used to link cov:requiresOntology to the
+    right ontology; falls back to a namespace-prefix guess when absent."""
     g = Graph()
     _bind_prefixes(g)
     run = URIRef(f"{_BASE}run/{run_slug}")
@@ -228,8 +252,10 @@ def coverage_graph(coverage, ontologies, run_slug="local",
     _add_term_records(g, run, run_slug, coverage)
     _add_issues(g, run, run_slug, coverage)
     _add_spec_metadata(g, coverage)
+    ont_uris = [o["uri"] for o in ontologies if o.get("uri")]
     _add_competency_questions(g, run, coverage.get("per_cq", []),
-                              coverage.get("duplicate_cqs", []))
+                              coverage.get("duplicate_cqs", []),
+                              term_ontology or {}, ont_uris)
     return g
 
 

@@ -16,22 +16,20 @@
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:onCompetencyQuestion <http://example.org/place/example/countryOfRotterdamCQ> ;
     cov:onTest <http://example.org/place/example/countryOfRotterdam> ;
-    cov:outcome cov:Passed ;
-    cov:requiresOntology false .
+    cov:outcome cov:Passed .
 
 <https://mustrd.org/coverage/run/local/assertion/divisionAndCountryOfRotterdamCQ/divisionAndCountryOfRotterdam> a cov:Assertion ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:onCompetencyQuestion <http://example.org/place/example/divisionAndCountryOfRotterdamCQ> ;
     cov:onTest <http://example.org/place/example/divisionAndCountryOfRotterdam> ;
     cov:outcome cov:Passed ;
-    cov:requiresOntology true .
+    cov:requiresOntology <http://example.org/place#> .
 
 <https://mustrd.org/coverage/run/local/assertion/mayorOfRotterdamCQ/mayorOfRotterdam> a cov:Assertion ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cov:onCompetencyQuestion <http://example.org/place/example/mayorOfRotterdamCQ> ;
     cov:onTest <http://example.org/place/example/mayorOfRotterdam> ;
-    cov:outcome cov:Passed ;
-    cov:requiresOntology false .
+    cov:outcome cov:Passed .
 
 <https://mustrd.org/coverage/run/local/issue/tbox-in-data/divisionAndCountryOfRotterdam> a cov:QualityIssue ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;

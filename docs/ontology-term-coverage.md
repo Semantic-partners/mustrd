@@ -317,10 +317,14 @@ Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
   test data*, linked to the term / test.
 - **Competency questions** — each `cq:CompetencyQuestion` node (its `cq:question`
   and `cq:cqSpec` links) with a `cov:Assertion` per linked test (`cov:onTest`,
-  `cov:outcome` Passed/Failed, `cov:requiresOntology`); duplicate-question CQs
-  carry `cov:duplicate`. Each test also records its `cov:usesInData`/`usesInQuery`
-  domain terms. This is what CQ↔test/term linking looks like in the graph, and
-  what the Competency Questions Report is rendered from.
+  `cov:outcome` Passed/Failed, and `cov:requiresOntology` → the **ontology IRI**
+  the test only matches its data *through*, when applicable); duplicate-question
+  CQs link their peers with `cov:duplicateOf`. These are object references, not
+  booleans — presence carries the context (which ontology, which peer CQs), and
+  the renderer derives the yes/no flags it shows. Each test also records its
+  `cov:usesInData`/`usesInQuery` domain terms. This is what CQ↔test/term linking
+  looks like in the graph, and what the Competency Questions Report is rendered
+  from.
 - **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent and
   `prov:used` the ontologies (and the commit in CI). All instances get **stable
   minted IRIs** (run slug = commit SHA in CI, else `local`) — no blank nodes — so

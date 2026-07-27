@@ -32,7 +32,8 @@ def _assertions(graph):
             continue
         out[(str(cq), str(test))] = {
             "status": "passed" if graph.value(a, COV.outcome) == COV.Passed else "not passed",
-            "requires_ontology": to_bool(graph.value(a, COV.requiresOntology))}
+            # bool derived from presence of any cov:requiresOntology ontology link
+            "requires_ontology": (a, COV.requiresOntology, None) in graph}
     return out
 
 
@@ -95,9 +96,7 @@ def _one_cq(graph, cq, meta, usage, assertions, undeclared, declared, short, hre
 
 def _duplicate_cqs(graph, href):
     groups = {}
-    for cq in graph.subjects(COV.duplicate, None):
-        if not to_bool(graph.value(cq, COV.duplicate)):
-            continue
+    for cq in set(graph.subjects(COV.duplicateOf, None)):   # a duplicate links to its peers
         q = graph.value(cq, CQ.question)
         src = graph.value(cq, COV.sourceFile)
         groups.setdefault(str(q) if q is not None else "", []).append(
@@ -148,7 +147,7 @@ def cq_report(graph, ontology_graph, href) -> dict:
     per_cq = [_one_cq(graph, cq, meta, usage, assertions, undeclared, declared,
                       short, href, has_ontology)
               for cq in graph.subjects(RDF.type, CQ.CompetencyQuestion)
-              if not to_bool(graph.value(cq, COV.duplicate))]
+              if (cq, COV.duplicateOf, None) not in graph]
     per_cq.sort(key=lambda e: (e["question"] or "", e["name"]))
 
     return {"per_cq": per_cq,

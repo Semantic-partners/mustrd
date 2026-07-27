@@ -14,7 +14,7 @@ from mustrd.TestResult import (
     ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, apply_term_links
-from mustrd.ontology import load_ontology, ontology_report, local_name
+from mustrd.ontology import load_ontology, ontology_report, local_name, term_ontology_index
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
 from mustrd.coverage_render import coverage_context, read_ontologies
@@ -574,7 +574,9 @@ class MustrdTestPlugin:
         ontologies = [{"uri": r["uri"], "version": r.get("version"),
                        "description": r.get("description"), "path": r.get("path")}
                       for r in ontology_report(self.ontology_paths) if r.get("uri")]
-        return coverage_graph(coverage, ontologies, **self._run_ident())
+        return coverage_graph(coverage, ontologies,
+                              term_ontology=term_ontology_index(self.ontology_paths),
+                              **self._run_ident())
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) and the

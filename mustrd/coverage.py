@@ -89,24 +89,27 @@ def _add_reason(reasons: dict, declared_set: set, term, reason: str) -> None:
             bucket.append(reason)
 
 
-def requires_ontology_to_pass(data_terms: set, query_terms: set, declared: dict, tbox: Graph) -> bool:
-    """Whether a CQ's query matches its data only via a TBox axiom.
+def requires_ontology_terms(data_terms: set, query_terms: set, declared: dict, tbox: Graph) -> list:
+    """The declared classes a CQ's query matches its data only *through* a TBox axiom.
 
-    True when the query references a declared class that is NOT instantiated in
-    the CQ's own data, yet a subclass of it IS — so the query can only match
-    (e.g. through an `rdfs:subClassOf*` path) if the ontology's class hierarchy
-    is loaded as an input. The ontology is deliberately not counted as input
-    data, so this is surfaced separately as "requires ontology to pass".
+    A queried declared class that is NOT instantiated in the CQ's own data, yet
+    has a subclass that IS, can only match (e.g. via an `rdfs:subClassOf*` path)
+    if the ontology's class hierarchy is loaded as an input — the ontology is
+    deliberately not counted as input data. Returns the sorted list of such
+    superclass IRIs (empty when the query passes on its own data); the ontology
+    that declares each is resolved at emit time. Non-empty ⇔ "requires ontology".
     """
     data_classes = [d for d in data_terms if declared.get(d) == "class"]
+    needed = set()
     for q in query_terms:
         if q in data_terms or declared.get(q) != "class":
             continue
         qnode = URIRef(q)
         for d in data_classes:
             if d != q and qnode in set(tbox.transitive_objects(URIRef(d), RDFS.subClassOf)):
-                return True
-    return False
+                needed.add(q)
+                break
+    return sorted(needed)
 
 
 def _derive_declared(given_graphs, ontology):

@@ -105,6 +105,39 @@ def test_cq_nodes_and_assertions_in_graph():
     assert (URIRef("http://ex/a"), COV.usesInData, URIRef("http://onto.org/City")) in g
 
 
+def test_requires_ontology_links_to_the_ontology_iri():
+    # The query matches its data only through the subClassOf hierarchy (data has a
+    # City, query asks for Place), so the assertion links the ontology it needs —
+    # an IRI, not a boolean.
+    data = _graph("""@prefix onto: <http://onto.org/> . @prefix ex: <http://example.org/> .
+    ex:r a onto:City .""")
+    query = """PREFIX onto: <http://onto.org/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT ?x WHERE { ?x a/rdfs:subClassOf* onto:Place }"""
+    spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
+            "given": data, "queries": [query]}
+    cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef(spec)])
+    # term_ontology maps the driving class to its declaring ontology (authoritative)
+    g = coverage_graph(cov, [{"uri": "http://onto.org/"}], run_slug="test",
+                       term_ontology={"http://onto.org/Place": "http://onto.org/"})
+    a = g.value(predicate=COV.onCompetencyQuestion, object=URIRef("http://ex/cq/a"))
+    assert list(g.objects(a, COV.requiresOntology)) == [URIRef("http://onto.org/")]
+    assert (a, COV.requiresOntology, Literal(True)) not in g   # not the old boolean
+
+
+def test_duplicate_cqs_link_to_peers_with_duplicate_of():
+    # Two CQ nodes share a question; each links to the other with cov:duplicateOf
+    # (symmetric) instead of a boolean flag.
+    spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
+            "given": _graph(ONTO, DATA), "queries": [QUERY]}
+    defs = [_cqdef(spec, question="dupe?", name="x"),
+            _cqdef(spec, question="dupe?", name="y")]
+    g = coverage_graph(compute_coverage([spec], ontology=_graph(ONTO), cq_defs=defs),
+                       [{"uri": "http://onto.org/"}], run_slug="test")
+    x, y = URIRef("http://ex/cq/x"), URIRef("http://ex/cq/y")
+    assert (x, COV.duplicateOf, y) in g and (y, COV.duplicateOf, x) in g
+    assert (x, COV.duplicate, Literal(True)) not in g          # old boolean gone
+
+
 def test_cq_only_graph_without_ontology():
     from mustrd.cq import cq_facts
     from mustrd.coverage_rdf import cq_graph

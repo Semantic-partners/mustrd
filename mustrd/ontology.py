@@ -182,6 +182,28 @@ def load_ontology(paths) -> Optional[Graph]:
     return g
 
 
+def term_ontology_index(paths) -> dict:
+    """Map each declared term IRI -> the owl:Ontology IRI of the file that declares
+    it (the first owl:Ontology in that file). The authoritative basis for linking a
+    term to its ontology — based on where the term is actually declared, not a
+    lexical namespace guess. Terms in a file with no owl:Ontology header are
+    omitted (nothing authoritative to point at). First declaration wins."""
+    index = {}
+    for f in expand_ontology_files(paths):
+        g = Graph()
+        try:
+            g.parse(str(f))
+        except Exception as e:
+            log.warning(f"Could not parse ontology file {f}: {e}")
+            continue
+        onts = sorted(str(s) for s in g.subjects(RDF.type, OWL.Ontology))
+        if not onts:
+            continue
+        for t in declared_terms(g):
+            index.setdefault(t, onts[0])
+    return index
+
+
 def declared_terms(graph: Graph) -> dict:
     """Map each declared class/property IRI in the graph to 'class' or 'property'.
 
