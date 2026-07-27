@@ -85,14 +85,15 @@ def test_committed_example_report_is_up_to_date(monkeypatch):
                               term_coverage=True, cq=True, term_coverage_rdf=str(ttl))
     try:
         pytest.main([".", "-p", "no:cacheprovider"], plugins=[plugin])
-        generated_md = md.read_text()
+        generated_md = md.read_text(encoding="utf-8")
         generated_graph = Graph().parse(ttl, format="turtle")
     finally:
         md.unlink(missing_ok=True)
         ttl.unlink(missing_ok=True)
 
-    if generated_md != COMMITTED_MD.read_text():
-        pytest.fail(_stale(COMMITTED_MD.name, _md_diff(generated_md, COMMITTED_MD.read_text())))
+    committed_md = COMMITTED_MD.read_text(encoding="utf-8")
+    if generated_md != committed_md:
+        pytest.fail(_stale(COMMITTED_MD.name, _md_diff(generated_md, committed_md)))
 
     committed_graph = Graph().parse(COMMITTED_TTL, format="turtle")
     diff = _graph_diff(generated_graph, committed_graph)

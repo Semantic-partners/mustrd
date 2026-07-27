@@ -272,9 +272,10 @@ def _link_href(link_base):
             except ValueError:
                 return None
         try:
-            return os.path.relpath(src, link_base or ".")
+            # forward slashes so links are portable (Markdown/URLs never use "\")
+            return os.path.relpath(src, link_base or ".").replace(os.sep, "/")
         except ValueError:
-            return src
+            return src.replace(os.sep, "/")
     return href
 
 

@@ -316,4 +316,6 @@ def _source_link(p, link_base=None, href=None) -> dict:
             url = os.path.relpath(p, base)
         except ValueError:
             url = str(p)
-    return {"path": label, "url": url}
+    # forward slashes so paths/links are OS-independent (Markdown/URLs never use "\")
+    return {"path": label.replace(os.sep, "/"),
+            "url": url.replace(os.sep, "/") if url else url}
