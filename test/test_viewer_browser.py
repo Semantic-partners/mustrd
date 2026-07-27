@@ -49,13 +49,16 @@ def browser():
 
 @pytest.fixture(scope="module")
 def report(tmp_path_factory):
-    """A viewer built from the runnable example, as a file:// URL."""
+    """A viewer built from the runnable example. A Path, not a URL: `as_uri()` is
+    `file:///C:/...` on Windows, and stripping the scheme back off leaves a path
+    with a leading slash before the drive letter."""
     out = tmp_path_factory.mktemp("browser") / "report.html"
-    assert subprocess.run(
+    proc = subprocess.run(
         [sys.executable, "-m", "mustrd.cli", "report", "--config", CONFIG,
          "--viewer", str(out), "--term-coverage", "--cq"],
-        capture_output=True, text=True).returncode == 0
-    return out.resolve().as_uri()
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert proc.returncode == 0, proc.stderr
+    return out.resolve()
 
 
 @pytest.fixture
@@ -68,7 +71,7 @@ def page(browser, report):
     # The page is self-contained: it should never reach for anything.
     page.on("request", lambda r: r.url.startswith("file://")
             or problems.append(f"request: {r.url}"))
-    page.goto(report)
+    page.goto(report.as_uri())
     page.wait_for_selector("nav.tabs button")
     yield page
     page.close()
@@ -170,7 +173,7 @@ def test_the_smoke_harness_agrees(report, tmp_path):
     """Belt and braces: the stub-DOM harness and the browser look at the same file."""
     if shutil.which("node") is None:
         pytest.skip("node is not installed")
-    path = Path(report.replace("file://", ""))
-    proc = subprocess.run(["node", "test/viewer_smoke.mjs", str(path)],
-                          capture_output=True, text=True)
+    proc = subprocess.run(["node", "test/viewer_smoke.mjs", str(report)],
+                          capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
     assert proc.returncode == 0, proc.stderr or proc.stdout

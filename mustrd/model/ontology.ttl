@@ -204,6 +204,24 @@ sh:order rdf:type owl:DatatypeProperty ;
         rdfs:label "sparql" .
 
 
+###  https://mustrd.org/model/specFileName
+:specFileName rdf:type owl:DatatypeProperty ;
+              rdfs:domain :TestSpec ;
+              rdfs:range xsd:string ;
+              rdfs:comment "The name of the file this spec was loaded from. Added when specs are collected, and carried into a run's RDF output so a report can name a test." ;
+              rdfs:isDefinedBy : ;
+              rdfs:label "specFileName" .
+
+
+###  https://mustrd.org/model/specSourceFile
+:specSourceFile rdf:type owl:DatatypeProperty ;
+                rdfs:domain :TestSpec ;
+                rdfs:range xsd:string ;
+                rdfs:comment "The path of the file this spec was loaded from, relative to the working directory in report output. See cov:embeddedSource for the file's content." ;
+                rdfs:isDefinedBy : ;
+                rdfs:label "specSourceFile" .
+
+
 ###  https://mustrd.org/model/targetgraph
 :targetgraph rdf:type owl:DatatypeProperty ;
              rdfs:domain [ rdf:type owl:Class ;

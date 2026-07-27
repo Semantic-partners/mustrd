@@ -212,6 +212,39 @@ def test_sources_graph_skips_unreadable_and_oversized_files():
     assert (URIRef("http://example.org/a"), COV.embeddedSource, queries[0]) in g
 
 
+def test_viewer_reads_only_declared_vocabulary():
+    """The viewer's model layer is a consumer of the coverage vocabulary, and it is
+    JavaScript — so renaming or dropping a term cannot break it at import time the
+    way it would a Python caller. This asserts every term the viewer reads is still
+    declared, and fails pointing at the viewer when the vocabulary moves under it.
+
+    (It cannot catch a term keeping its name but changing its *shape* — a boolean
+    becoming an object property, say. viewer_smoke.mjs pins the rendering for that.)
+    """
+    model_js = (TEMPLATE_FOLDER / "viewer" / "model.js").read_text(encoding="utf-8")
+    vocab = Graph()
+    for ttl in ("coverage-ontology.ttl", "ontology.ttl", "cq-ontology.ttl"):
+        vocab.parse(Path("mustrd/model") / ttl)
+
+    namespaces = {
+        "COV": "https://mustrd.org/coverage/",
+        "MUST": "https://mustrd.org/model/",
+        "CQNS": "https://mustrd.org/competencyQuestion/",
+    }
+    read = {(prefix, term)
+            for prefix, base in namespaces.items()
+            for term in re.findall(rf'{prefix} \+ "(\w+)"', model_js)}
+    assert read, "found no vocabulary references in model.js — did the pattern change?"
+
+    undeclared = sorted(f"{prefix}:{term}" for prefix, term in read
+                        if (URIRef(namespaces[prefix] + term), None, None) not in vocab
+                        and (None, None, URIRef(namespaces[prefix] + term)) not in vocab)
+    assert not undeclared, (
+        "mustrd/templates/viewer/model.js reads vocabulary that the ontologies no "
+        f"longer declare: {', '.join(undeclared)}. Update the viewer to match."
+    )
+
+
 def test_merge_graphs_keeps_prefixes_and_triples():
     """The viewer shortens IRIs purely from the @prefix lines it parses, so the
     merge must carry bindings across (rdflib's += does not)."""
