@@ -248,6 +248,11 @@ cov:mediaType a owl:DatatypeProperty ;
     rdfs:label "media type" ;
     rdfs:comment "'text/turtle' or 'application/sparql-query'." .
 
+cov:fileReference a owl:DatatypeProperty ;
+    rdfs:domain cov:SourceFile ; rdfs:range xsd:string ;
+    rdfs:label "file reference" ;
+    rdfs:comment "How a spec named this file — the must:file or must:fileurl value as written, when it differs from cov:filePath. Lets a report turn the reference inside a spec into a link to the embedded copy." .
+
 cov:fileText a owl:DatatypeProperty ;
     rdfs:domain cov:SourceFile ; rdfs:range xsd:string ;
     rdfs:label "file text" ;

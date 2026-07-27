@@ -67,7 +67,7 @@ const dataLayer = ["turtle.js", "store.js", "model.js"].map(part).join("\n");
 /* ------------------------------------------------------- phase 1: data layer */
 const api = eval(dataLayer + `
 ;({parseTurtle, makeStore, readSpecs, readTests, readCoverage, readCqs, readIssues,
-   readRun, sourcesByPath});`);
+   readRun, sourceIndex});`);
 
 const parsed = api.parseTurtle(ttl);
 if (!parsed.triples.length) fail("parsed 0 triples");
@@ -138,7 +138,8 @@ if (embedded.length) {
   actual.sourceBytes = embedded.reduce((n, s) => n + s.body.length, 0);
   for (const s of embedded) {
     if (!s.body.trim()) fail(`an embedded source (${s.path || s.media}) is empty`);
-    if (!/turtle|sparql/i.test(s.media)) fail(`unexpected media type ${s.media}`);
+    if (!/turtle|sparql|trig|n-triples|n-quads|json|csv|tab-separated|edn|xml/i
+        .test(s.media)) fail(`unexpected media type ${s.media}`);
   }
 }
 
@@ -339,7 +340,9 @@ for (const t of model.tests.rows) {
 }
 if (embedded.length) {
   if (!testsHtml.includes('class="src"')) fail("the tests tab does not show embedded sources");
-  if (!/tok-(kw|iri|pname|string)/.test(testsHtml)) fail("embedded source is not highlighted");
+  for (const cls of ["kw", "iri", "pname", "string", "punct"]) {
+    if (!testsHtml.includes(`class="tok-${cls}"`)) fail(`no tok-${cls} tokens rendered`);
+  }
   const withPath = embedded.find((s) => s.path);
   if (withPath) {
     // A path whose text is embedded must open in place, not link to the filesystem.
@@ -350,11 +353,47 @@ if (embedded.length) {
       fail(`reference to ${withPath.path} still links to the bare path`);
     }
   }
-  // Highlighting is pure re-presentation: the tokens must concatenate back.
-  const one = embedded[0];
-  const joined = ui.highlight(one.body, one.media)
-    .map((n) => (typeof n === "string" ? n : n.textContent)).join("");
-  if (joined !== one.body) fail("the highlighter altered the source text");
+
+  // Highlighting is pure re-presentation: the tokens must concatenate back to the
+  // source, whatever nesting the SPARQL and file-link branches introduce.
+  const nodeText = (n) => (typeof n === "string" ? n : n.textContent);
+  for (const src of embedded) {
+    const joined = ui.highlight(src.body, src.media).map(nodeText).join("");
+    if (joined !== src.body) {
+      fail(`the highlighter altered ${src.path || src.media}`);
+    }
+  }
+
+  // A query inside a spec is highlighted as SPARQL, not left as one string: a
+  // ?variable token can only come from the nested pass, since the Turtle around
+  // it has none.
+  const withQuery = embedded.find((s) =>
+    /turtle/i.test(s.media) && /queryText/.test(s.body) && /\?\w/.test(s.body));
+  if (withQuery) {
+    const nested = ui.highlight(withQuery.body, withQuery.media)
+      .some((n) => typeof n !== "string" && n.attributes?.class === "tok-var");
+    if (!nested) fail("SPARQL inside must:queryText was not highlighted as SPARQL");
+  }
+
+  // A file a spec names is a link to the embedded copy, not inert text. It can be
+  // named as a string (must:file "mayor.ttl") or as an IRI
+  // (must:fileurl <file://./select-query.sparql>); both must resolve.
+  const knownRefs = new Set(embedded.flatMap((s) => [s.path, ...(s.references || [])]));
+  if (embedded.some((s) => (s.references || []).length)) {
+    const links = Object.values(specs)
+      .flatMap((spec) => spec.sources || [])
+      .filter((src) => /turtle/i.test(src.media))
+      .flatMap((src) => ui.highlight(src.body, src.media))
+      .filter((n) => typeof n !== "string" && /tok-file/.test(n.attributes?.class || ""));
+    if (!links.length) fail("no file reference in any spec renders as a link");
+    for (const link of links) {
+      const named = link.textContent;
+      const known = knownRefs.has(named)
+        || [...knownRefs].some((r) => r && r.endsWith(named.split("/").pop()));
+      if (!known) fail(`a file link names ${named}, which is not an embedded source`);
+    }
+    actual.navigableRefs = links.length;
+  }
 }
 
 // Outcome filters must filter.

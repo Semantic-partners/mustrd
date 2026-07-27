@@ -44,19 +44,50 @@ def _read(path):
         return None
 
 
-def sources_graph(specs, read_file=_read) -> Graph:
+def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
     """The embedded-source graph for a run.
 
     `specs` is the same list of spec dicts the coverage computation consumes
     (see reporting.coverage_spec): each needs `uri`, and may have `source_file`
     and `queries`. Each distinct file is read once, however many specs share it —
     several specs commonly live in one .mustrd.ttl.
+
+    `referenced` is {spec IRI: {reference as written: resolved path}} — the files
+    a spec pulls in transitively via must:file / must:fileurl (its given and then
+    datasets, file-based queries). Defaults to what the run recorded while
+    resolving them. The reference *as written* is kept alongside the path so the
+    report can turn `must:file "mayor.ttl"` in a spec into a link to the copy of
+    mayor.ttl it embedded.
     """
+    if referenced is None:
+        from mustrd.spec_component import referenced_files
+        referenced = referenced_files
+
     g = Graph()
     for p, ns in (("cov", COV), ("must", MUST)):
         g.bind(p, ns)
 
     file_nodes = {}                       # path -> node (or None if unreadable)
+
+    def embed(path, reference=None):
+        """A cov:SourceFile for `path`, read once. `reference` is how the spec
+        named it, when that differs from the path."""
+        rel = _relpath(path)
+        if rel not in file_nodes:
+            text = read_file(path)
+            node = None
+            if text is not None:
+                node = URIRef(f"{COV}source/file/{_slug(rel)}")
+                g.add((node, RDF.type, COV.SourceFile))
+                g.add((node, COV.filePath, Literal(rel)))
+                g.add((node, COV.mediaType, Literal(_media_type(rel))))
+                g.add((node, COV.fileText, Literal(text)))
+            file_nodes[rel] = node
+        node = file_nodes[rel]
+        if node is not None and reference and str(reference) != rel:
+            g.add((node, COV.fileReference, Literal(str(reference))))
+        return node
+
     for spec in specs:
         uri = spec.get("uri")
         if not uri:
@@ -65,19 +96,15 @@ def sources_graph(specs, read_file=_read) -> Graph:
 
         src = spec.get("source_file")
         if src and str(src) != "unknown.mustrd.ttl":
-            rel = _relpath(src)
-            if rel not in file_nodes:
-                text = read_file(src)
-                node = None
-                if text is not None:
-                    node = URIRef(f"{COV}source/file/{_slug(rel)}")
-                    g.add((node, RDF.type, COV.SourceFile))
-                    g.add((node, COV.filePath, Literal(rel)))
-                    g.add((node, COV.mediaType, Literal(_media_type(rel))))
-                    g.add((node, COV.fileText, Literal(text)))
-                file_nodes[rel] = node
-            if file_nodes[rel] is not None:
-                g.add((subject, COV.embeddedSource, file_nodes[rel]))
+            node = embed(src)
+            if node is not None:
+                g.add((subject, COV.embeddedSource, node))
+
+        # Whatever the spec pulled in: given/then datasets, file-based queries.
+        for reference, path in sorted((referenced.get(str(uri)) or {}).items()):
+            node = embed(path, reference)
+            if node is not None:
+                g.add((subject, COV.embeddedSource, node))
 
         # The SPARQL as executed — whatever its origin (inline in the spec, a .rq
         # file, or a query builder), so there is no path to resolve.
@@ -93,5 +120,18 @@ def sources_graph(specs, read_file=_read) -> Graph:
     return g
 
 
+_MEDIA_TYPES = {
+    ".rq": SPARQL, ".sparql": SPARQL,
+    ".ttl": TURTLE, ".n3": TURTLE, ".trig": "application/trig",
+    ".nt": "application/n-triples", ".nq": "application/n-quads",
+    ".jsonld": "application/ld+json", ".json": "application/json",
+    ".csv": "text/csv", ".tsv": "text/tab-separated-values",
+    ".rdf": "application/rdf+xml", ".xml": "application/rdf+xml",
+    ".edn": "application/edn",
+}
+
+
 def _media_type(path):
-    return SPARQL if os.path.splitext(path)[1].lower() in (".rq", ".sparql") else TURTLE
+    """Turtle is the default: an unrecognised extension here is far more likely to
+    be a spec or dataset than anything else."""
+    return _MEDIA_TYPES.get(os.path.splitext(path)[1].lower(), TURTLE)

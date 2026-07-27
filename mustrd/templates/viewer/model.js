@@ -22,6 +22,9 @@ function readSources(st, s) {
   return st.objs(s, COV + "embeddedSource").map(function (n) {
     return {
       path: text(st.one(n, COV + "filePath")),
+      // How a spec named it (must:file "mayor.ttl"), when that is not the path —
+      // what lets the reference inside a spec link to the copy embedded here.
+      references: st.objs(n, COV + "fileReference").map(text),
       media: text(st.one(n, COV + "mediaType")) || "text/turtle",
       body: text(st.one(n, COV + "fileText")) || ""
     };
@@ -47,17 +50,32 @@ function readSpecs(st) {
   return out;
 }
 
-/** {path: source} across every spec — lets any file reference in the report open
-    the text that was actually read, instead of a link into a filesystem the
-    reader does not have. */
-function sourcesByPath(specs) {
-  var by = {};
+/** Every embedded source, indexed by the ways a report might refer to it — so a
+    file reference anywhere in the page can open the text that was actually read,
+    instead of linking into a filesystem the reader does not have.
+
+    Returns {byPath, byRef}: byPath for the report's own links (which use the
+    run-relative path), byRef for references as they appear inside a spec —
+    `must:file "mayor.ttl"`, `must:fileurl "file://./data/mayor.ttl"` — plus the
+    bare file name as a last resort. */
+function sourceIndex(specs) {
+  var byPath = {}, byRef = {};
+  var note = function (key, src) {
+    if (key && !byRef[key]) byRef[key] = src;
+  };
   Object.keys(specs).forEach(function (k) {
     (specs[k].sources || []).forEach(function (src) {
-      if (src.path && !by[src.path]) by[src.path] = src;
+      if (!src.path) return;
+      if (!byPath[src.path]) byPath[src.path] = src;
+      note(src.path, src);
+      (src.references || []).forEach(function (ref) {
+        note(ref, src);
+        note(String(ref).replace(/^file:\/\//, "").replace(/^\.\//, ""), src);
+      });
+      note(src.path.split("/").pop(), src);
     });
   });
-  return by;
+  return { byPath: byPath, byRef: byRef };
 }
 
 /** cov:TestResult records, grouped module -> class, Playwright-style. */

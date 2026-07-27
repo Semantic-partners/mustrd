@@ -107,21 +107,23 @@ def test_viewer_matches_the_markdown_report(tmp_path):
 
 def test_spec_sources_are_embedded_by_default(viewer_html):
     """A path only resolves from the directory the run happened in, so the page
-    carries the spec's Turtle and the SPARQL it ran."""
+    carries the spec's Turtle, the SPARQL it ran, and the files it pulled in."""
     g = Graph().parse(data=_embedded_turtle(viewer_html.read_text(encoding="utf-8")),
                       format="turtle")
     COV = Namespace("https://mustrd.org/coverage/")
     sources = list(g.subjects(RDF.type, COV.SourceFile))
-    assert len(sources) == 8              # 4 spec files + the 4 queries they run
+    # 4 spec files + the 4 queries they run + the 4 datasets they load.
+    assert len(sources) == 12
 
     media = {str(g.value(s, COV.mediaType)) for s in sources}
     assert media == {"text/turtle", "application/sparql-query"}
 
-    # The Turtle nodes carry a path and the real file content.
+    # Every Turtle node carries a path and the real file content.
     ttl = [s for s in sources if str(g.value(s, COV.mediaType)) == "text/turtle"]
+    paths = sorted(str(g.value(s, COV.filePath)) for s in ttl)
+    assert sum(p.endswith(".mustrd.ttl") for p in paths) == 4
     for s in ttl:
         path = str(g.value(s, COV.filePath))
-        assert path.endswith(".mustrd.ttl")
         assert str(g.value(s, COV.fileText)) == Path(path).read_text(encoding="utf-8")
 
     # The SPARQL is the query as executed, so it has no path to resolve.
@@ -129,6 +131,46 @@ def test_spec_sources_are_embedded_by_default(viewer_html):
               if str(g.value(s, COV.mediaType)) == "application/sparql-query"]
     assert all(g.value(s, COV.filePath) is None for s in sparql)
     assert any("SELECT" in str(g.value(s, COV.fileText)).upper() for s in sparql)
+
+
+def test_transitively_referenced_files_are_embedded_and_linkable(viewer_html):
+    """`must:file "mayor.ttl"` in a spec used to name a file the report did not
+    have. The dataset is embedded now, and keeps the reference as the spec wrote
+    it so the viewer can turn that literal into a link to this copy."""
+    g = Graph().parse(data=_embedded_turtle(viewer_html.read_text(encoding="utf-8")),
+                      format="turtle")
+    COV = Namespace("https://mustrd.org/coverage/")
+
+    by_reference = {str(g.value(s, COV.fileReference)): s
+                    for s in g.subjects(COV.fileReference, None)}
+    assert set(by_reference) == {"country.ttl", "division.ttl", "mayor.ttl", "region.ttl"}
+
+    node = by_reference["mayor.ttl"]
+    path = str(g.value(node, COV.filePath))
+    # The reference resolved to a real dataset, recorded relative to the run.
+    assert path == "docs/examples/geography-example/data/mayor.ttl"
+    assert str(g.value(node, COV.fileText)) == Path(path).read_text(encoding="utf-8")
+    # And it hangs off the spec that referenced it.
+    specs = list(g.subjects(COV.embeddedSource, node))
+    assert any("mayorOfRotterdam" in str(s) for s in specs)
+
+
+def test_referenced_files_come_from_what_the_run_resolved():
+    """The mapping is recorded where mustrd resolves a reference, so it cannot
+    disagree with what was actually read."""
+    from mustrd.spec_component import referenced_files
+    from mustrd.sources_rdf import sources_graph
+    COV = Namespace("https://mustrd.org/coverage/")
+
+    assert main(["run", "--config", CONFIG]) == 0
+    resolved = {ref for refs in referenced_files.values() for ref in refs}
+    assert {"country.ttl", "mayor.ttl"} <= resolved
+
+    # Passing the mapping in explicitly gives the same result as the recording.
+    spec = next(iter(referenced_files))
+    g = sources_graph([{"uri": spec, "queries": []}],
+                      referenced={spec: referenced_files[spec]})
+    assert [str(o) for o in g.objects(None, COV.fileReference)]
 
 
 def test_no_viewer_sources_omits_them(tmp_path):

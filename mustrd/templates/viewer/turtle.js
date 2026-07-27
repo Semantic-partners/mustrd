@@ -11,10 +11,14 @@
    record: it should not be able to change its mind about what a run said, and
    nobody should have to trust a registry to read one.
 
-   It is cheap. 235 lines against roughly 50KB for a minified N3.js — which is
-   an excellent library, and the right answer the moment this needs to read
-   arbitrary RDF from elsewhere. For a page whose input is Turtle mustrd itself
-   emitted, it is a lot of surface for little gain.
+   It is cheap. 235 lines against roughly 50KB for a minified N3.js — which is an
+   excellent library and the right answer if this ever needs to be a general RDF
+   reader. Note what the page actually invites: dropping in *another mustrd run*,
+   to compare or merge it. That input is Turtle mustrd emitted, from a version of
+   this same codebase. Arbitrary RDF from anywhere is explicitly not the promise;
+   it usually works, and when it does not it fails loudly and says so, with the
+   JSON-LD reader below as the way through. If that promise ever widens, this is
+   the file to replace, and `parseTurtle` has exactly one call site.
 
    And it is a fair advertisement for the format. That a usefully complete
    reader for a graph serialisation fits in 235 lines is most of the argument
@@ -28,6 +32,17 @@
    Not RDF-star, not TriG graphs, no full Unicode PN_CHARS validation. It throws
    with an offset and a snippet rather than quietly mis-parsing, and the JSON-LD
    reader below is the escape hatch when a real parser produced the file.
+
+   TriG is the intended next step, not a reason to reach for N3.js. Runs
+   accumulated over time want a graph each — `GRAPH <…/run/{sha}> { … }` — so the
+   viewer can hold a history and diff it, which is the whole point of minting
+   stable IRIs in the first place. The grammar delta is small: a `GRAPH`-prefixed
+   or bare `<iri> { … }` block, and `{ … }` for the default graph. The work is
+   downstream of the parse, not in it — `triples.push` here is a single funnel
+   that becomes `quads.push`, `makeStore` grows a graph dimension, and the model
+   readers gain an opinion about which run they are reading. Deliberately not
+   started: half a graph model — parsing TriG and then flattening it — would lose
+   exactly the information a run history is for.
 
    Terms are interned as strings so the indexes can use plain Maps:
      IRI      "<iri>"

@@ -52,7 +52,11 @@ const srcRef = (path, name = path) => {
   const src = model.val?.sources[path];
   if (src) {
     return a({ class: "srclink", href: "#", title: "Show " + path,
-               onclick: ev => { ev.preventDefault(); sheet.val = src; } }, name);
+               onclick: ev => {
+                 ev.preventDefault();
+                 copied.val = false;          // no stale "Copied ✓" on a new file
+                 sheet.val = src;
+               } }, name);
   }
   const base = srcBase();
   return base ? a({ href: base + path, title: path }, name)
@@ -60,51 +64,212 @@ const srcRef = (path, name = path) => {
 };
 
 /* ---- syntax highlighting for the embedded Turtle / SPARQL -----------------
-   Returns Text nodes and <span>s, so highlighting cannot alter the content it
-   presents. */
-const TTL_RE = new RegExp([
-  "(#[^\\n]*)",                                                   // comment
-  "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
-  "(<[^>\\s]*>)",                                                 // IRI
-  "(@prefix|@base|\\ba\\b|\\btrue\\b|\\bfalse\\b)",               // keyword
-  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                               // prefixed name
-  "(-?\\b\\d+(?:\\.\\d+)?\\b)"                                    // number
-].join("|"), "g");
-const TTL_CLASSES = [null, "comment", "string", "iri", "kw", "pname", "num"];
+   A token walk rather than a chain of replacements, because two things a reader
+   of a mustrd spec actually needs cannot be done with a flat regex:
 
-const SPARQL_RE = new RegExp([
-  "(#[^\\n]*)",
-  "(\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
-  "(<[^>\\s]*>)",
-  "([?$][A-Za-z_]\\w*)",                                          // variable
-  "\\b(SELECT|CONSTRUCT|ASK|DESCRIBE|WHERE|INSERT|DELETE|DATA|GRAPH|OPTIONAL|" +
-    "FILTER|BIND|VALUES|UNION|MINUS|SERVICE|PREFIX|BASE|DISTINCT|REDUCED|ORDER|" +
-    "GROUP|BY|HAVING|LIMIT|OFFSET|AS|NOT|EXISTS|IN|WITH|USING|FROM|NAMED|SILENT|" +
-    "CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|TRUE|FALSE)\\b",
-  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)"
-].join("|"), "gi");
-const SPARQL_CLASSES = [null, "comment", "string", "iri", "var", "kw", "pname"];
+   Nested SPARQL. A spec's query arrives as `must:queryText """SELECT …"""`. As
+   one string token that is a wall of a single colour, which is exactly the part
+   you came to read. So the walk remembers the predicate it just passed, and when
+   a long string belongs to a query predicate — or simply opens like a query —
+   its contents are highlighted as SPARQL inside the quotes.
 
-const highlight = (body, media) => {
-  const sparql = /sparql/i.test(media || "");
-  const re = sparql ? SPARQL_RE : TTL_RE;
-  const classes = sparql ? SPARQL_CLASSES : TTL_CLASSES;
+   Navigable references. `must:file "mayor.ttl"` names a file this page has
+   embedded (see sources_rdf.py). Rendered as a link, it opens that file, so a
+   spec can be read outwards to its data instead of dead-ending at a name.
+
+   Everything is Text nodes and <span>s, so highlighting can only ever change how
+   the source looks, never what it says. */
+
+const TOKEN = {
+  turtle: {
+    re: new RegExp([
+      "(#[^\\n]*)",                                             // 1 comment
+      "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?''')",              // 2 long string
+      "(\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')", // 3 short string
+      "(<[^>\\s]*>)",                                           // 4 IRI
+      "(@prefix|@base|\\bPREFIX\\b|\\bBASE\\b)",                // 5 directive
+      "(\\ba\\b|\\btrue\\b|\\bfalse\\b)",                       // 6 keyword
+      "(\\^\\^|@[A-Za-z][\\w-]*)",                              // 7 datatype / language
+      "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                         // 8 prefixed name
+      "(_:[\\w.-]+)",                                           // 9 blank node
+      "(-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)",           // 10 number
+      "([;,.\\[\\]()])"                                         // 11 punctuation
+    ].join("|"), "g"),
+    classes: [null, "comment", "string", "string", "iri", "kw", "kw", "suffix",
+              "pname", "bnode", "num", "punct"],
+    long: 2, short: 3, iri: 4, pname: 8, punct: 11
+  },
+  sparql: {
+    re: new RegExp([
+      "(#[^\\n]*)",                                             // 1 comment
+      "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?''')",              // 2 long string
+      "(\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')", // 3 short string
+      "(<[^>\\s]*>)",                                           // 4 IRI
+      "([?$][A-Za-z_]\\w*)",                                    // 5 variable
+      "\\b(SELECT|CONSTRUCT|ASK|DESCRIBE|WHERE|INSERT|DELETE|DATA|GRAPH|" +
+        "OPTIONAL|FILTER|BIND|VALUES|UNION|MINUS|SERVICE|PREFIX|BASE|DISTINCT|" +
+        "REDUCED|ORDER|GROUP|BY|HAVING|LIMIT|OFFSET|AS|NOT|EXISTS|IN|WITH|" +
+        "USING|FROM|NAMED|SILENT|CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|" +
+        "TRUE|FALSE|A)\\b",                                     // 6 keyword
+      "\\b(COUNT|SUM|MIN|MAX|AVG|SAMPLE|GROUP_CONCAT|STR|LANG|DATATYPE|BOUND|" +
+        "IRI|URI|BNODE|RAND|ABS|CEIL|FLOOR|ROUND|CONCAT|STRLEN|UCASE|LCASE|" +
+        "CONTAINS|STRSTARTS|STRENDS|STRBEFORE|STRAFTER|REPLACE|REGEX|NOW|YEAR|" +
+        "MONTH|DAY|HOURS|MINUTES|SECONDS|COALESCE|IF|SAMETERM|ISIRI|ISBLANK|" +
+        "ISLITERAL|ISNUMERIC)\\b",                              // 7 function
+      "(\\^\\^|@[A-Za-z][\\w-]*)",                              // 8 datatype / language
+      "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                         // 9 prefixed name
+      "(-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)",           // 10 number
+      // Punctuation, including the property-path operators — `a/rdfs:subClassOf*`
+      // is idiomatic in these specs and reads badly as undifferentiated text.
+      "([{};,.()\\[\\]*/|!+?^-])"                               // 11 punctuation
+    ].join("|"), "gi"),
+    classes: [null, "comment", "string", "string", "iri", "var", "kw", "fn",
+              "suffix", "pname", "num", "punct"],
+    long: 2, short: 3, iri: 4, pname: 9, punct: 11
+  }
+};
+
+/** Predicates whose value is a query, and the shape of a query that arrives
+    without one (a bare string dropped into the page, say). */
+const QUERY_PREDICATE = /(?:^|:)(?:queryText|queryString|query)$/i;
+const LOOKS_LIKE_QUERY =
+  /^\s*(?:#[^\n]*\n\s*)*(PREFIX|BASE|SELECT|CONSTRUCT|ASK|DESCRIBE|INSERT|DELETE|WITH)\b/i;
+
+const tok = (cls, s) => cls ? span({ class: "tok-" + cls }, s) : s;
+
+/** The embedded file a spec's reference names, if this page has it. */
+const findSource = ref => {
+  const index = model.val && model.val.sourceRefs;
+  if (!index || !ref) return null;
+  return index[ref]
+    || index[String(ref).replace(/^file:\/\//, "").replace(/^\.\//, "")]
+    || index[String(ref).split("/").pop()]
+    || null;
+};
+
+const quoteOf = raw =>
+  raw.startsWith('"""') ? '"""' : raw.startsWith("'''") ? "'''" : raw[0];
+
+const fileLink = (src, name) => a({
+  class: "srclink tok-file", href: "#", title: `Show ${src.path}`,
+  onclick: ev => { ev.preventDefault(); copied.val = false; sheet.val = src; }
+}, name);
+
+/** A string token: SPARQL inside the quotes when it is a query, a link when it
+    names a file this page carries, and otherwise just a string. */
+const stringToken = (raw, predicate) => {
+  const quote = quoteOf(raw);
+  const inner = raw.slice(quote.length, raw.length - quote.length);
+  const wrap = body => [tok("string", quote), body, tok("string", quote)].flat();
+
+  if (QUERY_PREDICATE.test(predicate || "") || LOOKS_LIKE_QUERY.test(inner)) {
+    return wrap(highlightAs(inner, "sparql"));
+  }
+  const src = findSource(inner);
+  return src ? wrap(fileLink(src, inner)) : tok("string", raw);
+};
+
+/** An IRI token. A file can be named as one too — `must:fileurl
+    <file://./select-query.sparql>` — so it gets the same treatment as a string
+    that names a file. */
+const iriToken = raw => {
+  const inner = raw.slice(1, -1);
+  const src = findSource(inner);
+  return src
+    ? [tok("punct", "<"), fileLink(src, inner), tok("punct", ">")]
+    : tok("iri", raw);
+};
+
+const highlightAs = (body, lang) => {
+  const { re, classes, long, short, iri, pname, punct } = TOKEN[lang];
   const out = [];
-  let last = 0, m;
+  let last = 0, m, predicate = null;
   re.lastIndex = 0;
   while ((m = re.exec(body)) !== null) {
     if (!m[0].length) { re.lastIndex++; continue; }        // never loop forever
-    const cls = classes.find((c, g) => g && m[g] !== undefined);
     if (m.index > last) out.push(body.slice(last, m.index));
-    out.push(cls ? span({ class: "tok-" + cls }, m[0]) : m[0]);
     last = m.index + m[0].length;
+
+    const group = classes.findIndex((c, g) => g && m[g] !== undefined);
+    if (group === long || group === short) {
+      out.push(stringToken(m[0], predicate));
+      continue;
+    }
+    if (group === iri) { out.push(iriToken(m[0])); continue; }
+    if (group === pname) predicate = m[0];
+    else if (group === punct && (m[0] === ";" || m[0] === ".")) predicate = null;
+    out.push(tok(classes[group], m[0]));
   }
   if (last < body.length) out.push(body.slice(last));
-  return out;
+  return out.flat();
+};
+
+/** Which grammar, if any, fits a media type. N-Triples and N-Quads are Turtle
+    subsets so they read correctly as Turtle; a CSV or an EDN file does not, and
+    gets left alone rather than mis-coloured. */
+const grammarFor = media => {
+  const m = String(media || "");
+  if (/sparql/i.test(m)) return "sparql";
+  if (/turtle|n-triples|n-quads|trig|n3/i.test(m)) return "turtle";
+  return null;
+};
+
+const highlight = (body, media) => {
+  const lang = grammarFor(media);
+  return lang ? highlightAs(body, lang) : [body];
 };
 
 const sourceLabel = src =>
   src.path || (/sparql/i.test(src.media) ? "SPARQL (as executed)" : "source");
+
+/* ---- taking a file with you ---- */
+const fileName = src => src.path ? src.path.split("/").pop()
+  : /sparql/i.test(src.media) ? "query.rq" : "source.ttl";
+
+const dataHref = src =>
+  `data:${src.media};charset=utf-8,${encodeURIComponent(src.body)}`;
+
+/** Copy without the Clipboard API where it is unavailable — which includes a
+    report opened over plain http, or from file:// in some browsers. */
+const selectAndCopy = body => {
+  const area = document.createElement("textarea");
+  area.value = body;
+  area.setAttribute("readonly", "");
+  area.setAttribute("style", "position:fixed;left:-9999px;top:0");
+  document.body.appendChild(area);
+  area.select();
+  try { document.execCommand("copy"); } finally { area.remove(); }
+};
+
+const copyText = body => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(body).catch(() => selectAndCopy(body));
+    }
+  } catch (e) { /* fall through */ }
+  selectAndCopy(body);
+  return Promise.resolve();
+};
+
+const copied = state(false);
+let copiedTimer = null;
+
+const copyButton = body => button({
+  title: "Copy to the clipboard",
+  onclick: () => {
+    copyText(body);
+    copied.val = true;
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => copied.val = false, 1600);
+  }
+}, () => copied.val ? "Copied ✓" : "Copy");
+
+const downloadButton = src => a({
+  class: "btn", download: fileName(src), href: dataHref(src),
+  title: `Download ${fileName(src)}`
+}, "Download");
+
+const fileActions = src => div({ class: "btns" }, downloadButton(src), copyButton(src.body));
 const codeBlock = src => pre({ class: "code" }, highlight(src.body, src.media));
 const sourceDetails = sources => (sources || []).map(src =>
   details({ class: "src" },
@@ -336,11 +501,10 @@ const IssuesTab = M => {
 
 const SourceTab = M => {
   const prefixes = Object.keys(M.store.prefixes).sort();
+  const graph = { path: "mustrd-run.ttl", media: "text/turtle", body: M.raw };
   return div(
     div({ class: "toolbar" },
-      M.raw ? a({ class: "btn", download: "mustrd-run.ttl",
-                  href: "data:text/turtle;charset=utf-8," + encodeURIComponent(M.raw) },
-                "Download TTL") : [],
+      M.raw ? fileActions(graph) : [],
       span({ class: "note" }, `${M.store.size()} triples, ${prefixes.length} prefixes`)),
     prefixes.length
       ? div({ class: "card tblwrap" }, table(
@@ -474,8 +638,8 @@ const Shell = () => [
       "Rendered in the browser from ",
       strong(model.val ? String(model.val.store.size()) : "0"),
       " triples of RDF (", code("cov:"), "/", code("must:"), "/", code("cq:"), "/",
-      code("dqv:"), "). Drop another ", code(".ttl"), " or ", code(".jsonld"),
-      " anywhere on the page to merge it in."))),
+      code("dqv:"), "). Drop another mustrd run — ", code(".ttl"), " or ",
+      code(".jsonld"), " — anywhere on the page to merge it in."))),
 
   div({ class: "drop", hidden: () => !dragging.val },
     div({ class: "inner" }, "Drop ", code(".ttl"), " / ", code(".jsonld"), " to load")),
@@ -486,7 +650,9 @@ const Shell = () => [
       div({ class: "head" },
         span({ class: "path" },
               sheet.val ? `${sourceLabel(sheet.val)}  ·  ${sheet.val.media}` : ""),
-        button({ onclick: () => sheet.val = null }, "Close ✕")),
+        div({ class: "btns" },
+          sheet.val ? [downloadButton(sheet.val), copyButton(sheet.val.body)] : [],
+          button({ onclick: () => sheet.val = null }, "Close ✕"))),
       sheet.val ? codeBlock(sheet.val) : pre({ class: "code" })))
 ];
 
@@ -498,8 +664,10 @@ let RAW = "";
 
 const rebuild = () => {
   const specs = readSpecs(STORE);
+  const index = sourceIndex(specs);
   model.val = {
-    store: STORE, raw: RAW, specs, sources: sourcesByPath(specs),
+    store: STORE, raw: RAW, specs,
+    sources: index.byPath, sourceRefs: index.byRef,
     run: readRun(STORE),
     tests: readTests(STORE, specs),
     coverage: readCoverage(STORE, specs),
@@ -519,11 +687,24 @@ const ingest = (name, body) => {
   rebuild();
 };
 
+/** The reader in turtle.js is compact by design (see its header). It covers what
+    mustrd emits and ordinary Turtle besides, but it is not a conformance-tested
+    parser — so when it gives up on someone else's file, say which limitation
+    they have hit and point at the path that uses JSON.parse instead. */
+const loadError = (name, message) => /\.(jsonld|json)$/i.test(name)
+  ? `${name}: ${message}`
+  : `${name}: ${message}
+
+This page reads Turtle with a small parser that covers what mustrd emits — it \
+does not implement RDF-star, TriG named graphs, or every Turtle corner. If the \
+file is valid, convert it (rdflib: --term-coverage-jsonld / --results-jsonld, or \
+riot --output=jsonld) and drop the JSON-LD instead.`;
+
 const loadFiles = files => [...files].forEach(f => {
   const reader = new FileReader();
   reader.onload = () => {
     try { ingest(f.name, String(reader.result)); }
-    catch (e) { failure.val = `${f.name}: ${e.message}`; }
+    catch (e) { failure.val = loadError(f.name, e.message); }
   };
   reader.readAsText(f);
 });

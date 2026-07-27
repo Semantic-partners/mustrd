@@ -240,13 +240,22 @@
     font-family: var(--font-mono); font-size: .76rem; line-height: 1.5;
     white-space: pre; tab-size: 2;
   }
+  /* Turtle / SPARQL tokens. Punctuation and strings recede; the terms, keywords
+     and variables — what you are actually reading — come forward. */
   .tok-comment { color: var(--muted); font-style: italic; }
   .tok-string  { color: var(--pass); }
   .tok-iri     { color: var(--accent-2); }
   .tok-pname   { color: var(--accent); }
+  .tok-bnode   { color: var(--muted); }
   .tok-kw      { color: var(--warn); font-weight: 600; }
+  .tok-fn      { color: var(--accent-2); }
   .tok-var     { color: var(--skip); }
   .tok-num     { color: var(--info); }
+  .tok-suffix  { color: var(--muted); }
+  .tok-punct   { color: var(--muted); opacity: .7; }
+  /* A string that names a file this page embedded. */
+  a.tok-file { color: var(--pass); text-decoration: underline; text-decoration-style: dotted; }
+  a.tok-file:hover { color: var(--accent); text-decoration-style: solid; }
 
   /* source overlay, opened from any file reference */
   .sheet {
@@ -263,7 +272,7 @@
     border-bottom: 1px solid var(--border); background: var(--surface-2);
   }
   .sheet .head .path { font-family: var(--font-mono); font-size: .8rem; overflow-wrap: anywhere; }
-  .sheet .head button { margin-left: auto; }
+  .btns { margin-left: auto; display: flex; gap: .4rem; align-items: center; flex: none; }
   .sheet pre.code { margin: 0; border: none; border-radius: 0; max-height: none; flex: 1; }
 
   /* ---------- dropzone ---------- */
@@ -273,5 +282,10 @@
   }
   .drop .inner { border: 2px dashed var(--accent); border-radius: 16px; padding: 3rem 4rem; background: var(--surface); color: var(--text); }
   [hidden] { display: none !important; }
-  .err { border-color: var(--fail-line); background: var(--fail-soft); color: var(--fail); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--fail-line); }
+  .err {
+    background: var(--fail-soft); color: var(--fail); padding: 1rem;
+    border: 1px solid var(--fail-line); border-radius: var(--radius);
+    white-space: pre-wrap;              /* load errors explain themselves at length */
+    font-size: .86rem; line-height: 1.5;
+  }
   footer { margin-top: 3rem; font-size: .76rem; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 1rem; }

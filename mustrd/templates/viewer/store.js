@@ -1,5 +1,12 @@
 /* ======================================================================
-   3. Store — three indexes over interned terms, plus IRI shortening
+   3. Store — two indexes over interned terms, plus IRI shortening
+
+   SPO answers "objects of (subject, predicate)" and POS answers "subjects of
+   (predicate, object)", which between them cover every question the model layer
+   asks: walk out from a node, or find all nodes of a type. OSP would answer
+   "everything that points at this object" — nothing needs it yet, and an unused
+   index is just memory and a third place for `add` to go wrong. If TriG lands
+   (see turtle.js), a graph dimension is the addition that will matter, not OSP.
    ====================================================================== */
 function makeStore() {
   var spo = new Map(), pos = new Map(), all = [], seen = new Set();
