@@ -193,6 +193,22 @@ def build_parser():
     return parser
 
 
+def _writable_utf8_output():
+    """Make stdout able to carry the report.
+
+    The coverage report is not ASCII — the term tree uses ↳ and ▸, outcomes use
+    ✅/❌ — and a Windows console defaults to cp1252, where printing it raises
+    UnicodeEncodeError and takes the whole command down. Reconfiguring is the fix
+    rather than degrading the report to ASCII; `errors="replace"` is the backstop
+    for a stream that cannot be reconfigured to UTF-8 at all.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass          # not a reconfigurable text stream (a pipe under test, say)
+
+
 def _check_config(path):
     """Fail with a usage message, not an rdflib traceback, when --config is wrong.
 
@@ -214,6 +230,7 @@ def _check_config(path):
 
 def main(argv=None):
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
+    _writable_utf8_output()
     _check_config(args.config)
     # The CLI is the application here, so this is where logging gets configured —
     # nothing in the library touches it (see logger_setup).

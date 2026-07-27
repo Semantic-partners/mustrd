@@ -4,6 +4,7 @@ Drives the same runnable example the pytest plugin test uses
 (docs/examples/geography-example) and asserts the CLI produces the same report
 content WITHOUT pytest, plus the JSON-LD serialization the viewer consumes.
 """
+import os
 import subprocess
 import sys
 import textwrap
@@ -47,6 +48,21 @@ def test_report_matches_plugin_content(tmp_path):
 
 def test_run_returns_zero_when_all_pass():
     assert main(["run", "--config", CONFIG]) == 0
+
+
+@pytest.mark.parametrize("console_encoding", ["cp1252", "ascii"])
+def test_report_survives_a_non_utf8_console(console_encoding):
+    """The coverage report is not ASCII — the term tree uses ↳ and ▸. A Windows
+    console is cp1252 by default, where printing it raised UnicodeEncodeError and
+    took the command down. Reproduced anywhere via PYTHONIOENCODING."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "mustrd.cli", "report", "--config", CONFIG,
+         "--term-coverage", "--cq"],
+        env={**os.environ, "PYTHONIOENCODING": console_encoding},
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert proc.returncode == 0, proc.stderr
+    assert "UnicodeEncodeError" not in proc.stderr
+    assert "terms exercised by the tests" in proc.stdout
 
 
 def test_importing_mustrd_leaves_the_hosts_logging_alone():
