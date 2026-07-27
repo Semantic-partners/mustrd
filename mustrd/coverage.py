@@ -245,37 +245,6 @@ def _tbox_in_data(specs, short):
     return results
 
 
-def _class_forest(declared, used, short, tbox, extra_external=()):
-    """Arrange declared classes into a subClassOf forest for the term matrix.
-
-    Nodes are declared classes plus the *external* classes that a used class
-    subclasses or a property's domain names (e.g. foaf:Person). Each class hangs
-    under its alphabetically-first parent (extra parents are annotated, not
-    duplicated). Returns (roots, children, extra_parents, external, nodes).
-    """
-    classes = {t for t in declared if declared[t] == "class"}
-    external = set(extra_external)
-    for c in (classes & used):
-        for anc in tbox.transitive_objects(URIRef(c), RDFS.subClassOf):
-            if str(anc) != c and str(anc) not in declared and is_domain_term(anc):
-                external.add(str(anc))
-    nodes = classes | external
-
-    children, roots, extra_parents = {}, [], {}
-    for c in sorted(nodes, key=short):
-        parents = sorted((str(p) for p in tbox.objects(URIRef(c), RDFS.subClassOf)
-                          if str(p) in nodes and str(p) != c), key=short)
-        if parents:
-            children.setdefault(parents[0], []).append(c)
-            if len(parents) > 1:
-                extra_parents[c] = [short(p) for p in parents[1:]]
-        else:
-            roots.append(c)
-    for kids in children.values():
-        kids.sort(key=short)
-    return roots, children, extra_parents, external, nodes
-
-
 def _coverage_status(term, schema_only, in_data, in_query):
     """covered (populated in data) / query-only (named by a query, never
     instantiated) / schema (structural, excluded) / unused. Used for both the
@@ -287,97 +256,6 @@ def _coverage_status(term, schema_only, in_data, in_query):
     if term in in_query:
         return "query-only"
     return "unused"
-
-
-def _matrix_row(term, kind, depth, connector, ctx, external=False):
-    """One term's matrix row (columns + depth + connector), read from the per-term
-    `facts` map. External (non-declared) terms have no facts and are structural.
-
-    A fact is {role, cq_role, in_data, in_query, exercises: [{name, uri,
-    source_file, in_data, in_query}]}. `exercises` lists every test behind the
-    term (not just data ones) so a term whose data and SPARQL come from
-    *different* tests is visible in its per-test sub-rows."""
-    if external:
-        return {"depth": depth, "kind": kind, "term": ctx["short"](term), "iri": term, "external": True,
-                "connector": connector, "in_data": False, "in_query": False,
-                "in_schema": True, "status": "schema", "cq_status": "schema",
-                "by_cq_state": "schema"}
-    f = ctx["facts"].get(term, {})
-    role, cq_role = f.get("role", "unused"), f.get("cq_role", "unused")
-    row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "iri": term, "external": False,
-           "connector": connector, "in_data": bool(f.get("in_data")),
-           "in_query": bool(f.get("in_query")), "in_schema": role == "schema",
-           "status": role, "cq_status": cq_role,
-           "by_cq_state": "schema" if role == "schema" else ("yes" if cq_role == "covered" else "no")}
-    if term in ctx["extra_parents"]:
-        row["extra_parents"] = ctx["extra_parents"][term]
-    if f.get("exercises"):
-        row["cover_refs"] = f["exercises"]
-    return row
-
-
-def _walk_forest(node, depth, children, attached, ctx, rows):
-    """Emit `node`, its attached properties (▸), and its subclass subtree (↳).
-    A linear run of schema-only ancestors with no attached property collapses
-    into one grouped row — a property forces its domain class to stay visible."""
-    external, schema_only, short = ctx["external"], ctx["schema_only"], ctx["short"]
-
-    def collapsible(c):
-        return (c in external or c in schema_only) and len(children.get(c, [])) == 1 and not attached.get(c)
-
-    run, cur = [], node
-    while collapsible(cur):
-        run.append(cur)
-        cur = children[cur][0]
-    if len(run) >= 2:
-        rows.append({"depth": depth, "kind": "class", "grouped": True,
-                     "term": ", ".join(short(c) for c in run),
-                     "external": all(c in external for c in run),
-                     "connector": "sub" if depth else None,
-                     "in_data": False, "in_query": False, "in_schema": True,
-                     "status": "schema", "cq_status": "schema", "by_cq_state": "schema"})
-        _walk_forest(cur, depth + 1, children, attached, ctx, rows)
-    else:
-        rows.append(_matrix_row(node, "class", depth, "sub" if depth else None, ctx,
-                                external=node in external))
-        for prop in attached.get(node, []):
-            rows.append(_matrix_row(prop, "property", depth + 1, "prop", ctx))
-        for child in children.get(node, []):
-            _walk_forest(child, depth + 1, children, attached, ctx, rows)
-
-
-def ordered_terms(declared, facts, short, tbox):
-    """The per-term matrix as an ordered list of rows: an indented subClassOf
-    tree of classes, each with its domain-attached properties (▸) beneath it;
-    properties with no domain trail at the end.
-
-    Structure comes from `declared` + `tbox` (subClassOf/domain); every row's
-    coverage data comes from the per-term `facts` map. Terms referenced anywhere
-    (in data or query) drive external-ancestor detection; structural terms
-    (role 'schema') drive collapsing. Both are derived from `facts`, so this is
-    reused verbatim by the RDF-sourced renderer."""
-    referenced = {t for t, f in facts.items() if f.get("in_data") or f.get("in_query")}
-    schema_only = {t for t, f in facts.items() if f.get("role") == "schema"}
-    props = [t for t in declared if declared[t] == "property"]
-    ext_domains = {str(d) for p in props for d in tbox.objects(URIRef(p), RDFS.domain)
-                   if str(d) not in declared and is_domain_term(d)}
-    roots, children, extra_parents, external, nodes = \
-        _class_forest(declared, referenced, short, tbox, ext_domains)
-
-    attached, unattached = {}, []
-    for p in sorted(props, key=short):
-        domains = sorted((str(d) for d in tbox.objects(URIRef(p), RDFS.domain) if str(d) in nodes),
-                         key=short)
-        (attached.setdefault(domains[0], []).append(p) if domains else unattached.append(p))
-
-    ctx = {"facts": facts, "schema_only": schema_only, "short": short,
-           "external": external, "extra_parents": extra_parents}
-    rows = []
-    for root in roots:
-        _walk_forest(root, 0, children, attached, ctx, rows)
-    for p in unattached:
-        rows.append(_matrix_row(p, "property", 0, None, ctx))
-    return rows
 
 
 def _build_facts(declared, used_data, used_query, cq_used_data, cq_used_query,
@@ -395,12 +273,6 @@ def _build_facts(declared, used_data, used_query, cq_used_data, cq_used_query,
             "exercises": exercises,
         }
     return facts
-
-
-def _schema_term_rows(schema_only, schema_reasons, declared, short):
-    return [{"term": short(t), "iri": t, "kind": declared[t],
-             "reason": "; ".join(sorted(schema_reasons[t], key=reason_key)[:3])}
-            for t in sorted(schema_only)]
 
 
 def _build_undeclared(referenced_data, referenced_query, declared, declared_set, spec_refs, short):
@@ -549,31 +421,11 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     _fold_metadata_into_schema(schema_reasons, metadata, referenced)
     schema_only = {t for t in schema_reasons if t not in referenced}
 
-    # Which passing tests back each term: all tests (for the Test Term Coverage
-    # links) and non-CQ tests only (to name the backer of a CQ-scoped gap).
+    # Which passing tests back each term, for the Test Term Coverage links / the
+    # per-test cov:Exercise records.
     test_refs = _usage_by_term(specs, declared_set)
-    non_cq_refs = _usage_by_term(
-        [s for s in specs if s.get("uri") not in overlay["cq_uris"]], declared_set)
     facts = _build_facts(declared, used_data, used_query, cq_used_data,
                          cq_used_query, schema_only, test_refs)
-    terms = ordered_terms(declared, facts, short, tbox)
-    # "Not covered by any test": declared, non-structural terms no passing test
-    # populates in data. Query-only terms (named by a query but never instantiated)
-    # land here too, flagged so the report can distinguish them from the untouched.
-    gaps = [{"term": short(t), "iri": t, "kind": declared[t], "query_only": t in used_query}
-            for t in sorted(declared) if t not in used_data and t not in schema_only]
-    # CQ-scoped gaps: declared, non-structural terms no competency question covers
-    # in data. Where a non-CQ test does cover it, carry that test so the report can
-    # name it; where only a CQ *query* names it, flag it query-only.
-    cq_gaps = []
-    for t in sorted(declared):
-        if t in schema_only or t in cq_used_data:
-            continue
-        entry = {"term": short(t), "iri": t, "kind": declared[t], "query_only": t in cq_used_query}
-        if t in non_cq_refs:
-            entry["non_cq_refs"] = non_cq_refs[t]
-        cq_gaps.append(entry)
-    schema_terms = _schema_term_rows(schema_only, schema_reasons, declared, short)
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)
 
@@ -581,10 +433,12 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     covered = sum(1 for t in declared if t in used_data)
     covered_by_cq = sum(1 for t in declared if t in cq_used_data)
 
-    # Machine-readable per-term records (full IRIs) for the RDF output — one per
-    # declared term, with its role, the per-test exercises behind it, and (for
-    # structural terms) why it's structural. This is the canonical per-term data
-    # the graph is built from and the renderer reads back.
+    # Machine-readable per-term records (full IRIs) — one per declared term, with
+    # its role, the per-test exercises behind it, and (for structural terms) why
+    # it's structural. This is the CANONICAL per-term data: the RDF graph is built
+    # from it, and the report is then rendered from the graph (see coverage_render
+    # / cq_render, which rebuild the term matrix, gaps and structural lists — this
+    # module intentionally no longer produces those rendered views itself).
     term_records = [{
         "iri": t, "slug": slug(short(t)), "kind": declared[t],
         "role": facts[t]["role"], "cq_role": facts[t]["cq_role"],
@@ -603,7 +457,6 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "covered_by_cq": covered_by_cq,
         "cq_pct": pct(covered_by_cq, denominator),
         "cq_ratio": (covered_by_cq / denominator) if denominator else 0.0,
-        "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,
         "tbox_in_data": _tbox_in_data(specs, short),
         "per_cq": per_cq, "term_records": term_records,
