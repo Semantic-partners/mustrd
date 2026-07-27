@@ -25,6 +25,7 @@ const show = { passed: state(true), failed: state(true), skipped: state(true) };
 const ROLES = ["covered", "query-only", "schema", "unused"];
 const roleOn = Object.fromEntries(ROLES.map(r => [r, state(false)]));
 const sheet = state(null);                  // source file shown over the page
+const filePick = state(null);               // id of the file open in the Files tab
 const dragging = state(false);
 const failure = state("");                  // a load/parse error to surface
 
@@ -277,8 +278,15 @@ const sourceDetails = sources => (sources || []).map(src =>
     codeBlock(src)));
 
 /* ---- toolbar pieces ---- */
+/** Note `rawVal`, not `val`.
+
+    Reading `query.val` here would register the filter state as a dependency of
+    whichever binding is rendering the toolbar — the tab body — so every keystroke
+    would rebuild the toolbar, replace this input, and take the caret with it.
+    `rawVal` seeds the field without subscribing, leaving the only subscribers the
+    inner bindings that render the filtered list. */
 const searchBox = placeholder => input({
-  class: "search", type: "search", placeholder, value: query.val,
+  class: "search", type: "search", placeholder, value: query.rawVal,
   oninput: ev => query.val = ev.target.value
 });
 const toggleChip = (st, cls, name, count) => button({
@@ -499,7 +507,55 @@ const IssuesTab = M => {
     ] : []);
 };
 
-const SourceTab = M => {
+/* ---- Files ----------------------------------------------------------------
+   Everything the run read, in one place. Reachable by clicking a reference in a
+   spec too, but that opens the sheet over what you were reading; this is for
+   browsing what the report actually carries — often the first surprise is how
+   much that is. */
+const FILE_GROUPS = ["Specs", "Queries", "Data"];
+
+const fileEntry = src => button({
+  class: "fileitem",
+  "aria-pressed": () => String(filePick.val === src.id),
+  onclick: () => filePick.val = src.id
+},
+  span({ class: "fname" }, src.path ? src.path.split("/").pop() : "query"),
+  span({ class: "fmeta" }, src.path ? src.path.replace(/\/[^/]*$/, "") : localName(src.owner)));
+
+const FilesTab = M => div(
+  div({ class: "toolbar" },
+    searchBox("Filter files…"),
+    span({ class: "note" },
+      `${M.files.length} file${M.files.length === 1 ? "" : "s"} embedded in this report`)),
+  () => FilePane(M));
+
+/** Matches on content as well as name: finding which spec mentions a term is the
+    thing you actually want from a filter over a pile of Turtle. */
+const fileHits = src =>
+  hits(`${src.path || ""} ${src.owner} ${src.media}`) ||
+  (query.val.length > 2 && hits(src.body));
+
+const FilePane = M => {
+  const files = M.files.filter(fileHits);
+  if (!files.length) return empty("No files match.");
+
+  const chosen = files.find(f => f.id === filePick.val) || files[0];
+  return div({ class: "filepane" },
+    div({ class: "filelist card" }, FILE_GROUPS.map(group => {
+      const inGroup = files.filter(f => f.group === group);
+      return inGroup.length
+        ? [div({ class: "filegroup" }, group, span({ class: "n" }, inGroup.length)),
+           inGroup.map(fileEntry)]
+        : [];
+    })),
+    div({ class: "card filebody" },
+      div({ class: "head" },
+        span({ class: "path" }, sourceLabel(chosen), " · ", chosen.media),
+        fileActions(chosen)),
+      codeBlock(chosen)));
+};
+
+const GraphTab = M => {
   const prefixes = Object.keys(M.store.prefixes).sort();
   const graph = { path: "mustrd-run.ttl", media: "text/turtle", body: M.raw };
   return div(
@@ -525,7 +581,8 @@ const TABS = [
   { id: "coverage", label: "Coverage", count: M => M.coverage ? M.coverage.declared : 0, view: CoverageTab },
   { id: "cqs", label: "Competency questions", count: M => M.cqs.length, view: CqsTab },
   { id: "issues", label: "Issues", count: M => M.issues.undeclared.length + M.issues.tbox.length, view: IssuesTab },
-  { id: "source", label: "Source", count: () => null, view: SourceTab }
+  { id: "files", label: "Files", count: M => M.files.length, view: FilesTab },
+  { id: "graph", label: "Graph", count: () => null, view: GraphTab }
 ];
 
 const liveTabs = M => {
@@ -667,7 +724,7 @@ const rebuild = () => {
   const index = sourceIndex(specs);
   model.val = {
     store: STORE, raw: RAW, specs,
-    sources: index.byPath, sourceRefs: index.byRef,
+    sources: index.byPath, sourceRefs: index.byRef, files: index.list,
     run: readRun(STORE),
     tests: readTests(STORE, specs),
     coverage: readCoverage(STORE, specs),

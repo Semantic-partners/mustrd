@@ -293,7 +293,7 @@ const ui = eval(
   "(function(document, window, localStorage, location, FileReader, fetch, URLSearchParams) {" +
   app +
   "\n;return {van, model, tab, query, show, roleOn, sheet, failure, highlight," +
-  " liveTabs, TABS, srcRef, setAllOpen};" +
+  " liveTabs, TABS, srcRef, setAllOpen, filePick};" +
   "})"
 )(
   documentStub,
@@ -406,6 +406,59 @@ ui.show.passed.val = true;
 ui.show.failed.val = true;
 ui.show.skipped.val = true;
 await flush();
+
+// Typing in a filter must not replace the input: reading a state during render
+// subscribes the *enclosing* binding to it, which would rebuild the toolbar on
+// every keystroke and drop the caret. Same element object before and after.
+for (const tabId of ["tests", "coverage", "cqs", "files"]) {
+  if (!ui.liveTabs(ui.model.val).some((t) => t.id === tabId)) continue;
+  ui.tab.val = tabId;
+  ui.query.val = "";
+  await flush();
+  const inputs = () => documentStub.body.querySelectorAll("input")
+    .filter((el) => el.attributes.class === "search");
+  const before = inputs()[0];
+  if (!before) fail(`tab "${tabId}" has no filter box`);
+  ui.query.val = "a";
+  await flush();
+  const after = inputs()[0];
+  if (after !== before) fail(`typing in the "${tabId}" filter replaced the input`);
+  ui.query.val = "";
+  await flush();
+}
+
+// Files tab: everything the run read is listed and openable, and the filter
+// reaches into file contents (finding which spec mentions a term is the point).
+if (embedded.length) {
+  ui.tab.val = "files";
+  ui.query.val = "";
+  await flush();
+  const filesHtml = bodyHtml();
+  for (const src of ui.model.val.files) {
+    const name = src.path ? src.path.split("/").pop() : "query";
+    if (!filesHtml.includes(name)) fail(`files tab omits ${src.path || src.id}`);
+  }
+  if (!filesHtml.includes('class="filepane"')) fail("the files pane did not render");
+
+  // Selecting a file shows that file.
+  const pickable = ui.model.val.files.find((f) => f.path);
+  if (pickable) {
+    ui.filePick.val = pickable.id;
+    await flush();
+    const shown = bodyHtml();
+    if (!shown.includes(pickable.path)) fail(`selecting ${pickable.path} did not show it`);
+    const firstLine = pickable.body.split("\n").find((l) => l.trim().length > 12);
+    if (firstLine && !shown.includes(firstLine.trim().split(/\s+/)[0])) {
+      fail(`the files pane did not render the content of ${pickable.path}`);
+    }
+  }
+
+  ui.query.val = "zzz-no-such-file";
+  await flush();
+  if (!bodyHtml().includes("No files match")) fail("the file filter does not filter");
+  ui.query.val = "";
+  await flush();
+}
 
 // Coverage tab: every declared term shown, and the term filter filters.
 if (model.coverage) {

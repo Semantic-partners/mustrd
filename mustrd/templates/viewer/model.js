@@ -59,23 +59,32 @@ function readSpecs(st) {
     `must:file "mayor.ttl"`, `must:fileurl "file://./data/mayor.ttl"` — plus the
     bare file name as a last resort. */
 function sourceIndex(specs) {
-  var byPath = {}, byRef = {};
+  var byPath = {}, byRef = {}, list = [];
   var note = function (key, src) {
     if (key && !byRef[key]) byRef[key] = src;
   };
-  Object.keys(specs).forEach(function (k) {
-    (specs[k].sources || []).forEach(function (src) {
-      if (!src.path) return;
-      if (!byPath[src.path]) byPath[src.path] = src;
-      note(src.path, src);
-      (src.references || []).forEach(function (ref) {
-        note(ref, src);
-        note(String(ref).replace(/^file:\/\//, "").replace(/^\.\//, ""), src);
-      });
-      note(src.path.split("/").pop(), src);
+  Object.keys(specs).sort().forEach(function (specIri) {
+    (specs[specIri].sources || []).forEach(function (src) {
+      if (src.path) {
+        if (byPath[src.path]) return;             // one entry per file, not per spec
+        byPath[src.path] = src;
+        note(src.path, src);
+        note(src.path.split("/").pop(), src);
+        (src.references || []).forEach(function (ref) {
+          note(ref, src);
+          note(String(ref).replace(/^file:\/\//, "").replace(/^\.\//, ""), src);
+        });
+      }
+      // A query has no path — it is the text as executed — so it is identified by
+      // the spec that ran it.
+      src.id = src.path || (specIri + "#query" + list.length);
+      src.owner = specIri;
+      src.group = src.path && /\.mustrd\.ttl$/.test(src.path) ? "Specs"
+        : /sparql/i.test(src.media) ? "Queries" : "Data";
+      list.push(src);
     });
   });
-  return { byPath: byPath, byRef: byRef };
+  return { byPath: byPath, byRef: byRef, list: list };
 }
 
 /** cov:TestResult records, grouped module -> class, Playwright-style. */
