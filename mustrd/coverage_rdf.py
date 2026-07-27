@@ -272,9 +272,3 @@ def cq_graph(cq_facts, run_slug="local", commit=None, mustrd_version=None) -> Gr
     _add_competency_questions(g, run, cq_facts.get("per_cq", []),
                               cq_facts.get("duplicate_cqs", []))
     return g
-
-
-def write_coverage_rdf(coverage, ontologies, path, run_slug="local",
-                       commit=None, mustrd_version=None) -> None:
-    g = coverage_graph(coverage, ontologies, run_slug, commit, mustrd_version)
-    g.serialize(destination=str(path), format="turtle")
