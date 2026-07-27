@@ -6,7 +6,6 @@ from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
 from pytest import Session
 
-from mustrd import logger_setup
 from mustrd.TestResult import TestResult
 from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, produce_report, collect_cq_defs,
@@ -217,8 +216,9 @@ def pytest_configure(config) -> None:
         )
 
 
-# Configure logging - do not use setup_logger in the pytest plugin, 
-# the CLI args to pytest (e.g. --log-cli-level) are overriden by it
+# No logging configuration in the plugin: under pytest, pytest is the
+# application, and configuring anything here overrides its options
+# (--log-cli-level and friends). See mustrd.logger_setup.
 logger = logging.getLogger(__name__)
 
 

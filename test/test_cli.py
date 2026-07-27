@@ -4,6 +4,9 @@ Drives the same runnable example the pytest plugin test uses
 (docs/examples/geography-example) and asserts the CLI produces the same report
 content WITHOUT pytest, plus the JSON-LD serialization the viewer consumes.
 """
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -44,6 +47,36 @@ def test_report_matches_plugin_content(tmp_path):
 
 def test_run_returns_zero_when_all_pass():
     assert main(["run", "--config", CONFIG]) == 0
+
+
+def test_importing_mustrd_leaves_the_hosts_logging_alone():
+    """mustrd is a library: importing it must not configure, re-level or remove
+    anything on the root logger. It used to call basicConfig and then blank the
+    root handlers, silently deleting the logging setup of whatever imported it —
+    mustrd's own CLI included, which is why `mustrd run` printed nothing.
+
+    Run in a subprocess: the check is about what happens at *import* time, and
+    reloading these modules in-process would rebuild the Spec classes the rest of
+    the suite has already imported.
+    """
+    program = textwrap.dedent("""
+        import logging, io
+        stream = io.StringIO()
+        logging.basicConfig(stream=stream, level=logging.INFO, format="%(message)s")
+        before = list(logging.getLogger().handlers)
+        logging.getLogger("host.app").info("hello")
+        import mustrd.mustrd, mustrd.spec_component, mustrd.mustrdTestPlugin  # noqa
+        root = logging.getLogger()
+        assert root.handlers == before, "a root handler was removed or replaced"
+        assert root.level == logging.INFO, f"root level became {root.level}"
+        logging.getLogger("host.app").info("still here")
+        assert stream.getvalue().split() == ["hello", "still", "here"], stream.getvalue()
+        print("ok")
+    """)
+    proc = subprocess.run([sys.executable, "-c", program],
+                          capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip().endswith("ok")
 
 
 def test_run_shows_the_review_table(capsys):

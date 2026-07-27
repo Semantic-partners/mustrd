@@ -11,7 +11,6 @@ from rdflib.term import Node
 from rdflib.plugins.stores.memory import Memory
 import edn_format
 
-from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
 from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
