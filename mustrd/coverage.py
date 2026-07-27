@@ -258,21 +258,29 @@ def _coverage_status(term, schema_only, in_data, in_query):
     return "unused"
 
 
-def _build_facts(declared, used_data, used_query, cq_used_data, cq_used_query,
-                 schema_only, test_refs):
-    """The per-term coverage facts the matrix (and the RDF output) are built from."""
-    facts = {}
-    for t in declared:
+def _build_term_records(declared, used_data, used_query, cq_used_data,
+                        cq_used_query, schema_only, schema_reasons, test_refs, short):
+    """The canonical per-term records — one per declared term, in IRI order. This
+    is the single per-term structure the RDF graph is serialised from (the render
+    layer reads the same shape back out of the graph): full IRI + slug + kind, the
+    all-tests and CQ-only role, whether it's populated in data / named in a query,
+    the per-test exercises behind it, and (for structural terms) why it's
+    structural."""
+    records = []
+    for t in sorted(declared):
         role = _coverage_status(t, schema_only, used_data, used_query)
         exercises = sorted(test_refs.get(t, []), key=lambda r: r["name"]) \
             if role in ("covered", "query-only") else []
-        facts[t] = {
+        records.append({
+            "iri": t, "slug": slug(short(t)), "kind": declared[t],
             "role": role,
             "cq_role": _coverage_status(t, schema_only, cq_used_data, cq_used_query),
             "in_data": t in used_data, "in_query": t in used_query,
             "exercises": exercises,
-        }
-    return facts
+            "structural_reasons": (sorted(schema_reasons.get(t, ()), key=reason_key)
+                                   if t in schema_only else []),
+        })
+    return records
 
 
 def _build_undeclared(referenced_data, referenced_query, declared, declared_set, spec_refs, short):
@@ -424,8 +432,6 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # Which passing tests back each term, for the Test Term Coverage links / the
     # per-test cov:Exercise records.
     test_refs = _usage_by_term(specs, declared_set)
-    facts = _build_facts(declared, used_data, used_query, cq_used_data,
-                         cq_used_query, schema_only, test_refs)
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)
 
@@ -433,20 +439,13 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     covered = sum(1 for t in declared if t in used_data)
     covered_by_cq = sum(1 for t in declared if t in cq_used_data)
 
-    # Machine-readable per-term records (full IRIs) — one per declared term, with
-    # its role, the per-test exercises behind it, and (for structural terms) why
-    # it's structural. This is the CANONICAL per-term data: the RDF graph is built
-    # from it, and the report is then rendered from the graph (see coverage_render
-    # / cq_render, which rebuild the term matrix, gaps and structural lists — this
-    # module intentionally no longer produces those rendered views itself).
-    term_records = [{
-        "iri": t, "slug": slug(short(t)), "kind": declared[t],
-        "role": facts[t]["role"], "cq_role": facts[t]["cq_role"],
-        "in_data": facts[t]["in_data"], "in_query": facts[t]["in_query"],
-        "exercises": facts[t]["exercises"],
-        "structural_reasons": (sorted(schema_reasons.get(t, ()), key=reason_key)
-                               if t in schema_only else []),
-    } for t in sorted(declared)]
+    # The single CANONICAL per-term structure: the RDF graph is serialised from it,
+    # and the report is rendered from the graph (see coverage_render / cq_render,
+    # which read the same shape back and rebuild the term matrix, gaps and
+    # structural lists — this module no longer produces those rendered views).
+    term_records = _build_term_records(declared, used_data, used_query, cq_used_data,
+                                       cq_used_query, schema_only, schema_reasons,
+                                       test_refs, short)
 
     return {
         "covered": covered, "denominator": denominator,
