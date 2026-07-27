@@ -41,6 +41,17 @@ jobs:
         # regenerated. Collection is scoped to the example dir.
         run:  poetry run pytest docs/examples/geography-example --mustrd --config=docs/examples/geography-example/mustrd-config.ttl --term-coverage --cq --md=docs/examples/geography-example/report/term-coverage-example.md --term-coverage-rdf=docs/examples/geography-example/report/term-coverage-example.ttl
         if: ${{ always() }}
+      - name: Build the example run viewer
+        # The self-contained HTML report published at /examples/geography-example/report/.
+        # Run from the example directory so the paths in the graph — and therefore
+        # the page's source links — are relative to the example, not the repo root.
+        working-directory: docs/examples/geography-example
+        run: >-
+          poetry run pytest . --mustrd --config=mustrd-config.ttl --term-coverage --cq
+          --viewer=report/index.html
+          --viewer-title="Geography example — mustrd run report"
+          --viewer-src-base="../"
+        if: ${{ always() }}
       - name: Upload pytest test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -55,6 +66,7 @@ jobs:
           path: |
             docs/examples/geography-example/report/term-coverage-example.ttl
             docs/examples/geography-example/report/term-coverage-example.md
+            docs/examples/geography-example/report/index.html
           if-no-files-found: warn
       - name: Define Job summary
         run: |

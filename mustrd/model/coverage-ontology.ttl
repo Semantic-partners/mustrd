@@ -181,6 +181,77 @@ cov:requiresOntology a owl:DatatypeProperty ;
 cov:Outcome a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Outcome" .
 cov:Passed a cov:Outcome ; skos:prefLabel "passed" .
 cov:Failed a cov:Outcome ; skos:prefLabel "not passed" .
+cov:Skipped a cov:Outcome ; skos:prefLabel "skipped" .
+
+##  Test results ###################################################################
+# Per-test execution records for a run — every collected test, not just the
+# CQ-linked ones cov:Assertion covers. This is what the standalone results viewer
+# reads to show the Playwright-style pass/fail tree.
+
+cov:TestResult a owl:Class ;
+    rdfs:label "Test Result" ;
+    rdfs:comment "One test's execution outcome in a run (mustrd spec or plain pytest test)." .
+
+cov:resultTest a owl:ObjectProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range must:TestSpec ;
+    rdfs:label "result test" ;
+    rdfs:comment "The mustrd test spec this result is for (absent for plain pytest tests)." .
+
+cov:resultOutcome a owl:ObjectProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range cov:Outcome ;
+    rdfs:label "result outcome" .
+
+cov:testType a owl:DatatypeProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range xsd:string ;
+    rdfs:label "test type" ;
+    rdfs:comment "'mustrd' or 'pytest'." .
+
+cov:module a owl:DatatypeProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range xsd:string ; rdfs:label "module" .
+
+cov:className a owl:DatatypeProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range xsd:string ; rdfs:label "class name" .
+
+cov:testName a owl:DatatypeProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range xsd:string ; rdfs:label "test name" .
+
+cov:duration a owl:DatatypeProperty ;
+    rdfs:domain cov:TestResult ; rdfs:range xsd:decimal ;
+    rdfs:label "duration" ;
+    rdfs:comment "Wall-clock execution time in seconds." .
+
+##  Embedded sources ##############################################################
+# A copy of the text a run actually read — the spec's Turtle and the SPARQL it
+# executed. cov:sourceFile / must:specSourceFile record a *path*, which is only
+# resolvable from the working directory the run happened in; these carry the
+# content itself, so a report stays readable wherever it ends up (an emailed
+# file, a CI artifact, a static site). Emitted for the viewer, not for a
+# knowledge graph — the text literals are large and say nothing new about the
+# ontology under test.
+
+cov:SourceFile a owl:Class ;
+    rdfs:label "Source file" ;
+    rdfs:comment "The verbatim text of a file (or query) a run read." .
+
+cov:embeddedSource a owl:ObjectProperty ;
+    rdfs:domain must:TestSpec ; rdfs:range cov:SourceFile ;
+    rdfs:label "embedded source" ;
+    rdfs:comment "A source this test is defined by or executes." .
+
+cov:filePath a owl:DatatypeProperty ;
+    rdfs:domain cov:SourceFile ; rdfs:range xsd:string ;
+    rdfs:label "file path" ;
+    rdfs:comment "Where the text came from, relative to the run's working directory. Absent for a query given inline in the spec." .
+
+cov:mediaType a owl:DatatypeProperty ;
+    rdfs:domain cov:SourceFile ; rdfs:range xsd:string ;
+    rdfs:label "media type" ;
+    rdfs:comment "'text/turtle' or 'application/sparql-query'." .
+
+cov:fileText a owl:DatatypeProperty ;
+    rdfs:domain cov:SourceFile ; rdfs:range xsd:string ;
+    rdfs:label "file text" ;
+    rdfs:comment "The verbatim content." .
 
 cov:duplicate a owl:DatatypeProperty ;
     rdfs:domain cq:CompetencyQuestion ; rdfs:range xsd:boolean ;

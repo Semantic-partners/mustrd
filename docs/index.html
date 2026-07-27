@@ -510,6 +510,25 @@
 }</pre>
   </section>
 
+  <!-- Reporting -->
+  <section>
+    <h2>Reports that are <span>data</span></h2>
+    <p>A run's output is RDF first: DQV quality measurements over your ontology, a
+       per-term breakdown, competency-question assertions, and a result per test —
+       all with stable IRIs, so runs merge and diff in a triplestore.</p>
+    <p>The HTML report is rendered <em>from</em> that graph, in the browser, by a
+       single self-contained file. No build step, no CDN, no server: attach it to a
+       CI run or open it from disk. Drop another run's <code>.ttl</code> onto the
+       page to load it.</p>
+    <pre><span class="cm"># one file: tests, coverage, competency questions, issues</span>
+mustrd report --config tests.ttl --viewer report.html
+
+<span class="cm"># or from pytest, same flag</span>
+pytest --mustrd --config=tests.ttl --viewer=report.html</pre>
+    <p><a href="/examples/geography-example/report/">See a live example report</a>
+       &middot; <a href="/coverage">the coverage vocabulary</a></p>
+  </section>
+
   <!-- Status -->
   <section>
     <h2>Status</h2>
@@ -522,6 +541,9 @@
       <li class="stable">Anzo integration: stable</li>
       <li class="impl">Markdown test reports: implemented</li>
       <li class="impl">GitHub Actions CI summary: implemented</li>
+      <li class="impl">RDF run output (coverage, CQs, per-test results): implemented</li>
+      <li class="impl">Self-contained HTML report viewer: implemented</li>
+      <li class="impl"><code>mustrd</code> CLI (run &amp; report without pytest): implemented</li>
     </ul>
   </section>
 

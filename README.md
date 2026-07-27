@@ -187,6 +187,71 @@ See [`docs/ontology-term-coverage.md`](docs/ontology-term-coverage.md) for the
 full definition and [`docs/examples/geography-example/report/term-coverage-example.md`](docs/examples/geography-example/report/term-coverage-example.md)
 for sample output.
 
+## The HTML report
+
+`--viewer=report.html` writes **one self-contained HTML file**: no build step, no
+CDN, no server. It carries the run's RDF and a Turtle parser, and renders
+everything in the browser — a pass/fail/skip test tree with timings, the term
+coverage table (classes nested by `rdfs:subClassOf`, properties under their
+`rdfs:domain`), the competency questions, and the quality issues. Attach it to a
+CI run, email it, or open it from disk.
+
+```bash
+pytest --mustrd --config=config.ttl --viewer=report.html
+```
+
+`--viewer` implies the coverage and competency-question graphs, so you don't need
+`--term-coverage`/`--cq` as well (they only affect the terminal and `--md`
+output). Coverage appears whenever the config declares `:hasOntologyPath`.
+
+**Sources are embedded.** By default each spec's Turtle and the SPARQL it ran are
+inlined into the page, syntax-highlighted, so the report is readable without the
+files it was generated from — a path in a graph only resolves from the directory
+the run happened in, which is no use in an emailed file or a CI artifact. Any file
+reference in the report opens the embedded copy in place. `--no-viewer-sources`
+turns this off for a smaller page.
+
+The page is also a viewer for *any* mustrd graph: drop a `.ttl` or `.jsonld` from
+`--term-coverage-rdf` / `--results-rdf` onto it, or point it at one with
+`?ttl=path/to/run.ttl`. Drop several to compare or merge runs.
+
+Related flags: `--results-rdf` / `--results-jsonld` write the per-test results
+graph (every test, `passed`/`failed`/`skipped`, with timing) on its own;
+`--term-coverage-jsonld` writes the coverage graph as JSON-LD. `--viewer-title`
+sets the page title, and `--viewer-src-base` prefixes the page's source-file
+links when it is served from somewhere other than the working directory.
+
+[Live example report](https://mustrd.org/examples/geography-example/report/).
+
+## The `mustrd` CLI
+
+The pytest plugin is a front end, not the engine. Spec execution
+(`mustrd.runner`) and reporting (`mustrd.reporting`) are plain libraries, and the
+`mustrd` command drives them **without pytest** — same config file, same specs,
+same reports:
+
+```bash
+mustrd run    --config config.ttl                      # run the specs, review results
+mustrd report --config config.ttl --viewer report.html  # run + emit the reports
+```
+
+`config.ttl` is your own MustrdTest configuration — the same file `pytest
+--mustrd --config=` takes. To try it against the worked example in this repo:
+
+```bash
+mustrd report --config docs/examples/geography-example/mustrd-config.ttl \
+              --viewer report.html
+```
+
+Paths inside a config are resolved relative to *the config file*, so it can be
+run from anywhere; the viewer's source links are relative to the working
+directory (see `--viewer-src-base`).
+
+`mustrd report` takes the same reporting flags as the plugin (`--md`,
+`--term-coverage`, `--cq`, `--term-coverage-rdf`, `--results-rdf`, `--viewer`, …)
+plus `--ontology` to override `:hasOntologyPath`. Both exit non-zero if any spec
+does not pass.
+
 ## When?
 
 MustRD is a work in progress, built to meet the needs of our projects across multiple clients and vendor stacks. While we find it useful, it may not meet your needs out of the box.

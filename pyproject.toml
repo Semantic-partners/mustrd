@@ -21,6 +21,7 @@ readme = "README.md"
 license = "MIT License"
 urls = {"repository" = "https://github.com/Semantic-partners/mustrd"}
 entry-points = {"pytest11" = {"mustrd_plugin" = "mustrd.mustrdTestPlugin"}}
+scripts = {"mustrd" = "mustrd.cli:main"}
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"

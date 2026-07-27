@@ -1,0 +1,1498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__MUSTRD_TITLE__</title>
+<!--
+  mustrd run viewer — a single self-contained page, driven entirely by RDF.
+
+  There is no build step, no framework and no network dependency: the run's
+  Turtle is embedded below (or dropped in / fetched with ?ttl=), parsed by the
+  Turtle parser in this file, and every view is rendered from the resulting
+  triples using the cov:/must:/cq:/dqv: vocabularies. See
+  mustrd/model/coverage-ontology.ttl for the terms.
+-->
+<style>
+  :root {
+    --bg: #0f1117; --surface: #171a23; --surface-2: #1e222d; --raise: #252a37;
+    --border: #2a2f3d; --hair: #21252f;
+    --text: #e4e6ec; --muted: #8b90a0; --heading: #f4f5f8;
+    --accent: #6ee7b7; --accent-2: #93c5fd;
+    --pass: #34d399; --pass-soft: #10291f; --pass-line: #1f5a41;
+    --fail: #f87171; --fail-soft: #2c1416; --fail-line: #6b2529;
+    --skip: #a78bfa; --skip-soft: #1e1a2e; --skip-line: #40356b;
+    --warn: #fbbf24; --warn-soft: #2a2010; --warn-line: #5e4715;
+    --info: #60a5fa; --info-soft: #111c2e; --info-line: #24446f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.8);
+    --radius: 12px;
+    --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  /* Three theme states: follow the OS by default, or an explicit data-theme (set
+     by the ◐ button) which wins in either direction. Dark is the base palette,
+     so the two light rules below carry the light one. */
+  :root[data-theme="light"] {
+    --bg: #eef1f5; --surface: #ffffff; --surface-2: #f5f7fa; --raise: #eceff4;
+    --border: #d4dae2; --hair: #e5e9ef;
+    --text: #29323c; --muted: #616c7a; --heading: #111a24;
+    --accent: #0d8f6f; --accent-2: #2563eb;
+    --pass: #0f8a5f; --pass-soft: #e3f5ec; --pass-line: #a5d9c2;
+    --fail: #c62f38; --fail-soft: #fdeaea; --fail-line: #edb4b6;
+    --skip: #6d4ec9; --skip-soft: #efeafc; --skip-line: #c6b8ee;
+    --warn: #96650b; --warn-soft: #fdf1dc; --warn-line: #e6c98c;
+    --info: #1d63c9; --info-soft: #e7effc; --info-line: #b3ccf0;
+    --shadow: 0 1px 2px rgba(17,26,36,.05), 0 10px 28px -16px rgba(17,26,36,.25);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --bg: #eef1f5; --surface: #ffffff; --surface-2: #f5f7fa; --raise: #eceff4;
+      --border: #d4dae2; --hair: #e5e9ef;
+      --text: #29323c; --muted: #616c7a; --heading: #111a24;
+      --accent: #0d8f6f; --accent-2: #2563eb;
+      --pass: #0f8a5f; --pass-soft: #e3f5ec; --pass-line: #a5d9c2;
+      --fail: #c62f38; --fail-soft: #fdeaea; --fail-line: #edb4b6;
+      --skip: #6d4ec9; --skip-soft: #efeafc; --skip-line: #c6b8ee;
+      --warn: #96650b; --warn-soft: #fdf1dc; --warn-line: #e6c98c;
+      --info: #1d63c9; --info-soft: #e7effc; --info-line: #b3ccf0;
+      --shadow: 0 1px 2px rgba(17,26,36,.05), 0 10px 28px -16px rgba(17,26,36,.25);
+      color-scheme: light;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--font-mono); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 1.6rem clamp(.85rem, 3vw, 2rem) 5rem; }
+
+  /* ---------- header ---------- */
+  header.top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.4rem; }
+  .brand { display: flex; align-items: baseline; gap: .55rem; }
+  .brand h1 {
+    font-family: var(--font-display); font-weight: 600; color: var(--heading);
+    font-size: clamp(1.5rem, 3.4vw, 2.1rem); margin: 0; letter-spacing: -.015em;
+  }
+  .brand .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--accent); }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .68rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 .35rem;
+  }
+  .runmeta { display: flex; flex-wrap: wrap; gap: .35rem .9rem; font-size: .78rem; color: var(--muted); }
+  .runmeta .k { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .08em; font-size: .66rem; opacity: .8; }
+  .actions { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+
+  button, .btn {
+    font: inherit; font-size: .8rem; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: .38rem .7rem;
+    cursor: pointer; display: inline-flex; align-items: center; gap: .4rem;
+  }
+  button:hover, .btn:hover { background: var(--raise); }
+
+  /* ---------- summary tiles ---------- */
+  .tiles { display: grid; gap: .8rem; margin: 1.6rem 0 0;
+           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .85rem 1rem; box-shadow: var(--shadow);
+  }
+  .tile .label {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .tile .big { font-size: 1.75rem; font-weight: 600; color: var(--heading); line-height: 1.15; margin: .25rem 0 .1rem; }
+  .tile .big small { font-size: .8rem; font-weight: 400; color: var(--muted); }
+  .tile .sub { font-size: .76rem; color: var(--muted); }
+  .bar { display: flex; height: 6px; border-radius: 99px; overflow: hidden; background: var(--raise); margin-top: .55rem; }
+  .bar span { display: block; }
+  .bar .p { background: var(--pass); } .bar .f { background: var(--fail); } .bar .s { background: var(--skip); }
+  .bar .c { background: var(--accent); } .bar .q { background: var(--info); }
+
+  /* ---------- tabs ---------- */
+  nav.tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: 1.8rem 0 0;
+             border-bottom: 1px solid var(--border); }
+  nav.tabs button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    border-radius: 0; padding: .55rem .8rem; color: var(--muted); font-size: .86rem;
+  }
+  nav.tabs button:hover { background: var(--hair); color: var(--text); }
+  nav.tabs button[aria-selected="true"] { color: var(--heading); border-bottom-color: var(--accent); font-weight: 600; }
+  nav.tabs .n { font-family: var(--font-mono); font-size: .72rem; opacity: .75; }
+
+  main { margin-top: 1.4rem; }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem; }
+  .search {
+    flex: 1 1 240px; min-width: 180px; font: inherit; font-size: .85rem; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .45rem .7rem;
+  }
+  .search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .chip {
+    font-size: .78rem; padding: .3rem .65rem; border-radius: 99px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { color: var(--heading); border-color: var(--cl, var(--accent)); background: var(--cs, var(--raise)); font-weight: 600; }
+  .chip.pass { --cl: var(--pass-line); --cs: var(--pass-soft); }
+  .chip.fail { --cl: var(--fail-line); --cs: var(--fail-soft); }
+  .chip.skip { --cl: var(--skip-line); --cs: var(--skip-soft); }
+  .chip .n { font-family: var(--font-mono); opacity: .8; }
+
+  /* ---------- cards / sections ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 1rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .8rem; margin: 2rem 0 .9rem; }
+  .sec-head h2 { font-family: var(--font-display); font-size: 1.22rem; color: var(--heading); margin: 0; font-weight: 600; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--hair); }
+  .sec-head .n { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); }
+  .note { font-size: .83rem; color: var(--muted); max-width: 78ch; }
+  .empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); font-size: .9rem; }
+
+  /* ---------- test tree ---------- */
+  .grp { border-top: 1px solid var(--hair); }
+  .card > .grp:first-child { border-top: none; }
+  .grp > summary {
+    display: flex; align-items: center; gap: .6rem; padding: .6rem .9rem;
+    cursor: pointer; background: var(--surface-2); list-style: none;
+  }
+  .grp > summary::-webkit-details-marker { display: none; }
+  .grp > summary::before {
+    content: "▸"; color: var(--muted); font-size: .7rem; width: .7rem; flex: none;
+    transition: transform .12s ease;
+  }
+  .grp[open] > summary::before { transform: rotate(90deg); }
+  .grp > summary:hover { background: var(--raise); }
+  .grp .gname { font-family: var(--font-mono); font-size: .84rem; color: var(--heading); }
+  .grp .gmeta { margin-left: auto; display: flex; gap: .5rem; align-items: center; font-size: .74rem; color: var(--muted); }
+
+  .tests { list-style: none; margin: 0; padding: 0; }
+  .tests > li { border-top: 1px solid var(--hair); }
+  .t { display: flex; align-items: center; gap: .6rem; padding: .45rem .9rem .45rem 1.9rem; cursor: pointer; list-style: none; }
+  .t::-webkit-details-marker { display: none; }
+  .t:hover { background: var(--surface-2); }
+  .t .name { font-family: var(--font-mono); font-size: .82rem; overflow-wrap: anywhere; }
+  .t .right { margin-left: auto; display: flex; gap: .7rem; align-items: center; font-size: .74rem; color: var(--muted); }
+  .dur { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .pill {
+    font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: .1rem .45rem; border-radius: 5px; border: 1px solid var(--pl, var(--border));
+    background: var(--ps, var(--raise)); color: var(--pc, var(--muted)); white-space: nowrap;
+  }
+  .pill.passed { --pc: var(--pass); --ps: var(--pass-soft); --pl: var(--pass-line); }
+  .pill.failed { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }
+  .pill.skipped { --pc: var(--skip); --ps: var(--skip-soft); --pl: var(--skip-line); }
+  .pill.covered { --pc: var(--pass); --ps: var(--pass-soft); --pl: var(--pass-line); }
+  .pill.query-only { --pc: var(--warn); --ps: var(--warn-soft); --pl: var(--warn-line); }
+  .pill.schema { --pc: var(--info); --ps: var(--info-soft); --pl: var(--info-line); }
+  .pill.unused { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }
+  .pill.plain { --pc: var(--muted); }
+
+  .detail { padding: .3rem .9rem 1rem 1.9rem; background: var(--surface-2); font-size: .82rem; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .8rem; }
+  .kv dt { font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .terms { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .15rem; }
+  .term-chip {
+    font-family: var(--font-mono); font-size: .74rem; padding: .08rem .4rem;
+    border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text);
+  }
+
+  /* ---------- coverage table ---------- */
+  .tblwrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .84rem; }
+  th, td { text-align: left; padding: .4rem .7rem; border-top: 1px solid var(--hair); }
+  thead th {
+    border-top: none; border-bottom: 1px solid var(--border); background: var(--surface-2);
+    font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--muted); font-weight: 600; white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
+  }
+  th.c, td.c { text-align: center; }
+  tbody tr.term { cursor: pointer; }
+  tbody tr.term:hover { background: var(--surface-2); }
+  tbody tr.ex > td { background: var(--surface-2); font-size: .8rem; padding-top: .2rem; padding-bottom: .2rem; }
+  .tname { font-family: var(--font-mono); white-space: nowrap; }
+  .glyph { color: var(--muted); opacity: .8; }
+  .yes { color: var(--pass); } .no { color: var(--muted); opacity: .45; }
+  abbr { text-decoration: none; border-bottom: 1px dotted var(--muted); cursor: help; }
+
+  /* ---------- cq / issue cards ---------- */
+  .cq { padding: .85rem 1rem; border-top: 1px solid var(--hair); }
+  .card > .cq:first-child { border-top: none; }
+  .cq .q { font-size: .98rem; color: var(--heading); font-weight: 600; margin: 0 0 .4rem; }
+  .cq .badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+  .cq ul { margin: .25rem 0 0; padding-left: 1.1rem; }
+  .cq li { margin: .15rem 0; }
+  .warnrow { color: var(--warn); }
+
+  /* ---------- source tab ---------- */
+  pre.ttl {
+    margin: 0; padding: 1rem; overflow: auto; max-height: 70vh;
+    font-family: var(--font-mono); font-size: .76rem; line-height: 1.45;
+    background: var(--surface); color: var(--text);
+  }
+  .prefixes { font-family: var(--font-mono); font-size: .78rem; }
+
+  /* ---------- embedded source ---------- */
+  a.srclink { border-bottom: 1px dotted currentColor; }
+  .src { margin-top: .5rem; }
+  .src > summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: .5rem;
+    font-family: var(--font-mono); font-size: .76rem; color: var(--muted);
+    padding: .25rem 0;
+  }
+  .src > summary::-webkit-details-marker { display: none; }
+  .src > summary::before { content: "▸"; font-size: .7rem; transition: transform .12s ease; }
+  .src[open] > summary::before { transform: rotate(90deg); }
+  .src > summary:hover { color: var(--text); }
+  pre.code {
+    margin: .3rem 0 0; padding: .7rem .85rem; overflow: auto; max-height: 24rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--font-mono); font-size: .76rem; line-height: 1.5;
+    white-space: pre; tab-size: 2;
+  }
+  .tok-comment { color: var(--muted); font-style: italic; }
+  .tok-string  { color: var(--pass); }
+  .tok-iri     { color: var(--accent-2); }
+  .tok-pname   { color: var(--accent); }
+  .tok-kw      { color: var(--warn); font-weight: 600; }
+  .tok-var     { color: var(--skip); }
+  .tok-num     { color: var(--info); }
+
+  /* source overlay, opened from any file reference */
+  .sheet {
+    position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+    background: rgba(0,0,0,.6); padding: clamp(.5rem, 4vh, 3rem) clamp(.5rem, 4vw, 3rem);
+  }
+  .sheet .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column;
+    max-height: 100%; width: 100%; max-width: 980px; margin: 0 auto; overflow: hidden;
+  }
+  .sheet .head {
+    display: flex; align-items: center; gap: .8rem; padding: .6rem .9rem;
+    border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .sheet .head .path { font-family: var(--font-mono); font-size: .8rem; overflow-wrap: anywhere; }
+  .sheet .head button { margin-left: auto; }
+  .sheet pre.code { margin: 0; border: none; border-radius: 0; max-height: none; flex: 1; }
+
+  /* ---------- dropzone ---------- */
+  .drop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center;
+    z-index: 20; font-size: 1.1rem; color: #fff; pointer-events: none;
+  }
+  .drop .inner { border: 2px dashed var(--accent); border-radius: 16px; padding: 3rem 4rem; background: var(--surface); color: var(--text); }
+  [hidden] { display: none !important; }
+  .err { border-color: var(--fail-line); background: var(--fail-soft); color: var(--fail); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--fail-line); }
+  footer { margin-top: 3rem; font-size: .76rem; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">mustrd &middot; spec-by-example for RDF &amp; SPARQL</p>
+      <div class="brand"><span class="dot"></span><h1 id="pageTitle">Run report</h1></div>
+      <div class="runmeta" id="runmeta"></div>
+    </div>
+    <div class="actions">
+      <label class="btn">Load TTL<input type="file" id="fileIn" accept=".ttl,.turtle,.n3,.nt,.jsonld,.json" multiple hidden></label>
+      <button id="themeBtn" title="Toggle light / dark">◐</button>
+    </div>
+  </header>
+
+  <section class="tiles" id="tiles"></section>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <main id="main"></main>
+
+  <footer>
+    Rendered in the browser from <span id="tripleCount">0</span> triples of RDF
+    (<code>cov:</code>/<code>must:</code>/<code>cq:</code>/<code>dqv:</code>).
+    Drop another <code>.ttl</code> or <code>.jsonld</code> anywhere on the page to merge it in.
+  </footer>
+</div>
+
+<div class="drop" id="drop" hidden><div class="inner">Drop <code>.ttl</code> / <code>.jsonld</code> to load</div></div>
+<div class="sheet" id="sheet" hidden><div class="panel">
+  <div class="head"><span class="path" id="sheetPath"></span><button id="sheetClose">Close ✕</button></div>
+  <pre class="code" id="sheetBody"></pre>
+</div></div>
+
+<script id="mustrd-data" type="application/json">"__MUSTRD_DATA__"</script>
+<script id="mustrd-config" type="application/json">{"srcBase": "__MUSTRD_SRC_BASE__"}</script>
+<script>
+"use strict";
+/* ======================================================================
+   1. Turtle parser  —  text -> {triples, prefixes}
+   Terms are interned as strings so the indexes can use plain Maps:
+     IRI      "<iri>"
+     blank    "_:id"
+     literal  "L" SEP lang SEP datatype SEP lexical-form   (SEP = U+0001)
+   ====================================================================== */
+var RDF  = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+var RDFS = "http://www.w3.org/2000/01/rdf-schema#";
+var OWL  = "http://www.w3.org/2002/07/owl#";
+var XSD  = "http://www.w3.org/2001/XMLSchema#";
+var SKOS = "http://www.w3.org/2004/02/skos/core#";
+var COV  = "https://mustrd.org/coverage/";
+var MUST = "https://mustrd.org/model/";
+var CQNS = "https://mustrd.org/competencyQuestion/";
+var DQV  = "http://www.w3.org/ns/dqv#";
+var PROV = "http://www.w3.org/ns/prov#";
+
+var SEP = "\u0001";                 // never occurs in an IRI or a sane literal
+function K(iri) { return "<" + iri + ">"; }
+function isIri(k) { return k.charCodeAt(0) === 60; }
+function isLit(k) { return k.charCodeAt(0) === 76 && k.charCodeAt(1) === 1; }
+function iriOf(k) { return k.slice(1, -1); }
+function litOf(k) {
+  var a = k.indexOf(SEP, 2), b = k.indexOf(SEP, a + 1);
+  return { lang: k.slice(2, a), dt: k.slice(a + 1, b), v: k.slice(b + 1) };
+}
+function mkLit(v, dt, lang) { return "L" + SEP + (lang || "") + SEP + (dt || "") + SEP + v; }
+/** Display string for any term: a literal's lexical form, else the IRI / bnode id. */
+function text(k) {
+  if (k === null || k === undefined) return null;
+  return isLit(k) ? litOf(k).v : isIri(k) ? iriOf(k) : k;
+}
+function truthy(k) { return k !== null && k !== undefined && litOf(k).v === "true"; }
+function num(k) { if (k === null || k === undefined) return null; var f = parseFloat(litOf(k).v); return isNaN(f) ? null : f; }
+
+var PN_LOCAL_STOP = "\t\r\n \"'`;,()[]{}^";
+var NUM_RE = /[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/y;
+var BNODE_RE = /[^\t\r\n "'`;,()[\]{}^.]+/y;
+
+function parseTurtle(src) {
+  var i = 0, n = src.length, base = "", bn = 0;
+  var prefixes = Object.create(null), triples = [];
+
+  function fail(msg) {
+    var near = src.slice(Math.max(0, i - 40), i + 40).replace(/\s+/g, " ");
+    throw new Error("Turtle: " + msg + " at offset " + i + " near …" + near + "…");
+  }
+  function ws() {
+    for (;;) {
+      while (i < n && (src[i] === " " || src[i] === "\t" || src[i] === "\n" || src[i] === "\r")) i++;
+      if (src[i] === "#") { while (i < n && src[i] !== "\n") i++; } else return;
+    }
+  }
+  function eat(s) { if (src.startsWith(s, i)) { i += s.length; return true; } return false; }
+  function eatCI(s) {
+    if (src.substr(i, s.length).toLowerCase() === s.toLowerCase()) { i += s.length; return true; }
+    return false;
+  }
+  function escape() {
+    i++;                                     // the backslash
+    var c = src[i++];
+    if (c === "t") return "\t";
+    if (c === "b") return "\b";
+    if (c === "n") return "\n";
+    if (c === "r") return "\r";
+    if (c === "f") return "\f";
+    if (c === "u") { var h = src.substr(i, 4); i += 4; return String.fromCharCode(parseInt(h, 16)); }
+    if (c === "U") { var H = src.substr(i, 8); i += 8; return String.fromCodePoint(parseInt(H, 16)); }
+    return c;                                // \" \' \\ and reserved-char escapes
+  }
+  function resolve(iri) {
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(iri) || !base) return iri;
+    try { return new URL(iri, base).href; } catch (e) { return iri; }
+  }
+  function iriRef() {
+    i++;                                     // '<'
+    var s = "";
+    while (i < n && src[i] !== ">") s += src[i] === "\\" ? escape() : src[i++];
+    if (src[i] !== ">") fail("unterminated IRI");
+    i++;
+    return resolve(s);
+  }
+  function pname() {
+    var start = i;
+    while (i < n && src[i] !== ":" && PN_LOCAL_STOP.indexOf(src[i]) < 0 && src[i] !== ".") i++;
+    if (src[i] !== ":") { i = start; return null; }
+    var pfx = src.slice(start, i);
+    i++;
+    var local = "";
+    while (i < n) {
+      var c = src[i];
+      if (c === "\\") { local += escape(); continue; }
+      if (c === "%") { local += src.substr(i, 3); i += 3; continue; }
+      if (PN_LOCAL_STOP.indexOf(c) >= 0) break;
+      if (c === ".") {                        // '.' is legal inside a local name, not at its end
+        var nx = src[i + 1];
+        if (nx === undefined || PN_LOCAL_STOP.indexOf(nx) >= 0 || nx === ".") break;
+      }
+      local += c; i++;
+    }
+    var ns = prefixes[pfx];
+    if (ns === undefined) fail('undefined prefix "' + pfx + ':"');
+    return ns + local;
+  }
+  function stringLit() {
+    var q = eat('"""') ? '"""' : eat("'''") ? "'''"
+          : src[i] === '"' ? (i++, '"') : src[i] === "'" ? (i++, "'") : null;
+    if (q === null) return null;
+    var s = "";
+    for (;;) {
+      if (i >= n) fail("unterminated string");
+      if (src.startsWith(q, i)) { i += q.length; return s; }
+      s += src[i] === "\\" ? escape() : src[i++];
+    }
+  }
+  function numberLit() {
+    NUM_RE.lastIndex = i;                    // sticky: no slicing, so parsing stays linear
+    var m = NUM_RE.exec(src);
+    if (!m) return null;
+    var lex = m[0];
+    i += lex.length;
+    var dt = /[eE]/.test(lex) ? XSD + "double" : lex.indexOf(".") >= 0 ? XSD + "decimal" : XSD + "integer";
+    return mkLit(lex, dt, null);
+  }
+  /** Any subject/object. Emits nested triples for [] property lists and () lists. */
+  function term() {
+    ws();
+    var c = src[i];
+    if (c === "<") return K(iriRef());
+    if (c === "_" && src[i + 1] === ":") {
+      i += 2;
+      BNODE_RE.lastIndex = i;                // '.' is not accepted, so "_:b0 ." terminates cleanly
+      var m = BNODE_RE.exec(src);
+      if (!m) fail("empty blank node label");
+      i += m[0].length;
+      return "_:" + m[0];
+    }
+    if (c === "[") {
+      i++;
+      var b = "_:b" + (bn++);
+      ws();
+      if (src[i] === "]") { i++; return b; }
+      predObjList(b);
+      ws();
+      if (src[i] !== "]") fail("expected ]");
+      i++;
+      return b;
+    }
+    if (c === "(") {
+      i++;
+      var items = [];
+      for (;;) { ws(); if (src[i] === ")") { i++; break; } if (i >= n) fail("unterminated collection"); items.push(term()); }
+      if (!items.length) return K(RDF + "nil");
+      var head = "_:b" + (bn++), cur = head;
+      for (var x = 0; x < items.length; x++) {
+        triples.push([cur, K(RDF + "first"), items[x]]);
+        var rest = x === items.length - 1 ? K(RDF + "nil") : "_:b" + (bn++);
+        triples.push([cur, K(RDF + "rest"), rest]);
+        cur = rest;
+      }
+      return head;
+    }
+    if (c === '"' || c === "'") {
+      var v = stringLit();
+      if (eat("^^")) { ws(); var dt = src[i] === "<" ? iriRef() : pname(); return mkLit(v, dt, null); }
+      if (src[i] === "@") { i++; var lg = ""; while (i < n && /[A-Za-z0-9-]/.test(src[i])) lg += src[i++]; return mkLit(v, null, lg); }
+      return mkLit(v, null, null);
+    }
+    if (c === "+" || c === "-" || c === "." || (c >= "0" && c <= "9")) {
+      var nl = numberLit();
+      if (nl) return nl;
+    }
+    if (src.startsWith("true", i) && PN_LOCAL_STOP.indexOf(src[i + 4] || " ") >= 0) { i += 4; return mkLit("true", XSD + "boolean", null); }
+    if (src.startsWith("false", i) && PN_LOCAL_STOP.indexOf(src[i + 5] || " ") >= 0) { i += 5; return mkLit("false", XSD + "boolean", null); }
+    var p = pname();
+    if (p === null) fail("unrecognised term");
+    return K(p);
+  }
+  function verb() {
+    ws();
+    if (src[i] === "a" && PN_LOCAL_STOP.indexOf(src[i + 1] || " ") >= 0) { i++; return K(RDF + "type"); }
+    if (src[i] === "<") return K(iriRef());
+    var p = pname();
+    if (p === null) fail("expected a predicate");
+    return K(p);
+  }
+  function predObjList(s) {
+    for (;;) {
+      var p = verb();
+      for (;;) {
+        triples.push([s, p, term()]);
+        ws();
+        if (src[i] === ",") { i++; continue; }
+        break;
+      }
+      ws();
+      if (src[i] === ";") {
+        i++; ws();
+        if (src[i] === "." || src[i] === "]" || i >= n) return;   // trailing ';'
+        continue;
+      }
+      return;
+    }
+  }
+
+  for (;;) {
+    ws();
+    if (i >= n) break;
+    if (src[i] === "@" || /^(prefix|base)\b/i.test(src.slice(i, i + 7))) {
+      var sparqlStyle = src[i] !== "@";
+      if (!sparqlStyle) i++;
+      if (eatCI("prefix")) {
+        ws();
+        var start = i;
+        while (i < n && src[i] !== ":") i++;
+        var pfx = src.slice(start, i);
+        i++; ws();
+        prefixes[pfx] = iriRef();
+        ws();
+        if (!sparqlStyle) { if (!eat(".")) fail("expected . after @prefix"); }
+        else eat(".");
+        continue;
+      }
+      if (eatCI("base")) {
+        ws(); base = iriRef(); ws();
+        if (!sparqlStyle) { if (!eat(".")) fail("expected . after @base"); } else eat(".");
+        continue;
+      }
+      fail("unknown directive");
+    }
+    var subj = term();
+    ws();
+    if (src[i] === ".") { i++; continue; }          // bare [] block
+    predObjList(subj);
+    ws();
+    if (!eat(".")) fail("expected . at end of statement");
+  }
+  return { triples: triples, prefixes: prefixes };
+}
+
+/* ======================================================================
+   2. JSON-LD (rdflib's expanded output) -> the same {triples, prefixes}
+   ====================================================================== */
+function parseJsonLd(src) {
+  var doc = JSON.parse(src);
+  var nodes = Array.isArray(doc) ? doc : doc["@graph"] ? doc["@graph"] : [doc];
+  var triples = [];
+  function objTerm(o) {
+    if (typeof o === "string") return K(o);
+    if (o["@id"]) return o["@id"].indexOf("_:") === 0 ? o["@id"] : K(o["@id"]);
+    if ("@value" in o) {
+      var v = o["@value"];
+      var dt = o["@type"] || (typeof v === "number" ? (Number.isInteger(v) ? XSD + "integer" : XSD + "decimal")
+                            : typeof v === "boolean" ? XSD + "boolean" : null);
+      return mkLit(String(v), dt, o["@language"] || null);
+    }
+    return null;
+  }
+  nodes.forEach(function (node) {
+    var id = node["@id"];
+    if (!id) return;
+    var s = id.indexOf("_:") === 0 ? id : K(id);
+    Object.keys(node).forEach(function (p) {
+      if (p === "@id") return;
+      var vals = Array.isArray(node[p]) ? node[p] : [node[p]];
+      var pk = p === "@type" ? K(RDF + "type") : K(p);
+      vals.forEach(function (v) {
+        var o = p === "@type" ? K(typeof v === "string" ? v : v["@id"]) : objTerm(v);
+        if (o) triples.push([s, pk, o]);
+      });
+    });
+  });
+  return { triples: triples, prefixes: Object.create(null) };
+}
+
+/* ======================================================================
+   3. Store — three indexes over interned terms, plus IRI shortening
+   ====================================================================== */
+function makeStore() {
+  var spo = new Map(), pos = new Map(), all = [], seen = new Set();
+  var prefixes = Object.create(null), ordered = [];
+
+  function idx(m, a, b, c) {
+    var x = m.get(a); if (!x) { x = new Map(); m.set(a, x); }
+    var y = x.get(b); if (!y) { y = []; x.set(b, y); }
+    y.push(c);
+  }
+  function rebuildPrefixes() {
+    ordered = Object.keys(prefixes).map(function (p) { return [prefixes[p], p]; })
+      .sort(function (a, b) { return b[0].length - a[0].length; });
+  }
+  return {
+    prefixes: prefixes,
+    size: function () { return all.length; },
+    add: function (parsed) {
+      // First binding for a prefix wins, so merging a second file cannot silently
+      // rebind a prefix the first one already used for display.
+      Object.keys(parsed.prefixes).forEach(function (p) {
+        if (p && prefixes[p] === undefined) prefixes[p] = parsed.prefixes[p];
+      });
+      rebuildPrefixes();
+      parsed.triples.forEach(function (t) {
+        var sig = t[0] + "\u0002" + t[1] + "\u0002" + t[2];
+        if (seen.has(sig)) return;            // graphs merge cleanly (stable IRIs, no dupes)
+        seen.add(sig);
+        all.push(t);
+        idx(spo, t[0], t[1], t[2]);
+        idx(pos, t[1], t[2], t[0]);
+      });
+    },
+    /** Objects of (subjectKey, predicateIRI). */
+    objs: function (s, p) { var x = spo.get(s); if (!x) return []; return x.get(K(p)) || []; },
+    one: function (s, p) { var v = this.objs(s, p); return v.length ? v[0] : null; },
+    /** Subjects of (predicateIRI, objectKey). */
+    subj: function (p, oKey) { var x = pos.get(K(p)); if (!x) return []; return x.get(oKey) || []; },
+    typed: function (cls) { return this.subj(RDF + "type", K(cls)); },
+    has: function (s, p, oKey) { return this.objs(s, p).indexOf(oKey) >= 0; },
+    triples: function () { return all; },
+    /** IRI -> qname using the loaded @prefix bindings (longest namespace wins). */
+    short: function (iri) {
+      for (var x = 0; x < ordered.length; x++) {
+        if (iri.indexOf(ordered[x][0]) === 0) return ordered[x][1] + ":" + iri.slice(ordered[x][0].length);
+      }
+      return iri;
+    }
+  };
+}
+
+function localName(iri) {
+  var s = String(iri), h = s.lastIndexOf("#"), sl = s.lastIndexOf("/");
+  var cut = Math.max(h, sl);
+  return cut >= 0 ? s.slice(cut + 1) : s;
+}
+
+/* ======================================================================
+   4. Model — read the run out of the graph
+   ====================================================================== */
+var OUTCOME = {};
+OUTCOME[COV + "Passed"] = "passed";
+OUTCOME[COV + "Failed"] = "failed";
+OUTCOME[COV + "Skipped"] = "skipped";
+var ROLE = {};
+ROLE[COV + "Covered"] = "covered";
+ROLE[COV + "QueryOnly"] = "query-only";
+ROLE[COV + "Structural"] = "schema";
+ROLE[COV + "Unused"] = "unused";
+
+function outcomeOf(st, s, p) {
+  var o = st.one(s, p);
+  return o && isIri(o) ? (OUTCOME[iriOf(o)] || "failed") : null;
+}
+
+/** cov:SourceFile nodes attached to a spec: the verbatim Turtle it is defined by
+    and the SPARQL it ran, so the report needs no access to the original files. */
+function readSources(st, s) {
+  return st.objs(s, COV + "embeddedSource").map(function (n) {
+    return {
+      path: text(st.one(n, COV + "filePath")),
+      media: text(st.one(n, COV + "mediaType")) || "text/turtle",
+      body: text(st.one(n, COV + "fileText")) || ""
+    };
+  }).sort(function (a, b) {                     // the spec first, then its queries
+    return (a.path ? 0 : 1) - (b.path ? 0 : 1) || (a.path || "").localeCompare(b.path || "");
+  });
+}
+
+/** {iri: {name, source, sources, …}} for every must:TestSpec in the graph. */
+function readSpecs(st) {
+  var out = {};
+  st.typed(MUST + "TestSpec").forEach(function (s) {
+    if (!isIri(s)) return;
+    out[iriOf(s)] = {
+      iri: iriOf(s),
+      name: text(st.one(s, MUST + "specFileName")) || localName(iriOf(s)),
+      source: text(st.one(s, MUST + "specSourceFile")),
+      sources: readSources(st, s),
+      inData: st.objs(s, COV + "usesInData").filter(isIri).map(iriOf).sort(),
+      inQuery: st.objs(s, COV + "usesInQuery").filter(isIri).map(iriOf).sort()
+    };
+  });
+  return out;
+}
+
+/** {path: source} across every spec — lets any file reference in the report open
+    the text that was actually read, instead of a link into a filesystem the
+    reader does not have. */
+function sourcesByPath(specs) {
+  var by = {};
+  Object.keys(specs).forEach(function (k) {
+    (specs[k].sources || []).forEach(function (src) {
+      if (src.path && !by[src.path]) by[src.path] = src;
+    });
+  });
+  return by;
+}
+
+/** cov:TestResult records, grouped module -> class, Playwright-style. */
+function readTests(st, specs) {
+  var rows = st.typed(COV + "TestResult").map(function (r) {
+    var spec = st.one(r, COV + "resultTest");
+    var specIri = spec && isIri(spec) ? iriOf(spec) : null;
+    return {
+      status: outcomeOf(st, r, COV + "resultOutcome") || "failed",
+      type: text(st.one(r, COV + "testType")) || "",
+      module: text(st.one(r, COV + "module")) || "",
+      cls: text(st.one(r, COV + "className")) || "",
+      name: text(st.one(r, COV + "testName")) || localName(iriOf(r)),
+      duration: num(st.one(r, COV + "duration")),
+      spec: specIri ? specs[specIri] || { iri: specIri, name: localName(specIri) } : null,
+      source: text(st.one(r, COV + "sourceFile"))
+    };
+  });
+  rows.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+  var groups = [], byKey = new Map();
+  rows.forEach(function (t) {
+    var label = [t.module, t.cls].filter(Boolean).join(" › ") || "tests";
+    var g = byKey.get(label);
+    if (!g) { g = { label: label, tests: [], passed: 0, failed: 0, skipped: 0, duration: 0 }; byKey.set(label, g); groups.push(g); }
+    g.tests.push(t);
+    g[t.status] = (g[t.status] || 0) + 1;
+    g.duration += t.duration || 0;
+  });
+  groups.sort(function (a, b) { return a.label.localeCompare(b.label); });
+  var totals = { passed: 0, failed: 0, skipped: 0, duration: 0, total: rows.length };
+  rows.forEach(function (t) { totals[t.status] = (totals[t.status] || 0) + 1; totals.duration += t.duration || 0; });
+  return { groups: groups, totals: totals, rows: rows };
+}
+
+/** dqv:QualityMeasurement values, keyed by metric IRI. */
+function readMeasurements(st) {
+  var out = {};
+  st.typed(DQV + "QualityMeasurement").forEach(function (m) {
+    var metric = st.one(m, DQV + "isMeasurementOf");
+    if (metric && isIri(metric)) out[iriOf(metric)] = num(st.one(m, DQV + "value"));
+  });
+  return out;
+}
+
+function readOntologies(st) {
+  return st.typed(OWL + "Ontology").filter(isIri).map(function (o) {
+    return {
+      iri: iriOf(o),
+      path: text(st.one(o, COV + "sourceFile")),
+      version: text(st.one(o, OWL + "versionIRI")),
+      comment: text(st.one(o, RDFS + "comment")) || text(st.one(o, RDFS + "label"))
+    };
+  }).sort(function (a, b) { return a.iri.localeCompare(b.iri); });
+}
+
+/** cov:TermCoverage records -> {iri: {kind, role, cqRole, inData, inQuery, reasons, exercises}}. */
+function readTerms(st, specs) {
+  var terms = {};
+  st.typed(COV + "TermCoverage").forEach(function (tc) {
+    var t = st.one(tc, COV + "term");
+    if (!t || !isIri(t)) return;
+    var role = st.one(tc, COV + "role"), cq = st.one(tc, COV + "cqRole");
+    var exercises = st.objs(tc, COV + "exercise").map(function (e) {
+      var tst = st.one(e, COV + "test");
+      var iri = tst && isIri(tst) ? iriOf(tst) : null;
+      var meta = iri ? specs[iri] : null;
+      return {
+        iri: iri, name: (meta && meta.name) || (iri && localName(iri)) || "?",
+        source: meta && meta.source,
+        inData: truthy(st.one(e, COV + "inData")), inQuery: truthy(st.one(e, COV + "inQuery"))
+      };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    terms[iriOf(t)] = {
+      iri: iriOf(t),
+      kind: text(st.one(tc, COV + "kind")) || "class",
+      role: (role && isIri(role) && ROLE[iriOf(role)]) || "unused",
+      cqRole: cq && isIri(cq) ? ROLE[iriOf(cq)] || "unused" : null,
+      inData: truthy(st.one(tc, COV + "inData")),
+      inQuery: truthy(st.one(tc, COV + "inQuery")),
+      reasons: st.objs(tc, COV + "structuralReason").map(text).sort(),
+      exercises: exercises
+    };
+  });
+  return terms;
+}
+
+/** Order terms as an rdfs:subClassOf forest with rdfs:domain properties nested
+    beneath their class — the shape the Markdown report uses. Falls back to a
+    flat, namespace-sorted list when the ontology TBox is not in the graph. */
+function orderTerms(st, terms) {
+  var iris = Object.keys(terms);
+  var declared = new Set(iris);
+  var classes = iris.filter(function (t) { return terms[t].kind === "class"; });
+  var props = iris.filter(function (t) { return terms[t].kind !== "class"; });
+  var byShort = function (a, b) { return st.short(a).localeCompare(st.short(b)); };
+
+  var parent = {}, children = {};
+  classes.forEach(function (c) {
+    var sup = st.objs(K(c), RDFS + "subClassOf").filter(isIri).map(iriOf)
+      .filter(function (p) { return declared.has(p) && p !== c; }).sort(byShort);
+    if (sup.length) { parent[c] = sup[0]; (children[sup[0]] = children[sup[0]] || []).push(c); }
+  });
+  var attached = {}, loose = [];
+  props.sort(byShort).forEach(function (p) {
+    var dom = st.objs(K(p), RDFS + "domain").filter(isIri).map(iriOf)
+      .filter(function (d) { return declared.has(d); }).sort(byShort);
+    if (dom.length) (attached[dom[0]] = attached[dom[0]] || []).push(p);
+    else loose.push(p);
+  });
+
+  var rows = [], seen = new Set();
+  function walk(iri, depth, glyph) {
+    if (seen.has(iri)) return;
+    seen.add(iri);
+    rows.push({ iri: iri, depth: depth, glyph: glyph, t: terms[iri] });
+    (attached[iri] || []).forEach(function (p) { walk(p, depth + 1, "▸"); });
+    (children[iri] || []).sort(byShort).forEach(function (c) { walk(c, depth + 1, "↳"); });
+  }
+  classes.filter(function (c) { return !parent[c]; }).sort(byShort).forEach(function (c) { walk(c, 0, ""); });
+  classes.sort(byShort).forEach(function (c) { walk(c, 0, ""); });      // cycle safety net
+  loose.forEach(function (p) { walk(p, 0, ""); });
+  return rows;
+}
+
+function readCoverage(st, specs) {
+  var terms = readTerms(st, specs);
+  var iris = Object.keys(terms);
+  if (!iris.length) return null;
+  var m = readMeasurements(st);
+  var schema = iris.filter(function (t) { return terms[t].role === "schema"; });
+  var denom = iris.length - schema.length;
+  var covered = iris.filter(function (t) { return terms[t].role === "covered"; }).length;
+  var hasCq = m[COV + "termCoverageByCompetencyQuestions"] !== undefined;
+  var coveredCq = iris.filter(function (t) { return terms[t].cqRole === "covered"; }).length;
+  return {
+    terms: terms, rows: orderTerms(st, terms), ontologies: readOntologies(st),
+    declared: iris.length, schema: schema.length, denom: denom, covered: covered,
+    pct: denom ? Math.round(100 * covered / denom) : 0,
+    hasCq: hasCq, coveredCq: coveredCq,
+    cqPct: denom ? Math.round(100 * coveredCq / denom) : 0,
+    ratio: m[COV + "termCoverageByTests"], cqRatio: m[COV + "termCoverageByCompetencyQuestions"]
+  };
+}
+
+function readCqs(st, specs) {
+  var byCq = {};
+  st.typed(COV + "Assertion").forEach(function (a) {
+    var cq = st.one(a, COV + "onCompetencyQuestion"), t = st.one(a, COV + "onTest");
+    if (!cq || !isIri(cq)) return;
+    (byCq[iriOf(cq)] = byCq[iriOf(cq)] || []).push({
+      spec: t && isIri(t) ? specs[iriOf(t)] || { iri: iriOf(t), name: localName(iriOf(t)) } : null,
+      status: outcomeOf(st, a, COV + "outcome"),
+      requiresOntology: truthy(st.one(a, COV + "requiresOntology"))
+    });
+  });
+  var out = st.typed(CQNS + "CompetencyQuestion").filter(isIri).map(function (c) {
+    var iri = iriOf(c);
+    var linked = st.objs(c, CQNS + "cqSpec").filter(isIri).map(iriOf);
+    var tests = (byCq[iri] || []).sort(function (a, b) {
+      return ((a.spec && a.spec.name) || "").localeCompare((b.spec && b.spec.name) || "");
+    });
+    var resolved = new Set(tests.map(function (t) { return t.spec && t.spec.iri; }));
+    return {
+      iri: iri, name: localName(iri),
+      questions: st.objs(c, CQNS + "question").map(text).sort(),
+      source: text(st.one(c, COV + "sourceFile")),
+      duplicate: truthy(st.one(c, COV + "duplicate")),
+      tests: tests,
+      missing: linked.filter(function (l) { return !resolved.has(l) && !specs[l]; })
+    };
+  });
+  out.sort(function (a, b) { return ((a.questions[0] || a.name)).localeCompare(b.questions[0] || b.name); });
+  return out;
+}
+
+function readIssues(st, specs) {
+  function refs(issue) {
+    return st.objs(issue, COV + "reference").map(function (r) {
+      var t = st.one(r, COV + "test");
+      var iri = t && isIri(t) ? iriOf(t) : null;
+      var meta = iri ? specs[iri] : null;
+      return {
+        name: (meta && meta.name) || (iri && localName(iri)) || "?", source: meta && meta.source,
+        inData: truthy(st.one(r, COV + "inData")), inQuery: truthy(st.one(r, COV + "inQuery"))
+      };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+  var undeclared = st.subj(COV + "issueType", K(COV + "UsedButNotDeclared")).map(function (issue) {
+    var t = st.one(issue, COV + "aboutTerm");
+    return { term: t && isIri(t) ? iriOf(t) : "?", refs: refs(issue) };
+  }).sort(function (a, b) { return a.term.localeCompare(b.term); });
+  var tbox = st.subj(COV + "issueType", K(COV + "TBoxInTestData")).map(function (issue) {
+    var t = st.one(issue, COV + "aboutTest");
+    var meta = t && isIri(t) ? specs[iriOf(t)] : null;
+    return {
+      name: (meta && meta.name) || (t && isIri(t) ? localName(iriOf(t)) : "?"),
+      source: meta && meta.source,
+      axioms: st.objs(issue, COV + "detail").map(text).sort()
+    };
+  }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  return { undeclared: undeclared, tbox: tbox };
+}
+
+function readRun(st) {
+  var runs = st.typed(COV + "CoverageRun");
+  if (!runs.length) return {};
+  var r = runs[0];
+  var agent = st.one(r, PROV + "wasAssociatedWith");
+  return {
+    iri: isIri(r) ? iriOf(r) : null,
+    slug: isIri(r) ? localName(iriOf(r)) : null,
+    commit: st.objs(r, PROV + "used").filter(isIri).map(iriOf)
+      .filter(function (u) { return /\/commit\//.test(u); })[0] || null,
+    version: agent ? text(st.one(agent, OWL + "versionInfo")) : null
+  };
+}
+
+/* ======================================================================
+   5. Rendering helpers
+   ====================================================================== */
+function esc(s) {
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+var CFG = {};
+/** A reference to a spec/ontology source file.
+
+    Preference order: the text embedded in this page (opens in place — works from
+    an email attachment or a CI artifact, where a path is meaningless), then the
+    build-time src base (a repo URL, when the page was published from CI), then
+    plain text rather than a link that would 404. */
+function srcLink(path, label) {
+  if (!path) return esc(label || "");
+  var name = esc(label || path);
+  if (M && M.sources && M.sources[path]) {
+    return '<a class="srclink" href="#" data-src="' + esc(path) + '" title="' +
+      esc("Show " + path) + '">' + name + "</a>";
+  }
+  var base = CFG.srcBase && CFG.srcBase.indexOf("__MUSTRD") !== 0 ? CFG.srcBase : "";
+  if (base) return '<a href="' + esc(base + path) + '" title="' + esc(path) + '">' + name + "</a>";
+  return '<span title="' + esc(path) + '">' + name + "</span>";
+}
+
+/* ---- syntax highlighting for the embedded Turtle / SPARQL ---- */
+var TTL_RE = new RegExp([
+  "(#[^\\n]*)",                                                   // 1 comment
+  "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
+  "(<[^>\\s]*>)",                                                 // 3 IRI
+  "(@prefix|@base|\\ba\\b|\\btrue\\b|\\bfalse\\b)",               // 4 keyword
+  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                               // 5 prefixed name
+  "(-?\\b\\d+(?:\\.\\d+)?\\b)"                                    // 6 number
+].join("|"), "g");
+var TTL_CLASSES = [null, "comment", "string", "iri", "kw", "pname", "num"];
+
+var SPARQL_RE = new RegExp([
+  "(#[^\\n]*)",
+  "(\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
+  "(<[^>\\s]*>)",
+  "([?$][A-Za-z_]\\w*)",                                          // 4 variable
+  "\\b(SELECT|CONSTRUCT|ASK|DESCRIBE|WHERE|INSERT|DELETE|DATA|GRAPH|OPTIONAL|" +
+    "FILTER|BIND|VALUES|UNION|MINUS|SERVICE|PREFIX|BASE|DISTINCT|REDUCED|ORDER|" +
+    "GROUP|BY|HAVING|LIMIT|OFFSET|AS|NOT|EXISTS|IN|WITH|USING|FROM|NAMED|SILENT|" +
+    "CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|TRUE|FALSE)\\b",   // 5 keyword
+  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)"                                // 6 prefixed name
+].join("|"), "gi");
+var SPARQL_CLASSES = [null, "comment", "string", "iri", "var", "kw", "pname"];
+
+function highlight(body, media) {
+  var sparql = /sparql/i.test(media || "");
+  var re = sparql ? SPARQL_RE : TTL_RE;
+  var classes = sparql ? SPARQL_CLASSES : TTL_CLASSES;
+  var out = "", last = 0, m;
+  re.lastIndex = 0;
+  while ((m = re.exec(body)) !== null) {
+    if (!m[0].length) { re.lastIndex++; continue; }               // never loop forever
+    var cls = null;
+    for (var g = 1; g < classes.length; g++) { if (m[g] !== undefined) { cls = classes[g]; break; } }
+    out += esc(body.slice(last, m.index));
+    out += cls ? '<span class="tok-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+    last = m.index + m[0].length;
+  }
+  return out + esc(body.slice(last));
+}
+
+function sourceLabel(src) {
+  if (src.path) return src.path;
+  return /sparql/i.test(src.media) ? "SPARQL (inline in the spec)" : "source";
+}
+
+function renderSources(sources) {
+  if (!sources || !sources.length) return "";
+  return sources.map(function (src) {
+    return '<details class="src"><summary>' + esc(sourceLabel(src)) +
+      ' · ' + esc(src.media) + "</summary><pre class=\"code\">" +
+      highlight(src.body, src.media) + "</pre></details>";
+  }).join("");
+}
+function dur(s) {
+  if (s === null || s === undefined) return "";
+  return s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(2) + "s";
+}
+function tick(on) { return on ? '<span class="yes">✓</span>' : '<span class="no">–</span>'; }
+function pill(kind, label) { return '<span class="pill ' + kind + '">' + esc(label || kind) + "</span>"; }
+function pct(n) { return n + "%"; }
+
+/* ======================================================================
+   6. Views
+   ====================================================================== */
+var state = { tab: null, q: "", status: { passed: true, failed: true, skipped: true }, role: {} };
+var M = null;                                     // the current model
+
+function matches(t) {
+  if (!state.status[t.status]) return false;
+  if (!state.q) return true;
+  var q = state.q.toLowerCase();
+  return (t.name + " " + t.module + " " + t.cls + " " + (t.spec ? t.spec.iri : "")).toLowerCase().indexOf(q) >= 0;
+}
+
+function viewTests() {
+  var T = M.tests, tot = T.totals;
+  var chips = ["passed", "failed", "skipped"].map(function (s) {
+    var cls = s === "passed" ? "pass" : s === "failed" ? "fail" : "skip";
+    return '<button class="chip ' + cls + '" data-status="' + s + '" aria-pressed="' + state.status[s] + '">' +
+      esc(s) + ' <span class="n">' + (tot[s] || 0) + "</span></button>";
+  }).join("");
+
+  var body = T.groups.map(function (g) {
+    var vis = g.tests.filter(matches);
+    if (!vis.length) return "";
+    var failing = vis.some(function (t) { return t.status === "failed"; });
+    return '<details class="grp"' + (failing || state.q ? " open" : "") + ">" +
+      '<summary><span class="gname">' + esc(g.label) + "</span>" +
+      '<span class="gmeta">' +
+        (g.failed ? pill("failed", g.failed + " failed") : "") +
+        (g.skipped ? pill("skipped", g.skipped + " skipped") : "") +
+        '<span>' + vis.length + " test" + (vis.length === 1 ? "" : "s") + "</span>" +
+        '<span class="dur">' + dur(g.duration) + "</span>" +
+      "</span></summary>" +
+      '<ul class="tests">' + vis.map(testRow).join("") + "</ul></details>";
+  }).join("");
+
+  return '<div class="toolbar">' +
+      '<input class="search" id="q" type="search" placeholder="Filter tests…" value="' + esc(state.q) + '">' +
+      '<div class="chips">' + chips + "</div>" +
+      '<button id="expandAll">Expand all</button><button id="collapseAll">Collapse all</button>' +
+    "</div>" +
+    (body ? '<div class="card">' + body + "</div>"
+          : '<div class="card"><p class="empty">No tests match the current filter.</p></div>');
+}
+
+function testRow(t) {
+  var meta = [];
+  if (t.spec) {
+    if (t.spec.source) meta.push("<dt>spec file</dt><dd>" + srcLink(t.spec.source, t.spec.source) + "</dd>");
+    meta.push("<dt>spec IRI</dt><dd><code>" + esc(t.spec.iri) + "</code></dd>");
+    if (t.spec.inData && t.spec.inData.length) {
+      meta.push("<dt>in data</dt><dd><div class=\"terms\">" + t.spec.inData.map(function (x) {
+        return '<span class="term-chip" title="' + esc(x) + '">' + esc(M.store.short(x)) + "</span>";
+      }).join("") + "</div></dd>");
+    }
+    if (t.spec.inQuery && t.spec.inQuery.length) {
+      meta.push("<dt>in SPARQL</dt><dd><div class=\"terms\">" + t.spec.inQuery.map(function (x) {
+        return '<span class="term-chip" title="' + esc(x) + '">' + esc(M.store.short(x)) + "</span>";
+      }).join("") + "</div></dd>");
+    }
+    var cqs = M.cqs.filter(function (c) {
+      return c.tests.some(function (x) { return x.spec && x.spec.iri === t.spec.iri; });
+    });
+    if (cqs.length) {
+      meta.push("<dt>answers</dt><dd>" + cqs.map(function (c) { return esc(c.questions[0] || c.name); }).join("<br>") + "</dd>");
+    }
+  } else if (t.source) {
+    meta.push("<dt>file</dt><dd>" + srcLink(t.source, t.source) + "</dd>");
+  }
+  if (t.type) meta.push("<dt>type</dt><dd>" + esc(t.type) + "</dd>");
+
+  var sources = renderSources(t.spec && t.spec.sources);
+  return "<li><details><summary class=\"t\">" + pill(t.status) +
+      '<span class="name">' + esc(t.name) + "</span>" +
+      '<span class="right"><span class="dur">' + dur(t.duration) + "</span></span>" +
+    "</summary>" +
+    (meta.length || sources
+      ? '<div class="detail">' +
+        (meta.length ? '<dl class="kv">' + meta.join("") + "</dl>" : "") + sources +
+        "</div>"
+      : "") +
+    "</details></li>";
+}
+
+function viewCoverage() {
+  var C = M.coverage;
+  if (!C) return '<div class="card"><p class="empty">This run has no ontology term coverage. Re-run with <code>--term-coverage</code>.</p></div>';
+
+  var onto = C.ontologies.length ? '<div class="card">' + C.ontologies.map(function (o) {
+    return '<div class="cq"><p class="q mono">' + esc(o.iri) + "</p>" +
+      (o.comment ? "<p class=\"note\">" + esc(o.comment) + "</p>" : "") +
+      (o.path ? '<p class="note">' + srcLink(o.path, o.path) + "</p>" : "") +
+      (o.version ? '<p class="note mono">version: ' + esc(o.version) + "</p>" : "") + "</div>";
+  }).join("") + "</div>" : "";
+
+  var roles = ["covered", "query-only", "schema", "unused"];
+  var counts = {};
+  roles.forEach(function (r) {
+    counts[r] = Object.keys(C.terms).filter(function (t) { return C.terms[t].role === r; }).length;
+  });
+  var anyRole = roles.some(function (r) { return state.role[r]; });
+  var chips = roles.map(function (r) {
+    return '<button class="chip" data-role="' + r + '" aria-pressed="' + (!!state.role[r]) + '">' +
+      esc(r) + ' <span class="n">' + counts[r] + "</span></button>";
+  }).join("");
+
+  var rows = C.rows.filter(function (r) {
+    if (anyRole && !state.role[r.t.role]) return false;
+    if (!state.q) return true;
+    return (M.store.short(r.iri) + " " + r.iri).toLowerCase().indexOf(state.q.toLowerCase()) >= 0;
+  });
+
+  var tbody = rows.map(function (r) {
+    var t = r.t, pad = r.depth * 1.15;
+    var exRows = t.exercises.map(function (e) {
+      return '<tr class="ex" data-for="' + esc(r.iri) + '" hidden><td style="padding-left:' + (pad + 2.2) + 'rem">' +
+        '<span class="glyph">•</span> ' + srcLink(e.source, e.name) + "</td><td></td>" +
+        '<td class="c">' + tick(e.inData) + '</td><td class="c">' + tick(e.inQuery) +
+        "</td><td></td><td></td></tr>";
+    }).join("");
+    var reasonRow = t.reasons.length
+      ? '<tr class="ex" data-for="' + esc(r.iri) + '" hidden><td colspan="6" style="padding-left:' + (pad + 2.2) +
+        'rem" class="note">structural because: ' + esc(t.reasons.join("; ")) + "</td></tr>"
+      : "";
+    return '<tr class="term" data-term="' + esc(r.iri) + '" title="' + esc(r.iri) + '">' +
+      '<td class="tname" style="padding-left:' + (0.7 + pad) + 'rem">' +
+        (r.glyph ? '<span class="glyph">' + r.glyph + "</span> " : "") + esc(M.store.short(r.iri)) + "</td>" +
+      "<td>" + esc(t.kind) + "</td>" +
+      '<td class="c">' + tick(t.inData) + "</td>" +
+      '<td class="c">' + tick(t.inQuery) + "</td>" +
+      '<td class="c">' + pill(t.role) + "</td>" +
+      '<td class="c">' + (t.cqRole ? pill(t.cqRole) : "") + "</td></tr>" + reasonRow + exRows;
+  }).join("");
+
+  return '<div class="toolbar">' +
+      '<input class="search" id="q" type="search" placeholder="Filter terms…" value="' + esc(state.q) + '">' +
+      '<div class="chips">' + chips + "</div></div>" +
+    '<p class="note">A term counts as <strong>covered</strong> when a passing test <strong>populates it in input data</strong>. ' +
+      "A term named only in a query is <strong>query-only</strong> and does not count. " +
+      "<strong>structural</strong> terms are load-bearing but excluded from the denominator. " +
+      "Classes are nested by <code>rdfs:subClassOf</code> (↳), properties under their <code>rdfs:domain</code> (▸). " +
+      "Click a row for the per-test breakdown.</p>" +
+    '<div class="card tblwrap"><table><thead><tr>' +
+      "<th>Term</th><th>Kind</th>" +
+      '<th class="c"><abbr title="A passing test asserts the term in its given data">In data</abbr></th>' +
+      '<th class="c"><abbr title="A passing test\'s SPARQL names the term">In SPARQL</abbr></th>' +
+      '<th class="c">Test coverage</th><th class="c">CQ coverage</th>' +
+    "</tr></thead><tbody>" + (tbody || '<tr><td colspan="6" class="empty">No terms match.</td></tr>') +
+    "</tbody></table></div>" +
+    (onto ? '<div class="sec-head"><h2>Ontologies measured</h2><span class="rule"></span><span class="n">' +
+      C.ontologies.length + "</span></div>" + onto : "");
+}
+
+function viewCqs() {
+  if (!M.cqs.length) return '<div class="card"><p class="empty">No competency questions in this graph. Re-run with <code>--cq</code>.</p></div>';
+  var body = M.cqs.filter(function (c) {
+    if (!state.q) return true;
+    return (c.questions.join(" ") + " " + c.name).toLowerCase().indexOf(state.q.toLowerCase()) >= 0;
+  }).map(function (c) {
+    var badges = [];
+    if (c.duplicate) badges.push(pill("query-only", "duplicate question"));
+    if (!c.tests.length) badges.push(pill("unused", "no linked test"));
+    if (c.tests.some(function (t) { return t.status === "failed"; })) badges.push(pill("failed", "failing"));
+    else if (c.tests.length) badges.push(pill("passed", "verified"));
+    var tests = c.tests.map(function (t) {
+      return "<li>" + pill(t.status || "plain", t.status || "unknown") + " " +
+        (t.spec ? srcLink(t.spec.source, t.spec.name) : "?") +
+        (t.requiresOntology ? " " + pill("schema", "needs ontology") : "") + "</li>";
+    }).join("");
+    var missing = c.missing.map(function (m) {
+      return '<li class="warnrow">cq:cqSpec points at <code>' + esc(m) + "</code>, which no test in this run provides</li>";
+    }).join("");
+    return '<div class="cq"><p class="q">' + esc(c.questions[0] || c.name) + "</p>" +
+      '<div class="badges">' + badges.join("") + "</div>" +
+      (c.questions.length > 1 ? '<p class="note">also asked as: ' + c.questions.slice(1).map(esc).join(" · ") + "</p>" : "") +
+      (tests || missing ? "<ul>" + tests + missing + "</ul>" : "") +
+      (c.source ? '<p class="note">defined in ' + srcLink(c.source, c.source) + "</p>" : "") +
+      "</div>";
+  }).join("");
+  return '<div class="toolbar"><input class="search" id="q" type="search" placeholder="Filter questions…" value="' + esc(state.q) + '"></div>' +
+    '<div class="card">' + (body || '<p class="empty">No questions match.</p>') + "</div>";
+}
+
+function viewIssues() {
+  var I = M.issues;
+  if (!I.undeclared.length && !I.tbox.length) {
+    return '<div class="card"><p class="empty">No quality issues found in this run. ✨</p></div>';
+  }
+  var out = "";
+  if (I.undeclared.length) {
+    out += '<div class="sec-head"><h2>Used but not declared</h2><span class="rule"></span><span class="n">' +
+      I.undeclared.length + "</span></div>" +
+      '<p class="note">Terms a test references inside a measured ontology’s namespace that the ontology never declares — usually a typo or a missing definition.</p>' +
+      '<div class="card">' + I.undeclared.map(function (u) {
+        return '<div class="cq"><p class="q mono">' + esc(M.store.short(u.term)) + "</p>" +
+          '<p class="note mono">' + esc(u.term) + "</p><ul>" + u.refs.map(function (r) {
+            return "<li>" + srcLink(r.source, r.name) + ' <span class="note">— ' +
+              (r.inData ? "in data" : "") + (r.inData && r.inQuery ? " and " : "") + (r.inQuery ? "in SPARQL" : "") + "</span></li>";
+          }).join("") + "</ul></div>";
+      }).join("") + "</div>";
+  }
+  if (I.tbox.length) {
+    out += '<div class="sec-head"><h2>TBox in test data</h2><span class="rule"></span><span class="n">' +
+      I.tbox.length + "</span></div>" +
+      '<p class="note">Schema axioms found in a test’s input data, where only instance data belongs.</p>' +
+      '<div class="card">' + I.tbox.map(function (t) {
+        return '<div class="cq"><p class="q">' + srcLink(t.source, t.name) + "</p><ul>" +
+          t.axioms.map(function (a) { return '<li class="mono">' + esc(a) + "</li>"; }).join("") + "</ul></div>";
+      }).join("") + "</div>";
+  }
+  return out;
+}
+
+function viewSource() {
+  var pfx = Object.keys(M.store.prefixes).sort().map(function (p) {
+    return "<tr><td class=\"mono\">" + esc(p) + ":</td><td class=\"mono\">" + esc(M.store.prefixes[p]) + "</td></tr>";
+  }).join("");
+  var dl = M.raw
+    ? '<a class="btn" download="mustrd-run.ttl" href="data:text/turtle;charset=utf-8,' + encodeURIComponent(M.raw) + '">Download TTL</a>'
+    : "";
+  return '<div class="toolbar">' + dl + '<span class="note">' + M.store.size() + " triples, " +
+      Object.keys(M.store.prefixes).length + " prefixes</span></div>" +
+    (pfx ? '<div class="card tblwrap"><table><thead><tr><th>Prefix</th><th>Namespace</th></tr></thead><tbody>' +
+      pfx + "</tbody></table></div>" : "") +
+    (M.raw ? '<div class="sec-head"><h2>Turtle</h2><span class="rule"></span></div><div class="card"><pre class="ttl">' +
+      esc(M.raw) + "</pre></div>" : "");
+}
+
+/* ======================================================================
+   7. Tiles, tabs, wiring
+   ====================================================================== */
+function renderTiles() {
+  var t = M.tests.totals, C = M.coverage, out = [];
+  if (t.total) {
+    var w = function (k) { return (100 * (t[k] || 0) / t.total) + "%"; };
+    out.push('<div class="tile"><div class="label">Tests</div>' +
+      '<div class="big">' + (t.passed || 0) + " <small>/ " + t.total + " passed</small></div>" +
+      '<div class="sub">' + (t.failed || 0) + " failed · " + (t.skipped || 0) + " skipped · " + dur(t.duration) + "</div>" +
+      '<div class="bar"><span class="p" style="width:' + w("passed") + '"></span>' +
+        '<span class="f" style="width:' + w("failed") + '"></span>' +
+        '<span class="s" style="width:' + w("skipped") + '"></span></div></div>');
+  }
+  if (C) {
+    out.push('<div class="tile"><div class="label">Term coverage by tests</div>' +
+      '<div class="big">' + pct(C.pct) + ' <small>' + C.covered + "/" + C.denom + " terms</small></div>" +
+      '<div class="sub">' + C.declared + " declared · " + C.schema + " structural excluded</div>" +
+      '<div class="bar"><span class="c" style="width:' + C.pct + '%"></span></div></div>');
+    if (C.hasCq) {
+      out.push('<div class="tile"><div class="label">Coverage by competency question</div>' +
+        '<div class="big">' + pct(C.cqPct) + ' <small>' + C.coveredCq + "/" + C.denom + " terms</small></div>" +
+        '<div class="sub">' + (C.covered - C.coveredCq) + " covered by tests but no CQ</div>" +
+        '<div class="bar"><span class="q" style="width:' + C.cqPct + '%"></span></div></div>');
+    }
+  }
+  if (M.cqs.length) {
+    var verified = M.cqs.filter(function (c) { return c.tests.length && c.tests.every(function (x) { return x.status === "passed"; }); }).length;
+    out.push('<div class="tile"><div class="label">Competency questions</div>' +
+      '<div class="big">' + verified + " <small>/ " + M.cqs.length + " verified</small></div>" +
+      '<div class="sub">' + M.cqs.filter(function (c) { return !c.tests.length; }).length + " with no linked test</div>" +
+      '<div class="bar"><span class="p" style="width:' + (100 * verified / M.cqs.length) + '%"></span></div></div>');
+  }
+  document.getElementById("tiles").innerHTML = out.join("");
+}
+
+function renderRunMeta() {
+  var r = M.run, bits = [];
+  if (r.slug && r.slug !== "local") bits.push('<span><span class="k">run</span> <code>' + esc(r.slug.slice(0, 12)) + "</code></span>");
+  if (r.commit) bits.push('<span><span class="k">commit</span> <a href="' + esc(r.commit) + '">' + esc(localName(r.commit).slice(0, 8)) + "</a></span>");
+  if (r.version) bits.push('<span><span class="k">mustrd</span> ' + esc(r.version) + "</span>");
+  bits.push('<span><span class="k">triples</span> ' + M.store.size() + "</span>");
+  document.getElementById("runmeta").innerHTML = bits.join("");
+  document.getElementById("tripleCount").textContent = M.store.size();
+}
+
+var TABS = [
+  { id: "tests", label: "Tests", count: function () { return M.tests.totals.total; }, view: viewTests },
+  { id: "coverage", label: "Coverage", count: function () { return M.coverage ? M.coverage.declared : 0; }, view: viewCoverage },
+  { id: "cqs", label: "Competency questions", count: function () { return M.cqs.length; }, view: viewCqs },
+  { id: "issues", label: "Issues", count: function () { return M.issues.undeclared.length + M.issues.tbox.length; }, view: viewIssues },
+  { id: "source", label: "Source", count: function () { return null; }, view: viewSource }
+];
+
+function renderTabs() {
+  var live = TABS.filter(function (t) { var c = t.count(); return c === null || c > 0; });
+  if (!live.length) live = [TABS[TABS.length - 1]];
+  if (!live.some(function (t) { return t.id === state.tab; })) state.tab = live[0].id;
+  document.getElementById("tabs").innerHTML = live.map(function (t) {
+    var c = t.count();
+    return '<button role="tab" data-tab="' + t.id + '" aria-selected="' + (state.tab === t.id) + '">' +
+      esc(t.label) + (c === null ? "" : ' <span class="n">' + c + "</span>") + "</button>";
+  }).join("");
+}
+
+function renderMain() {
+  var tab = TABS.filter(function (t) { return t.id === state.tab; })[0] || TABS[0];
+  document.getElementById("main").innerHTML = tab.view();
+  var q = document.getElementById("q");
+  if (q) {
+    q.addEventListener("input", function () { state.q = q.value; renderMain(); });
+    if (state.q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+}
+
+function render() {
+  renderRunMeta();
+  renderTiles();
+  renderTabs();
+  renderMain();
+}
+
+function rebuild(store, raw) {
+  var specs = readSpecs(store);
+  M = {
+    store: store, raw: raw,
+    run: readRun(store), specs: specs, sources: sourcesByPath(specs),
+    tests: readTests(store, specs),
+    coverage: readCoverage(store, specs),
+    cqs: readCqs(store, specs),
+    issues: readIssues(store, specs)
+  };
+  render();
+}
+
+function fatal(msg) {
+  document.getElementById("main").innerHTML = '<div class="err">' + esc(msg) + "</div>";
+}
+
+/* ---- events (delegated, so re-rendering never loses handlers) ---- */
+/** Show an embedded source file in the overlay. */
+function openSource(path) {
+  var src = M && M.sources && M.sources[path];
+  if (!src) return;
+  document.getElementById("sheetPath").textContent = path + "  ·  " + src.media;
+  document.getElementById("sheetBody").innerHTML = highlight(src.body, src.media);
+  document.getElementById("sheet").hidden = false;
+}
+function closeSource() { document.getElementById("sheet").hidden = true; }
+
+document.addEventListener("keydown", function (ev) {
+  if (ev.key === "Escape") closeSource();
+});
+
+document.addEventListener("click", function (ev) {
+  if (!ev.target || !ev.target.closest) return;
+
+  var srcRef = ev.target.closest("a.srclink");
+  if (srcRef) { ev.preventDefault(); openSource(srcRef.dataset.src); return; }
+  if (ev.target.closest("#sheetClose") || ev.target.id === "sheet") { closeSource(); return; }
+
+  var tab = ev.target.closest("[data-tab]");
+  if (tab) { state.tab = tab.dataset.tab; state.q = ""; render(); return; }
+
+  var chip = ev.target.closest(".chip[data-status]");
+  if (chip) {
+    var s = chip.dataset.status;
+    state.status[s] = !state.status[s];
+    renderTabs(); renderMain(); return;
+  }
+  var rchip = ev.target.closest(".chip[data-role]");
+  if (rchip) { var r = rchip.dataset.role; state.role[r] = !state.role[r]; renderMain(); return; }
+
+  if (ev.target.closest("#expandAll")) {
+    document.querySelectorAll("#main details").forEach(function (d) { d.open = true; });
+    return;
+  }
+  if (ev.target.closest("#collapseAll")) {
+    document.querySelectorAll("#main details").forEach(function (d) { d.open = false; });
+    return;
+  }
+  var row = ev.target.closest("tr.term");
+  if (row && !ev.target.closest("a")) {
+    var sel = '[data-for="' + row.dataset.term.replace(/"/g, '\\"') + '"]';
+    document.querySelectorAll("#main tr.ex").forEach(function (tr) {
+      if (tr.matches(sel)) tr.hidden = !tr.hidden;
+    });
+  }
+});
+
+document.getElementById("themeBtn").addEventListener("click", function () {
+  var cur = document.documentElement.getAttribute("data-theme");
+  var next = cur === "light" ? "dark" : cur === "dark" ? "" : "light";
+  if (next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+  try { localStorage.setItem("mustrd-theme", next); } catch (e) { /* private mode */ }
+});
+try {
+  var saved = localStorage.getItem("mustrd-theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+} catch (e) { /* private mode */ }
+
+/* ---- loading data ---- */
+var STORE = makeStore(), RAW = "";
+function ingest(name, textIn) {
+  var parsed = /\.(jsonld|json)$/i.test(name) ? parseJsonLd(textIn) : parseTurtle(textIn);
+  STORE.add(parsed);
+  RAW = RAW ? RAW + "\n\n# ---- " + name + " ----\n" + textIn : textIn;
+  rebuild(STORE, RAW);
+}
+function loadFiles(files) {
+  Array.prototype.forEach.call(files, function (f) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      try { ingest(f.name, String(fr.result)); }
+      catch (e) { fatal(f.name + ": " + e.message); }
+    };
+    fr.readAsText(f);
+  });
+}
+document.getElementById("fileIn").addEventListener("change", function (ev) { loadFiles(ev.target.files); });
+
+var dropEl = document.getElementById("drop"), dragDepth = 0;
+window.addEventListener("dragenter", function (e) { e.preventDefault(); if (++dragDepth === 1) dropEl.hidden = false; });
+window.addEventListener("dragover", function (e) { e.preventDefault(); });
+window.addEventListener("dragleave", function () { if (--dragDepth <= 0) { dragDepth = 0; dropEl.hidden = true; } });
+window.addEventListener("drop", function (e) {
+  e.preventDefault(); dragDepth = 0; dropEl.hidden = true;
+  if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+});
+
+/* ---- boot: inlined data, then ?ttl= / ?jsonld= ---- */
+(function boot() {
+  try { CFG = JSON.parse(document.getElementById("mustrd-config").textContent) || {}; } catch (e) { CFG = {}; }
+
+  var inline = null, broken = false;
+  try { inline = JSON.parse(document.getElementById("mustrd-data").textContent); } catch (e) { inline = null; }
+  if (typeof inline === "string" && inline.indexOf("__MUSTRD") !== 0 && inline.trim()) {
+    try { ingest("run.ttl", inline); }
+    catch (e) { broken = true; fatal("Embedded data: " + e.message); }
+  }
+
+  var params = new URLSearchParams(location.search);
+  var title = params.get("title");
+  if (title) { document.getElementById("pageTitle").textContent = title; document.title = title; }
+  var urls = params.getAll("ttl").concat(params.getAll("jsonld"));
+  if (urls.length) {
+    urls.forEach(function (u) {
+      fetch(u).then(function (r) {
+        if (!r.ok) throw new Error(r.status + " " + r.statusText);
+        return r.text();
+      }).then(function (txt) { ingest(u, txt); })
+        .catch(function (e) { fatal("Could not load " + u + ": " + e.message); });
+    });
+  }
+
+  if (broken) return;                        // leave the parse error on screen
+  if (!STORE.size() && !urls.length) {
+    rebuild(STORE, "");
+    document.getElementById("main").innerHTML =
+      '<div class="card"><p class="empty">No run data loaded.<br><br>' +
+      "Drop a <code>.ttl</code> / <code>.jsonld</code> from " +
+      "<code>mustrd report --term-coverage-rdf</code> or <code>--results-rdf</code> onto this page, " +
+      "use <em>Load TTL</em>, or append <code>?ttl=path/to/run.ttl</code> to the URL.</p></div>";
+  } else {
+    rebuild(STORE, RAW);
+  }
+})();
+</script>
+</body>
+</html>
