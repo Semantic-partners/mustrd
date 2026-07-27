@@ -96,6 +96,22 @@ seen in the input data or the SPARQL.
 count. (Contrast with `place:hasEconomicArea`, which *is* in an ontology's
 namespace, so its absence is flagged as *used but not declared*.)
 
+**It's the namespace that decides.** How a term a test references is treated
+depends entirely on whether it lives in one of the ontologies-under-test
+namespaces (here `place:` / `gov:`) and whether that ontology declares it:
+
+| A test references… | How it's treated |
+|--------------------|------------------|
+| a **declared** ontology term (`place:isLocatedIn`) | counts as coverage — a `•` sub-row under that term |
+| an ontology-namespace term that is **not declared** (`place:hasEconomicArea`) | flagged **⚠️ Used but not declared** (likely a typo / missing definition) |
+| a term in a **foreign** namespace (`foaf:`, `world:`) | ignored — external vocabularies are not your ontology's concern |
+
+That last row is why the `continentOfRotterdam` test uses `world:` — it keeps the
+test invisible to coverage. Had it used a `place:`-namespace predicate that the
+ontology didn't declare, the report would gain a *used but not declared* finding
+for it; had it used a declared `place:` term, that term would pick up an extra
+covering-test sub-row.
+
 It also shows the **requires ontology to pass** flag: the division CQ queries
 `place:AdministrativeDivision` but its data holds a `place:Province`, so it only
 matches through the `rdfs:subClassOf` axioms — the ontology must be loaded as an
