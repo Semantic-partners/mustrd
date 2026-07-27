@@ -47,11 +47,22 @@ const scripts = [...html.matchAll(
 if (!scripts.length) fail("no app script in the page");
 const app = scripts[scripts.length - 1][1];
 
-// The data layer is everything before the UI section.
-const uiAt = app.indexOf("5. UI — VanJS");
-if (uiAt < 0) fail("could not find the UI section marker to cut at");
-const dataLayer = app.slice(0, app.lastIndexOf("/* =", uiAt));
-if (!dataLayer.includes("function parseTurtle")) fail("the data layer slice looks wrong");
+// The page is assembled from mustrd/templates/viewer/, so the data layer can be
+// read from its own sources rather than cut back out of the rendered page. The
+// rendered page is still what phase 2 runs, and each part is checked to be in it.
+const SRC = new URL("../mustrd/templates/viewer/", import.meta.url);
+const part = (name) => readFileSync(new URL(name, SRC), "utf8");
+for (const [name, marker] of [
+  ["van.js", "let stateProto"],
+  ["turtle.js", "function parseTurtle"],
+  ["store.js", "function makeStore"],
+  ["model.js", "function readTests"],
+  ["ui.js", "van.add(document.body, Shell())"],
+]) {
+  if (!part(name).includes(marker)) fail(`${name} no longer contains ${marker}`);
+  if (!app.includes(marker)) fail(`the rendered page did not inline ${name}`);
+}
+const dataLayer = ["turtle.js", "store.js", "model.js"].map(part).join("\n");
 
 /* ------------------------------------------------------- phase 1: data layer */
 const api = eval(dataLayer + `

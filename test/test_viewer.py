@@ -19,7 +19,9 @@ import pytest
 from rdflib import Graph, Literal, Namespace, URIRef, RDF
 
 from mustrd.cli import main
-from mustrd.viewer import TEMPLATE, build_viewer, merge_graphs, viewer_turtle
+from mustrd.viewer import (
+    TEMPLATE_FOLDER, build_viewer, merge_graphs, viewer_turtle,
+)
 
 EXAMPLE = Path("docs/examples/geography-example")
 CONFIG = str(EXAMPLE / "mustrd-config.ttl")
@@ -39,12 +41,18 @@ def viewer_html(tmp_path_factory):
     return out
 
 
-def _embedded_turtle(html):
+def _embedded_turtle_from(html):
     """The Turtle the page carries, read back the way the browser reads it."""
     m = re.search(r'<script id="mustrd-data" type="application/json">(.*?)</script>',
                   html, re.S)
     assert m, "the page has no embedded data block"
     return json.loads(m.group(1))
+
+
+def _embedded_turtle(viewer_path_or_html):
+    if isinstance(viewer_path_or_html, str):
+        return _embedded_turtle_from(viewer_path_or_html)
+    return _embedded_turtle_from(viewer_path_or_html.read_text(encoding="utf-8"))
 
 
 def test_viewer_is_one_self_contained_file(viewer_html):
@@ -193,13 +201,32 @@ def test_hostile_literal_cannot_escape_the_script_block():
     assert "&lt;b&gt;t&lt;/b&gt; &amp; more" in html
 
 
-def test_template_alone_is_a_usable_viewer():
-    """The unsubstituted template must still be valid HTML that boots into its
-    'drop a file' empty state — it is a viewer for any mustrd graph."""
-    html = TEMPLATE.read_text(encoding="utf-8")
-    assert '"__MUSTRD_DATA__"' in html          # a JSON string literal, so still parses
+def test_viewer_with_no_data_is_still_a_usable_viewer():
+    """Rendered with no graphs, the page boots into its 'drop a file' empty state —
+    it is a viewer for any mustrd graph, not just the run that produced it."""
+    html = build_viewer([])
+    assert html.startswith("<!doctype html>")
     assert "No run data loaded" in html
     assert not _REMOTE_REF.search(html)
+    # Nothing to render, so the data block is an empty JSON string.
+    assert _embedded_turtle_from(html).strip() == ""
+
+
+def test_every_part_is_inlined():
+    """The page is assembled from separate sources but must ship as one file."""
+    html = build_viewer([])
+    for name, marker in (
+        ("viewer.css", "--font-mono:"),
+        ("van.js", "let stateProto"),
+        ("turtle.js", "function parseTurtle"),
+        ("store.js", "function makeStore"),
+        ("model.js", "function readTests"),
+        ("ui.js", "van.add(document.body, Shell())"),
+    ):
+        assert (TEMPLATE_FOLDER / "viewer" / name).is_file(), name
+        assert marker in html, f"{name} was not inlined"
+    assert html.count("<script") == 3        # two JSON blocks and the app
+    assert html.count("<style") == 1
 
 
 @pytest.mark.parametrize("when,outcome,recorded", [

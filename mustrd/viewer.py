@@ -1,32 +1,43 @@
 """Build the self-contained run viewer: one HTML file, driven by the run's RDF.
 
-`mustrd/templates/viewer.html` is a complete vanilla-JS application — it carries
-its own Turtle parser, so the *only* thing it needs is the run's triples. This
-module produces those triples (coverage graph + per-test results graph + the
-measured ontologies, merged) and inlines them into a copy of the template.
+The page is assembled with Jinja from `mustrd/templates/viewer/`:
+
+    viewer.html.jinja   the shell, which includes everything below
+    viewer.css          the stylesheet
+    van.js              vendored VanJS 1.6.1 (MIT)
+    turtle.js           Turtle parser, term interning, JSON-LD reader
+    store.js            the triple store and IRI shortening
+    model.js            reading the run out of the graph
+    ui.js               the VanJS views, loading and boot
+
+Kept as separate sources so each part can be read, edited and tested on its own —
+`test/viewer_smoke.mjs` runs the JavaScript straight from these files — and
+inlined at render time so the *output* is still a single page with nothing to
+fetch. This module supplies the triples (coverage graph + per-test results +
+sources + the measured ontologies, merged).
 
 The result has no build step and no network dependency: attach it to a CI run,
-open it from `file://`, or publish it on a static site. The same page also reads
-data dropped onto it or fetched with `?ttl=`, so the template alone is a viewer
-for any mustrd graph.
+open it from `file://`, or publish it on a static site. It also reads data
+dropped onto it or fetched with `?ttl=`, so a rendered page with no data inlined
+is a viewer for any mustrd graph.
 """
 import json
 import logging
 import os
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
 from rdflib import Graph
 
 logger = logging.getLogger(__name__)
 
-TEMPLATE = Path(__file__).parent / "templates" / "viewer.html"
+TEMPLATE_FOLDER = Path(__file__).parent / "templates"
+TEMPLATE = "viewer/viewer.html.jinja"
 
-# Placeholders in the template. Each is a *JSON string literal*, so substituting
-# a json.dumps() value keeps the document valid whether or not it is filled in;
-# an unfilled page falls back to its "drop a file" empty state.
-_DATA_MARK = '"__MUSTRD_DATA__"'
-_TITLE_MARK = "__MUSTRD_TITLE__"
-_SRC_MARK = "__MUSTRD_SRC_BASE__"
+# The parts the shell includes, in the order they are inlined. Named here so the
+# packaging and the tests can check they are all present.
+PARTS = ("viewer/viewer.css", "viewer/van.js", "viewer/turtle.js",
+         "viewer/store.js", "viewer/model.js", "viewer/ui.js")
 
 
 def _json_for_html(value) -> str:
@@ -76,30 +87,37 @@ def github_src_base():
     return f"{server}/{repo}/blob/{ref}/"
 
 
+def _environment() -> Environment:
+    # autoescape for the HTML shell (the title is the only text substituted into
+    # markup); the two JSON payloads are pre-escaped by _json_for_html and marked
+    # safe at the call site.
+    return Environment(loader=FileSystemLoader(str(TEMPLATE_FOLDER)), autoescape=True)
+
+
+class _Safe(str):
+    """A string Jinja will not escape — `markupsafe.Markup` by another name,
+    spelled out so the two JSON payloads are visibly the only unescaped
+    substitutions in the document."""
+
+    def __html__(self):
+        return str(self)
+
+
 def build_viewer(graphs, title="mustrd run report", src_base=None) -> str:
     """The complete HTML document, with the run's Turtle inlined.
 
     `graphs` is any iterable of rdflib Graphs (None entries ignored) — typically
-    the coverage graph, the results graph and the ontology graph. `src_base` is
-    prefixed to spec/ontology source links; it defaults to the GitHub blob URL
-    when running as an Action, and otherwise to relative paths."""
-    html = TEMPLATE.read_text(encoding="utf-8")
-    ttl = viewer_turtle(graphs)
+    the coverage graph, the results graph, the embedded sources and the ontology
+    graph. `src_base` is prefixed to source links that are not embedded in the
+    page; it defaults to the GitHub blob URL when running as an Action, and
+    otherwise to paths relative to the working directory."""
     if src_base is None:
         src_base = github_src_base() or ""
-    return (html
-            .replace(_DATA_MARK, _json_for_html(ttl))
-            .replace(_TITLE_MARK, _escape_text(title))
-            .replace(_SRC_MARK, _escape_attr(src_base)))
-
-
-def _escape_text(s) -> str:
-    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
-
-
-def _escape_attr(s) -> str:
-    """For the JSON config block: keep it a valid JSON string."""
-    return json.dumps(str(s))[1:-1].replace("<", "\\u003c")
+    return _environment().get_template(TEMPLATE).render(
+        title=title,
+        data_json=_Safe(_json_for_html(viewer_turtle(graphs))),
+        config_json=_Safe(_json_for_html({"srcBase": str(src_base)})),
+    )
 
 
 def write_viewer(path, graphs, title="mustrd run report", src_base=None) -> None:
