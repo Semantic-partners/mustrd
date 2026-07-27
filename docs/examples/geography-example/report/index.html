@@ -7,11 +7,13 @@
 <!--
   mustrd run viewer — a single self-contained page, driven entirely by RDF.
 
-  There is no build step, no framework and no network dependency: the run's
-  Turtle is embedded below (or dropped in / fetched with ?ttl=), parsed by the
-  Turtle parser in this file, and every view is rendered from the resulting
-  triples using the cov:/must:/cq:/dqv: vocabularies. See
-  mustrd/model/coverage-ontology.ttl for the terms.
+  There is no build step and no network dependency: the run's Turtle is embedded
+  below (or dropped in / fetched with ?ttl=), parsed by the Turtle parser in this
+  file, and the whole UI is built from the resulting triples using the
+  cov:/must:/cq:/dqv: vocabularies. See mustrd/model/coverage-ontology.ttl.
+
+  The UI is VanJS (1.6.1, MIT, ~5KB, vendored inline below) — reactive DOM
+  construction, so the page holds no HTML strings and nothing needs escaping.
 -->
 <style>
   :root {
@@ -117,8 +119,8 @@
   .bar .c { background: var(--accent); } .bar .q { background: var(--info); }
 
   /* ---------- tabs ---------- */
-  nav.tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: 1.8rem 0 0;
-             border-bottom: 1px solid var(--border); }
+  nav.tabs { margin: 1.8rem 0 0; border-bottom: 1px solid var(--border); }
+  nav.tabs .tabrow { display: flex; flex-wrap: wrap; gap: .3rem; }
   nav.tabs button {
     background: none; border: none; border-bottom: 2px solid transparent;
     border-radius: 0; padding: .55rem .8rem; color: var(--muted); font-size: .86rem;
@@ -238,14 +240,6 @@
   .cq li { margin: .15rem 0; }
   .warnrow { color: var(--warn); }
 
-  /* ---------- source tab ---------- */
-  pre.ttl {
-    margin: 0; padding: 1rem; overflow: auto; max-height: 70vh;
-    font-family: var(--font-mono); font-size: .76rem; line-height: 1.45;
-    background: var(--surface); color: var(--text);
-  }
-  .prefixes { font-family: var(--font-mono); font-size: .78rem; }
-
   /* ---------- embedded source ---------- */
   a.srclink { border-bottom: 1px dotted currentColor; }
   .src { margin-top: .5rem; }
@@ -302,40 +296,185 @@
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <p class="eyebrow">mustrd &middot; spec-by-example for RDF &amp; SPARQL</p>
-      <div class="brand"><span class="dot"></span><h1 id="pageTitle">Run report</h1></div>
-      <div class="runmeta" id="runmeta"></div>
-    </div>
-    <div class="actions">
-      <label class="btn">Load TTL<input type="file" id="fileIn" accept=".ttl,.turtle,.n3,.nt,.jsonld,.json" multiple hidden></label>
-      <button id="themeBtn" title="Toggle light / dark">◐</button>
-    </div>
-  </header>
-
-  <section class="tiles" id="tiles"></section>
-  <nav class="tabs" id="tabs" role="tablist"></nav>
-  <main id="main"></main>
-
-  <footer>
-    Rendered in the browser from <span id="tripleCount">0</span> triples of RDF
-    (<code>cov:</code>/<code>must:</code>/<code>cq:</code>/<code>dqv:</code>).
-    Drop another <code>.ttl</code> or <code>.jsonld</code> anywhere on the page to merge it in.
-  </footer>
-</div>
-
-<div class="drop" id="drop" hidden><div class="inner">Drop <code>.ttl</code> / <code>.jsonld</code> to load</div></div>
-<div class="sheet" id="sheet" hidden><div class="panel">
-  <div class="head"><span class="path" id="sheetPath"></span><button id="sheetClose">Close ✕</button></div>
-  <pre class="code" id="sheetBody"></pre>
-</div></div>
-
-<script id="mustrd-data" type="application/json">"@prefix cov: \u003chttps://mustrd.org/coverage/\u003e .\n@prefix cq: \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix dqv: \u003chttp://www.w3.org/ns/dqv#\u003e .\n@prefix foaf: \u003chttp://xmlns.com/foaf/0.1/\u003e .\n@prefix gov: \u003chttp://example.org/governance#\u003e .\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix owl: \u003chttp://www.w3.org/2002/07/owl#\u003e .\n@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix prov: \u003chttp://www.w3.org/ns/prov#\u003e .\n@prefix rdfs: \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e .\n@prefix xsd: \u003chttp://www.w3.org/2001/XMLSchema#\u003e .\n\n\u003chttp://example.org/place/example/populationOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:question \"What is the population of Rotterdam?\" ;\n    cov:sourceFile \"specs/population-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/countryOfRotterdamCQ/countryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology false .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/divisionAndCountryOfRotterdamCQ/divisionAndCountryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology true .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/mayorOfRotterdamCQ/mayorOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology false .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/tbox-in-data/divisionAndCountryOfRotterdam\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:detail \"place:Province a owl:Class\",\n        \"place:Province rdfs:subClassOf place:AdministrativeDivision\" ;\n    cov:issueType cov:TBoxInTestData .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTerm gov:appointedOn ;\n    cov:aboutTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTerm place:hasEconomicArea ;\n    cov:aboutTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/measurement/termCoverageByCompetencyQuestions\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByCompetencyQuestions ;\n    dqv:value 0.7778 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/measurement/termCoverageByTests\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByTests ;\n    dqv:value 0.8889 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_countryOfRotterdam-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0046 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:testName \"country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_divisionAndCountryOfRotterdam-division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0043 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:testName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_mayorOfRotterdam-mayor-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0033 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:testName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_regionLookup-region-lookup.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0026 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/regionLookup\u003e ;\n    cov:testName \"region-lookup.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term gov:Mayor .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.governs\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term gov:governs .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:QueryOnly ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:QueryOnly ;\n    cov:term place:AdministrativeDivision .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:City .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Continent .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Country .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Place\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"domain of place:isLocatedIn\",\n        \"range of place:isLocatedIn\",\n        \"superclass of place:AdministrativeDivision\",\n        \"superclass of place:City\",\n        \"superclass of place:Continent\",\n        \"superclass of place:Country\",\n        \"superclass of place:Province\",\n        \"superclass of place:Region\" ;\n    cov:term place:Place .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Province\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Province .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Region\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Unused ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Region .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.basedOnStandard\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"property\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"ontology property\" ;\n    cov:term place:basedOnStandard .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term place:isLocatedIn .\n\nplace:basedOnStandard a owl:OntologyProperty ;\n    rdfs:comment \"The published standard this vocabulary is based on.\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cov:sourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cov:sourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cov:sourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/#tool\u003e a prov:SoftwareAgent ;\n    rdfs:label \"mustrd\" ;\n    owl:versionInfo \"0.7.4\" .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e a cov:Reference ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e a cov:Reference ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/regionLookup\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:countryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cq:cqSpec :countryOfRotterdam .\n\n:countryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"country.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"country\" ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:divisionAndCountryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cq:cqSpec :divisionAndCountryOfRotterdam .\n\n:divisionAndCountryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"division.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"division\" ; must:boundValue ex:ZuidHolland ],\n                                                [ must:variable \"country\"  ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:mayorOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cq:cqSpec :mayorOfRotterdam .\n\n:mayorOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"mayor.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 # Bind the city the question asks about, rather than hard-coding\n                 # it in the query text.\n                 must:hasBinding [ must:variable \"city\" ; must:boundValue ex:Rotterdam ] ;\n                 must:queryText \\\"\\\"\\\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"mayor\" ; must:boundValue ex:Aboutaleb ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_region-lookup.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/region-lookup.mustrd.ttl\" ;\n    cov:fileText \"\"\"# A valid mustrd test that exercises place:Region, but which NO\n# cq:CompetencyQuestion links to. It shows the difference between the two\n# coverage numbers: this test covers place:Region (so Test Term Coverage is\n# \u2705 covered), yet no competency question does (so CQ Term Coverage is \u274c unused).\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:regionLookup\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"region.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"region\" ; must:boundValue ex:Randstad ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_regionLookup/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\nplace:Province a owl:Class ;\n    rdfs:subClassOf place:AdministrativeDivision .\n\n\u003chttp://example.org/place/example/regionLookup\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_region-lookup.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_regionLookup/0\u003e ;\n    cov:usesInData place:Region ;\n    cov:usesInQuery place:Region ;\n    must:specFileName \"region-lookup.mustrd.ttl\" ;\n    must:specSourceFile \"specs/region-lookup.mustrd.ttl\" .\n\ngov: a owl:Ontology ;\n    rdfs:comment \"A tiny vocabulary for governance roles and the places they govern.\" ;\n    owl:versionIRI \u003chttp://example.org/governance/1.0.0\u003e ;\n    cov:sourceFile \"ontology/governance.ttl\" .\n\ngov:Mayor a owl:Class ;\n    rdfs:comment \"A person who governs a city.\" ;\n    rdfs:subClassOf foaf:Person .\n\ngov:governs a owl:ObjectProperty ;\n    rdfs:comment \"Relates a person to a place they are responsible for governing.\" ;\n    rdfs:domain foaf:Person ;\n    rdfs:range place:City .\n\nplace: a owl:Ontology ;\n    rdfs:comment \"A minimal vocabulary for places and how they are geographically contained within one another.\" ;\n    owl:versionIRI \u003chttp://example.org/place/1.0.0\u003e ;\n    cov:sourceFile \"ontology/place.ttl\" .\n\nplace:AdministrativeDivision a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Continent a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Region a owl:Class ;\n    rdfs:comment \"A broad area of land; not yet exercised by any competency question.\" ;\n    rdfs:subClassOf place:Place .\n\nplace:Country a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:isLocatedIn a owl:ObjectProperty,\n        owl:TransitiveProperty ;\n    rdfs:comment \"Relates a place to a place that geographically contains it.\" ;\n    rdfs:domain place:Place ;\n    rdfs:range place:Place .\n\nplace:City a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Place a owl:Class ;\n    rdfs:comment \"Anything with a geographic location.\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e ;\n    cov:usesInData gov:Mayor,\n        gov:governs,\n        place:City ;\n    cov:usesInQuery gov:Mayor,\n        gov:appointedOn,\n        gov:governs,\n        place:City ;\n    must:specFileName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:hasEconomicArea,\n        place:isLocatedIn ;\n    cov:usesInQuery place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:Province,\n        place:isLocatedIn ;\n    cov:usesInQuery place:AdministrativeDivision,\n        place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/local\u003e a cov:CoverageRun ;\n    prov:used gov:,\n        place: ;\n    prov:wasAssociatedWith \u003chttps://mustrd.org/#tool\u003e .\n\n"</script>
+<!-- The page builds itself: the two JSON blocks below are the only markup,
+     and VanJS constructs the DOM from the RDF in them. -->
+<script id="mustrd-data" type="application/json">"@prefix cov: \u003chttps://mustrd.org/coverage/\u003e .\n@prefix cq: \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix dqv: \u003chttp://www.w3.org/ns/dqv#\u003e .\n@prefix foaf: \u003chttp://xmlns.com/foaf/0.1/\u003e .\n@prefix gov: \u003chttp://example.org/governance#\u003e .\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix owl: \u003chttp://www.w3.org/2002/07/owl#\u003e .\n@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix prov: \u003chttp://www.w3.org/ns/prov#\u003e .\n@prefix rdfs: \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e .\n@prefix xsd: \u003chttp://www.w3.org/2001/XMLSchema#\u003e .\n\n\u003chttp://example.org/place/example/populationOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:question \"What is the population of Rotterdam?\" ;\n    cov:sourceFile \"specs/population-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/countryOfRotterdamCQ/countryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology false .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/divisionAndCountryOfRotterdamCQ/divisionAndCountryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology true .\n\n\u003chttps://mustrd.org/coverage/run/local/assertion/mayorOfRotterdamCQ/mayorOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology false .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/tbox-in-data/divisionAndCountryOfRotterdam\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:detail \"place:Province a owl:Class\",\n        \"place:Province rdfs:subClassOf place:AdministrativeDivision\" ;\n    cov:issueType cov:TBoxInTestData .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTerm gov:appointedOn ;\n    cov:aboutTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:aboutTerm place:hasEconomicArea ;\n    cov:aboutTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/measurement/termCoverageByCompetencyQuestions\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByCompetencyQuestions ;\n    dqv:value 0.7778 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/measurement/termCoverageByTests\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByTests ;\n    dqv:value 0.8889 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_countryOfRotterdam-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0046 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:testName \"country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_divisionAndCountryOfRotterdam-division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0047 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:testName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_mayorOfRotterdam-mayor-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0032 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:testName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/result/http.__example.org_place_example_regionLookup-region-lookup.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0022 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/regionLookup\u003e ;\n    cov:testName \"region-lookup.mustrd.ttl\" ;\n    cov:testType \"pytest\" .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term gov:Mayor .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.governs\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term gov:governs .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:QueryOnly ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:QueryOnly ;\n    cov:term place:AdministrativeDivision .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:City .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Continent .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Country .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Place\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"domain of place:isLocatedIn\",\n        \"range of place:isLocatedIn\",\n        \"superclass of place:AdministrativeDivision\",\n        \"superclass of place:City\",\n        \"superclass of place:Continent\",\n        \"superclass of place:Country\",\n        \"superclass of place:Province\",\n        \"superclass of place:Region\" ;\n    cov:term place:Place .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Province\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Province .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Region\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Unused ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Region .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.basedOnStandard\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"property\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"ontology property\" ;\n    cov:term place:basedOnStandard .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term place:isLocatedIn .\n\nplace:basedOnStandard a owl:OntologyProperty ;\n    rdfs:comment \"The published standard this vocabulary is based on.\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cov:sourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cov:sourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/local\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cov:sourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/#tool\u003e a prov:SoftwareAgent ;\n    rdfs:label \"mustrd\" ;\n    owl:versionInfo \"0.7.4\" .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e a cov:Reference ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e a cov:Reference ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.Mayor/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/gov.governs/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.City/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Country/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Province/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.Region/by/regionLookup\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/regionLookup\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/local/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:countryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cq:cqSpec :countryOfRotterdam .\n\n:countryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"country.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"country\" ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:divisionAndCountryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cq:cqSpec :divisionAndCountryOfRotterdam .\n\n:divisionAndCountryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"division.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"division\" ; must:boundValue ex:ZuidHolland ],\n                                                [ must:variable \"country\"  ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:mayorOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cq:cqSpec :mayorOfRotterdam .\n\n:mayorOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"mayor.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 # Bind the city the question asks about, rather than hard-coding\n                 # it in the query text.\n                 must:hasBinding [ must:variable \"city\" ; must:boundValue ex:Rotterdam ] ;\n                 must:queryText \\\"\\\"\\\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"mayor\" ; must:boundValue ex:Aboutaleb ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/file/specs_region-lookup.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/region-lookup.mustrd.ttl\" ;\n    cov:fileText \"\"\"# A valid mustrd test that exercises place:Region, but which NO\n# cq:CompetencyQuestion links to. It shows the difference between the two\n# coverage numbers: this test covers place:Region (so Test Term Coverage is\n# \u2705 covered), yet no competency question does (so CQ Term Coverage is \u274c unused).\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:regionLookup\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"region.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"region\" ; must:boundValue ex:Randstad ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_regionLookup/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\nplace:Province a owl:Class ;\n    rdfs:subClassOf place:AdministrativeDivision .\n\n\u003chttp://example.org/place/example/regionLookup\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_region-lookup.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_regionLookup/0\u003e ;\n    cov:usesInData place:Region ;\n    cov:usesInQuery place:Region ;\n    must:specFileName \"region-lookup.mustrd.ttl\" ;\n    must:specSourceFile \"specs/region-lookup.mustrd.ttl\" .\n\ngov: a owl:Ontology ;\n    rdfs:comment \"A tiny vocabulary for governance roles and the places they govern.\" ;\n    owl:versionIRI \u003chttp://example.org/governance/1.0.0\u003e ;\n    cov:sourceFile \"ontology/governance.ttl\" .\n\ngov:Mayor a owl:Class ;\n    rdfs:comment \"A person who governs a city.\" ;\n    rdfs:subClassOf foaf:Person .\n\ngov:governs a owl:ObjectProperty ;\n    rdfs:comment \"Relates a person to a place they are responsible for governing.\" ;\n    rdfs:domain foaf:Person ;\n    rdfs:range place:City .\n\nplace: a owl:Ontology ;\n    rdfs:comment \"A minimal vocabulary for places and how they are geographically contained within one another.\" ;\n    owl:versionIRI \u003chttp://example.org/place/1.0.0\u003e ;\n    cov:sourceFile \"ontology/place.ttl\" .\n\nplace:AdministrativeDivision a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Continent a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Region a owl:Class ;\n    rdfs:comment \"A broad area of land; not yet exercised by any competency question.\" ;\n    rdfs:subClassOf place:Place .\n\nplace:Country a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:isLocatedIn a owl:ObjectProperty,\n        owl:TransitiveProperty ;\n    rdfs:comment \"Relates a place to a place that geographically contains it.\" ;\n    rdfs:domain place:Place ;\n    rdfs:range place:Place .\n\nplace:City a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Place a owl:Class ;\n    rdfs:comment \"Anything with a geographic location.\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e ;\n    cov:usesInData gov:Mayor,\n        gov:governs,\n        place:City ;\n    cov:usesInQuery gov:Mayor,\n        gov:appointedOn,\n        gov:governs,\n        place:City ;\n    must:specFileName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:hasEconomicArea,\n        place:isLocatedIn ;\n    cov:usesInQuery place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:Province,\n        place:isLocatedIn ;\n    cov:usesInQuery place:AdministrativeDivision,\n        place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/local\u003e a cov:CoverageRun ;\n    prov:used gov:,\n        place: ;\n    prov:wasAssociatedWith \u003chttps://mustrd.org/#tool\u003e .\n\n"</script>
 <script id="mustrd-config" type="application/json">{"srcBase": "../"}</script>
 <script>
 "use strict";
+/* ===================================================================
+   VanJS 1.6.1 — https://vanjs.org
+
+   Vendored verbatim from the npm package `vanjs-core@1.6.1`, with one
+   change: the trailing `export default {...}` becomes the return value
+   of an IIFE assigned to `van`, so it loads as a plain inline script
+   with no module or bundler step. Nothing else is altered.
+
+   MIT License
+
+   Copyright (c) 2023 VanJS (Vanilla JavaScript)
+
+   Permission is hereby granted, free of charge, to any person obtaining a
+   copy of this software and associated documentation files (the "Software"),
+   to deal in the Software without restriction, including without limitation
+   the rights to use, copy, modify, merge, publish, distribute, sublicense,
+   and/or sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+   =================================================================== */
+var van = (function () {
+  // This file consistently uses `let` keyword instead of `const` for reducing the bundle size.
+
+  // Global variables - aliasing some builtin symbols to reduce the bundle size.
+  let protoOf = Object.getPrototypeOf
+  let changedStates, derivedStates, curDeps, curNewDerives, alwaysConnectedDom = {isConnected: 1}
+  let gcCycleInMs = 1000, statesToGc, propSetterCache = {}
+  let objProto = protoOf(alwaysConnectedDom), funcProto = protoOf(protoOf), _undefined
+
+  let addAndScheduleOnFirst = (set, s, f, waitMs) =>
+    (set ?? (waitMs ? setTimeout(f, waitMs) : queueMicrotask(f), new Set)).add(s)
+
+  let runAndCaptureDeps = (f, deps, arg) => {
+    let prevDeps = curDeps
+    curDeps = deps
+    try {
+      return f(arg)
+    } catch (e) {
+      console.error(e)
+      return arg
+    } finally {
+      curDeps = prevDeps
+    }
+  }
+
+  let keepConnected = l => l.filter(b => b._dom?.isConnected)
+
+  let addStatesToGc = d => statesToGc = addAndScheduleOnFirst(statesToGc, d, () => {
+    for (let s of statesToGc)
+      s._bindings = keepConnected(s._bindings),
+      s._listeners = keepConnected(s._listeners)
+    statesToGc = _undefined
+  }, gcCycleInMs)
+
+  let stateProto = {
+    get val() {
+      curDeps?._getters?.add(this)
+      return this.rawVal
+    },
+
+    get oldVal() {
+      curDeps?._getters?.add(this)
+      return this._oldVal
+    },
+
+    set val(v) {
+      curDeps?._setters?.add(this)
+      if (v !== this.rawVal) {
+        this.rawVal = v
+        this._bindings.length + this._listeners.length ?
+          (derivedStates?.add(this), changedStates = addAndScheduleOnFirst(changedStates, this, updateDoms)) :
+          this._oldVal = v
+      }
+    },
+  }
+
+  let state = initVal => ({
+    __proto__: stateProto,
+    rawVal: initVal,
+    _oldVal: initVal,
+    _bindings: [],
+    _listeners: [],
+  })
+
+  let bind = (f, dom) => {
+    let deps = {_getters: new Set, _setters: new Set}, binding = {f}, prevNewDerives = curNewDerives
+    curNewDerives = []
+    let newDom = runAndCaptureDeps(f, deps, dom)
+    newDom = (newDom ?? document).nodeType ? newDom : new Text(newDom)
+    for (let d of deps._getters)
+      deps._setters.has(d) || (addStatesToGc(d), d._bindings.push(binding))
+    for (let l of curNewDerives) l._dom = newDom
+    curNewDerives = prevNewDerives
+    return binding._dom = newDom
+  }
+
+  let derive = (f, s = state(), dom) => {
+    let deps = {_getters: new Set, _setters: new Set}, listener = {f, s}
+    listener._dom = dom ?? curNewDerives?.push(listener) ?? alwaysConnectedDom
+    s.val = runAndCaptureDeps(f, deps, s.rawVal)
+    for (let d of deps._getters)
+      deps._setters.has(d) || (addStatesToGc(d), d._listeners.push(listener))
+    return s
+  }
+
+  let add = (dom, ...children) => {
+    for (let c of children.flat(Infinity)) {
+      let protoOfC = protoOf(c ?? 0)
+      let child = protoOfC === stateProto ? bind(() => c.val) :
+        protoOfC === funcProto ? bind(c) : c
+      child != _undefined && dom.append(child)
+    }
+    return dom
+  }
+
+  let tag = (ns, name, ...args) => {
+    let [{is, ...props}, ...children] = protoOf(args[0] ?? 0) === objProto ? args : [{}, ...args]
+    let dom = ns ? document.createElementNS(ns, name, {is}) : document.createElement(name, {is})
+    for (let [k, v] of Object.entries(props)) {
+      let getPropDescriptor = proto => proto &&
+        (Object.getOwnPropertyDescriptor(proto, k) ?? getPropDescriptor(protoOf(proto)))
+      let propSetter = !ns && !is && !name.includes("-") ?
+        propSetterCache[name + "," + k] ??= getPropDescriptor(protoOf(dom))?.set ?? 0 :
+        getPropDescriptor(protoOf(dom))?.set
+      let isEvent = k.startsWith("on")
+      let setter = isEvent ?
+        (v, oldV) => {
+          let event = k.slice(2)
+          dom.removeEventListener(event, oldV)
+          dom.addEventListener(event, v)
+        } :
+        propSetter ? propSetter.bind(dom) : dom.setAttribute.bind(dom, k)
+      let protoOfV = protoOf(v ?? 0)
+      isEvent || protoOfV === funcProto && (v = derive(v), protoOfV = stateProto)
+      protoOfV === stateProto ? bind(() => (setter(v.val, v._oldVal), dom)) : setter(v)
+    }
+    return add(dom, children)
+  }
+
+  let handler = ns => ({get: (_, name) => tag.bind(_undefined, ns, name)})
+
+  let update = (dom, newDom) => newDom ? newDom !== dom && dom.replaceWith(newDom) : dom.remove()
+
+  let updateDoms = () => {
+    let iterationsLeft = 100, derivedStatesArray = [...changedStates].filter(s => s.rawVal !== s._oldVal)
+    do {
+      derivedStates = new Set
+      for (let l of new Set(derivedStatesArray.flatMap(s => s._listeners = keepConnected(s._listeners))))
+        derive(l.f, l.s, l._dom), l._dom = _undefined
+    } while (--iterationsLeft && (derivedStatesArray = [...derivedStates]).length)
+    let changedStatesArray = [...changedStates].filter(s => s.rawVal !== s._oldVal)
+    changedStates = _undefined
+    for (let b of new Set(changedStatesArray.flatMap(s => s._bindings = keepConnected(s._bindings))))
+      update(b._dom, bind(b.f, b._dom)), b._dom = _undefined
+    for (let s of changedStatesArray) s._oldVal = s.rawVal
+  }
+  return {
+    tags: new Proxy(ns => new Proxy(tag, handler(ns)), handler()),
+    hydrate: (dom, f) => update(dom, bind(f, dom)),
+    add, state, derive,
+  }
+})();
+
 /* ======================================================================
    1. Turtle parser  —  text -> {triples, prefixes}
    Terms are interned as strings so the indexes can use plain Maps:
@@ -950,548 +1089,584 @@ function readRun(st) {
 }
 
 /* ======================================================================
-   5. Rendering helpers
+   5. UI — VanJS
+
+   Builds DOM, never HTML strings: text goes in as Text nodes, so there is no
+   escaping to get wrong, and state drives the updates. The whole UI is a
+   function of six states — the loaded model, the current tab, the filter text,
+   the outcome and role toggles, and the open source sheet — bound at the
+   smallest useful granularity, so typing in a filter re-renders the list but
+   not the toolbar it is typed into.
    ====================================================================== */
-function esc(s) {
-  return String(s === null || s === undefined ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-var CFG = {};
-/** A reference to a spec/ontology source file.
+const {
+  a, abbr, button, code, dd, details, div, dl, dt, em, footer, h1, h2, header,
+  input, label, li, main: mainTag, nav, p, pre, section, small, span, strong,
+  summary, table, tbody, td, th, thead, tr, ul
+} = van.tags;
+const { state } = van;
 
-    Preference order: the text embedded in this page (opens in place — works from
-    an email attachment or a CI artifact, where a path is meaningless), then the
-    build-time src base (a repo URL, when the page was published from CI), then
-    plain text rather than a link that would 404. */
-function srcLink(path, label) {
-  if (!path) return esc(label || "");
-  var name = esc(label || path);
-  if (M && M.sources && M.sources[path]) {
-    return '<a class="srclink" href="#" data-src="' + esc(path) + '" title="' +
-      esc("Show " + path) + '">' + name + "</a>";
+let CFG = {};
+
+/* ---- state ---- */
+const model = state(null);                  // the run, read out of the graph
+const tab = state("tests");
+const query = state("");
+const show = { passed: state(true), failed: state(true), skipped: state(true) };
+const ROLES = ["covered", "query-only", "schema", "unused"];
+const roleOn = Object.fromEntries(ROLES.map(r => [r, state(false)]));
+const sheet = state(null);                  // source file shown over the page
+const dragging = state(false);
+const failure = state("");                  // a load/parse error to surface
+
+/* ---- presentational helpers ---- */
+const pill = (kind, txt) => span({ class: "pill " + kind }, txt || kind);
+const tick = on => span({ class: on ? "yes" : "no" }, on ? "✓" : "–");
+const dur = s => s == null ? "" : s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(2) + "s";
+const secHead = (title, n) =>
+  div({ class: "sec-head" }, h2(title), span({ class: "rule" }),
+      n === undefined ? [] : span({ class: "n" }, n));
+const empty = msg => div({ class: "card" }, p({ class: "empty" }, msg));
+const short = iri => model.val ? model.val.store.short(iri) : iri;
+const hits = text =>
+  !query.val || String(text).toLowerCase().includes(query.val.toLowerCase());
+
+/* ---- source references ----------------------------------------------------
+   A path in the graph only resolves from the directory the run happened in, so
+   prefer the copy embedded in this page (opens in place), then a configured base
+   URL (a repo link, when published from CI), and otherwise plain text rather
+   than a link that would 404. */
+const srcBase = () =>
+  CFG.srcBase && !CFG.srcBase.startsWith("__MUSTRD") ? CFG.srcBase : "";
+
+const srcRef = (path, name = path) => {
+  if (!path) return name || "";
+  const src = model.val?.sources[path];
+  if (src) {
+    return a({ class: "srclink", href: "#", title: "Show " + path,
+               onclick: ev => { ev.preventDefault(); sheet.val = src; } }, name);
   }
-  var base = CFG.srcBase && CFG.srcBase.indexOf("__MUSTRD") !== 0 ? CFG.srcBase : "";
-  if (base) return '<a href="' + esc(base + path) + '" title="' + esc(path) + '">' + name + "</a>";
-  return '<span title="' + esc(path) + '">' + name + "</span>";
-}
+  const base = srcBase();
+  return base ? a({ href: base + path, title: path }, name)
+              : span({ title: path }, name);
+};
 
-/* ---- syntax highlighting for the embedded Turtle / SPARQL ---- */
-var TTL_RE = new RegExp([
-  "(#[^\\n]*)",                                                   // 1 comment
+/* ---- syntax highlighting for the embedded Turtle / SPARQL -----------------
+   Returns Text nodes and <span>s, so highlighting cannot alter the content it
+   presents. */
+const TTL_RE = new RegExp([
+  "(#[^\\n]*)",                                                   // comment
   "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
-  "(<[^>\\s]*>)",                                                 // 3 IRI
-  "(@prefix|@base|\\ba\\b|\\btrue\\b|\\bfalse\\b)",               // 4 keyword
-  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                               // 5 prefixed name
-  "(-?\\b\\d+(?:\\.\\d+)?\\b)"                                    // 6 number
+  "(<[^>\\s]*>)",                                                 // IRI
+  "(@prefix|@base|\\ba\\b|\\btrue\\b|\\bfalse\\b)",               // keyword
+  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                               // prefixed name
+  "(-?\\b\\d+(?:\\.\\d+)?\\b)"                                    // number
 ].join("|"), "g");
-var TTL_CLASSES = [null, "comment", "string", "iri", "kw", "pname", "num"];
+const TTL_CLASSES = [null, "comment", "string", "iri", "kw", "pname", "num"];
 
-var SPARQL_RE = new RegExp([
+const SPARQL_RE = new RegExp([
   "(#[^\\n]*)",
   "(\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')",
   "(<[^>\\s]*>)",
-  "([?$][A-Za-z_]\\w*)",                                          // 4 variable
+  "([?$][A-Za-z_]\\w*)",                                          // variable
   "\\b(SELECT|CONSTRUCT|ASK|DESCRIBE|WHERE|INSERT|DELETE|DATA|GRAPH|OPTIONAL|" +
     "FILTER|BIND|VALUES|UNION|MINUS|SERVICE|PREFIX|BASE|DISTINCT|REDUCED|ORDER|" +
     "GROUP|BY|HAVING|LIMIT|OFFSET|AS|NOT|EXISTS|IN|WITH|USING|FROM|NAMED|SILENT|" +
-    "CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|TRUE|FALSE)\\b",   // 5 keyword
-  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)"                                // 6 prefixed name
+    "CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|TRUE|FALSE)\\b",
+  "([A-Za-z][\\w.-]*:[\\w.\\-%]*)"
 ].join("|"), "gi");
-var SPARQL_CLASSES = [null, "comment", "string", "iri", "var", "kw", "pname"];
+const SPARQL_CLASSES = [null, "comment", "string", "iri", "var", "kw", "pname"];
 
-function highlight(body, media) {
-  var sparql = /sparql/i.test(media || "");
-  var re = sparql ? SPARQL_RE : TTL_RE;
-  var classes = sparql ? SPARQL_CLASSES : TTL_CLASSES;
-  var out = "", last = 0, m;
+const highlight = (body, media) => {
+  const sparql = /sparql/i.test(media || "");
+  const re = sparql ? SPARQL_RE : TTL_RE;
+  const classes = sparql ? SPARQL_CLASSES : TTL_CLASSES;
+  const out = [];
+  let last = 0, m;
   re.lastIndex = 0;
   while ((m = re.exec(body)) !== null) {
-    if (!m[0].length) { re.lastIndex++; continue; }               // never loop forever
-    var cls = null;
-    for (var g = 1; g < classes.length; g++) { if (m[g] !== undefined) { cls = classes[g]; break; } }
-    out += esc(body.slice(last, m.index));
-    out += cls ? '<span class="tok-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+    if (!m[0].length) { re.lastIndex++; continue; }        // never loop forever
+    const cls = classes.find((c, g) => g && m[g] !== undefined);
+    if (m.index > last) out.push(body.slice(last, m.index));
+    out.push(cls ? span({ class: "tok-" + cls }, m[0]) : m[0]);
     last = m.index + m[0].length;
   }
-  return out + esc(body.slice(last));
-}
-
-function sourceLabel(src) {
-  if (src.path) return src.path;
-  return /sparql/i.test(src.media) ? "SPARQL (inline in the spec)" : "source";
-}
-
-function renderSources(sources) {
-  if (!sources || !sources.length) return "";
-  return sources.map(function (src) {
-    return '<details class="src"><summary>' + esc(sourceLabel(src)) +
-      ' · ' + esc(src.media) + "</summary><pre class=\"code\">" +
-      highlight(src.body, src.media) + "</pre></details>";
-  }).join("");
-}
-function dur(s) {
-  if (s === null || s === undefined) return "";
-  return s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(2) + "s";
-}
-function tick(on) { return on ? '<span class="yes">✓</span>' : '<span class="no">–</span>'; }
-function pill(kind, label) { return '<span class="pill ' + kind + '">' + esc(label || kind) + "</span>"; }
-function pct(n) { return n + "%"; }
-
-/* ======================================================================
-   6. Views
-   ====================================================================== */
-var state = { tab: null, q: "", status: { passed: true, failed: true, skipped: true }, role: {} };
-var M = null;                                     // the current model
-
-function matches(t) {
-  if (!state.status[t.status]) return false;
-  if (!state.q) return true;
-  var q = state.q.toLowerCase();
-  return (t.name + " " + t.module + " " + t.cls + " " + (t.spec ? t.spec.iri : "")).toLowerCase().indexOf(q) >= 0;
-}
-
-function viewTests() {
-  var T = M.tests, tot = T.totals;
-  var chips = ["passed", "failed", "skipped"].map(function (s) {
-    var cls = s === "passed" ? "pass" : s === "failed" ? "fail" : "skip";
-    return '<button class="chip ' + cls + '" data-status="' + s + '" aria-pressed="' + state.status[s] + '">' +
-      esc(s) + ' <span class="n">' + (tot[s] || 0) + "</span></button>";
-  }).join("");
-
-  var body = T.groups.map(function (g) {
-    var vis = g.tests.filter(matches);
-    if (!vis.length) return "";
-    var failing = vis.some(function (t) { return t.status === "failed"; });
-    return '<details class="grp"' + (failing || state.q ? " open" : "") + ">" +
-      '<summary><span class="gname">' + esc(g.label) + "</span>" +
-      '<span class="gmeta">' +
-        (g.failed ? pill("failed", g.failed + " failed") : "") +
-        (g.skipped ? pill("skipped", g.skipped + " skipped") : "") +
-        '<span>' + vis.length + " test" + (vis.length === 1 ? "" : "s") + "</span>" +
-        '<span class="dur">' + dur(g.duration) + "</span>" +
-      "</span></summary>" +
-      '<ul class="tests">' + vis.map(testRow).join("") + "</ul></details>";
-  }).join("");
-
-  return '<div class="toolbar">' +
-      '<input class="search" id="q" type="search" placeholder="Filter tests…" value="' + esc(state.q) + '">' +
-      '<div class="chips">' + chips + "</div>" +
-      '<button id="expandAll">Expand all</button><button id="collapseAll">Collapse all</button>' +
-    "</div>" +
-    (body ? '<div class="card">' + body + "</div>"
-          : '<div class="card"><p class="empty">No tests match the current filter.</p></div>');
-}
-
-function testRow(t) {
-  var meta = [];
-  if (t.spec) {
-    if (t.spec.source) meta.push("<dt>spec file</dt><dd>" + srcLink(t.spec.source, t.spec.source) + "</dd>");
-    meta.push("<dt>spec IRI</dt><dd><code>" + esc(t.spec.iri) + "</code></dd>");
-    if (t.spec.inData && t.spec.inData.length) {
-      meta.push("<dt>in data</dt><dd><div class=\"terms\">" + t.spec.inData.map(function (x) {
-        return '<span class="term-chip" title="' + esc(x) + '">' + esc(M.store.short(x)) + "</span>";
-      }).join("") + "</div></dd>");
-    }
-    if (t.spec.inQuery && t.spec.inQuery.length) {
-      meta.push("<dt>in SPARQL</dt><dd><div class=\"terms\">" + t.spec.inQuery.map(function (x) {
-        return '<span class="term-chip" title="' + esc(x) + '">' + esc(M.store.short(x)) + "</span>";
-      }).join("") + "</div></dd>");
-    }
-    var cqs = M.cqs.filter(function (c) {
-      return c.tests.some(function (x) { return x.spec && x.spec.iri === t.spec.iri; });
-    });
-    if (cqs.length) {
-      meta.push("<dt>answers</dt><dd>" + cqs.map(function (c) { return esc(c.questions[0] || c.name); }).join("<br>") + "</dd>");
-    }
-  } else if (t.source) {
-    meta.push("<dt>file</dt><dd>" + srcLink(t.source, t.source) + "</dd>");
-  }
-  if (t.type) meta.push("<dt>type</dt><dd>" + esc(t.type) + "</dd>");
-
-  var sources = renderSources(t.spec && t.spec.sources);
-  return "<li><details><summary class=\"t\">" + pill(t.status) +
-      '<span class="name">' + esc(t.name) + "</span>" +
-      '<span class="right"><span class="dur">' + dur(t.duration) + "</span></span>" +
-    "</summary>" +
-    (meta.length || sources
-      ? '<div class="detail">' +
-        (meta.length ? '<dl class="kv">' + meta.join("") + "</dl>" : "") + sources +
-        "</div>"
-      : "") +
-    "</details></li>";
-}
-
-function viewCoverage() {
-  var C = M.coverage;
-  if (!C) return '<div class="card"><p class="empty">This run has no ontology term coverage. Re-run with <code>--term-coverage</code>.</p></div>';
-
-  var onto = C.ontologies.length ? '<div class="card">' + C.ontologies.map(function (o) {
-    return '<div class="cq"><p class="q mono">' + esc(o.iri) + "</p>" +
-      (o.comment ? "<p class=\"note\">" + esc(o.comment) + "</p>" : "") +
-      (o.path ? '<p class="note">' + srcLink(o.path, o.path) + "</p>" : "") +
-      (o.version ? '<p class="note mono">version: ' + esc(o.version) + "</p>" : "") + "</div>";
-  }).join("") + "</div>" : "";
-
-  var roles = ["covered", "query-only", "schema", "unused"];
-  var counts = {};
-  roles.forEach(function (r) {
-    counts[r] = Object.keys(C.terms).filter(function (t) { return C.terms[t].role === r; }).length;
-  });
-  var anyRole = roles.some(function (r) { return state.role[r]; });
-  var chips = roles.map(function (r) {
-    return '<button class="chip" data-role="' + r + '" aria-pressed="' + (!!state.role[r]) + '">' +
-      esc(r) + ' <span class="n">' + counts[r] + "</span></button>";
-  }).join("");
-
-  var rows = C.rows.filter(function (r) {
-    if (anyRole && !state.role[r.t.role]) return false;
-    if (!state.q) return true;
-    return (M.store.short(r.iri) + " " + r.iri).toLowerCase().indexOf(state.q.toLowerCase()) >= 0;
-  });
-
-  var tbody = rows.map(function (r) {
-    var t = r.t, pad = r.depth * 1.15;
-    var exRows = t.exercises.map(function (e) {
-      return '<tr class="ex" data-for="' + esc(r.iri) + '" hidden><td style="padding-left:' + (pad + 2.2) + 'rem">' +
-        '<span class="glyph">•</span> ' + srcLink(e.source, e.name) + "</td><td></td>" +
-        '<td class="c">' + tick(e.inData) + '</td><td class="c">' + tick(e.inQuery) +
-        "</td><td></td><td></td></tr>";
-    }).join("");
-    var reasonRow = t.reasons.length
-      ? '<tr class="ex" data-for="' + esc(r.iri) + '" hidden><td colspan="6" style="padding-left:' + (pad + 2.2) +
-        'rem" class="note">structural because: ' + esc(t.reasons.join("; ")) + "</td></tr>"
-      : "";
-    return '<tr class="term" data-term="' + esc(r.iri) + '" title="' + esc(r.iri) + '">' +
-      '<td class="tname" style="padding-left:' + (0.7 + pad) + 'rem">' +
-        (r.glyph ? '<span class="glyph">' + r.glyph + "</span> " : "") + esc(M.store.short(r.iri)) + "</td>" +
-      "<td>" + esc(t.kind) + "</td>" +
-      '<td class="c">' + tick(t.inData) + "</td>" +
-      '<td class="c">' + tick(t.inQuery) + "</td>" +
-      '<td class="c">' + pill(t.role) + "</td>" +
-      '<td class="c">' + (t.cqRole ? pill(t.cqRole) : "") + "</td></tr>" + reasonRow + exRows;
-  }).join("");
-
-  return '<div class="toolbar">' +
-      '<input class="search" id="q" type="search" placeholder="Filter terms…" value="' + esc(state.q) + '">' +
-      '<div class="chips">' + chips + "</div></div>" +
-    '<p class="note">A term counts as <strong>covered</strong> when a passing test <strong>populates it in input data</strong>. ' +
-      "A term named only in a query is <strong>query-only</strong> and does not count. " +
-      "<strong>structural</strong> terms are load-bearing but excluded from the denominator. " +
-      "Classes are nested by <code>rdfs:subClassOf</code> (↳), properties under their <code>rdfs:domain</code> (▸). " +
-      "Click a row for the per-test breakdown.</p>" +
-    '<div class="card tblwrap"><table><thead><tr>' +
-      "<th>Term</th><th>Kind</th>" +
-      '<th class="c"><abbr title="A passing test asserts the term in its given data">In data</abbr></th>' +
-      '<th class="c"><abbr title="A passing test\'s SPARQL names the term">In SPARQL</abbr></th>' +
-      '<th class="c">Test coverage</th><th class="c">CQ coverage</th>' +
-    "</tr></thead><tbody>" + (tbody || '<tr><td colspan="6" class="empty">No terms match.</td></tr>') +
-    "</tbody></table></div>" +
-    (onto ? '<div class="sec-head"><h2>Ontologies measured</h2><span class="rule"></span><span class="n">' +
-      C.ontologies.length + "</span></div>" + onto : "");
-}
-
-function viewCqs() {
-  if (!M.cqs.length) return '<div class="card"><p class="empty">No competency questions in this graph. Re-run with <code>--cq</code>.</p></div>';
-  var body = M.cqs.filter(function (c) {
-    if (!state.q) return true;
-    return (c.questions.join(" ") + " " + c.name).toLowerCase().indexOf(state.q.toLowerCase()) >= 0;
-  }).map(function (c) {
-    var badges = [];
-    if (c.duplicate) badges.push(pill("query-only", "duplicate question"));
-    if (!c.tests.length) badges.push(pill("unused", "no linked test"));
-    if (c.tests.some(function (t) { return t.status === "failed"; })) badges.push(pill("failed", "failing"));
-    else if (c.tests.length) badges.push(pill("passed", "verified"));
-    var tests = c.tests.map(function (t) {
-      return "<li>" + pill(t.status || "plain", t.status || "unknown") + " " +
-        (t.spec ? srcLink(t.spec.source, t.spec.name) : "?") +
-        (t.requiresOntology ? " " + pill("schema", "needs ontology") : "") + "</li>";
-    }).join("");
-    var missing = c.missing.map(function (m) {
-      return '<li class="warnrow">cq:cqSpec points at <code>' + esc(m) + "</code>, which no test in this run provides</li>";
-    }).join("");
-    return '<div class="cq"><p class="q">' + esc(c.questions[0] || c.name) + "</p>" +
-      '<div class="badges">' + badges.join("") + "</div>" +
-      (c.questions.length > 1 ? '<p class="note">also asked as: ' + c.questions.slice(1).map(esc).join(" · ") + "</p>" : "") +
-      (tests || missing ? "<ul>" + tests + missing + "</ul>" : "") +
-      (c.source ? '<p class="note">defined in ' + srcLink(c.source, c.source) + "</p>" : "") +
-      "</div>";
-  }).join("");
-  return '<div class="toolbar"><input class="search" id="q" type="search" placeholder="Filter questions…" value="' + esc(state.q) + '"></div>' +
-    '<div class="card">' + (body || '<p class="empty">No questions match.</p>') + "</div>";
-}
-
-function viewIssues() {
-  var I = M.issues;
-  if (!I.undeclared.length && !I.tbox.length) {
-    return '<div class="card"><p class="empty">No quality issues found in this run. ✨</p></div>';
-  }
-  var out = "";
-  if (I.undeclared.length) {
-    out += '<div class="sec-head"><h2>Used but not declared</h2><span class="rule"></span><span class="n">' +
-      I.undeclared.length + "</span></div>" +
-      '<p class="note">Terms a test references inside a measured ontology’s namespace that the ontology never declares — usually a typo or a missing definition.</p>' +
-      '<div class="card">' + I.undeclared.map(function (u) {
-        return '<div class="cq"><p class="q mono">' + esc(M.store.short(u.term)) + "</p>" +
-          '<p class="note mono">' + esc(u.term) + "</p><ul>" + u.refs.map(function (r) {
-            return "<li>" + srcLink(r.source, r.name) + ' <span class="note">— ' +
-              (r.inData ? "in data" : "") + (r.inData && r.inQuery ? " and " : "") + (r.inQuery ? "in SPARQL" : "") + "</span></li>";
-          }).join("") + "</ul></div>";
-      }).join("") + "</div>";
-  }
-  if (I.tbox.length) {
-    out += '<div class="sec-head"><h2>TBox in test data</h2><span class="rule"></span><span class="n">' +
-      I.tbox.length + "</span></div>" +
-      '<p class="note">Schema axioms found in a test’s input data, where only instance data belongs.</p>' +
-      '<div class="card">' + I.tbox.map(function (t) {
-        return '<div class="cq"><p class="q">' + srcLink(t.source, t.name) + "</p><ul>" +
-          t.axioms.map(function (a) { return '<li class="mono">' + esc(a) + "</li>"; }).join("") + "</ul></div>";
-      }).join("") + "</div>";
-  }
+  if (last < body.length) out.push(body.slice(last));
   return out;
-}
+};
 
-function viewSource() {
-  var pfx = Object.keys(M.store.prefixes).sort().map(function (p) {
-    return "<tr><td class=\"mono\">" + esc(p) + ":</td><td class=\"mono\">" + esc(M.store.prefixes[p]) + "</td></tr>";
-  }).join("");
-  var dl = M.raw
-    ? '<a class="btn" download="mustrd-run.ttl" href="data:text/turtle;charset=utf-8,' + encodeURIComponent(M.raw) + '">Download TTL</a>'
-    : "";
-  return '<div class="toolbar">' + dl + '<span class="note">' + M.store.size() + " triples, " +
-      Object.keys(M.store.prefixes).length + " prefixes</span></div>" +
-    (pfx ? '<div class="card tblwrap"><table><thead><tr><th>Prefix</th><th>Namespace</th></tr></thead><tbody>' +
-      pfx + "</tbody></table></div>" : "") +
-    (M.raw ? '<div class="sec-head"><h2>Turtle</h2><span class="rule"></span></div><div class="card"><pre class="ttl">' +
-      esc(M.raw) + "</pre></div>" : "");
-}
+const sourceLabel = src =>
+  src.path || (/sparql/i.test(src.media) ? "SPARQL (as executed)" : "source");
+const codeBlock = src => pre({ class: "code" }, highlight(src.body, src.media));
+const sourceDetails = sources => (sources || []).map(src =>
+  details({ class: "src" },
+    summary(sourceLabel(src), " · ", src.media),
+    codeBlock(src)));
+
+/* ---- toolbar pieces ---- */
+const searchBox = placeholder => input({
+  class: "search", type: "search", placeholder, value: query.val,
+  oninput: ev => query.val = ev.target.value
+});
+const toggleChip = (st, cls, name, count) => button({
+  class: "chip " + (cls || ""),
+  "aria-pressed": () => String(st.val),
+  onclick: () => st.val = !st.val
+}, name, count === undefined ? [] : span({ class: "n" }, count));
+
+/** Expand/collapse every disclosure in the results area. Plain DOM: which
+    <details> are open is view state the model has no opinion about. */
+const setAllOpen = open => document.getElementById("main")
+  ?.querySelectorAll("details").forEach(d => d.open = open);
 
 /* ======================================================================
-   7. Tiles, tabs, wiring
+   6. Tabs
    ====================================================================== */
-function renderTiles() {
-  var t = M.tests.totals, C = M.coverage, out = [];
+const CHIP_CLASS = { passed: "pass", failed: "fail", skipped: "skip" };
+
+const TestsTab = M => div(
+  div({ class: "toolbar" },
+    searchBox("Filter tests…"),
+    div({ class: "chips" }, Object.keys(show).map(s =>
+      toggleChip(show[s], CHIP_CLASS[s], s, M.tests.totals[s] || 0))),
+    button({ onclick: () => setAllOpen(true) }, "Expand all"),
+    button({ onclick: () => setAllOpen(false) }, "Collapse all")),
+  () => TestGroups(M));
+
+const testShown = t => show[t.status]?.val &&
+  hits(`${t.name} ${t.module} ${t.cls} ${t.spec ? t.spec.iri : ""}`);
+
+const TestGroups = M => {
+  const groups = M.tests.groups.map(g => {
+    const visible = g.tests.filter(testShown);
+    if (!visible.length) return null;
+    return details({ class: "grp", open: visible.some(t => t.status === "failed") || !!query.val },
+      summary(
+        span({ class: "gname" }, g.label),
+        span({ class: "gmeta" },
+          g.failed ? pill("failed", g.failed + " failed") : [],
+          g.skipped ? pill("skipped", g.skipped + " skipped") : [],
+          span(`${visible.length} test${visible.length === 1 ? "" : "s"}`),
+          span({ class: "dur" }, dur(g.duration)))),
+      ul({ class: "tests" }, visible.map(TestRow)));
+  }).filter(Boolean);
+  return groups.length ? div({ class: "card" }, groups)
+                       : empty("No tests match the current filter.");
+};
+
+const termChips = iris => div({ class: "terms" },
+  iris.map(t => span({ class: "term-chip", title: t }, short(t))));
+
+const TestRow = t => {
+  const kv = [];
+  const row = (k, v) => kv.push(dt(k), dd(v));
+  if (t.spec) {
+    if (t.spec.source) row("spec file", srcRef(t.spec.source));
+    row("spec IRI", code(t.spec.iri));
+    if (t.spec.inData?.length) row("in data", termChips(t.spec.inData));
+    if (t.spec.inQuery?.length) row("in SPARQL", termChips(t.spec.inQuery));
+    const answers = model.val.cqs.filter(c =>
+      c.tests.some(x => x.spec && x.spec.iri === t.spec.iri));
+    if (answers.length) row("answers", answers.map(c => div(c.questions[0] || c.name)));
+  } else if (t.source) {
+    row("file", srcRef(t.source));
+  }
+  if (t.type) row("type", t.type);
+
+  const sources = sourceDetails(t.spec?.sources);
+  return li(details(
+    summary({ class: "t" },
+      pill(t.status),
+      span({ class: "name" }, t.name),
+      span({ class: "right" }, span({ class: "dur" }, dur(t.duration)))),
+    kv.length || sources.length
+      ? div({ class: "detail" }, kv.length ? dl({ class: "kv" }, kv) : [], sources)
+      : []));
+};
+
+const CoverageTab = M => {
+  const C = M.coverage;
+  if (!C) {
+    return empty(["This run has no ontology term coverage. Re-run with ",
+                  code("--term-coverage"), ", and declare ",
+                  code("mustrdTest:hasOntologyPath"), " in the config."]);
+  }
+  const count = role => Object.values(C.terms).filter(t => t.role === role).length;
+  return div(
+    div({ class: "toolbar" },
+      searchBox("Filter terms…"),
+      div({ class: "chips" }, ROLES.map(r => toggleChip(roleOn[r], "", r, count(r))))),
+    p({ class: "note" },
+      "A term counts as ", strong("covered"), " when a passing test ",
+      strong("populates it in input data"), ". A term named only in a query is ",
+      strong("query-only"), " and does not count. ", strong("structural"),
+      " terms are load-bearing but excluded from the denominator. Classes nest by ",
+      code("rdfs:subClassOf"), " (↳), properties under their ", code("rdfs:domain"),
+      " (▸). Click a row for the per-test breakdown."),
+    div({ class: "card tblwrap" }, table(
+      thead(tr(
+        th("Term"), th("Kind"),
+        th({ class: "c" }, abbr({ title: "A passing test asserts the term in its given data" }, "In data")),
+        th({ class: "c" }, abbr({ title: "A passing test's SPARQL names the term" }, "In SPARQL")),
+        th({ class: "c" }, "Test coverage"),
+        th({ class: "c" }, "CQ coverage"))),
+      () => TermRows(C))),
+    C.ontologies.length
+      ? [secHead("Ontologies measured", C.ontologies.length),
+         div({ class: "card" }, C.ontologies.map(OntologyCard))]
+      : []);
+};
+
+const OntologyCard = o => div({ class: "cq" },
+  p({ class: "q mono" }, o.iri),
+  o.comment ? p({ class: "note" }, o.comment) : [],
+  o.path ? p({ class: "note" }, srcRef(o.path)) : [],
+  o.version ? p({ class: "note mono" }, "version: " + o.version) : []);
+
+const TermRows = C => {
+  const anyRole = ROLES.some(r => roleOn[r].val);
+  const rows = [];
+  C.rows
+    .filter(r => (!anyRole || roleOn[r.t.role].val) && hits(`${short(r.iri)} ${r.iri}`))
+    .forEach(({ iri, depth, glyph, t }) => {
+      const pad = depth * 1.15;
+      // Per-row disclosure: a bound `hidden`, so expanding one term does not
+      // rebuild the table.
+      const open = state(false);
+      const hidden = () => !open.val;
+      const indent = extra => `padding-left:${pad + extra}rem`;
+
+      rows.push(tr({ class: "term", title: iri,
+                     onclick: ev => { if (!ev.target.closest("a")) open.val = !open.val; } },
+        td({ class: "tname", style: indent(0.7) },
+           glyph ? [span({ class: "glyph" }, glyph), " "] : [], short(iri)),
+        td(t.kind),
+        td({ class: "c" }, tick(t.inData)),
+        td({ class: "c" }, tick(t.inQuery)),
+        td({ class: "c" }, pill(t.role)),
+        td({ class: "c" }, t.cqRole ? pill(t.cqRole) : [])));
+
+      if (t.reasons.length) {
+        rows.push(tr({ class: "ex", hidden },
+          td({ colspan: 6, class: "note", style: indent(2.2) },
+             "structural because: " + t.reasons.join("; "))));
+      }
+      t.exercises.forEach(e => rows.push(tr({ class: "ex", hidden },
+        td({ style: indent(2.2) },
+           span({ class: "glyph" }, "•"), " ", srcRef(e.source, e.name)),
+        td(), td({ class: "c" }, tick(e.inData)), td({ class: "c" }, tick(e.inQuery)),
+        td(), td())));
+    });
+  return tbody(rows.length ? rows : tr(td({ colspan: 6, class: "empty" }, "No terms match.")));
+};
+
+const CqsTab = M => {
+  if (!M.cqs.length) {
+    return empty(["No competency questions in this graph. Re-run with ", code("--cq"), "."]);
+  }
+  return div(
+    div({ class: "toolbar" }, searchBox("Filter questions…")),
+    () => {
+      const cards = M.cqs
+        .filter(c => hits(c.questions.join(" ") + " " + c.name))
+        .map(CqCard);
+      return cards.length ? div({ class: "card" }, cards) : empty("No questions match.");
+    });
+};
+
+const cqBadges = c => [
+  c.duplicate ? pill("query-only", "duplicate question") : [],
+  !c.tests.length ? pill("unused", "no linked test")
+    : c.tests.some(t => t.status === "failed") ? pill("failed", "failing")
+    : pill("passed", "verified")
+];
+
+const CqCard = c => div({ class: "cq" },
+  p({ class: "q" }, c.questions[0] || c.name),
+  div({ class: "badges" }, cqBadges(c)),
+  c.questions.length > 1
+    ? p({ class: "note" }, "also asked as: " + c.questions.slice(1).join(" · ")) : [],
+  c.tests.length || c.missing.length
+    ? ul(
+        c.tests.map(t => li(
+          pill(t.status || "plain", t.status || "unknown"), " ",
+          t.spec ? srcRef(t.spec.source, t.spec.name) : "?",
+          t.requiresOntology ? [" ", pill("schema", "needs ontology")] : [])),
+        c.missing.map(iri => li({ class: "warnrow" },
+          "cq:cqSpec points at ", code(iri),
+          ", which no test in this run provides")))
+    : [],
+  c.source ? p({ class: "note" }, "defined in ", srcRef(c.source)) : []);
+
+const where = r =>
+  " — " + [r.inData && "in data", r.inQuery && "in SPARQL"].filter(Boolean).join(" and ");
+
+const IssuesTab = M => {
+  const { undeclared, tbox } = M.issues;
+  if (!undeclared.length && !tbox.length) return empty("No quality issues found in this run. ✨");
+  return div(
+    undeclared.length ? [
+      secHead("Used but not declared", undeclared.length),
+      p({ class: "note" },
+        "Terms a test references inside a measured ontology’s namespace that the " +
+        "ontology never declares — usually a typo or a missing definition."),
+      div({ class: "card" }, undeclared.map(u => div({ class: "cq" },
+        p({ class: "q mono" }, short(u.term)),
+        p({ class: "note mono" }, u.term),
+        ul(u.refs.map(r => li(srcRef(r.source, r.name),
+                              span({ class: "note" }, where(r))))))))
+    ] : [],
+    tbox.length ? [
+      secHead("TBox in test data", tbox.length),
+      p({ class: "note" },
+        "Schema axioms found in a test’s input data, where only instance data belongs."),
+      div({ class: "card" }, tbox.map(t => div({ class: "cq" },
+        p({ class: "q" }, srcRef(t.source, t.name)),
+        ul(t.axioms.map(ax => li({ class: "mono" }, ax))))))
+    ] : []);
+};
+
+const SourceTab = M => {
+  const prefixes = Object.keys(M.store.prefixes).sort();
+  return div(
+    div({ class: "toolbar" },
+      M.raw ? a({ class: "btn", download: "mustrd-run.ttl",
+                  href: "data:text/turtle;charset=utf-8," + encodeURIComponent(M.raw) },
+                "Download TTL") : [],
+      span({ class: "note" }, `${M.store.size()} triples, ${prefixes.length} prefixes`)),
+    prefixes.length
+      ? div({ class: "card tblwrap" }, table(
+          thead(tr(th("Prefix"), th("Namespace"))),
+          tbody(prefixes.map(pfx => tr(td({ class: "mono" }, pfx + ":"),
+                                       td({ class: "mono" }, M.store.prefixes[pfx]))))))
+      : [],
+    M.raw
+      ? [secHead("Turtle"),
+         div({ class: "card" }, pre({
+           class: "code", style: "max-height:70vh;border:none;border-radius:0"
+         }, highlight(M.raw, "text/turtle")))]
+      : []);
+};
+
+const TABS = [
+  { id: "tests", label: "Tests", count: M => M.tests.totals.total, view: TestsTab },
+  { id: "coverage", label: "Coverage", count: M => M.coverage ? M.coverage.declared : 0, view: CoverageTab },
+  { id: "cqs", label: "Competency questions", count: M => M.cqs.length, view: CqsTab },
+  { id: "issues", label: "Issues", count: M => M.issues.undeclared.length + M.issues.tbox.length, view: IssuesTab },
+  { id: "source", label: "Source", count: () => null, view: SourceTab }
+];
+
+const liveTabs = M => {
+  const live = TABS.filter(t => { const c = t.count(M); return c === null || c > 0; });
+  return live.length ? live : [TABS.at(-1)];
+};
+
+/* ======================================================================
+   7. Summary tiles, shell
+   ====================================================================== */
+const bar = parts => div({ class: "bar" },
+  parts.filter(([, pct]) => pct > 0)
+       .map(([cls, pct]) => span({ class: cls, style: `width:${pct}%` })));
+
+const tile = (name, big, sub, parts) => div({ class: "tile" },
+  div({ class: "label" }, name),
+  div({ class: "big" }, big[0], " ", small(big[1])),
+  div({ class: "sub" }, sub),
+  parts ? bar(parts) : []);
+
+const Tiles = M => {
+  const tiles = [], t = M.tests.totals, C = M.coverage;
   if (t.total) {
-    var w = function (k) { return (100 * (t[k] || 0) / t.total) + "%"; };
-    out.push('<div class="tile"><div class="label">Tests</div>' +
-      '<div class="big">' + (t.passed || 0) + " <small>/ " + t.total + " passed</small></div>" +
-      '<div class="sub">' + (t.failed || 0) + " failed · " + (t.skipped || 0) + " skipped · " + dur(t.duration) + "</div>" +
-      '<div class="bar"><span class="p" style="width:' + w("passed") + '"></span>' +
-        '<span class="f" style="width:' + w("failed") + '"></span>' +
-        '<span class="s" style="width:' + w("skipped") + '"></span></div></div>');
+    const pc = k => 100 * (t[k] || 0) / t.total;
+    tiles.push(tile("Tests", [t.passed || 0, `/ ${t.total} passed`],
+      `${t.failed || 0} failed · ${t.skipped || 0} skipped · ${dur(t.duration)}`,
+      [["p", pc("passed")], ["f", pc("failed")], ["s", pc("skipped")]]));
   }
   if (C) {
-    out.push('<div class="tile"><div class="label">Term coverage by tests</div>' +
-      '<div class="big">' + pct(C.pct) + ' <small>' + C.covered + "/" + C.denom + " terms</small></div>" +
-      '<div class="sub">' + C.declared + " declared · " + C.schema + " structural excluded</div>" +
-      '<div class="bar"><span class="c" style="width:' + C.pct + '%"></span></div></div>');
+    tiles.push(tile("Term coverage by tests", [C.pct + "%", `${C.covered}/${C.denom} terms`],
+      `${C.declared} declared · ${C.schema} structural excluded`, [["c", C.pct]]));
     if (C.hasCq) {
-      out.push('<div class="tile"><div class="label">Coverage by competency question</div>' +
-        '<div class="big">' + pct(C.cqPct) + ' <small>' + C.coveredCq + "/" + C.denom + " terms</small></div>" +
-        '<div class="sub">' + (C.covered - C.coveredCq) + " covered by tests but no CQ</div>" +
-        '<div class="bar"><span class="q" style="width:' + C.cqPct + '%"></span></div></div>');
+      tiles.push(tile("Coverage by competency question",
+        [C.cqPct + "%", `${C.coveredCq}/${C.denom} terms`],
+        `${C.covered - C.coveredCq} covered by tests but no CQ`, [["q", C.cqPct]]));
     }
   }
   if (M.cqs.length) {
-    var verified = M.cqs.filter(function (c) { return c.tests.length && c.tests.every(function (x) { return x.status === "passed"; }); }).length;
-    out.push('<div class="tile"><div class="label">Competency questions</div>' +
-      '<div class="big">' + verified + " <small>/ " + M.cqs.length + " verified</small></div>" +
-      '<div class="sub">' + M.cqs.filter(function (c) { return !c.tests.length; }).length + " with no linked test</div>" +
-      '<div class="bar"><span class="p" style="width:' + (100 * verified / M.cqs.length) + '%"></span></div></div>');
+    const verified = M.cqs.filter(c =>
+      c.tests.length && c.tests.every(x => x.status === "passed")).length;
+    tiles.push(tile("Competency questions", [verified, `/ ${M.cqs.length} verified`],
+      `${M.cqs.filter(c => !c.tests.length).length} with no linked test`,
+      [["p", 100 * verified / M.cqs.length]]));
   }
-  document.getElementById("tiles").innerHTML = out.join("");
-}
+  return section({ class: "tiles" }, tiles);
+};
 
-function renderRunMeta() {
-  var r = M.run, bits = [];
-  if (r.slug && r.slug !== "local") bits.push('<span><span class="k">run</span> <code>' + esc(r.slug.slice(0, 12)) + "</code></span>");
-  if (r.commit) bits.push('<span><span class="k">commit</span> <a href="' + esc(r.commit) + '">' + esc(localName(r.commit).slice(0, 8)) + "</a></span>");
-  if (r.version) bits.push('<span><span class="k">mustrd</span> ' + esc(r.version) + "</span>");
-  bits.push('<span><span class="k">triples</span> ' + M.store.size() + "</span>");
-  document.getElementById("runmeta").innerHTML = bits.join("");
-  document.getElementById("tripleCount").textContent = M.store.size();
-}
+const RunMeta = M => {
+  const { run } = M, bits = [];
+  const item = (k, v) => bits.push(span(span({ class: "k" }, k), " ", v));
+  if (run.slug && run.slug !== "local") item("run", code(run.slug.slice(0, 12)));
+  if (run.commit) item("commit", a({ href: run.commit }, localName(run.commit).slice(0, 8)));
+  if (run.version) item("mustrd", run.version);
+  item("triples", String(M.store.size()));
+  return div({ class: "runmeta" }, bits);
+};
 
-var TABS = [
-  { id: "tests", label: "Tests", count: function () { return M.tests.totals.total; }, view: viewTests },
-  { id: "coverage", label: "Coverage", count: function () { return M.coverage ? M.coverage.declared : 0; }, view: viewCoverage },
-  { id: "cqs", label: "Competency questions", count: function () { return M.cqs.length; }, view: viewCqs },
-  { id: "issues", label: "Issues", count: function () { return M.issues.undeclared.length + M.issues.tbox.length; }, view: viewIssues },
-  { id: "source", label: "Source", count: function () { return null; }, view: viewSource }
-];
-
-function renderTabs() {
-  var live = TABS.filter(function (t) { var c = t.count(); return c === null || c > 0; });
-  if (!live.length) live = [TABS[TABS.length - 1]];
-  if (!live.some(function (t) { return t.id === state.tab; })) state.tab = live[0].id;
-  document.getElementById("tabs").innerHTML = live.map(function (t) {
-    var c = t.count();
-    return '<button role="tab" data-tab="' + t.id + '" aria-selected="' + (state.tab === t.id) + '">' +
-      esc(t.label) + (c === null ? "" : ' <span class="n">' + c + "</span>") + "</button>";
-  }).join("");
-}
-
-function renderMain() {
-  var tab = TABS.filter(function (t) { return t.id === state.tab; })[0] || TABS[0];
-  document.getElementById("main").innerHTML = tab.view();
-  var q = document.getElementById("q");
-  if (q) {
-    q.addEventListener("input", function () { state.q = q.value; renderMain(); });
-    if (state.q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
-  }
-}
-
-function render() {
-  renderRunMeta();
-  renderTiles();
-  renderTabs();
-  renderMain();
-}
-
-function rebuild(store, raw) {
-  var specs = readSpecs(store);
-  M = {
-    store: store, raw: raw,
-    run: readRun(store), specs: specs, sources: sourcesByPath(specs),
-    tests: readTests(store, specs),
-    coverage: readCoverage(store, specs),
-    cqs: readCqs(store, specs),
-    issues: readIssues(store, specs)
-  };
-  render();
-}
-
-function fatal(msg) {
-  document.getElementById("main").innerHTML = '<div class="err">' + esc(msg) + "</div>";
-}
-
-/* ---- events (delegated, so re-rendering never loses handlers) ---- */
-/** Show an embedded source file in the overlay. */
-function openSource(path) {
-  var src = M && M.sources && M.sources[path];
-  if (!src) return;
-  document.getElementById("sheetPath").textContent = path + "  ·  " + src.media;
-  document.getElementById("sheetBody").innerHTML = highlight(src.body, src.media);
-  document.getElementById("sheet").hidden = false;
-}
-function closeSource() { document.getElementById("sheet").hidden = true; }
-
-document.addEventListener("keydown", function (ev) {
-  if (ev.key === "Escape") closeSource();
-});
-
-document.addEventListener("click", function (ev) {
-  if (!ev.target || !ev.target.closest) return;
-
-  var srcRef = ev.target.closest("a.srclink");
-  if (srcRef) { ev.preventDefault(); openSource(srcRef.dataset.src); return; }
-  if (ev.target.closest("#sheetClose") || ev.target.id === "sheet") { closeSource(); return; }
-
-  var tab = ev.target.closest("[data-tab]");
-  if (tab) { state.tab = tab.dataset.tab; state.q = ""; render(); return; }
-
-  var chip = ev.target.closest(".chip[data-status]");
-  if (chip) {
-    var s = chip.dataset.status;
-    state.status[s] = !state.status[s];
-    renderTabs(); renderMain(); return;
-  }
-  var rchip = ev.target.closest(".chip[data-role]");
-  if (rchip) { var r = rchip.dataset.role; state.role[r] = !state.role[r]; renderMain(); return; }
-
-  if (ev.target.closest("#expandAll")) {
-    document.querySelectorAll("#main details").forEach(function (d) { d.open = true; });
-    return;
-  }
-  if (ev.target.closest("#collapseAll")) {
-    document.querySelectorAll("#main details").forEach(function (d) { d.open = false; });
-    return;
-  }
-  var row = ev.target.closest("tr.term");
-  if (row && !ev.target.closest("a")) {
-    var sel = '[data-for="' + row.dataset.term.replace(/"/g, '\\"') + '"]';
-    document.querySelectorAll("#main tr.ex").forEach(function (tr) {
-      if (tr.matches(sel)) tr.hidden = !tr.hidden;
-    });
-  }
-});
-
-document.getElementById("themeBtn").addEventListener("click", function () {
-  var cur = document.documentElement.getAttribute("data-theme");
-  var next = cur === "light" ? "dark" : cur === "dark" ? "" : "light";
+/** Cycle explicit light → explicit dark → follow the OS. */
+const toggleTheme = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "light" ? "dark" : cur === "dark" ? "" : "light";
   if (next) document.documentElement.setAttribute("data-theme", next);
   else document.documentElement.removeAttribute("data-theme");
   try { localStorage.setItem("mustrd-theme", next); } catch (e) { /* private mode */ }
+};
+
+const NoData = () => div({ class: "card" }, p({ class: "empty" },
+  "No run data loaded.", div(), div(),
+  "Drop a ", code(".ttl"), " / ", code(".jsonld"), " from ",
+  code("mustrd report --term-coverage-rdf"), " or ", code("--results-rdf"),
+  " onto this page, use ", em("Load TTL"), ", or append ",
+  code("?ttl=path/to/run.ttl"), " to the URL."));
+
+const Shell = () => [
+  div({ class: "wrap" },
+    header({ class: "top" },
+      div(
+        p({ class: "eyebrow" }, "mustrd · spec-by-example for RDF & SPARQL"),
+        div({ class: "brand" }, span({ class: "dot" }),
+            h1({ id: "pageTitle" }, document.title || "Run report")),
+        () => model.val ? RunMeta(model.val) : div({ class: "runmeta" })),
+      div({ class: "actions" },
+        label({ class: "btn" }, "Load TTL", input({
+          type: "file", hidden: true, multiple: true,
+          accept: ".ttl,.turtle,.n3,.nt,.jsonld,.json",
+          onchange: ev => loadFiles(ev.target.files)
+        })),
+        button({ title: "Toggle light / dark", onclick: toggleTheme }, "◐"))),
+
+    () => model.val ? Tiles(model.val) : section({ class: "tiles" }),
+
+    nav({ class: "tabs", role: "tablist" }, () => {
+      const M = model.val;
+      return div({ class: "tabrow" }, !M ? [] : liveTabs(M).map(t => button({
+        role: "tab", "data-tab": t.id,
+        "aria-selected": () => String(tab.val === t.id),
+        onclick: () => { tab.val = t.id; query.val = ""; }
+      }, t.label, t.count(M) === null ? [] : span({ class: "n" }, t.count(M)))));
+    }),
+
+    mainTag({ id: "main" }, () => {
+      if (failure.val) return div({ class: "err" }, failure.val);
+      const M = model.val;
+      if (!M?.store.size()) return NoData();
+      const live = liveTabs(M);
+      return (live.find(t => t.id === tab.val) || live[0]).view(M);
+    }),
+
+    footer(() => div(
+      "Rendered in the browser from ",
+      strong(model.val ? String(model.val.store.size()) : "0"),
+      " triples of RDF (", code("cov:"), "/", code("must:"), "/", code("cq:"), "/",
+      code("dqv:"), "). Drop another ", code(".ttl"), " or ", code(".jsonld"),
+      " anywhere on the page to merge it in."))),
+
+  div({ class: "drop", hidden: () => !dragging.val },
+    div({ class: "inner" }, "Drop ", code(".ttl"), " / ", code(".jsonld"), " to load")),
+
+  div({ class: "sheet", hidden: () => !sheet.val,
+        onclick: ev => { if (ev.target === ev.currentTarget) sheet.val = null; } },
+    () => div({ class: "panel" },
+      div({ class: "head" },
+        span({ class: "path" },
+              sheet.val ? `${sourceLabel(sheet.val)}  ·  ${sheet.val.media}` : ""),
+        button({ onclick: () => sheet.val = null }, "Close ✕")),
+      sheet.val ? codeBlock(sheet.val) : pre({ class: "code" })))
+];
+
+/* ======================================================================
+   8. Loading data
+   ====================================================================== */
+const STORE = makeStore();
+let RAW = "";
+
+const rebuild = () => {
+  const specs = readSpecs(STORE);
+  model.val = {
+    store: STORE, raw: RAW, specs, sources: sourcesByPath(specs),
+    run: readRun(STORE),
+    tests: readTests(STORE, specs),
+    coverage: readCoverage(STORE, specs),
+    cqs: readCqs(STORE, specs),
+    issues: readIssues(STORE, specs)
+  };
+  // Keep the selected tab valid as data arrives — a results-only graph has no
+  // Coverage tab, for instance.
+  const live = liveTabs(model.val);
+  if (!live.some(t => t.id === tab.val)) tab.val = live[0].id;
+};
+
+const ingest = (name, body) => {
+  STORE.add(/\.(jsonld|json)$/i.test(name) ? parseJsonLd(body) : parseTurtle(body));
+  RAW = RAW ? `${RAW}\n\n# ---- ${name} ----\n${body}` : body;
+  failure.val = "";
+  rebuild();
+};
+
+const loadFiles = files => [...files].forEach(f => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { ingest(f.name, String(reader.result)); }
+    catch (e) { failure.val = `${f.name}: ${e.message}`; }
+  };
+  reader.readAsText(f);
 });
-try {
-  var saved = localStorage.getItem("mustrd-theme");
-  if (saved) document.documentElement.setAttribute("data-theme", saved);
-} catch (e) { /* private mode */ }
 
-/* ---- loading data ---- */
-var STORE = makeStore(), RAW = "";
-function ingest(name, textIn) {
-  var parsed = /\.(jsonld|json)$/i.test(name) ? parseJsonLd(textIn) : parseTurtle(textIn);
-  STORE.add(parsed);
-  RAW = RAW ? RAW + "\n\n# ---- " + name + " ----\n" + textIn : textIn;
-  rebuild(STORE, RAW);
-}
-function loadFiles(files) {
-  Array.prototype.forEach.call(files, function (f) {
-    var fr = new FileReader();
-    fr.onload = function () {
-      try { ingest(f.name, String(fr.result)); }
-      catch (e) { fatal(f.name + ": " + e.message); }
-    };
-    fr.readAsText(f);
-  });
-}
-document.getElementById("fileIn").addEventListener("change", function (ev) { loadFiles(ev.target.files); });
-
-var dropEl = document.getElementById("drop"), dragDepth = 0;
-window.addEventListener("dragenter", function (e) { e.preventDefault(); if (++dragDepth === 1) dropEl.hidden = false; });
-window.addEventListener("dragover", function (e) { e.preventDefault(); });
-window.addEventListener("dragleave", function () { if (--dragDepth <= 0) { dragDepth = 0; dropEl.hidden = true; } });
-window.addEventListener("drop", function (e) {
-  e.preventDefault(); dragDepth = 0; dropEl.hidden = true;
-  if (e.dataTransfer && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+/* ---- page-level events ---- */
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") sheet.val = null; });
+let dragDepth = 0;
+window.addEventListener("dragenter", ev => {
+  ev.preventDefault();
+  if (++dragDepth === 1) dragging.val = true;
+});
+window.addEventListener("dragover", ev => ev.preventDefault());
+window.addEventListener("dragleave", () => {
+  if (--dragDepth <= 0) { dragDepth = 0; dragging.val = false; }
+});
+window.addEventListener("drop", ev => {
+  ev.preventDefault();
+  dragDepth = 0;
+  dragging.val = false;
+  if (ev.dataTransfer?.files.length) loadFiles(ev.dataTransfer.files);
 });
 
-/* ---- boot: inlined data, then ?ttl= / ?jsonld= ---- */
-(function boot() {
-  try { CFG = JSON.parse(document.getElementById("mustrd-config").textContent) || {}; } catch (e) { CFG = {}; }
+/* ---- boot: mount, then the inlined data, then ?ttl= ---- */
+(() => {
+  const readJson = id => {
+    try { return JSON.parse(document.getElementById(id).textContent); }
+    catch (e) { return null; }
+  };
+  CFG = readJson("mustrd-config") || {};
 
-  var inline = null, broken = false;
-  try { inline = JSON.parse(document.getElementById("mustrd-data").textContent); } catch (e) { inline = null; }
-  if (typeof inline === "string" && inline.indexOf("__MUSTRD") !== 0 && inline.trim()) {
+  try {
+    const saved = localStorage.getItem("mustrd-theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+  } catch (e) { /* private mode */ }
+
+  const params = new URLSearchParams(location.search);
+  const title = params.get("title");
+  if (title) document.title = title;
+
+  van.add(document.body, Shell());
+
+  const inline = readJson("mustrd-data");
+  if (typeof inline === "string" && !inline.startsWith("__MUSTRD") && inline.trim()) {
     try { ingest("run.ttl", inline); }
-    catch (e) { broken = true; fatal("Embedded data: " + e.message); }
+    catch (e) { failure.val = "Embedded data: " + e.message; }
   }
 
-  var params = new URLSearchParams(location.search);
-  var title = params.get("title");
-  if (title) { document.getElementById("pageTitle").textContent = title; document.title = title; }
-  var urls = params.getAll("ttl").concat(params.getAll("jsonld"));
-  if (urls.length) {
-    urls.forEach(function (u) {
-      fetch(u).then(function (r) {
-        if (!r.ok) throw new Error(r.status + " " + r.statusText);
-        return r.text();
-      }).then(function (txt) { ingest(u, txt); })
-        .catch(function (e) { fatal("Could not load " + u + ": " + e.message); });
-    });
-  }
-
-  if (broken) return;                        // leave the parse error on screen
-  if (!STORE.size() && !urls.length) {
-    rebuild(STORE, "");
-    document.getElementById("main").innerHTML =
-      '<div class="card"><p class="empty">No run data loaded.<br><br>' +
-      "Drop a <code>.ttl</code> / <code>.jsonld</code> from " +
-      "<code>mustrd report --term-coverage-rdf</code> or <code>--results-rdf</code> onto this page, " +
-      "use <em>Load TTL</em>, or append <code>?ttl=path/to/run.ttl</code> to the URL.</p></div>";
-  } else {
-    rebuild(STORE, RAW);
-  }
+  params.getAll("ttl").concat(params.getAll("jsonld")).forEach(url =>
+    fetch(url)
+      .then(r => r.ok ? r.text() : Promise.reject(new Error(`${r.status} ${r.statusText}`)))
+      .then(body => ingest(url, body))
+      .catch(e => failure.val = `Could not load ${url}: ${e.message}`));
 })();
 </script>
 </body>

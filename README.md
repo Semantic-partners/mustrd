@@ -190,7 +190,8 @@ for sample output.
 ## The HTML report
 
 `--viewer=report.html` writes **one self-contained HTML file**: no build step, no
-CDN, no server. It carries the run's RDF and a Turtle parser, and renders
+CDN, no server. It carries the run's RDF, a Turtle parser and
+[VanJS](https://vanjs.org) (~5KB, MIT, vendored inline), and builds
 everything in the browser — a pass/fail/skip test tree with timings, the term
 coverage table (classes nested by `rdfs:subClassOf`, properties under their
 `rdfs:domain`), the competency questions, and the quality issues. Attach it to a

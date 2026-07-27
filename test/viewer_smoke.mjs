@@ -1,16 +1,19 @@
 /**
- * Headless smoke test for the viewer's data layer (Node, no dependencies).
- *
- * The viewer template carries its own Turtle parser and reads the whole report
- * out of the graph, so that layer is where the risk is — and it is pure: no DOM.
- * This harness slices the template's script up to the rendering section, evals
- * it, and asserts the model it builds from a real run graph.
+ * Headless smoke test for the viewer (Node, no dependencies).
  *
  *   node test/viewer_smoke.mjs <viewer.html> [expectations.json]
  *
- * `viewer.html` is a built viewer (mustrd report --viewer). Expectations, if
- * given, are {tests, passed, failed, skipped, terms, covered, pct, cqs} — only
- * the keys present are checked. Exits non-zero with a message on failure.
+ * Runs in two phases against a built viewer (`mustrd report --viewer`):
+ *
+ *  1. The data layer — the page's own Turtle parser, store and model readers —
+ *     evaluated on its own, since it touches no DOM. Asserts the run it reads
+ *     out of the graph is self-consistent.
+ *  2. The whole app, VanJS included, booted against the minimal DOM below and
+ *     driven through every tab. VanJS builds real nodes, so the shim implements
+ *     just enough of the DOM to construct and serialise a tree.
+ *
+ * Expectations, if given, are {tests, passed, failed, terms, covered, pct, …} —
+ * only the keys present are checked. Exits non-zero with a message on failure.
  */
 import { readFileSync } from "node:fs";
 
@@ -21,35 +24,47 @@ if (!htmlPath) {
 }
 const html = readFileSync(htmlPath, "utf8");
 
-/* ---- pull the app script and the embedded run data out of the page ---- */
-const dataMatch = html.match(
-  /<script id="mustrd-data" type="application\/json">([\s\S]*?)<\/script>/
-);
-if (!dataMatch) fail("no #mustrd-data block in the page");
-const ttl = JSON.parse(dataMatch[1]);
+function fail(msg) {
+  console.error("viewer smoke test FAILED: " + msg);
+  process.exit(1);
+}
+
+/* ---------------------------------------------------------------- extraction */
+function jsonBlock(id) {
+  const re = new RegExp(
+    `<script id="${id}" type="application/json">([\\s\\S]*?)</script>`);
+  const m = html.match(re);
+  if (!m) fail(`no #${id} block in the page`);
+  return m[1];
+}
+const rawData = jsonBlock("mustrd-data");
+const ttl = JSON.parse(rawData);
 if (typeof ttl !== "string" || !ttl.trim()) fail("embedded data is not a Turtle string");
 if (ttl.startsWith("__MUSTRD")) fail("embedded data placeholder was never substituted");
 
-// The last <script> is the app; everything before "5. Rendering helpers" is the
-// DOM-free data layer.
-const scripts = [...html.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)];
+const scripts = [...html.matchAll(
+  /<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)];
 if (!scripts.length) fail("no app script in the page");
 const app = scripts[scripts.length - 1][1];
-const cut = app.indexOf("5. Rendering helpers");
-if (cut < 0) fail("could not find the rendering-section marker to cut at");
-const dataLayer = app.slice(0, app.lastIndexOf("/* =", cut));
 
-const api = eval(dataLayer + "\n;({parseTurtle, makeStore, readSpecs, readTests, readCoverage, readCqs, readIssues, readRun});");
+// The data layer is everything before the UI section.
+const uiAt = app.indexOf("5. UI — VanJS");
+if (uiAt < 0) fail("could not find the UI section marker to cut at");
+const dataLayer = app.slice(0, app.lastIndexOf("/* =", uiAt));
+if (!dataLayer.includes("function parseTurtle")) fail("the data layer slice looks wrong");
 
-/* ---- parse and build the model, exactly as the page does ---- */
+/* ------------------------------------------------------- phase 1: data layer */
+const api = eval(dataLayer + `
+;({parseTurtle, makeStore, readSpecs, readTests, readCoverage, readCqs, readIssues,
+   readRun, sourcesByPath});`);
+
 const parsed = api.parseTurtle(ttl);
 if (!parsed.triples.length) fail("parsed 0 triples");
 const store = api.makeStore();
 store.add(parsed);
-
-// Re-serialising is not the job; but every triple must survive interning.
-if (store.size() !== new Set(parsed.triples.map((t) => t.join(""))).size) {
-  fail(`store holds ${store.size()} of ${parsed.triples.length} parsed triples`);
+const distinct = new Set(parsed.triples.map((t) => t.join(""))).size;
+if (store.size() !== distinct) {
+  fail(`store holds ${store.size()} of ${distinct} distinct parsed triples`);
 }
 
 const specs = api.readSpecs(store);
@@ -78,9 +93,10 @@ const actual = {
   tbox: model.issues.tbox.length,
 };
 
-/* ---- invariants that must hold for any run ---- */
 for (const t of model.tests.rows) {
-  if (!["passed", "failed", "skipped"].includes(t.status)) fail(`bad status ${t.status} on ${t.name}`);
+  if (!["passed", "failed", "skipped"].includes(t.status)) {
+    fail(`bad status ${t.status} on ${t.name}`);
+  }
   if (!t.name) fail("a test result has no cov:testName");
 }
 if (model.coverage) {
@@ -88,106 +104,23 @@ if (model.coverage) {
   if (C.rows.length !== C.declared) {
     fail(`term ordering lost rows: ${C.rows.length} rendered vs ${C.declared} declared`);
   }
-  if (new Set(C.rows.map((r) => r.iri)).size !== C.rows.length) fail("duplicate rows in the term tree");
-  if (C.denom !== C.declared - C.schema) fail("coverage denominator does not exclude structural terms");
-  const expectedPct = C.denom ? Math.round((100 * C.covered) / C.denom) : 0;
-  if (C.pct !== expectedPct) fail("coverage percentage disagrees with its own counts");
-  // The DQV measurement in the graph must agree with what we recomputed.
-  if (C.ratio !== undefined && C.ratio !== null && Math.abs(C.ratio - C.covered / C.denom) > 0.001) {
+  if (new Set(C.rows.map((r) => r.iri)).size !== C.rows.length) {
+    fail("duplicate rows in the term tree");
+  }
+  if (C.denom !== C.declared - C.schema) {
+    fail("coverage denominator does not exclude structural terms");
+  }
+  if (C.pct !== (C.denom ? Math.round((100 * C.covered) / C.denom) : 0)) {
+    fail("coverage percentage disagrees with its own counts");
+  }
+  if (C.ratio != null && Math.abs(C.ratio - C.covered / C.denom) > 0.001) {
     fail(`dqv measurement ${C.ratio} disagrees with recomputed ${C.covered}/${C.denom}`);
   }
 }
 for (const c of model.cqs) {
-  if (!c.questions.length && !c.name) fail("a competency question has neither text nor a name");
+  if (!c.questions.length && !c.name) fail("a competency question has no text or name");
 }
 
-/* ---- declared expectations ---- */
-if (expectPath) {
-  const want = JSON.parse(readFileSync(expectPath, "utf8"));
-  for (const [k, v] of Object.entries(want)) {
-    if (actual[k] !== v) fail(`${k}: expected ${v}, got ${actual[k]}`);
-  }
-}
-
-/* ---- phase 2: boot the whole app against a stub DOM and render every tab ----
-   The views are pure string builders, so a stub that records innerHTML is enough
-   to prove they run and produce the expected content — no browser needed. */
-const configMatch = html.match(
-  /<script id="mustrd-config" type="application\/json">([\s\S]*?)<\/script>/
-);
-const payloads = {
-  "mustrd-data": dataMatch[1],
-  "mustrd-config": configMatch ? configMatch[1] : "{}",
-};
-const els = new Map();
-function el(id) {
-  if (!els.has(id)) {
-    els.set(id, {
-      id,
-      innerHTML: "",
-      textContent: payloads[id] !== undefined ? payloads[id] : "",
-      value: "",
-      hidden: false,
-      dataset: {},
-      addEventListener() {},
-      removeAttribute() {},
-      setAttribute() {},
-      getAttribute() { return null; },
-      focus() {},
-      setSelectionRange() {},
-      querySelectorAll: () => [],
-      closest: () => null,
-    });
-  }
-  return els.get(id);
-}
-const documentStub = {
-  getElementById: el,
-  addEventListener() {},
-  querySelectorAll: () => [],
-  documentElement: {
-    setAttribute() {}, getAttribute() { return null; }, removeAttribute() {},
-  },
-};
-const ui = eval(
-  "(function(document, window, localStorage, location, FileReader, fetch) {" +
-  app +
-  "\n;return {state: state, TABS: TABS, renderMain: renderMain, model: M," +
-  " highlight: highlight, srcLink: srcLink};" +
-  "})"
-)(
-  documentStub,
-  { addEventListener() {} },
-  { getItem: () => null, setItem() {} },
-  { search: "" },
-  function () {},
-  function () { throw new Error("the smoke test must not need the network"); }
-);
-
-if (!ui.model) fail("the app booted without building a model");
-const rendered = {};
-for (const tab of ui.TABS) {
-  ui.state.tab = tab.id;
-  ui.state.q = "";
-  ui.renderMain();
-  const out = el("main").innerHTML;
-  if (!out || out.length < 40) fail(`tab "${tab.id}" rendered nothing`);
-  if (/undefined|NaN|\[object Object\]/.test(out)) {
-    fail(`tab "${tab.id}" rendered a placeholder value: ` +
-      out.match(/.{0,60}(undefined|NaN|\[object Object\]).{0,60}/)[0]);
-  }
-  rendered[tab.id] = out.length;
-}
-// The tests tab must name every test, and the coverage tab every declared term.
-ui.state.tab = "tests"; ui.renderMain();
-const testsHtml = el("main").innerHTML;
-for (const t of model.tests.rows) {
-  if (!testsHtml.includes(escapeHtml(t.name))) fail(`tests tab omits "${t.name}"`);
-}
-
-// Embedded sources: every spec's text must be reachable in the page, references
-// to it must open in place rather than link to a path the reader does not have,
-// and the highlighter must not corrupt the content.
 const embedded = Object.values(specs).flatMap((s) => s.sources || []);
 if (embedded.length) {
   actual.sources = embedded.length;
@@ -196,49 +129,258 @@ if (embedded.length) {
     if (!s.body.trim()) fail(`an embedded source (${s.path || s.media}) is empty`);
     if (!/turtle|sparql/i.test(s.media)) fail(`unexpected media type ${s.media}`);
   }
+}
+
+if (expectPath) {
+  const want = JSON.parse(readFileSync(expectPath, "utf8"));
+  for (const [k, v] of Object.entries(want)) {
+    if (actual[k] !== v) fail(`${k}: expected ${v}, got ${actual[k]}`);
+  }
+}
+
+/* --------------------------------------------------------- a very small DOM */
+// Enough for VanJS: element creation, children, attributes, the handful of
+// properties it prefers to set directly, and events. Property *descriptors*
+// matter — van looks for a setter on the prototype and falls back to
+// setAttribute — so the ones a browser exposes are defined here too.
+const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input",
+  "link", "meta", "source", "track", "wbr"]);
+
+class Node {
+  constructor() { this.childNodes = []; this.parentNode = null; this.isConnected = true; }
+  append(...kids) {
+    for (const k of kids) {
+      const node = k instanceof Node ? k : new Text(String(k));
+      node.parentNode = this;
+      this.childNodes.push(node);
+    }
+  }
+  remove() {
+    const p = this.parentNode;
+    if (!p) return;
+    p.childNodes.splice(p.childNodes.indexOf(this), 1);
+    this.parentNode = null;
+    this.isConnected = false;
+  }
+  replaceWith(other) {
+    const p = this.parentNode;
+    if (!p) return;
+    p.childNodes[p.childNodes.indexOf(this)] = other;
+    other.parentNode = p;
+    this.parentNode = null;
+    this.isConnected = false;
+  }
+}
+
+class Text extends Node {
+  constructor(data) { super(); this.data = String(data); this.nodeType = 3; }
+  get textContent() { return this.data; }
+  set textContent(v) { this.data = String(v); }
+}
+
+class Element extends Node {
+  constructor(tag) {
+    super();
+    this.nodeType = 1;                           // van checks this to spot a node
+    this.tagName = tag;
+    this.attributes = {};
+    this.listeners = {};
+    this.props = {};
+  }
+  setAttribute(k, v) { this.attributes[k] = String(v); }
+  getAttribute(k) { return k in this.attributes ? this.attributes[k] : null; }
+  removeAttribute(k) { delete this.attributes[k]; }
+  addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); }
+  removeEventListener(type, fn) {
+    this.listeners[type] = (this.listeners[type] || []).filter((f) => f !== fn);
+  }
+  dispatch(type, ev = {}) {
+    for (const fn of this.listeners[type] || []) {
+      fn({ target: this, currentTarget: this, preventDefault() {}, ...ev });
+    }
+  }
+  get textContent() {
+    return this.childNodes.map((c) => c.textContent).join("");
+  }
+  set textContent(v) { this.childNodes = []; this.append(String(v)); }
+  querySelectorAll(sel) {                        // only "details" is ever asked for
+    const want = sel.trim().split(/\s+/).pop();
+    const out = [];
+    const walk = (n) => {
+      for (const c of n.childNodes) {
+        if (c instanceof Element) { if (c.tagName === want) out.push(c); walk(c); }
+      }
+    };
+    walk(this);
+    return out;
+  }
+  closest(sel) {
+    const want = sel.replace(/^a$/, "a");
+    let n = this;
+    while (n) {
+      if (n instanceof Element && n.tagName === want) return n;
+      n = n.parentNode;
+    }
+    return null;
+  }
+}
+// Properties van prefers over attributes (a browser has setters for these).
+for (const [prop, tags] of Object.entries({
+  hidden: null, open: null, value: null, checked: null, className: null,
+})) {
+  void tags;
+  Object.defineProperty(Element.prototype, prop, {
+    get() { return this.props[prop]; },
+    set(v) { this.props[prop] = v; },
+    configurable: true,
+  });
+}
+
+function serialise(node) {
+  if (node instanceof Text) return node.data;
+  const attrs = Object.entries(node.attributes)
+    .map(([k, v]) => ` ${k}="${v}"`).join("");
+  const props = Object.entries(node.props)
+    .filter(([, v]) => v === true || (v !== false && v != null && v !== ""))
+    .map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${v}"`)).join("");
+  const open = `<${node.tagName}${attrs}${props}>`;
+  if (VOID.has(node.tagName)) return open;
+  return open + node.childNodes.map(serialise).join("") + `</${node.tagName}>`;
+}
+
+const documentStub = {
+  title: "test",
+  createElement: (tag) => new Element(tag),
+  createElementNS: (_ns, tag) => new Element(tag),
+  createTextNode: (d) => new Text(d),
+  documentElement: new Element("html"),
+  addEventListener() {},
+  getElementById(id) {
+    if (id === "mustrd-data") return { textContent: rawData };
+    if (id === "mustrd-config") return { textContent: jsonBlock("mustrd-config") };
+    const found = this.body.querySelectorAll("*");
+    void found;
+    const walk = (n) => {
+      for (const c of n.childNodes) {
+        if (c instanceof Element) {
+          if (c.attributes.id === id) return c;
+          const hit = walk(c);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    };
+    return walk(this.body);
+  },
+};
+documentStub.body = new Element("body");
+
+/* ------------------------------------------------ phase 2: boot the real app */
+globalThis.Text = Text;
+const ui = eval(
+  "(function(document, window, localStorage, location, FileReader, fetch, URLSearchParams) {" +
+  app +
+  "\n;return {van, model, tab, query, show, roleOn, sheet, failure, highlight," +
+  " liveTabs, TABS, srcRef, setAllOpen};" +
+  "})"
+)(
+  documentStub,
+  { addEventListener() {} },
+  { getItem: () => null, setItem() {} },
+  { search: "" },
+  function () {},
+  function () { throw new Error("the smoke test must not need the network"); },
+  class { getAll() { return []; } get() { return null; } },
+);
+
+// VanJS batches DOM updates into a microtask, so every state change needs a
+// tick before the DOM reflects it.
+const flush = () => new Promise((r) => setTimeout(r, 0));
+await flush();
+
+if (!ui.model.val) fail("the app booted without building a model");
+if (ui.model.val.store.size() !== store.size()) {
+  fail("the booted app loaded a different number of triples");
+}
+
+const bodyHtml = () => serialise(documentStub.body);
+if (!bodyHtml().includes("spec-by-example")) fail("the page shell did not render");
+
+const rendered = {};
+for (const t of ui.liveTabs(ui.model.val)) {
+  ui.tab.val = t.id;
+  ui.query.val = "";
+  await flush();
+  const out = bodyHtml();
+  if (/undefined|NaN|\[object Object\]/.test(out)) {
+    fail(`tab "${t.id}" rendered a placeholder value: ` +
+      out.match(/.{0,70}(undefined|NaN|\[object Object\]).{0,70}/)[0]);
+  }
+  rendered[t.id] = out.length;
+}
+
+// Tests tab: every test named, every embedded source present and highlighted.
+ui.tab.val = "tests";
+await flush();
+const testsHtml = bodyHtml();
+for (const t of model.tests.rows) {
+  if (!testsHtml.includes(t.name)) fail(`tests tab omits "${t.name}"`);
+}
+if (embedded.length) {
   if (!testsHtml.includes('class="src"')) fail("the tests tab does not show embedded sources");
   if (!/tok-(kw|iri|pname|string)/.test(testsHtml)) fail("embedded source is not highlighted");
-  // A path with embedded text must render as an in-page reference, not an <a href>
-  // to the filesystem.
   const withPath = embedded.find((s) => s.path);
   if (withPath) {
-    if (!testsHtml.includes(`data-src="${escapeHtml(withPath.path)}"`)) {
+    // A path whose text is embedded must open in place, not link to the filesystem.
+    if (!testsHtml.includes('class="srclink"')) {
       fail(`reference to ${withPath.path} does not open the embedded copy`);
     }
-    if (testsHtml.includes(`href="${escapeHtml(withPath.path)}"`)) {
+    if (testsHtml.includes(`href="${withPath.path}"`)) {
       fail(`reference to ${withPath.path} still links to the bare path`);
     }
   }
-  // Highlighting is a pure re-presentation: stripping the tags must give the
-  // original text back.
+  // Highlighting is pure re-presentation: the tokens must concatenate back.
   const one = embedded[0];
-  const stripped = ui.highlight(one.body, one.media)
-    .replace(/<span class="tok-[a-z]+">/g, "").replace(/<\/span>/g, "")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
-    .replace(/&amp;/g, "&");
-  if (stripped !== one.body) fail("the highlighter altered the source text");
+  const joined = ui.highlight(one.body, one.media)
+    .map((n) => (typeof n === "string" ? n : n.textContent)).join("");
+  if (joined !== one.body) fail("the highlighter altered the source text");
 }
+
+// Outcome filters must filter.
+ui.show.passed.val = false;
+ui.show.failed.val = false;
+ui.show.skipped.val = false;
+await flush();
+if (!bodyHtml().includes("No tests match")) fail("the outcome filters do not filter");
+ui.show.passed.val = true;
+ui.show.failed.val = true;
+ui.show.skipped.val = true;
+await flush();
+
+// Coverage tab: every declared term shown, and the term filter filters.
 if (model.coverage) {
-  ui.state.tab = "coverage"; ui.renderMain();
-  const covHtml = el("main").innerHTML;
+  ui.tab.val = "coverage";
+  await flush();
+  const covHtml = bodyHtml();
   for (const r of model.coverage.rows) {
-    if (!covHtml.includes(escapeHtml(store.short(r.iri)))) {
-      fail(`coverage tab omits term ${r.iri}`);
-    }
+    if (!covHtml.includes(store.short(r.iri))) fail(`coverage tab omits term ${r.iri}`);
   }
-  // The filter must actually filter.
-  ui.state.q = "zzz-no-such-term"; ui.renderMain();
-  if (!el("main").innerHTML.includes("No terms match")) fail("the term filter does not filter");
+  ui.query.val = "zzz-no-such-term";
+  await flush();
+  if (!bodyHtml().includes("No terms match")) fail("the term filter does not filter");
+  ui.query.val = "";
+}
+
+// The source sheet opens and closes.
+if (embedded.length) {
+  const withPath = embedded.find((s) => s.path);
+  if (withPath) {
+    ui.sheet.val = ui.model.val.sources[withPath.path];
+    await flush();
+    if (!bodyHtml().includes('class="path"')) fail("the source sheet did not render");
+    if (!bodyHtml().includes(withPath.path)) fail("the source sheet omits the path");
+    ui.sheet.val = null;
+  }
 }
 
 console.log(JSON.stringify({ ...actual, rendered }, null, 2));
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function fail(msg) {
-  console.error("viewer smoke test FAILED: " + msg);
-  process.exit(1);
-}
