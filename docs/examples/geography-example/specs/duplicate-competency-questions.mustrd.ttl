@@ -1,0 +1,34 @@
+# Two competency-question nodes that share the SAME question text but have
+# different CQ URIs — almost always a copy/paste slip. mustrd detects this: both
+# are excluded from the coverage calculation and reported under "Duplicate
+# competency questions", each linked to the other with cov:duplicateOf in the RDF
+# output.
+#
+# Detection is by *question text*, not tests: continentOfRotterdamCQ links a real
+# test (:continentOfRotterdam, below), yet it makes no difference — the duplicate
+# is still dropped and its cq:cqSpec ignored. And because that test deliberately
+# uses terms from a namespace OUTSIDE the ontologies under test (world:), it
+# touches no declared term, so the coverage report is unchanged by its presence.
+@prefix cq:   <https://mustrd.org/competencyQuestion/> .
+@prefix must: <https://mustrd.org/model/> .
+@prefix world: <http://example.org/world#> .
+@prefix :      <http://example.org/place/example/> .
+
+:continentOfRotterdamCQ
+    a cq:CompetencyQuestion ;
+    cq:question "On which continent is Rotterdam?" ;
+    cq:cqSpec :continentOfRotterdam .      # a real test — but ignored (duplicate)
+
+:continentOfRotterdamCQCopy
+    a cq:CompetencyQuestion ;
+    cq:question "On which continent is Rotterdam?" .
+
+:continentOfRotterdam
+    a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "continent.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryType must:SelectSparql ;
+                 must:queryText """PREFIX world: <http://example.org/world#>
+SELECT ?continent WHERE { ?city world:onContinent ?continent }""" ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "continent" ; must:boundValue world:Europe ] ] ] .

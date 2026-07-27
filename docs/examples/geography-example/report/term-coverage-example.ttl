@@ -7,6 +7,12 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
+<http://example.org/place/example/continentOfRotterdam> a must:TestSpec ;
+    cov:usesInData <http://example.org/world#onContinent> ;
+    cov:usesInQuery <http://example.org/world#onContinent> ;
+    must:specFileName "duplicate-competency-questions.mustrd.ttl" ;
+    must:specSourceFile "specs/duplicate-competency-questions.mustrd.ttl" .
+
 <http://example.org/place/example/populationOfRotterdamCQ> a cq:CompetencyQuestion ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
     cq:question "What is the population of Rotterdam?" ;
@@ -191,6 +197,18 @@
     cov:kind "property" ;
     cov:role cov:Covered ;
     cov:term <http://example.org/place#isLocatedIn> .
+
+<http://example.org/place/example/continentOfRotterdamCQ> a cq:CompetencyQuestion ;
+    prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
+    cq:question "On which continent is Rotterdam?" ;
+    cov:duplicateOf <http://example.org/place/example/continentOfRotterdamCQCopy> ;
+    cov:sourceFile "specs/duplicate-competency-questions.mustrd.ttl" .
+
+<http://example.org/place/example/continentOfRotterdamCQCopy> a cq:CompetencyQuestion ;
+    prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
+    cq:question "On which continent is Rotterdam?" ;
+    cov:duplicateOf <http://example.org/place/example/continentOfRotterdamCQ> ;
+    cov:sourceFile "specs/duplicate-competency-questions.mustrd.ttl" .
 
 <http://example.org/place/example/countryOfRotterdamCQ> a cq:CompetencyQuestion ;
     prov:wasGeneratedBy <https://mustrd.org/coverage/run/local> ;
