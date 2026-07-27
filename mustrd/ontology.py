@@ -87,6 +87,22 @@ def namespace(iri: str) -> str:
     return iri
 
 
+def local_name(iri) -> str:
+    """The local part of an IRI — everything after its last '#' or '/'."""
+    s = str(iri)
+    for sep in ("#", "/"):
+        if sep in s:
+            s = s.rsplit(sep, 1)[-1]
+    return s or str(iri)
+
+
+def slug(qname: str) -> str:
+    """A URL-path-safe slug for a term's qname (e.g. place:City -> place.City),
+    used to mint stable per-term IRIs in the RDF output."""
+    return "".join(c if (c.isalnum() or c in "._-") else "_"
+                   for c in qname.replace(":", "."))
+
+
 def expand_ontology_files(paths) -> list:
     """Expand a list of file/directory paths into a sorted list of RDF files.
 
@@ -316,4 +332,6 @@ def _source_link(p, link_base=None, href=None) -> dict:
             url = os.path.relpath(p, base)
         except ValueError:
             url = str(p)
-    return {"path": label, "url": url}
+    # forward slashes so paths/links are OS-independent (Markdown/URLs never use "\")
+    return {"path": label.replace(os.sep, "/"),
+            "url": url.replace(os.sep, "/") if url else url}

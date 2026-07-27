@@ -113,3 +113,11 @@ MUST.SpadeEdnGroupSource = MUST["SpadeEdnGroupSource"]
 
 # Competency questions have their own vocabulary (see model/cq-ontology.ttl).
 CQ = Namespace("https://mustrd.org/competencyQuestion/")
+
+# Coverage-report vocabulary (see model/coverage-ontology.ttl) plus the two W3C
+# vocabularies the RDF output builds on. Declared here once so the coverage
+# emit/render modules share one definition. Plain Namespaces, so item access
+# (e.g. COV["term"]) sidesteps rdflib's Namespace.term() method.
+COV = Namespace("https://mustrd.org/coverage/")
+DQV = Namespace("http://www.w3.org/ns/dqv#")
+PROV = Namespace("http://www.w3.org/ns/prov#")

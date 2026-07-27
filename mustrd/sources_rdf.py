@@ -17,7 +17,7 @@ from pathlib import Path
 from rdflib import Graph, URIRef, Literal, RDF
 
 from mustrd.coverage_rdf import COV, MUST, _relpath
-from mustrd.coverage import _slug
+from mustrd.ontology import slug
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
             text = read_file(path)
             node = None
             if text is not None:
-                node = URIRef(f"{COV}source/file/{_slug(rel)}")
+                node = URIRef(f"{COV}source/file/{slug(rel)}")
                 g.add((node, RDF.type, COV.SourceFile))
                 g.add((node, COV.filePath, Literal(rel)))
                 g.add((node, COV.mediaType, Literal(_media_type(rel))))
@@ -111,7 +111,7 @@ def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
         for i, query in enumerate(spec.get("queries") or []):
             if not isinstance(query, str) or not query.strip():
                 continue
-            node = URIRef(f"{COV}source/query/{_slug(str(uri))}/{i}")
+            node = URIRef(f"{COV}source/query/{slug(str(uri))}/{i}")
             g.add((node, RDF.type, COV.SourceFile))
             g.add((node, COV.mediaType, Literal(SPARQL)))
             g.add((node, COV.fileText, Literal(query)))

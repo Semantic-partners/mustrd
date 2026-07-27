@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from rdflib import Graph, URIRef, Literal, RDF, XSD
 
 from mustrd.coverage_rdf import COV, PROV, MUST, _BASE, _relpath
-from mustrd.coverage import _slug
+from mustrd.ontology import slug
 
 _OUTCOME = {"passed": COV.Passed, "failed": COV.Failed, "skipped": COV.Skipped}
 
@@ -50,7 +50,7 @@ def results_graph(run_results, run_slug="local", commit=None,
     for i, r in enumerate(run_results):
         # A stable per-result IRI: by spec (+ triple-store-bearing test name) when
         # there is one, else by index — enough to keep successive runs mergeable.
-        key = _slug(f"{r.spec_uri or ''}-{r.test_name}") or str(i)
+        key = slug(f"{r.spec_uri or ''}-{r.test_name}") or str(i)
         if key in seen:
             key = f"{key}-{i}"
         seen[key] = True

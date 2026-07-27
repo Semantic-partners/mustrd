@@ -111,8 +111,7 @@ def _per_cq_entries(cq_defs, usage_by_uri):
 
 def compute_cq_overlay(cq_defs, declared_set, declared, tbox, short):
     """The CQ overlay for term coverage: which declared terms competency questions
-    exercise (deduped), the per-CQ breakdown, the duplicate-question warning, and
-    the set of linked spec URIs (so the caller can tell CQ tests from non-CQ ones).
+    exercise (deduped), the per-CQ breakdown, and the duplicate-question warning.
     """
     duplicate_cqs, kept = _split_duplicate_cqs(cq_defs or [])
     linked = _linked_specs(kept)
@@ -133,7 +132,6 @@ def compute_cq_overlay(cq_defs, declared_set, declared, tbox, short):
         "cq_used_data": cq_used_data, "cq_used_query": cq_used_query,
         "per_cq": _per_cq_entries(kept, usage_by_uri),
         "duplicate_cqs": duplicate_cqs,
-        "cq_uris": {s.get("uri") for s in linked},
     }
 
 

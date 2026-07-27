@@ -23,7 +23,7 @@ from mustrd.TestResult import (
     ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, apply_term_links
-from mustrd.ontology import load_ontology, ontology_report
+from mustrd.ontology import load_ontology, ontology_report, local_name
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
 from mustrd.coverage_render import coverage_context, read_ontologies
@@ -75,15 +75,6 @@ def wants_cq(opts: ReportOptions) -> bool:
 # ---------------------------------------------------------------------------
 # Link helpers (source-file path -> report href). Pure; env-aware.
 # ---------------------------------------------------------------------------
-def _local_name(iri):
-    """The local part of an IRI (after the last # or /), for display."""
-    s = str(iri)
-    for sep in ("#", "/"):
-        if sep in s:
-            s = s.rsplit(sep, 1)[-1]
-    return s or str(iri)
-
-
 def _github_blob_prefix():
     """In GitHub Actions, the '<server>/<repo>/blob/<sha>/' prefix for linking a
     repo file on the GitHub web UI; None when not running as an Action."""
@@ -118,9 +109,10 @@ def _link_href(link_base):
             except ValueError:
                 return None
         try:
-            return os.path.relpath(src, link_base or ".")
+            # forward slashes so links are portable (Markdown/URLs never use "\\")
+            return os.path.relpath(src, link_base or ".").replace(os.sep, "/")
         except ValueError:
-            return src
+            return src.replace(os.sep, "/")
     return href
 
 
@@ -190,7 +182,7 @@ def collect_cq_defs(spec_paths, spec_by_uri):
                     (specs.append(spec_by_uri[u]) if u in spec_by_uri
                      else missing.append(u))
                 defs.append({
-                    "id": cid, "name": _local_name(cid),
+                    "id": cid, "name": local_name(cid),
                     "question": questions[0] if questions else None,
                     "questions": questions, "source_file": str(ttl),
                     "specs": specs, "missing_specs": missing,
@@ -207,11 +199,8 @@ def run_ident():
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
     repo = os.environ.get("GITHUB_REPOSITORY")
     try:
-        from importlib.metadata import version, PackageNotFoundError
-        try:
-            mustrd_version = version("mustrd")
-        except PackageNotFoundError:
-            mustrd_version = None
+        from importlib.metadata import version
+        mustrd_version = version("mustrd")
     except Exception:
         mustrd_version = None
     return {"run_slug": sha or "local",
