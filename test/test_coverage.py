@@ -56,6 +56,31 @@ def _cqdef(question, *specs, name="cq", questions=None, missing=()):
             "specs": list(specs), "missing_specs": list(missing)}
 
 
+# compute_coverage no longer emits the rendered term matrix / gaps / structural
+# lists — those are rebuilt from the RDF graph by coverage_render / cq_render. The
+# unit tests here assert the CANONICAL per-term data it does emit (term_records),
+# keyed by qname (the fixtures all use the single onto: = http://onto.org/ prefix).
+def _by_term(cov):
+    return {"onto:" + r["iri"].rsplit("/", 1)[-1]: r for r in cov["term_records"]}
+
+
+def _gap_terms(cov):
+    """Qnames the report lists as 'not covered by any test': non-structural terms
+    a passing test doesn't populate in data (role query-only or unused)."""
+    return {q for q, r in _by_term(cov).items() if r["role"] in ("query-only", "unused")}
+
+
+def _tree_rows(specs, ontology):
+    """The rendered term-matrix rows, via the real pipeline (compute -> graph ->
+    render). Used by the few tests that assert tree *shape* (grouping, depth,
+    multiple parents), which only the renderer produces."""
+    from mustrd.coverage_rdf import coverage_graph
+    from mustrd.coverage_render import coverage_context
+    cov = compute_coverage(specs, ontology=ontology)
+    graph = coverage_graph(cov, [{"uri": "http://onto.org/"}])
+    return coverage_context(graph, ontology)["terms"]
+
+
 def test_declared_terms_excludes_well_known_vocab():
     d = declared_terms(_graph(ONTO))
     assert set(d) == {
@@ -82,22 +107,21 @@ def test_abox_terms_are_types_and_predicates():
 
 def test_coverage_roles_and_percentage():
     cov = compute_coverage([_spec(given=_graph(ONTO, DATA), queries=[QUERY])])
-    by = {t["term"]: t for t in cov["terms"]}
+    by = _by_term(cov)
 
-    assert by["onto:City"]["status"] == "covered" and by["onto:City"]["in_data"]      # data-only
-    assert by["onto:Country"]["in_data"] and by["onto:Country"]["in_query"]           # fully exercised
-    assert by["onto:isLocatedIn"]["status"] == "covered"
+    assert by["onto:City"]["role"] == "covered" and by["onto:City"]["in_data"]      # data-only
+    assert by["onto:Country"]["in_data"] and by["onto:Country"]["in_query"]         # fully exercised
+    assert by["onto:isLocatedIn"]["role"] == "covered"
     # Place: domain/range of the used isLocatedIn + superclass of used classes -> schema, excluded
-    assert by["onto:Place"]["status"] == "schema" and by["onto:Place"]["in_schema"]
+    assert by["onto:Place"]["role"] == "schema"
     # AdministrativeDivision: not used and not structural -> a genuine gap
-    assert by["onto:AdministrativeDivision"]["status"] == "unused"
+    assert by["onto:AdministrativeDivision"]["role"] == "unused"
 
     # covered = City, Country, isLocatedIn; denominator excludes schema-only Place
     assert cov["covered"] == 3 and cov["denominator"] == 4 and cov["pct"] == 75
     assert cov["declared_total"] == 5 and cov["schema_count"] == 1
-    assert {g["term"] for g in cov["gaps"]} == {"onto:AdministrativeDivision"}
-    place = next(s for s in cov["schema_terms"] if s["term"] == "onto:Place")
-    assert "onto:isLocatedIn" in place["reason"]
+    assert _gap_terms(cov) == {"onto:AdministrativeDivision"}
+    assert any("onto:isLocatedIn" in r for r in by["onto:Place"]["structural_reasons"])
 
 
 def test_failing_spec_is_not_credited():
@@ -118,11 +142,11 @@ def test_term_used_only_by_a_non_cq_test_is_covered_but_not_by_cq():
     non_cq = _spec(given=admin_data, queries=[], name="admin.mustrd.ttl")
     cq = _spec(given=_graph(DATA), queries=[QUERY], name="c.mustrd.ttl")
     cov = compute_coverage([non_cq, cq], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", cq)])
-    by = {t["term"]: t for t in cov["terms"]}
+    by = _by_term(cov)
     admin = by["onto:AdministrativeDivision"]
-    assert admin["status"] == "covered"          # exercised by a (non-CQ) test
-    assert admin["by_cq_state"] == "no"          # but no competency question covers it
-    assert by["onto:Country"]["by_cq_state"] == "yes"  # the CQ does cover Country
+    assert admin["role"] == "covered"                  # exercised by a (non-CQ) test
+    assert admin["cq_role"] != "covered"               # but no competency question covers it
+    assert by["onto:Country"]["cq_role"] == "covered"  # the CQ does cover Country
 
 
 def test_query_only_term_is_not_covered():
@@ -131,14 +155,13 @@ def test_query_only_term_is_not_covered():
     q = """PREFIX onto: <http://onto.org/>
     SELECT ?x WHERE { ?x a onto:AdministrativeDivision . }"""
     cov = compute_coverage([_spec(given=_graph(ONTO, DATA), queries=[q])])
-    by = {t["term"]: t for t in cov["terms"]}
+    by = _by_term(cov)
     admin = by["onto:AdministrativeDivision"]
     assert admin["in_query"] and not admin["in_data"]
-    assert admin["status"] == "query-only"
+    assert admin["role"] == "query-only"
     # covered stays City/Country/isLocatedIn (all data-backed); query-only excluded.
     assert cov["covered"] == 3
-    gap = next(g for g in cov["gaps"] if g["term"] == "onto:AdministrativeDivision")
-    assert gap["query_only"] is True
+    assert "onto:AdministrativeDivision" in _gap_terms(cov)
 
 
 def test_cover_refs_expose_data_sparql_split_across_tests():
@@ -153,9 +176,9 @@ def test_cover_refs_expose_data_sparql_split_across_tests():
     b = _spec(given=_graph(), name="b.mustrd.ttl", queries=[
         "PREFIX onto: <http://onto.org/> SELECT ?x WHERE { ?x a onto:City . }"])
     cov = compute_coverage([a, b], ontology=_graph(ONTO))
-    city = {t["term"]: t for t in cov["terms"]}["onto:City"]
-    assert city["status"] == "covered" and city["in_data"] and city["in_query"]
-    refs = {r["name"]: r for r in city["cover_refs"]}
+    city = _by_term(cov)["onto:City"]
+    assert city["role"] == "covered" and city["in_data"] and city["in_query"]
+    refs = {r["name"]: r for r in city["exercises"]}
     assert refs["a.mustrd.ttl"]["in_data"] and not refs["a.mustrd.ttl"]["in_query"]
     assert refs["b.mustrd.ttl"]["in_query"] and not refs["b.mustrd.ttl"]["in_data"]
 
@@ -240,7 +263,7 @@ def test_schema_only_ancestor_chain_collapses_into_one_row():
     @prefix ex:   <http://example.org/> .
     ex:Rex a onto:Dog .
     """)
-    rows = compute_coverage([_spec(given=data, queries=[])], ontology=onto)["terms"]
+    rows = _tree_rows([_spec(given=data, queries=[])], onto)
     grouped = next(r for r in rows if r.get("grouped"))
     assert grouped["term"] == "onto:Animal, onto:Mammal"
     assert grouped["status"] == "schema" and grouped["depth"] == 0
@@ -264,7 +287,7 @@ def test_multiple_parents_are_annotated_not_duplicated():
     @prefix ex:   <http://example.org/> .
     ex:Rex a onto:Dog .
     """)
-    rows = compute_coverage([_spec(given=data, queries=[])], ontology=onto)["terms"]
+    rows = _tree_rows([_spec(given=data, queries=[])], onto)
     dogs = [r for r in rows if r["term"] == "onto:Dog"]
     assert len(dogs) == 1
     assert dogs[0]["extra_parents"] == ["onto:Pet"]
@@ -288,9 +311,9 @@ def test_declared_terms_come_from_explicit_ontology():
     cov = compute_coverage([_spec(given=_graph(DATA), queries=[QUERY])],
                            ontology=_graph(ONTO))
     assert cov is not None
-    by = {t["term"]: t for t in cov["terms"]}
-    assert by["onto:City"]["status"] == "covered"
-    assert by["onto:Place"]["status"] == "schema"  # domain/range of used isLocatedIn
+    by = _by_term(cov)
+    assert by["onto:City"]["role"] == "covered"
+    assert by["onto:Place"]["role"] == "schema"  # domain/range of used isLocatedIn
 
 
 ANNOTATION_ONTO = """
@@ -314,19 +337,18 @@ def test_annotation_and_ontology_properties_are_schema_not_gaps():
     """
     cov = compute_coverage([_spec(given=_graph(data), queries=[])],
                            ontology=_graph(ANNOTATION_ONTO))
-    by = {t["term"]: t for t in cov["terms"]}
+    by = _by_term(cov)
 
-    assert by["onto:editorialNote"]["status"] == "schema"
-    assert by["onto:versionInfo"]["status"] == "schema"
+    assert by["onto:editorialNote"]["role"] == "schema"
+    assert by["onto:versionInfo"]["role"] == "schema"
     # neither is reported as a gap
-    gap_terms = {g["term"] for g in cov["gaps"]}
+    gap_terms = _gap_terms(cov)
     assert "onto:editorialNote" not in gap_terms and "onto:versionInfo" not in gap_terms
     # and both are excluded from the coverage denominator
-    assert by["onto:City"]["status"] == "covered"
+    assert by["onto:City"]["role"] == "covered"
     assert cov["schema_count"] == 2 and cov["denominator"] == 2
-    reasons = {s["term"]: s["reason"] for s in cov["schema_terms"]}
-    assert reasons["onto:editorialNote"] == "annotation property"
-    assert reasons["onto:versionInfo"] == "ontology property"
+    assert by["onto:editorialNote"]["structural_reasons"] == ["annotation property"]
+    assert by["onto:versionInfo"]["structural_reasons"] == ["ontology property"]
 
 
 def test_used_annotation_property_still_counts_as_covered():
@@ -338,8 +360,8 @@ def test_used_annotation_property_still_counts_as_covered():
     """
     cov = compute_coverage([_spec(given=_graph(data), queries=[])],
                            ontology=_graph(ANNOTATION_ONTO))
-    by = {t["term"]: t for t in cov["terms"]}
-    assert by["onto:editorialNote"]["status"] == "covered"
+    by = _by_term(cov)
+    assert by["onto:editorialNote"]["role"] == "covered"
 
 
 def test_requires_ontology_when_query_needs_class_hierarchy():

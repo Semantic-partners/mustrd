@@ -87,6 +87,22 @@ def namespace(iri: str) -> str:
     return iri
 
 
+def local_name(iri) -> str:
+    """The local part of an IRI — everything after its last '#' or '/'."""
+    s = str(iri)
+    for sep in ("#", "/"):
+        if sep in s:
+            s = s.rsplit(sep, 1)[-1]
+    return s or str(iri)
+
+
+def slug(qname: str) -> str:
+    """A URL-path-safe slug for a term's qname (e.g. place:City -> place.City),
+    used to mint stable per-term IRIs in the RDF output."""
+    return "".join(c if (c.isalnum() or c in "._-") else "_"
+                   for c in qname.replace(":", "."))
+
+
 def expand_ontology_files(paths) -> list:
     """Expand a list of file/directory paths into a sorted list of RDF files.
 
