@@ -46,6 +46,17 @@ def test_run_returns_zero_when_all_pass():
     assert main(["run", "--config", CONFIG]) == 0
 
 
+def test_run_shows_the_review_table(capsys):
+    """mustrd.mustrd drops the root logger's handlers when imported, which used to
+    leave `mustrd run` completely silent — the review table is logged, not printed."""
+    assert main(["run", "--config", CONFIG]) == 0
+    out = capsys.readouterr().out
+    assert "Result Overview" in out
+    assert "Spec Uris / triple stores" in out
+    assert "SpecPassed" in out
+    assert "0 failures" in out
+
+
 @pytest.mark.parametrize("bad", ["no-such-config.ttl", "docs/examples"])
 def test_bad_config_fails_with_a_usage_message(bad, capsys):
     """A wrong --config is the easiest mistake to make (paths inside a config are

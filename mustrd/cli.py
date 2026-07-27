@@ -17,6 +17,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import logging
+
 from mustrd import logger_setup
 from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, collect_cq_defs, produce_report,
@@ -24,6 +26,39 @@ from mustrd.reporting import (
 from mustrd.runner import run_config, ontology_paths_from_config
 
 log = logger_setup.setup_logger(__name__)
+
+
+class _StdoutHandler(logging.StreamHandler):
+    """A stream handler that resolves `sys.stdout` when it emits, not when it is
+    constructed — so anything redirecting stdout afterwards (a pipe, a test's
+    capture) still sees the output."""
+
+    @property
+    def stream(self):
+        return sys.stdout
+
+    @stream.setter
+    def stream(self, _value):
+        pass
+
+
+def _configure_logging(verbose):
+    """Make the library's own logging visible.
+
+    mustrd.mustrd clears the root logger's handlers when it is imported (see
+    debug_requests_off), which under pytest is harmless — pytest captures logging
+    itself — but for the CLI it silently swallowed everything, including the whole
+    result-review table. So attach a handler to the `mustrd` package logger and
+    stop propagation there, rather than depend on the root logger's state.
+    """
+    package = logging.getLogger("mustrd")
+    package.setLevel(logging.DEBUG if verbose else logging.INFO)
+    if not any(getattr(h, "_mustrd_cli", False) for h in package.handlers):
+        handler = _StdoutHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        handler._mustrd_cli = True
+        package.addHandler(handler)
+    package.propagate = False
 
 
 def _add_report_options(parser):
@@ -213,6 +248,7 @@ def _check_config(path):
 def main(argv=None):
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     _check_config(args.config)
+    _configure_logging(args.verbose)
     return args.func(args)
 
 
