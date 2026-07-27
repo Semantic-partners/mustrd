@@ -14,7 +14,7 @@ from mustrd.TestResult import (
     ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, apply_term_links
-from mustrd.ontology import load_ontology, ontology_report
+from mustrd.ontology import load_ontology, ontology_report, local_name
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
 from mustrd.coverage_render import coverage_context, read_ontologies
@@ -227,15 +227,6 @@ def get_config_param(config_graph, config_subject, config_param, convert_functio
         subject=config_subject, predicate=config_param, any=True
     )
     return convert_function(raw_value) if raw_value else None
-
-
-def _local_name(iri):
-    """The local part of an IRI (after the last # or /), for display."""
-    s = str(iri)
-    for sep in ("#", "/"):
-        if sep in s:
-            s = s.rsplit(sep, 1)[-1]
-    return s or str(iri)
 
 
 def _github_blob_prefix():
@@ -570,11 +561,8 @@ class MustrdTestPlugin:
         server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
         repo = os.environ.get("GITHUB_REPOSITORY")
         try:
-            from importlib.metadata import version, PackageNotFoundError
-            try:
-                mustrd_version = version("mustrd")
-            except PackageNotFoundError:
-                mustrd_version = None
+            from importlib.metadata import version
+            mustrd_version = version("mustrd")
         except Exception:
             mustrd_version = None
         return {"run_slug": sha or "local",
@@ -674,7 +662,7 @@ class MustrdTestPlugin:
                         (specs.append(spec_by_uri[u]) if u in spec_by_uri
                          else missing.append(u))
                     defs.append({
-                        "id": cid, "name": _local_name(cid),
+                        "id": cid, "name": local_name(cid),
                         "question": questions[0] if questions else None,
                         "questions": questions, "source_file": str(ttl),
                         "specs": specs, "missing_specs": missing,

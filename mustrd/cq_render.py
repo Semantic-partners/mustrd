@@ -6,21 +6,11 @@ per-term `cov:cqRole` are read back into the dicts the existing CQ templates
 expect. Works with or without an ontology (a CQ-only graph has no
 `cov:TermCoverage`, so `declared` is empty and there is no CQ-gap section).
 """
-from rdflib import Namespace, RDF
+from rdflib import RDF
 
-from mustrd.ontology import shortener
-from mustrd.coverage_render import _spec_meta, _bool
-
-COV = Namespace("https://mustrd.org/coverage/")
-CQ = Namespace("https://mustrd.org/competencyQuestion/")
-
-
-def _local(iri):
-    s = str(iri)
-    for sep in ("#", "/"):
-        if sep in s:
-            s = s.rsplit(sep, 1)[-1]
-    return s or str(iri)
+from mustrd.namespace import COV, CQ
+from mustrd.ontology import shortener, local_name
+from mustrd.coverage_render import spec_meta, to_bool
 
 
 def _spec_usage(graph):
@@ -42,7 +32,7 @@ def _assertions(graph):
             continue
         out[(str(cq), str(test))] = {
             "status": "passed" if graph.value(a, COV.outcome) == COV.Passed else "not passed",
-            "requires_ontology": _bool(graph.value(a, COV.requiresOntology))}
+            "requires_ontology": to_bool(graph.value(a, COV.requiresOntology))}
     return out
 
 
@@ -55,7 +45,7 @@ def _undeclared_by_spec(graph, short):
             test = graph.value(r, COV.test)
             if test is None:
                 continue
-            in_d, in_q = _bool(graph.value(r, COV.inData)), _bool(graph.value(r, COV.inQuery))
+            in_d, in_q = to_bool(graph.value(r, COV.inData)), to_bool(graph.value(r, COV.inQuery))
             where = "data & SPARQL" if in_d and in_q else "input data" if in_d else "SPARQL"
             out.setdefault(str(test), []).append(f"{term} ({where})")
     return out
@@ -93,10 +83,10 @@ def _one_cq(graph, cq, meta, usage, assertions, undeclared, declared, short, hre
     if declared:                                 # with an ontology, declared only
         data &= declared
         query &= declared
-    return {"id": str(cq), "name": _local(cq),
+    return {"id": str(cq), "name": local_name(cq),
             "question": questions[0] if questions else None, "questions": questions,
             "question_error": len(questions) > 1,
-            "missing_specs": missing, "missing_names": [_local(m) for m in missing],
+            "missing_specs": missing, "missing_names": [local_name(m) for m in missing],
             "has_test": bool(tests), "tests": sorted(tests, key=lambda t: t["name"] or ""),
             "data": sorted(short(t) for t in data),
             "query": sorted(short(t) for t in query),
@@ -106,12 +96,12 @@ def _one_cq(graph, cq, meta, usage, assertions, undeclared, declared, short, hre
 def _duplicate_cqs(graph, href):
     groups = {}
     for cq in graph.subjects(COV.duplicate, None):
-        if not _bool(graph.value(cq, COV.duplicate)):
+        if not to_bool(graph.value(cq, COV.duplicate)):
             continue
         q = graph.value(cq, CQ.question)
         src = graph.value(cq, COV.sourceFile)
         groups.setdefault(str(q) if q is not None else "", []).append(
-            {"name": _local(cq), "link": href(str(src)) if src is not None else None})
+            {"name": local_name(cq), "link": href(str(src)) if src is not None else None})
     return [{"question": q, "cqs": sorted(cqs, key=lambda c: c["name"])}
             for q, cqs in sorted(groups.items())]
 
@@ -132,8 +122,8 @@ def _cq_gaps(graph, declared, cq_specs, meta, short, href):
                 continue
             refs.append({"name": meta.get(test, {}).get("name"),
                          "link": href(meta.get(test, {}).get("source_file")),
-                         "in_data": _bool(graph.value(ex, COV.inData)),
-                         "in_query": _bool(graph.value(ex, COV.inQuery))})
+                         "in_data": to_bool(graph.value(ex, COV.inData)),
+                         "in_query": to_bool(graph.value(ex, COV.inQuery))})
         entry = {"term": short(term), "iri": term,
                  "kind": str(graph.value(tc, COV.kind)),
                  "query_only": cq_role == COV.QueryOnly}
@@ -147,7 +137,7 @@ def cq_report(graph, ontology_graph, href) -> dict:
     """The CQ-report context: {per_cq, duplicate_cqs, cq_gaps, has_ontology}."""
     has_ontology = ontology_graph is not None
     short = shortener([ontology_graph] if has_ontology else [graph])
-    meta = _spec_meta(graph)
+    meta = spec_meta(graph)
     usage = _spec_usage(graph)
     assertions = _assertions(graph)
     undeclared = _undeclared_by_spec(graph, short)
@@ -158,7 +148,7 @@ def cq_report(graph, ontology_graph, href) -> dict:
     per_cq = [_one_cq(graph, cq, meta, usage, assertions, undeclared, declared,
                       short, href, has_ontology)
               for cq in graph.subjects(RDF.type, CQ.CompetencyQuestion)
-              if not _bool(graph.value(cq, COV.duplicate))]
+              if not to_bool(graph.value(cq, COV.duplicate))]
     per_cq.sort(key=lambda e: (e["question"] or "", e["name"]))
 
     return {"per_cq": per_cq,

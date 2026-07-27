@@ -9,25 +9,22 @@ testable independently of how the graph was computed.
 The CQ Report is still built from the compute dict (see the plugin); only the
 `## Coverage Report` half comes through here for now.
 """
-from rdflib import Namespace, RDF
+from rdflib import RDF
 from rdflib.namespace import RDFS, OWL
 
+from mustrd.namespace import COV, DQV, MUST
 from mustrd.ontology import shortener
-from mustrd.coverage import _ordered_terms, _reason_key
-
-COV = Namespace("https://mustrd.org/coverage/")
-DQV = Namespace("http://www.w3.org/ns/dqv#")
-MUST = Namespace("https://mustrd.org/model/")
+from mustrd.coverage import ordered_terms, reason_key, pct
 
 _ROLE_STR = {COV.Covered: "covered", COV.QueryOnly: "query-only",
              COV.Structural: "schema", COV.Unused: "unused"}
 
 
-def _bool(lit):
+def to_bool(lit):
     return bool(lit.toPython()) if lit is not None else False
 
 
-def _spec_meta(graph):
+def spec_meta(graph):
     """{spec IRI: {name, source_file}} from the spec metadata in the graph."""
     meta = {}
     for s in graph.subjects(RDF.type, MUST.TestSpec):
@@ -50,13 +47,13 @@ def _read_terms(graph, meta):
             m = meta.get(turi, {})
             exercises.append({"uri": turi, "name": m.get("name"),
                               "source_file": m.get("source_file"),
-                              "in_data": _bool(graph.value(e, COV.inData)),
-                              "in_query": _bool(graph.value(e, COV.inQuery))})
+                              "in_data": to_bool(graph.value(e, COV.inData)),
+                              "in_query": to_bool(graph.value(e, COV.inQuery))})
         facts[term] = {
             "role": _ROLE_STR[graph.value(tc, COV.role)],
             "cq_role": _ROLE_STR[cqr] if cqr is not None else "unused",
-            "in_data": _bool(graph.value(tc, COV.inData)),
-            "in_query": _bool(graph.value(tc, COV.inQuery)),
+            "in_data": to_bool(graph.value(tc, COV.inData)),
+            "in_query": to_bool(graph.value(tc, COV.inQuery)),
             "exercises": sorted(exercises, key=lambda r: r["name"] or ""),
         }
         reasons[term] = [str(x) for x in graph.objects(tc, COV.structuralReason)]
@@ -72,8 +69,8 @@ def _read_undeclared(graph, meta, short):
             turi = str(graph.value(r, COV.test))
             refs.append({"name": meta.get(turi, {}).get("name"),
                          "source_file": meta.get(turi, {}).get("source_file"),
-                         "in_data": _bool(graph.value(r, COV.inData)),
-                         "in_query": _bool(graph.value(r, COV.inQuery))})
+                         "in_data": to_bool(graph.value(r, COV.inData)),
+                         "in_query": to_bool(graph.value(r, COV.inQuery))})
         out.append({"term": short(str(term)), "iri": str(term),
                     "refs": sorted(refs, key=lambda x: x["name"] or "")})
     return sorted(out, key=lambda u: u["term"])
@@ -106,10 +103,10 @@ def read_ontologies(graph):
 def coverage_context(graph, ontology_graph) -> dict:
     """The term-coverage slice of the report context, rebuilt from the graph."""
     short = shortener([ontology_graph])
-    meta = _spec_meta(graph)
+    meta = spec_meta(graph)
     facts, declared, reasons = _read_terms(graph, meta)
 
-    terms = _ordered_terms(declared, facts, short, ontology_graph)
+    terms = ordered_terms(declared, facts, short, ontology_graph)
 
     schema_only = {t for t, f in facts.items() if f["role"] == "schema"}
     covered = sum(1 for f in facts.values() if f["role"] == "covered")
@@ -122,16 +119,16 @@ def coverage_context(graph, ontology_graph) -> dict:
             for t in sorted(declared)
             if facts[t]["role"] in ("query-only", "unused")]
     schema_terms = [{"term": short(t), "iri": t, "kind": declared[t],
-                     "reason": "; ".join(sorted(reasons[t], key=_reason_key)[:3])}
+                     "reason": "; ".join(sorted(reasons[t], key=reason_key)[:3])}
                     for t in sorted(declared) if t in schema_only]
 
     return {
         "covered": covered, "denominator": denominator,
-        "pct": round(100.0 * covered / denominator) if denominator else 0,
+        "pct": pct(covered, denominator),
         "declared_total": len(declared), "schema_count": len(schema_only),
         "has_cq": has_cq,
         "covered_by_cq": covered_by_cq,
-        "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
+        "cq_pct": pct(covered_by_cq, denominator),
         "terms": terms, "gaps": gaps, "schema_terms": schema_terms,
         "undeclared": _read_undeclared(graph, meta, short),
         "tbox_in_data": _read_tbox(graph, meta),

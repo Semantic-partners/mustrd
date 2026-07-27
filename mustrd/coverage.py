@@ -29,7 +29,7 @@ from rdflib import Graph, URIRef, RDF, RDFS
 
 from mustrd.ontology import (
     CLASS_TYPES, PROPERTY_TYPES,
-    wk_qname, is_domain_term, namespace,
+    wk_qname, is_domain_term, namespace, slug,
     declared_terms, metadata_terms, query_uris, abox_terms, shortener,
     expand_ontology_files,
 )
@@ -38,19 +38,17 @@ from mustrd.ontology import (
 log = logging.getLogger(__name__)
 
 
+def pct(n, d) -> int:
+    """A whole-number percentage, guarding a zero denominator."""
+    return round(100.0 * n / d) if d else 0
+
+
 # rdf:type objects and predicates that make a triple a TBox (schema) axiom. When
 # these appear in a test's `given`, the fixture is defining ontology structure —
 # which belongs in the ontology, not the test data — so the report hints they be
 # moved. The type set is derived from ontology.PROPERTY_TYPES so it can't drift.
 TBOX_TYPES = CLASS_TYPES + tuple(PROPERTY_TYPES)
 TBOX_PREDICATES = (RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)
-
-
-def _slug(qname: str) -> str:
-    """A URL-path-safe slug for a term's qname (e.g. place:City -> place.City),
-    used to mint stable per-term IRIs in the RDF output."""
-    return "".join(c if (c.isalnum() or c in "._-") else "_"
-                   for c in qname.replace(":", "."))
 
 
 def schema_references(tbox: Graph, used: set, declared: dict, short) -> dict:
@@ -178,7 +176,7 @@ def _fold_metadata_into_schema(schema_reasons, metadata, used):
             bucket.append(label)
 
 
-def _reason_key(r):
+def reason_key(r):
     return (0 if r.startswith("domain") else 1 if r.startswith("range") else 2, r)
 
 
@@ -348,7 +346,7 @@ def _walk_forest(node, depth, children, attached, ctx, rows):
             _walk_forest(child, depth + 1, children, attached, ctx, rows)
 
 
-def _ordered_terms(declared, facts, short, tbox):
+def ordered_terms(declared, facts, short, tbox):
     """The per-term matrix as an ordered list of rows: an indented subClassOf
     tree of classes, each with its domain-attached properties (▸) beneath it;
     properties with no domain trail at the end.
@@ -401,7 +399,7 @@ def _build_facts(declared, used_data, used_query, cq_used_data, cq_used_query,
 
 def _schema_term_rows(schema_only, schema_reasons, declared, short):
     return [{"term": short(t), "iri": t, "kind": declared[t],
-             "reason": "; ".join(sorted(schema_reasons[t], key=_reason_key)[:3])}
+             "reason": "; ".join(sorted(schema_reasons[t], key=reason_key)[:3])}
             for t in sorted(schema_only)]
 
 
@@ -558,7 +556,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         [s for s in specs if s.get("uri") not in overlay["cq_uris"]], declared_set)
     facts = _build_facts(declared, used_data, used_query, cq_used_data,
                          cq_used_query, schema_only, test_refs)
-    terms = _ordered_terms(declared, facts, short, tbox)
+    terms = ordered_terms(declared, facts, short, tbox)
     # "Not covered by any test": declared, non-structural terms no passing test
     # populates in data. Query-only terms (named by a query but never instantiated)
     # land here too, flagged so the report can distinguish them from the untouched.
@@ -588,22 +586,22 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # structural terms) why it's structural. This is the canonical per-term data
     # the graph is built from and the renderer reads back.
     term_records = [{
-        "iri": t, "slug": _slug(short(t)), "kind": declared[t],
+        "iri": t, "slug": slug(short(t)), "kind": declared[t],
         "role": facts[t]["role"], "cq_role": facts[t]["cq_role"],
         "in_data": facts[t]["in_data"], "in_query": facts[t]["in_query"],
         "exercises": facts[t]["exercises"],
-        "structural_reasons": (sorted(schema_reasons.get(t, ()), key=_reason_key)
+        "structural_reasons": (sorted(schema_reasons.get(t, ()), key=reason_key)
                                if t in schema_only else []),
     } for t in sorted(declared)]
 
     return {
         "covered": covered, "denominator": denominator,
-        "pct": round(100.0 * covered / denominator) if denominator else 0,
+        "pct": pct(covered, denominator),
         "ratio": (covered / denominator) if denominator else 0.0,
         "declared_total": len(declared), "schema_count": len(schema_only),
         "has_cq": bool(cq_defs),
         "covered_by_cq": covered_by_cq,
-        "cq_pct": round(100.0 * covered_by_cq / denominator) if denominator else 0,
+        "cq_pct": pct(covered_by_cq, denominator),
         "cq_ratio": (covered_by_cq / denominator) if denominator else 0.0,
         "terms": terms, "gaps": gaps, "cq_gaps": cq_gaps, "schema_terms": schema_terms,
         "undeclared": undeclared, "duplicate_cqs": duplicate_cqs,

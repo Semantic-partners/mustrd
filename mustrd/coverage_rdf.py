@@ -10,15 +10,11 @@ The vocabulary is `mustrd/model/coverage-ontology.ttl`.
 """
 import os
 
-from rdflib import Graph, URIRef, Literal, Namespace, RDF, RDFS, OWL, XSD
+from rdflib import Graph, URIRef, Literal, RDF, RDFS, OWL, XSD
 from rdflib.namespace import SKOS
 
-from mustrd.namespace import MUST, CQ
-from mustrd.coverage import _slug
-
-COV = Namespace("https://mustrd.org/coverage/")
-DQV = Namespace("http://www.w3.org/ns/dqv#")
-PROV = Namespace("http://www.w3.org/ns/prov#")
+from mustrd.namespace import MUST, CQ, COV, DQV, PROV
+from mustrd.ontology import local_name, slug
 
 _BASE = "https://mustrd.org/coverage/"
 _AGENT = URIRef("https://mustrd.org/#tool")
@@ -35,12 +31,9 @@ def _relpath(p):
         return str(p).replace(os.sep, "/")
 
 
-def _local(iri: str) -> str:
-    s = str(iri)
-    for sep in ("#", "/"):
-        if sep in s:
-            s = s.rsplit(sep, 1)[-1]
-    return _slug(s or str(iri))
+def _local(iri) -> str:
+    """A slugged local name, for minting a stable IRI segment from a term/IRI."""
+    return slug(local_name(iri))
 
 
 def _add_provenance(g, run, ontologies, commit, mustrd_version):
@@ -215,14 +208,20 @@ def _add_duplicate_cqs(g, run, duplicate_cqs):
             g.add((cq, PROV.wasGeneratedBy, run))
 
 
+def _bind_prefixes(g, extra=()):
+    for p, ns in (("cov", COV), ("dqv", DQV), ("prov", PROV), ("must", MUST),
+                  ("cq", CQ), ("skos", SKOS), ("owl", OWL)):
+        g.bind(p, ns)
+    for prefix, ns in extra:
+        g.bind(prefix, ns)
+
+
 def coverage_graph(coverage, ontologies, run_slug="local",
                    commit=None, mustrd_version=None) -> Graph:
     """Build the RDF graph. `ontologies` is [{uri, version}] (uri required);
     `run_slug` seeds the minted run IRI (e.g. a commit SHA, else 'local')."""
     g = Graph()
-    for p, ns in (("cov", COV), ("dqv", DQV), ("prov", PROV), ("must", MUST),
-                  ("cq", CQ), ("skos", SKOS), ("owl", OWL)):
-        g.bind(p, ns)
+    _bind_prefixes(g)
     run = URIRef(f"{_BASE}run/{run_slug}")
     subjects = _add_provenance(g, run, ontologies, commit, mustrd_version)
     _add_measurements(g, run, run_slug, subjects, coverage)
@@ -240,10 +239,7 @@ def cq_graph(cq_facts, run_slug="local", commit=None, mustrd_version=None) -> Gr
     per_cq, duplicate_cqs, spec_usage and the domain prefixes to bind (so the
     renderer can shorten term IRIs without the ontology)."""
     g = Graph()
-    for p, ns in (("cov", COV), ("prov", PROV), ("must", MUST), ("cq", CQ)):
-        g.bind(p, ns)
-    for prefix, ns in cq_facts.get("prefixes", {}).items():
-        g.bind(prefix, ns)
+    _bind_prefixes(g, extra=cq_facts.get("prefixes", {}).items())
     run = URIRef(f"{_BASE}run/{run_slug}")
     _add_provenance(g, run, [], commit, mustrd_version)
     _add_spec_metadata(g, cq_facts)
