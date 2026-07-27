@@ -36,8 +36,15 @@ From the repo root, scoped to this directory so only these specs run:
 This regenerates [`report/term-coverage-example.md`](report/term-coverage-example.md)
 and its RDF twin [`report/term-coverage-example.ttl`](report/term-coverage-example.ttl).
 Links in the Markdown report are relative to that file, so they resolve in a
-Markdown previewer. CI runs the same command, and `test/test_coverage_plugin.py`
-asserts both stay correct.
+Markdown previewer.
+
+**The committed `.md` and `.ttl` are checked in CI.**
+`test/test_example_report_is_current.py` regenerates both and fails (with a diff
+and this command) if either committed copy is stale — the `.md` is compared
+byte-for-byte, and the `.ttl` is compared as an RDF **graph** (isomorphism via
+`rdflib.compare`, so Turtle serialisation order doesn't matter). So if a change
+alters the report, run the command above and commit the result.
+`test/test_coverage_plugin.py` additionally asserts the report content.
 
 ## What it shows
 

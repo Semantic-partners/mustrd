@@ -57,10 +57,13 @@ jobs:
             docs/examples/geography-example/report/term-coverage-example.md
           if-no-files-found: warn
       - name: Define Job summary
+        # Guard each cat so a failure in an earlier step (which may skip the step
+        # that writes a summary file) surfaces as that step's error, not a
+        # confusing "No such file" here.
         run: |
-          cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY
+          if [ -f junit/github_job_summary.md ]; then cat junit/github_job_summary.md >> $GITHUB_STEP_SUMMARY; fi
           printf '\n\n---\n\n' >> $GITHUB_STEP_SUMMARY
-          cat docs/examples/geography-example/report/term-coverage-example.md >> $GITHUB_STEP_SUMMARY
+          if [ -f docs/examples/geography-example/report/term-coverage-example.md ]; then cat docs/examples/geography-example/report/term-coverage-example.md >> $GITHUB_STEP_SUMMARY; fi
         if: ${{ always() }}
       - name: Generate coverage HTML report
         run: poetry run coverage html --directory=htmlcov --include=mustrd/*

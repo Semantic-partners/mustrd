@@ -27,10 +27,12 @@ _ROLE = {"covered": COV.Covered, "query-only": COV.QueryOnly,
 
 
 def _relpath(p):
+    # forward slashes so stored paths are OS-independent (they surface as report
+    # links, and the graph must be identical whatever platform generated it)
     try:
-        return os.path.relpath(str(p))
+        return os.path.relpath(str(p)).replace(os.sep, "/")
     except ValueError:
-        return str(p)
+        return str(p).replace(os.sep, "/")
 
 
 def _local(iri: str) -> str:
@@ -61,7 +63,7 @@ def _add_provenance(g, run, ontologies, commit, mustrd_version):
         g.add((run, PROV.used, uri))
         g.add((uri, RDF.type, OWL.Ontology))
         if o.get("path"):
-            g.add((uri, COV.sourceFile, Literal(o["path"])))
+            g.add((uri, COV.sourceFile, Literal(_relpath(o["path"]))))
         if o.get("description"):
             g.add((uri, RDFS.comment, Literal(o["description"])))
         if o.get("version"):
