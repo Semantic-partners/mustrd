@@ -155,6 +155,52 @@ def test_transitively_referenced_files_are_embedded_and_linkable(viewer_html):
     assert any("mayorOfRotterdam" in str(s) for s in specs)
 
 
+def test_embedded_sources_are_scoped_to_their_run():
+    """A file's content is the most run-contingent thing in the graph: the same
+    path holds different bytes next week. So the node has to be minted per run —
+    otherwise merging two runs (which the viewer invites) collapses them onto one
+    node asserting two contradictory cov:fileText values, with nothing to say
+    which run either came from."""
+    from mustrd.sources_rdf import sources_graph
+    COV = Namespace("https://mustrd.org/coverage/")
+    spec = "http://example.org/spec/a"
+    referenced = {spec: {"data.ttl": "/tmp/data.ttl"}}
+
+    june = sources_graph([{"uri": spec, "queries": []}], referenced=referenced,
+                         read_file=lambda p: "ex:a a ex:City .", run_slug="june")
+    july = sources_graph([{"uri": spec, "queries": []}], referenced=referenced,
+                         read_file=lambda p: "ex:a a ex:Town .", run_slug="july")
+
+    merged = Graph()
+    merged += june
+    merged += july
+
+    nodes = set(merged.subjects(COV.fileText, None))
+    assert len(nodes) == 2, "the two runs collapsed onto one node"
+    for node in nodes:
+        texts = list(merged.objects(node, COV.fileText))
+        assert len(texts) == 1, f"{node} asserts {len(texts)} contradictory contents"
+        assert "/run/" in str(node), f"{node} does not name the run it came from"
+    # Both still hang off the same spec, which is the stable identity.
+    assert set(merged.objects(URIRef(spec), COV.embeddedSource)) == nodes
+
+
+def test_queries_are_scoped_to_their_run():
+    """Same argument for the SPARQL as executed — it changes when the spec does."""
+    from mustrd.sources_rdf import sources_graph
+    COV = Namespace("https://mustrd.org/coverage/")
+    spec = "http://example.org/spec/a"
+
+    before = sources_graph([{"uri": spec, "queries": ["SELECT * WHERE { ?s ?p ?o }"]}],
+                           referenced={}, run_slug="before")
+    after = sources_graph([{"uri": spec, "queries": ["SELECT ?s WHERE { ?s a ex:T }"]}],
+                          referenced={}, run_slug="after")
+    merged = Graph()
+    merged += before
+    merged += after
+    assert len(set(merged.subjects(COV.fileText, None))) == 2
+
+
 def test_referenced_files_come_from_what_the_run_resolved():
     """The mapping is recorded where mustrd resolves a reference, so it cannot
     disagree with what was actually read."""

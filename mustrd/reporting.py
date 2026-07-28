@@ -370,7 +370,9 @@ def produce_report(all_specs, cq_defs, test_results, last_is_mustrd,
         sources_g = None
         if opts.viewer_sources:
             from mustrd.sources_rdf import sources_graph
-            sources_g = sources_graph(all_specs)
+            # Same run identity the other graphs use, so the three agree about
+            # which run they are describing.
+            sources_g = sources_graph(all_specs, run_slug=run_ident()["run_slug"])
         write_viewer(opts.viewer, [graph, results_g, ontology_graph, sources_g],
                      title=opts.viewer_title, src_base=opts.viewer_src_base)
 

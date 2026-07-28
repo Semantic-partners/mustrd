@@ -44,13 +44,20 @@ def _read(path):
         return None
 
 
-def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
+def sources_graph(specs, read_file=_read, referenced=None, run_slug="local") -> Graph:
     """The embedded-source graph for a run.
 
     `specs` is the same list of spec dicts the coverage computation consumes
     (see reporting.coverage_spec): each needs `uri`, and may have `source_file`
     and `queries`. Each distinct file is read once, however many specs share it —
     several specs commonly live in one .mustrd.ttl.
+
+    Nodes are minted under the run (`run/{run_slug}/source/...`). A file's content
+    is the most run-contingent thing here — the same path holds different bytes next
+    week — so a node shared across runs would end up asserting two contradictory
+    cov:fileText values with nothing to tell them apart, which is exactly what
+    merging two reports does. The spec IRI stays stable; only the observation of it
+    is scoped.
 
     `referenced` is {spec IRI: {reference as written: resolved path}} — the files
     a spec pulls in transitively via must:file / must:fileurl (its given and then
@@ -77,7 +84,7 @@ def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
             text = read_file(path)
             node = None
             if text is not None:
-                node = URIRef(f"{COV}source/file/{slug(rel)}")
+                node = URIRef(f"{COV}run/{run_slug}/source/file/{slug(rel)}")
                 g.add((node, RDF.type, COV.SourceFile))
                 g.add((node, COV.filePath, Literal(rel)))
                 g.add((node, COV.mediaType, Literal(_media_type(rel))))
@@ -111,7 +118,7 @@ def sources_graph(specs, read_file=_read, referenced=None) -> Graph:
         for i, query in enumerate(spec.get("queries") or []):
             if not isinstance(query, str) or not query.strip():
                 continue
-            node = URIRef(f"{COV}source/query/{slug(str(uri))}/{i}")
+            node = URIRef(f"{COV}run/{run_slug}/source/query/{slug(str(uri))}/{i}")
             g.add((node, RDF.type, COV.SourceFile))
             g.add((node, COV.mediaType, Literal(SPARQL)))
             g.add((node, COV.fileText, Literal(query)))
