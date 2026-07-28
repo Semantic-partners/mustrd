@@ -10,6 +10,7 @@ from mustrd.coverage_rdf import coverage_graph
 
 COV = Namespace("https://mustrd.org/coverage/")
 DQV = Namespace("http://www.w3.org/ns/dqv#")
+PROV = Namespace("http://www.w3.org/ns/prov#")
 
 ONTO = """
 @prefix onto: <http://onto.org/> .
@@ -124,9 +125,9 @@ def test_requires_ontology_links_to_the_ontology_iri():
     assert (a, COV.requiresOntology, Literal(True)) not in g   # not the old boolean
 
 
-def test_duplicate_cqs_link_to_peers_with_duplicate_of():
-    # Two CQ nodes share a question; each links to the other with cov:duplicateOf
-    # (symmetric) instead of a boolean flag.
+def test_duplicate_cqs_recorded_as_run_scoped_assertions():
+    # Two CQ nodes share a question; each is the subject of a cov:Assertion that
+    # links the peer with cov:duplicateOf — a run finding, NOT a triple on the CQ.
     spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
             "given": _graph(ONTO, DATA), "queries": [QUERY]}
     defs = [_cqdef(spec, question="dupe?", name="x"),
@@ -134,8 +135,27 @@ def test_duplicate_cqs_link_to_peers_with_duplicate_of():
     g = coverage_graph(compute_coverage([spec], ontology=_graph(ONTO), cq_defs=defs),
                        [{"uri": "http://onto.org/"}], run_slug="test")
     x, y = URIRef("http://ex/cq/x"), URIRef("http://ex/cq/y")
-    assert (x, COV.duplicateOf, y) in g and (y, COV.duplicateOf, x) in g
-    assert (x, COV.duplicate, Literal(True)) not in g          # old boolean gone
+    ax = g.value(predicate=COV.onCompetencyQuestion, object=x)   # the duplicate assertion for x
+    assert (ax, RDF.type, COV.Assertion) in g and (ax, COV.duplicateOf, y) in g
+    assert any((a, COV.duplicateOf, x) in g for a in g.subjects(COV.onCompetencyQuestion, y))
+    assert (x, COV.duplicateOf, y) not in g          # not on the CQ node
+    assert (x, COV.duplicate, Literal(True)) not in g
+
+
+def test_run_carries_provenance():
+    spec = {"name": "a.mustrd.ttl", "uri": "http://ex/a", "passed": True,
+            "given": _graph(ONTO, DATA), "queries": [QUERY]}
+    g = coverage_graph(compute_coverage([spec], ontology=_graph(ONTO)),
+                       [{"uri": "http://onto.org/"}], run_slug="r1", git_sha="abc123",
+                       started="2026-01-01T00:00:00+00:00",
+                       commit_url="https://github.com/o/r/commit/abc123",
+                       ci_run="https://github.com/o/r/actions/runs/9")
+    run = URIRef("https://mustrd.org/coverage/run/r1")
+    assert (run, RDF.type, COV.CoverageRun) in g
+    assert (run, PROV.startedAtTime, Literal("2026-01-01T00:00:00+00:00", datatype=XSD.dateTime)) in g
+    assert (run, COV.gitCommit, Literal("abc123")) in g
+    assert (run, COV.commit, URIRef("https://github.com/o/r/commit/abc123")) in g
+    assert (run, COV.ciRun, URIRef("https://github.com/o/r/actions/runs/9")) in g
 
 
 def test_cq_only_graph_without_ontology():

@@ -22,10 +22,37 @@ import difflib
 from pathlib import Path
 
 import pytest
-from rdflib import Graph
+from rdflib import Graph, Namespace, URIRef, RDF
 from rdflib.compare import to_isomorphic, graph_diff
 
 from mustrd.mustrdTestPlugin import MustrdTestPlugin
+
+COV = Namespace("https://mustrd.org/coverage/")
+PROV = Namespace("http://www.w3.org/ns/prov#")
+# Per-run provenance on the cov:CoverageRun node — different on every run, so
+# excluded from the drift check (the golden test's whole point is structural).
+_VOLATILE = (PROV.startedAtTime, PROV.endedAtTime, COV.gitCommit, COV.commit, COV.ciRun)
+
+
+def _canonical(graph):
+    """Strip the run's per-run identity so two runs can be compared for drift: the
+    unique run IRI (and every IRI minted under `.../run/<id>`) is rewritten to a
+    fixed token, and the run's volatile provenance (time, SHA, commit/CI links) is
+    dropped. Everything else — the coverage the report is built from — must match."""
+    run = graph.value(predicate=RDF.type, object=COV.CoverageRun)
+    slug = str(run).rsplit("/", 1)[-1] if run is not None else None
+    marker = f"/run/{slug}" if slug else None
+
+    def rw(t):
+        if marker and isinstance(t, URIRef) and marker in str(t):
+            return URIRef(str(t).replace(marker, "/run/__RUN__"))
+        return t
+    out = Graph()
+    for s, p, o in graph:
+        if run is not None and s == run and p in _VOLATILE:
+            continue
+        out.add((rw(s), rw(p), rw(o)))
+    return out
 
 EXAMPLE = Path("docs/examples/geography-example").resolve()
 COMMITTED_MD = Path("report/term-coverage-example.md")    # relative to EXAMPLE
@@ -51,7 +78,9 @@ def _md_diff(generated, committed):
 
 def _graph_diff(generated, committed):
     """Isomorphism check via rdflib.compare; "" when the graphs are equal, else a
-    human-readable diff of the differing triples."""
+    human-readable diff of the differing triples. Both graphs are canonicalised
+    first (per-run provenance removed) so only structural drift is reported."""
+    generated, committed = _canonical(generated), _canonical(committed)
     if to_isomorphic(generated) == to_isomorphic(committed):
         return ""
     _, only_committed, only_generated = graph_diff(to_isomorphic(committed),

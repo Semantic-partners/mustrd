@@ -42,7 +42,22 @@ cov:termCoverageByCompetencyQuestions a dqv:Metric ;
 cov:CoverageRun a owl:Class ;
     rdfs:subClassOf prov:Activity ;
     rdfs:label "Coverage run" ;
-    rdfs:comment "One mustrd coverage computation over one or more ontologies." .
+    rdfs:comment "One mustrd coverage computation over one or more ontologies. Each run gets a fresh URI so successive runs accumulate in a knowledge graph rather than clobber. Carries prov:startedAtTime (when it ran), cov:gitCommit / cov:commit (the revision), and cov:ciRun (the CI job) when available." .
+
+cov:gitCommit a owl:DatatypeProperty ;
+    rdfs:domain cov:CoverageRun ; rdfs:range xsd:string ;
+    rdfs:label "git commit" ;
+    rdfs:comment "The git commit SHA the run was computed at (GITHUB_SHA in CI, else the local HEAD)." .
+
+cov:commit a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "commit" ;
+    rdfs:comment "A link to the commit the run was computed at (e.g. the GitHub commit page), when the hosting repository is known." .
+
+cov:ciRun a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "CI run" ;
+    rdfs:comment "A link to the CI job that produced the run (e.g. the GitHub Actions run), when run in CI." .
 
 cov:sourceFile a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
@@ -159,7 +174,7 @@ cov:TBoxInTestData a cov:IssueType ; skos:prefLabel "TBox in test data" ;
 
 cov:Assertion a owl:Class ;
     rdfs:label "Assertion" ;
-    rdfs:comment "One test's verification of a competency question in a run." .
+    rdfs:comment "Something a run asserts about a competency question: either one test's verification of it (cov:onTest + cov:outcome), or that it duplicates another CQ (cov:duplicateOf)." .
 
 cov:onCompetencyQuestion a owl:ObjectProperty ;
     rdfs:domain cov:Assertion ; rdfs:range cq:CompetencyQuestion ;
@@ -183,9 +198,9 @@ cov:Passed a cov:Outcome ; skos:prefLabel "passed" .
 cov:Failed a cov:Outcome ; skos:prefLabel "not passed" .
 
 cov:duplicateOf a owl:ObjectProperty ;
-    rdfs:domain cq:CompetencyQuestion ; rdfs:range cq:CompetencyQuestion ;
+    rdfs:domain cov:Assertion ; rdfs:range cq:CompetencyQuestion ;
     rdfs:label "duplicate of" ;
-    rdfs:comment "Another CQ that shares this one's question text. Both are excluded from the coverage calculation as a likely copy/paste. The relation is symmetric between the members of a duplicate group. Replaces an earlier boolean flag." .
+    rdfs:comment "On a cov:Assertion (whose cov:onCompetencyQuestion is the subject CQ): another CQ that shares its question text. Both are excluded from the coverage calculation as a likely copy/paste. The relation is symmetric between the members of a duplicate group. Modelling it as a run assertion keeps the finding off the CQ node itself." .
 
 cov:usesInData a owl:ObjectProperty ;
     rdfs:domain must:TestSpec ;

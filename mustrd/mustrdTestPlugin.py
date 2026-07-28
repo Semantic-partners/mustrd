@@ -1,5 +1,7 @@
 import logging
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import pytest
 import os
 from pathlib import Path
@@ -555,19 +557,42 @@ class MustrdTestPlugin:
             return None, None, None
 
     @staticmethod
-    def _run_ident():
-        """run_slug / commit / mustrd_version for a graph, from the CI env."""
+    def _git_sha():
+        """The commit the run was computed at: GITHUB_SHA in CI, else local HEAD."""
         sha = os.environ.get("GITHUB_SHA")
+        if sha:
+            return sha
+        try:
+            import subprocess
+            out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                 text=True, timeout=5)
+            return out.stdout.strip() or None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _run_ident():
+        """Provenance for the run node: a FRESH run id each time (so runs
+        accumulate in a KG), the git SHA, the start time, and — in CI — links to
+        the commit and the Actions run. MUSTRD_RUN_ID pins the id for reproducible
+        output. mustrd version for the agent."""
         server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
         repo = os.environ.get("GITHUB_REPOSITORY")
+        sha = MustrdTestPlugin._git_sha()
+        ci_run_id = os.environ.get("GITHUB_RUN_ID")
         try:
             from importlib.metadata import version
             mustrd_version = version("mustrd")
         except Exception:
             mustrd_version = None
-        return {"run_slug": sha or "local",
-                "commit": f"{server}/{repo}/commit/{sha}" if (sha and repo) else None,
-                "mustrd_version": mustrd_version}
+        return {
+            "run_slug": os.environ.get("MUSTRD_RUN_ID") or uuid.uuid4().hex,
+            "git_sha": sha,
+            "started": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "commit_url": f"{server}/{repo}/commit/{sha}" if (sha and repo) else None,
+            "ci_run": f"{server}/{repo}/actions/runs/{ci_run_id}" if (ci_run_id and repo) else None,
+            "mustrd_version": mustrd_version,
+        }
 
     def _coverage_graph(self, coverage):
         """Build the canonical coverage RDF graph."""

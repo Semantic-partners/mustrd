@@ -94,9 +94,16 @@ def _one_cq(graph, cq, meta, usage, assertions, undeclared, declared, short, hre
             "credited": any(t["credited"] for t in tests)}
 
 
+def _duplicate_cq_iris(graph):
+    """CQ IRIs the run flagged as duplicates — the cov:onCompetencyQuestion of any
+    cov:Assertion carrying cov:duplicateOf."""
+    return {graph.value(a, COV.onCompetencyQuestion)
+            for a in graph.subjects(COV.duplicateOf, None)} - {None}
+
+
 def _duplicate_cqs(graph, href):
     groups = {}
-    for cq in set(graph.subjects(COV.duplicateOf, None)):   # a duplicate links to its peers
+    for cq in _duplicate_cq_iris(graph):
         q = graph.value(cq, CQ.question)
         src = graph.value(cq, COV.sourceFile)
         groups.setdefault(str(q) if q is not None else "", []).append(
@@ -143,11 +150,12 @@ def cq_report(graph, ontology_graph, href) -> dict:
     declared = {str(graph.value(tc, COV["term"]))
                 for tc in graph.subjects(RDF.type, COV.TermCoverage)}
     cq_specs = _cq_specs(graph)
+    duplicates = _duplicate_cq_iris(graph)
 
     per_cq = [_one_cq(graph, cq, meta, usage, assertions, undeclared, declared,
                       short, href, has_ontology)
               for cq in graph.subjects(RDF.type, CQ.CompetencyQuestion)
-              if (cq, COV.duplicateOf, None) not in graph]
+              if cq not in duplicates]
     per_cq.sort(key=lambda e: (e["question"] or "", e["name"]))
 
     return {"per_cq": per_cq,
