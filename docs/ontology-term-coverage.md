@@ -327,9 +327,11 @@ Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
   what CQ↔test/term linking looks like in the graph, and what the Competency
   Questions Report is rendered from.
 - **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent,
-  `prov:used` the ontologies, `prov:startedAtTime` when it ran, `cov:gitCommit`
-  the revision (and `cov:commit` / `cov:ciRun` links to the commit page and CI job
-  when hosted). Each run gets a **fresh** minted IRI (a UUID, or `MUSTRD_RUN_ID`
+  `prov:used` the ontologies, `prov:startedAtTime` when it ran, `cov:gitRepository`
+  the source repo, `cov:gitCommit` the revision SHA (and `cov:gitCommitUrl` /
+  `cov:ciRun` links to the commit page and CI job when hosted). Each run gets a
+  **fresh**
+  minted IRI (a UUID, or `MUSTRD_RUN_ID`
   if set) so successive runs **accumulate** in a knowledge graph rather than
   clobber; every child IRI is minted under it, and there are no blank nodes, so
   runs still merge and diff cleanly.

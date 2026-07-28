@@ -44,15 +44,20 @@ cov:CoverageRun a owl:Class ;
     rdfs:label "Coverage run" ;
     rdfs:comment "One mustrd coverage computation over one or more ontologies. Each run gets a fresh URI so successive runs accumulate in a knowledge graph rather than clobber. Carries prov:startedAtTime (when it ran), cov:gitCommit / cov:commit (the revision), and cov:ciRun (the CI job) when available." .
 
+cov:gitRepository a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "git repository" ;
+    rdfs:comment "A link to the source repository the run was computed from (GITHUB_REPOSITORY in CI, else the local `origin` remote, normalised to an https URL)." .
+
 cov:gitCommit a owl:DatatypeProperty ;
     rdfs:domain cov:CoverageRun ; rdfs:range xsd:string ;
     rdfs:label "git commit" ;
     rdfs:comment "The git commit SHA the run was computed at (GITHUB_SHA in CI, else the local HEAD)." .
 
-cov:commit a owl:ObjectProperty ;
+cov:gitCommitUrl a owl:ObjectProperty ;
     rdfs:domain cov:CoverageRun ;
-    rdfs:label "commit" ;
-    rdfs:comment "A link to the commit the run was computed at (e.g. the GitHub commit page), when the hosting repository is known." .
+    rdfs:label "git commit URL" ;
+    rdfs:comment "A web link to that commit — cov:gitRepository + '/commit/' + cov:gitCommit (e.g. the GitHub commit page), when the repository is known. The clickable counterpart of the cov:gitCommit SHA." .
 
 cov:ciRun a owl:ObjectProperty ;
     rdfs:domain cov:CoverageRun ;

@@ -147,14 +147,16 @@ def test_run_carries_provenance():
             "given": _graph(ONTO, DATA), "queries": [QUERY]}
     g = coverage_graph(compute_coverage([spec], ontology=_graph(ONTO)),
                        [{"uri": "http://onto.org/"}], run_slug="r1", git_sha="abc123",
+                       repo_url="https://github.com/o/r",
                        started="2026-01-01T00:00:00+00:00",
                        commit_url="https://github.com/o/r/commit/abc123",
                        ci_run="https://github.com/o/r/actions/runs/9")
     run = URIRef("https://mustrd.org/coverage/run/r1")
     assert (run, RDF.type, COV.CoverageRun) in g
     assert (run, PROV.startedAtTime, Literal("2026-01-01T00:00:00+00:00", datatype=XSD.dateTime)) in g
+    assert (run, COV.gitRepository, URIRef("https://github.com/o/r")) in g
     assert (run, COV.gitCommit, Literal("abc123")) in g
-    assert (run, COV.commit, URIRef("https://github.com/o/r/commit/abc123")) in g
+    assert (run, COV.gitCommitUrl, URIRef("https://github.com/o/r/commit/abc123")) in g
     assert (run, COV.ciRun, URIRef("https://github.com/o/r/actions/runs/9")) in g
 
 

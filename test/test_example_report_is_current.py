@@ -31,7 +31,8 @@ COV = Namespace("https://mustrd.org/coverage/")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 # Per-run provenance on the cov:CoverageRun node — different on every run, so
 # excluded from the drift check (the golden test's whole point is structural).
-_VOLATILE = (PROV.startedAtTime, PROV.endedAtTime, COV.gitCommit, COV.commit, COV.ciRun)
+_VOLATILE = (PROV.startedAtTime, PROV.endedAtTime, COV.gitRepository,
+             COV.gitCommit, COV.gitCommitUrl, COV.ciRun)
 
 
 def _canonical(graph):

@@ -37,14 +37,17 @@ def _local(iri) -> str:
 
 
 def _run_provenance(g, run, prov):
-    """When it ran (prov:startedAtTime), the revision (cov:gitCommit / cov:commit),
-    and the CI job (cov:ciRun) — each emitted only when known."""
+    """When it ran (prov:startedAtTime), the source repo (cov:gitRepository), the
+    revision (cov:gitCommit SHA + cov:gitCommitUrl link), and the CI job
+    (cov:ciRun) — each emitted only when known."""
     if prov.get("started"):
         g.add((run, PROV.startedAtTime, Literal(prov["started"], datatype=XSD.dateTime)))
+    if prov.get("repo_url"):
+        g.add((run, COV.gitRepository, URIRef(prov["repo_url"])))
     if prov.get("git_sha"):
         g.add((run, COV.gitCommit, Literal(prov["git_sha"])))
     if prov.get("commit_url"):
-        g.add((run, COV.commit, URIRef(prov["commit_url"])))
+        g.add((run, COV.gitCommitUrl, URIRef(prov["commit_url"])))
     if prov.get("ci_run"):
         g.add((run, COV.ciRun, URIRef(prov["ci_run"])))
 
@@ -259,7 +262,7 @@ def _bind_prefixes(g, extra=()):
 
 
 def coverage_graph(coverage, ontologies, run_slug="local", git_sha=None,
-                   started=None, commit_url=None, ci_run=None,
+                   repo_url=None, started=None, commit_url=None, ci_run=None,
                    mustrd_version=None, term_ontology=None) -> Graph:
     """Build the RDF graph. `ontologies` is [{uri, version}] (uri required);
     `run_slug` seeds the minted run IRI (unique per run, see plugin._run_ident).
@@ -270,7 +273,7 @@ def coverage_graph(coverage, ontologies, run_slug="local", git_sha=None,
     g = Graph()
     _bind_prefixes(g)
     run = URIRef(f"{_BASE}run/{run_slug}")
-    prov = {"git_sha": git_sha, "started": started,
+    prov = {"git_sha": git_sha, "repo_url": repo_url, "started": started,
             "commit_url": commit_url, "ci_run": ci_run}
     subjects = _add_provenance(g, run, ontologies, prov, mustrd_version)
     _add_measurements(g, run, run_slug, subjects, coverage)
@@ -284,7 +287,7 @@ def coverage_graph(coverage, ontologies, run_slug="local", git_sha=None,
     return g
 
 
-def cq_graph(cq_facts, run_slug="local", git_sha=None, started=None,
+def cq_graph(cq_facts, run_slug="local", git_sha=None, repo_url=None, started=None,
              commit_url=None, ci_run=None, mustrd_version=None) -> Graph:
     """A CQ-only graph for `--cq` with no ontology: CQ nodes + assertions + per-spec
     term usage, no coverage measurements. `cq_facts` (from `cq.cq_facts`) carries
@@ -293,7 +296,7 @@ def cq_graph(cq_facts, run_slug="local", git_sha=None, started=None,
     g = Graph()
     _bind_prefixes(g, extra=cq_facts.get("prefixes", {}).items())
     run = URIRef(f"{_BASE}run/{run_slug}")
-    prov = {"git_sha": git_sha, "started": started,
+    prov = {"git_sha": git_sha, "repo_url": repo_url, "started": started,
             "commit_url": commit_url, "ci_run": ci_run}
     _add_provenance(g, run, [], prov, mustrd_version)
     _add_spec_metadata(g, cq_facts)
