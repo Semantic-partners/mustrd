@@ -22,6 +22,21 @@ jobs:
       actions: read             # to find the artifact from the CI run
     steps:
       # DO NOT check out the PR's code here — see the note above.
+
+      # The Markdown reports, to render inline in the comment. GitHub sanitises
+      # comment HTML (no script, no style, images over https only), so the
+      # self-contained page itself can only be offered as a download; the Markdown
+      # carries the same numbers and renders natively.
+      - name: Download the report artifact
+        id: download
+        continue-on-error: true          # a failed CI run may not have produced one
+        uses: actions/download-artifact@v4
+        with:
+          name: mustrd-report
+          path: report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
       - name: Find the report artifact and comment
         uses: actions/github-script@v7
         with:
@@ -59,23 +74,50 @@ jobs:
             const size = (report.size_in_bytes / 1024).toFixed(0);
             const conclusion = context.payload.workflow_run.conclusion;
 
+            // The Markdown reports render in the comment; the pages are the
+            // interactive version. Collapsed, so the comment stays scannable.
+            const fs = require('fs');
+            const COMMENT_LIMIT = 65536;
+            const sections = [];
+            for (const [file, title] of [
+              ['report/geography-example.md', 'Ontology coverage &amp; competency questions (worked example)'],
+              ['report/mustrd-suite.md', "mustrd's own specs"],
+            ]) {
+              let md;
+              try { md = fs.readFileSync(file, 'utf8').trim(); } catch { continue; }
+              if (md) sections.push({ title, md });
+            }
+
             const marker = '<!-- mustrd-report -->';
-            const body = [
+            const header = [
               marker,
-              `### mustrd run report`,
+              '### mustrd run report',
               '',
-              `[**Download the report**](${artifactUrl}) — ${size} KB, \`${head.slice(0, 7)}\`, CI ${conclusion}.`,
+              `\`${head.slice(0, 7)}\` · CI ${conclusion} · [built by this run](${runUrl})`,
               '',
-              'Two self-contained pages, no build step and nothing to install: unzip and',
-              'open either in a browser.',
+              `[**Download the interactive report**](${artifactUrl}) — ${size} KB. Two`,
+              'self-contained pages: unzip and open either in a browser, no build step and',
+              'nothing to install. The pass/fail tree, the coverage table, and every spec',
+              'with the SPARQL it ran and the datasets it loaded. GitHub cannot render them',
+              'inline — it strips script and style — so the same reports are below as',
+              'Markdown.',
+            ];
+            const footer = [
               '',
-              '| | |',
-              '|---|---|',
-              '| `mustrd-suite.html` | mustrd\'s own specs — the pass/fail tree, every spec and the files it reads |',
-              '| `geography-example.html` | the worked example — ontology term coverage and competency questions |',
-              '',
-              `<sub>Built by [this run](${runUrl}). Drop another run\'s \`.ttl\` onto a page to compare.</sub>`,
-            ].join('\n');
+              "<sub>Drop another run's <code>.ttl</code> onto a page to compare two runs.</sub>",
+            ];
+
+            // Inline what fits; a report too large to inline still has its download.
+            let body = header.join('\n');
+            for (const { title, md } of sections) {
+              const block = `\n\n<details>\n<summary><b>${title}</b></summary>\n\n${md}\n\n</details>`;
+              if (body.length + block.length + footer.join('\n').length > COMMENT_LIMIT - 512) {
+                body += `\n\n<sub>${title} omitted: too large to inline. It is in the download.</sub>`;
+                continue;
+              }
+              body += block;
+            }
+            body += footer.join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner, repo, issue_number: number, per_page: 100,
