@@ -1,0 +1,7 @@
+# Instance data for the continentOfRotterdam test. It uses a namespace OUTSIDE
+# the ontologies under test (world:), on purpose — so the test touches no declared
+# term and changes no coverage number.
+@prefix world: <http://example.org/world#> .
+@prefix ex:    <http://example.org/> .
+
+ex:Rotterdam world:onContinent world:Europe .

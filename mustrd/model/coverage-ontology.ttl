@@ -42,7 +42,27 @@ cov:termCoverageByCompetencyQuestions a dqv:Metric ;
 cov:CoverageRun a owl:Class ;
     rdfs:subClassOf prov:Activity ;
     rdfs:label "Coverage run" ;
-    rdfs:comment "One mustrd coverage computation over one or more ontologies." .
+    rdfs:comment "One mustrd coverage computation over one or more ontologies. Each run gets a fresh URI so successive runs accumulate in a knowledge graph rather than clobber. Carries prov:startedAtTime (when it ran), cov:gitCommit / cov:commit (the revision), and cov:ciRun (the CI job) when available." .
+
+cov:gitRepository a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "git repository" ;
+    rdfs:comment "A link to the source repository the run was computed from (GITHUB_REPOSITORY in CI, else the local `origin` remote, normalised to an https URL)." .
+
+cov:gitCommit a owl:DatatypeProperty ;
+    rdfs:domain cov:CoverageRun ; rdfs:range xsd:string ;
+    rdfs:label "git commit" ;
+    rdfs:comment "The git commit SHA the run was computed at (GITHUB_SHA in CI, else the local HEAD)." .
+
+cov:gitCommitUrl a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "git commit URL" ;
+    rdfs:comment "A web link to that commit — cov:gitRepository + '/commit/' + cov:gitCommit (e.g. the GitHub commit page), when the repository is known. The clickable counterpart of the cov:gitCommit SHA." .
+
+cov:ciRun a owl:ObjectProperty ;
+    rdfs:domain cov:CoverageRun ;
+    rdfs:label "CI run" ;
+    rdfs:comment "A link to the CI job that produced the run (e.g. the GitHub Actions run), when run in CI." .
 
 cov:sourceFile a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
@@ -159,7 +179,7 @@ cov:TBoxInTestData a cov:IssueType ; skos:prefLabel "TBox in test data" ;
 
 cov:Assertion a owl:Class ;
     rdfs:label "Assertion" ;
-    rdfs:comment "One test's verification of a competency question in a run." .
+    rdfs:comment "Something a run asserts about a competency question: either one test's verification of it (cov:onTest + cov:outcome), or that it duplicates another CQ (cov:duplicateOf)." .
 
 cov:onCompetencyQuestion a owl:ObjectProperty ;
     rdfs:domain cov:Assertion ; rdfs:range cq:CompetencyQuestion ;
@@ -173,10 +193,10 @@ cov:outcome a owl:ObjectProperty ;
     rdfs:domain cov:Assertion ; rdfs:range cov:Outcome ;
     rdfs:label "outcome" .
 
-cov:requiresOntology a owl:DatatypeProperty ;
-    rdfs:domain cov:Assertion ; rdfs:range xsd:boolean ;
+cov:requiresOntology a owl:ObjectProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range owl:Ontology ;
     rdfs:label "requires ontology" ;
-    rdfs:comment "The test matches its data only through the ontology's class hierarchy, so the ontology must be loaded as an input for it to pass." .
+    rdfs:comment "An ontology the test matches its data only *through* (via that ontology's class hierarchy), so it must be loaded as an input for the test to pass. Absence means the test passes on its own data. Replaces an earlier boolean." .
 
 cov:Outcome a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Outcome" .
 cov:Passed a cov:Outcome ; skos:prefLabel "passed" .
@@ -258,10 +278,10 @@ cov:fileText a owl:DatatypeProperty ;
     rdfs:label "file text" ;
     rdfs:comment "The verbatim content." .
 
-cov:duplicate a owl:DatatypeProperty ;
-    rdfs:domain cq:CompetencyQuestion ; rdfs:range xsd:boolean ;
-    rdfs:label "duplicate" ;
-    rdfs:comment "This CQ shares its question with another and was excluded from the coverage calculation." .
+cov:duplicateOf a owl:ObjectProperty ;
+    rdfs:domain cov:Assertion ; rdfs:range cq:CompetencyQuestion ;
+    rdfs:label "duplicate of" ;
+    rdfs:comment "On a cov:Assertion (whose cov:onCompetencyQuestion is the subject CQ): another CQ that shares its question text. Both are excluded from the coverage calculation as a likely copy/paste. The relation is symmetric between the members of a duplicate group. Modelling it as a run assertion keeps the finding off the CQ node itself." .
 
 cov:usesInData a owl:ObjectProperty ;
     rdfs:domain must:TestSpec ;

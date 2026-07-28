@@ -12,7 +12,9 @@ canonical run output and the Markdown report is rendered *from it*.
 """
 import logging
 import os
+import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 from rdflib import Graph, RDF
@@ -23,7 +25,9 @@ from mustrd.TestResult import (
     ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, apply_term_links
-from mustrd.ontology import load_ontology, ontology_report, local_name
+from mustrd.ontology import (
+    load_ontology, ontology_report, local_name, term_ontology_index,
+)
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
 from mustrd.coverage_render import coverage_context, read_ontologies
@@ -193,30 +197,84 @@ def collect_cq_defs(spec_paths, spec_by_uri):
 # ---------------------------------------------------------------------------
 # Run identity + graph building.
 # ---------------------------------------------------------------------------
-def run_ident():
-    """run_slug / commit / mustrd_version for a graph, from the CI env."""
-    sha = os.environ.get("GITHUB_SHA")
+def _git(*args):
+    """Best-effort `git ...`, returning stripped stdout or None."""
+    try:
+        import subprocess
+        out = subprocess.run(["git", *args], capture_output=True, text=True, timeout=5)
+        return out.stdout.strip() or None
+    except Exception:
+        return None
+
+
+def git_sha():
+    """The commit the run was computed at: GITHUB_SHA in CI, else local HEAD."""
+    return os.environ.get("GITHUB_SHA") or _git("rev-parse", "HEAD")
+
+
+def git_repo():
+    """The source repository URL: GITHUB_REPOSITORY in CI, else the local `origin`
+    remote, normalised to an https URL (git@host:o/r.git -> https://host/o/r).
+
+    None unless the result really is an http(s) URL. An scp-style remote using an
+    ssh config alias — `github-sp:org/repo.git`, which is how a machine with
+    several accounts addresses the same host — normalises to `github-sp:org/repo`,
+    and resolving that alias means reading ~/.ssh/config. It parses as a URI, so it
+    would go into the graph as cov:gitRepository and out to the report as a link
+    that goes nowhere. The commit SHA is still recorded either way; a report with
+    no link is honest, one with a broken link is not.
+    """
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
     repo = os.environ.get("GITHUB_REPOSITORY")
+    if repo:
+        return f"{server}/{repo}"
+    url = _git("config", "--get", "remote.origin.url")
+    if not url:
+        return None
+    url = url[:-4] if url.endswith(".git") else url
+    if url.startswith("git@"):
+        host, _, path = url[4:].partition(":")
+        url = f"https://{host}/{path}"
+    elif url.startswith("ssh://"):
+        url = "https://" + url[len("ssh://"):].split("@")[-1]
+    return url if url.startswith(("https://", "http://")) else None
+
+
+def run_ident():
+    """Provenance for the run node: a FRESH run id each time (so runs accumulate
+    in a KG rather than clobber), the source repository, the git SHA, the start
+    time, and links to the commit and (in CI) the Actions run. MUSTRD_RUN_ID pins
+    the id for reproducible output. mustrd version for the agent."""
+    repo_url = git_repo()
+    sha = git_sha()
+    ci_run_id = os.environ.get("GITHUB_RUN_ID")
     try:
         from importlib.metadata import version
         mustrd_version = version("mustrd")
     except Exception:
         mustrd_version = None
-    return {"run_slug": sha or "local",
-            "commit": f"{server}/{repo}/commit/{sha}" if (sha and repo) else None,
-            "mustrd_version": mustrd_version}
+    return {
+        "run_slug": os.environ.get("MUSTRD_RUN_ID") or uuid.uuid4().hex,
+        "git_sha": sha,
+        "repo_url": repo_url,
+        "started": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "commit_url": f"{repo_url}/commit/{sha}" if (repo_url and sha) else None,
+        "ci_run": f"{repo_url}/actions/runs/{ci_run_id}" if (repo_url and ci_run_id) else None,
+        "mustrd_version": mustrd_version,
+    }
 
 
-def _coverage_graph(coverage, ontology_paths):
+def _coverage_graph(coverage, ontology_paths, ident):
     """Build the canonical coverage RDF graph."""
     ontologies = [{"uri": r["uri"], "version": r.get("version"),
                    "description": r.get("description"), "path": r.get("path")}
                   for r in ontology_report(ontology_paths) if r.get("uri")]
-    return coverage_graph(coverage, ontologies, **run_ident())
+    return coverage_graph(coverage, ontologies,
+                          term_ontology=term_ontology_index(ontology_paths),
+                          **ident)
 
 
-def compute(all_specs, cq_defs, ontology_paths, report_cq):
+def compute(all_specs, cq_defs, ontology_paths, report_cq, ident):
     """Compute coverage and build its canonical RDF graph. Returns
     (coverage_dict, ontology_graph, graph); (None, None, None) on failure or
     when nothing is declared."""
@@ -226,24 +284,24 @@ def compute(all_specs, cq_defs, ontology_paths, report_cq):
                                     cq_defs=cq_defs if report_cq else None)
         if coverage is None:
             return None, None, None
-        return coverage, ontology_graph, _coverage_graph(coverage, ontology_paths)
+        return coverage, ontology_graph, _coverage_graph(coverage, ontology_paths, ident)
     except Exception as e:
         logger.warning(f"Could not compute ontology term coverage: {e}")
         return None, None, None
 
 
 def build_report_data(all_specs, cq_defs, opts: ReportOptions,
-                      report_coverage: bool, report_cq: bool):
+                      report_coverage: bool, report_cq: bool, ident):
     """The canonical RDF outputs of a run: (coverage, ontology_graph, graph).
 
     With an ontology it's the full coverage graph (with a CQ overlay when --cq);
     with `--cq` alone it's a CQ-only graph (no measurements). compute() returns
     None coverage if nothing is declared."""
     coverage, ontology_graph, graph = \
-        compute(all_specs, cq_defs, opts.ontology_paths, report_cq) if report_coverage \
-        else (None, None, None)
+        compute(all_specs, cq_defs, opts.ontology_paths, report_cq, ident) \
+        if report_coverage else (None, None, None)
     if graph is None and report_cq:              # --cq with no ontology
-        graph = cq_graph(cq_facts(cq_defs), **run_ident())
+        graph = cq_graph(cq_facts(cq_defs), **ident)
     return coverage, ontology_graph, graph
 
 
@@ -326,8 +384,12 @@ def produce_report(all_specs, cq_defs, test_results, last_is_mustrd,
     report_coverage = wants_coverage(opts)
     report_cq = wants_cq(opts)
 
+    # One identity for the whole report: run_ident() mints a fresh run id each
+    # call, so every graph below has to be handed the same one or they describe
+    # different runs.
+    ident = run_ident()
     coverage, ontology_graph, graph = build_report_data(
-        all_specs, cq_defs, opts, report_coverage, report_cq)
+        all_specs, cq_defs, opts, report_coverage, report_cq, ident)
 
     # Markdown report.
     if opts.md_path:
@@ -354,7 +416,7 @@ def produce_report(all_specs, cq_defs, test_results, last_is_mustrd,
     results_g = None
     if run_results and (opts.results_rdf or opts.results_jsonld or opts.viewer):
         from mustrd.results_rdf import results_graph
-        results_g = results_graph(run_results, **run_ident())
+        results_g = results_graph(run_results, **ident)
         if opts.results_rdf:
             _ensure_parent(opts.results_rdf)
             results_g.serialize(destination=opts.results_rdf, format="turtle")
@@ -372,7 +434,7 @@ def produce_report(all_specs, cq_defs, test_results, last_is_mustrd,
             from mustrd.sources_rdf import sources_graph
             # Same run identity the other graphs use, so the three agree about
             # which run they are describing.
-            sources_g = sources_graph(all_specs, run_slug=run_ident()["run_slug"])
+            sources_g = sources_graph(all_specs, run_slug=ident["run_slug"])
         write_viewer(opts.viewer, [graph, results_g, ontology_graph, sources_g],
                      title=opts.viewer_title, src_base=opts.viewer_src_base)
 

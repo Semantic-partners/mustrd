@@ -65,6 +65,23 @@ def test_report_survives_a_non_utf8_console(console_encoding):
     assert "terms exercised by the tests" in proc.stdout
 
 
+@pytest.mark.parametrize("remote,expected", [
+    ("https://github.com/o/r.git", "https://github.com/o/r"),
+    ("git@github.com:o/r.git", "https://github.com/o/r"),
+    ("ssh://git@github.com/o/r.git", "https://github.com/o/r"),
+    # An ssh config alias cannot be resolved to a host without reading
+    # ~/.ssh/config, and "github-sp:o/r" parses as a URI — so it would reach the
+    # report as a link that goes nowhere. Better none at all.
+    ("github-sp:o/r.git", None),
+    ("/srv/git/repo.git", None),
+])
+def test_git_repo_only_reports_a_url_it_can_stand_behind(remote, expected, monkeypatch):
+    from mustrd import reporting
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    monkeypatch.setattr(reporting, "_git", lambda *a: remote)
+    assert reporting.git_repo() == expected
+
+
 def test_importing_mustrd_leaves_the_hosts_logging_alone():
     """mustrd is a library: importing it must not configure, re-level or remove
     anything on the root logger. It used to call basicConfig and then blank the

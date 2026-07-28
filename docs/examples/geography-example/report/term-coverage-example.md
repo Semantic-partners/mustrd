@@ -113,6 +113,15 @@ _4 competency questions — 3 with a test, 1 without._
 | Who is the mayor of Rotterdam? | [mayor-of-rotterdam.mustrd.ttl](../specs/mayor-of-rotterdam.mustrd.ttl) | ✅ passed | ⚠️ undeclared: gov:appointedOn (SPARQL) |
 
 
+### ⚠️ Duplicate competency questions
+
+The same `cq:question` appears on more than one `cq:CompetencyQuestion` node (likely a copy/paste error). These CQs are **excluded from the coverage calculation**:
+
+- "On which continent is Rotterdam?"
+  - [continentOfRotterdamCQ](../specs/duplicate-competency-questions.mustrd.ttl)
+  - [continentOfRotterdamCQCopy](../specs/duplicate-competency-questions.mustrd.ttl)
+
+
 ### Not used by any CQ
 
 - place:AdministrativeDivision (class) — not covered by any competency question; a CQ query names it but no CQ populates it in data (**query-only**)

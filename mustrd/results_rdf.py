@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from rdflib import Graph, URIRef, Literal, RDF, XSD
 
-from mustrd.coverage_rdf import COV, PROV, MUST, _BASE, _relpath
+from mustrd.coverage_rdf import COV, PROV, MUST, _BASE, _relpath, _add_provenance
 from mustrd.ontology import slug
 
 _OUTCOME = {"passed": COV.Passed, "failed": COV.Failed, "skipped": COV.Skipped}
@@ -36,15 +36,24 @@ class RunResult:
     duration: float = None      # wall-clock seconds
 
 
-def results_graph(run_results, run_slug="local", commit=None,
+def results_graph(run_results, run_slug="local", git_sha=None, repo_url=None,
+                  started=None, commit_url=None, ci_run=None,
                   mustrd_version=None) -> Graph:
     """Build the per-test results graph for a run. `run_results` is a list of
-    RunResult. `run_slug` seeds the (shared) run IRI."""
+    RunResult. `run_slug` seeds the (shared) run IRI.
+
+    Takes the same run provenance as coverage_graph and asserts it through the
+    same helper, so a results-only graph (--results-rdf with no ontology) still
+    says when it ran and at what revision — and so a merge with the coverage graph
+    contributes identical triples about the same run rather than a second opinion.
+    """
     g = Graph()
     for p, ns in (("cov", COV), ("prov", PROV), ("must", MUST)):
         g.bind(p, ns)
     run = URIRef(f"{_BASE}run/{run_slug}")
-    g.add((run, RDF.type, COV.CoverageRun))
+    _add_provenance(g, run, [], {"git_sha": git_sha, "repo_url": repo_url,
+                                 "started": started, "commit_url": commit_url,
+                                 "ci_run": ci_run}, mustrd_version)
 
     seen = {}
     for i, r in enumerate(run_results):

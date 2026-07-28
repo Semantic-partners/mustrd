@@ -89,12 +89,18 @@ def test_loads_clean_and_renders_the_run(page):
 
 
 def test_tabs_switch(page):
+    """Counts come from the tab labels rather than the fixtures, so adding an
+    example spec does not fail this for the wrong reason."""
+    def tab_count(name):
+        label = page.get_by_role("tab", name=name).inner_text()
+        return int(label.split("\n")[-1])
+
     page.get_by_role("tab", name="Coverage").click()
-    assert page.locator("table tbody tr.term").count() == 11
+    assert page.locator("table tbody tr.term").count() == tab_count("Coverage")
     page.get_by_role("tab", name="Files").click()
     assert page.locator(".filepane").is_visible()
     page.get_by_role("tab", name="Tests").click()
-    assert page.locator(".tests li").count() == 4
+    assert page.locator(".tests li").count() == tab_count("Tests")
 
 
 @pytest.mark.parametrize("tab,box,expect", [

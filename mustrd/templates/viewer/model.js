@@ -239,21 +239,38 @@ function readCoverage(st, specs) {
   };
 }
 
+/** A run makes two kinds of cov:Assertion about a competency question: that a test
+    verified it (cov:onTest + cov:outcome), or that it duplicates another CQ
+    (cov:duplicateOf). Both are run-scoped — neither is a property of the CQ
+    itself — so they are read from the assertions and kept apart here. An assertion
+    with no cov:onTest is not a phantom test. */
 function readCqs(st, specs) {
-  var byCq = {};
+  var verifications = {}, duplicates = {};
   st.typed(COV + "Assertion").forEach(function (a) {
-    var cq = st.one(a, COV + "onCompetencyQuestion"), t = st.one(a, COV + "onTest");
+    var cq = st.one(a, COV + "onCompetencyQuestion");
     if (!cq || !isIri(cq)) return;
-    (byCq[iriOf(cq)] = byCq[iriOf(cq)] || []).push({
-      spec: t && isIri(t) ? specs[iriOf(t)] || { iri: iriOf(t), name: localName(iriOf(t)) } : null,
+    var id = iriOf(cq);
+
+    var peers = st.objs(a, COV + "duplicateOf").filter(isIri).map(iriOf);
+    if (peers.length) {
+      duplicates[id] = (duplicates[id] || []).concat(peers);
+      return;
+    }
+    var t = st.one(a, COV + "onTest");
+    if (!t || !isIri(t)) return;
+    (verifications[id] = verifications[id] || []).push({
+      spec: specs[iriOf(t)] || { iri: iriOf(t), name: localName(iriOf(t)) },
       status: outcomeOf(st, a, COV + "outcome"),
-      requiresOntology: truthy(st.one(a, COV + "requiresOntology"))
+      // An ontology whose class hierarchy the test matches its data *through*, so
+      // it has to be loaded for the test to pass. IRIs, not a flag: which ontology
+      // is the useful part.
+      requiresOntology: st.objs(a, COV + "requiresOntology").filter(isIri).map(iriOf)
     });
   });
   var out = st.typed(CQNS + "CompetencyQuestion").filter(isIri).map(function (c) {
     var iri = iriOf(c);
     var linked = st.objs(c, CQNS + "cqSpec").filter(isIri).map(iriOf);
-    var tests = (byCq[iri] || []).sort(function (a, b) {
+    var tests = (verifications[iri] || []).sort(function (a, b) {
       return ((a.spec && a.spec.name) || "").localeCompare((b.spec && b.spec.name) || "");
     });
     var resolved = new Set(tests.map(function (t) { return t.spec && t.spec.iri; }));
@@ -261,7 +278,7 @@ function readCqs(st, specs) {
       iri: iri, name: localName(iri),
       questions: st.objs(c, CQNS + "question").map(text).sort(),
       source: text(st.one(c, COV + "sourceFile")),
-      duplicate: truthy(st.one(c, COV + "duplicate")),
+      duplicateOf: (duplicates[iri] || []).sort(),
       tests: tests,
       missing: linked.filter(function (l) { return !resolved.has(l) && !specs[l]; })
     };
@@ -298,16 +315,24 @@ function readIssues(st, specs) {
   return { undeclared: undeclared, tbox: tbox };
 }
 
+/** The run's own provenance. Each run mints a fresh IRI so runs accumulate rather
+    than clobber, and the revision is stated outright (cov:gitCommit, with
+    cov:gitCommitUrl as the clickable form) rather than inferred from a prov:used
+    link that happened to look like a commit URL. */
 function readRun(st) {
   var runs = st.typed(COV + "CoverageRun");
   if (!runs.length) return {};
   var r = runs[0];
   var agent = st.one(r, PROV + "wasAssociatedWith");
+  var iri = isIri(r) ? iriOf(r) : null;
   return {
-    iri: isIri(r) ? iriOf(r) : null,
-    slug: isIri(r) ? localName(iriOf(r)) : null,
-    commit: st.objs(r, PROV + "used").filter(isIri).map(iriOf)
-      .filter(function (u) { return /\/commit\//.test(u); })[0] || null,
+    iri: iri,
+    slug: iri ? localName(iri) : null,
+    sha: text(st.one(r, COV + "gitCommit")),
+    commit: text(st.one(r, COV + "gitCommitUrl")),
+    repo: text(st.one(r, COV + "gitRepository")),
+    ciRun: text(st.one(r, COV + "ciRun")),
+    started: text(st.one(r, PROV + "startedAtTime")),
     version: agent ? text(st.one(agent, OWL + "versionInfo")) : null
   };
 }

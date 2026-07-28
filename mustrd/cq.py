@@ -16,7 +16,7 @@ from typing import List, Optional
 from rdflib import Graph, URIRef
 
 from mustrd.ontology import abox_terms, query_uris, is_domain_term
-from mustrd.coverage import requires_ontology_to_pass
+from mustrd.coverage import requires_ontology_terms
 
 
 @dataclass
@@ -27,7 +27,9 @@ class SpecUsage:
     passed: bool
     data_terms: List[str] = field(default_factory=list)
     query_terms: List[str] = field(default_factory=list)
-    requires_ontology: bool = False
+    # Declared classes the query matches its data only *through* (subClassOf) —
+    # their declaring ontology must be loaded for the test to pass. Empty = none.
+    requires_ontology: List[str] = field(default_factory=list)
 
 
 def _status(u: SpecUsage) -> str:
@@ -93,7 +95,8 @@ def _per_cq_entries(cq_defs, usage_by_uri):
             if u is None:
                 continue
             tests.append({"name": u.name, "uri": u.uri, "status": _status(u),
-                          "credited": u.passed, "requires_ontology": u.requires_ontology})
+                          "credited": u.passed,
+                          "requires_ontology_terms": u.requires_ontology})
             data.update(u.data_terms)
             query.update(u.query_terms)
             credited = credited or u.passed
@@ -124,7 +127,7 @@ def compute_cq_overlay(cq_defs, declared_set, declared, tbox, short):
             name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
             data_terms=sorted(short(t) for t in d_terms),
             query_terms=sorted(short(t) for t in q_terms),
-            requires_ontology=requires_ontology_to_pass(d_terms, q_terms, declared, tbox))
+            requires_ontology=requires_ontology_terms(d_terms, q_terms, declared, tbox))
         if s.get("passed"):
             cq_used_data |= d_terms
             cq_used_query |= q_terms
@@ -157,7 +160,7 @@ def cq_facts(cq_defs: List[dict]) -> dict:
             "source_file": str(s.get("source_file")) if s.get("source_file") else None,
             "data": d, "query": q}
         usage_by_uri[uri] = SpecUsage(name=s.get("name", "?"), uri=uri,
-                                      passed=bool(s.get("passed")), requires_ontology=False)
+                                      passed=bool(s.get("passed")), requires_ontology=[])
         g = s.get("given")
         if isinstance(g, Graph):
             for prefix, ns in g.namespaces():

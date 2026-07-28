@@ -456,7 +456,11 @@ const CqsTab = M => {
 };
 
 const cqBadges = c => [
-  c.duplicate ? pill("query-only", "duplicate question") : [],
+  c.duplicateOf.length
+    ? pill("query-only", `duplicate of ${c.duplicateOf.length === 1
+        ? localName(c.duplicateOf[0])
+        : c.duplicateOf.length + " others"}`)
+    : [],
   !c.tests.length ? pill("unused", "no linked test")
     : c.tests.some(t => t.status === "failed") ? pill("failed", "failing")
     : pill("passed", "verified")
@@ -467,12 +471,19 @@ const CqCard = c => div({ class: "cq" },
   div({ class: "badges" }, cqBadges(c)),
   c.questions.length > 1
     ? p({ class: "note" }, "also asked as: " + c.questions.slice(1).join(" · ")) : [],
+  c.duplicateOf.length
+    ? p({ class: "note" }, "same question as ",
+        ...c.duplicateOf.map((peer, i) => [i ? ", " : "", code(localName(peer))]),
+        " — all of them excluded from the coverage calculation")
+    : [],
   c.tests.length || c.missing.length
     ? ul(
         c.tests.map(t => li(
           pill(t.status || "plain", t.status || "unknown"), " ",
           t.spec ? srcRef(t.spec.source, t.spec.name) : "?",
-          t.requiresOntology ? [" ", pill("schema", "needs ontology")] : [])),
+          (t.requiresOntology || []).map(o =>
+            [" ", span({ class: "pill schema", title: o },
+                       "needs " + (short(o) === o ? localName(o) : short(o)))]))),
         c.missing.map(iri => li({ class: "warnrow" },
           "cq:cqSpec points at ", code(iri),
           ", which no test in this run provides")))
@@ -634,7 +645,12 @@ const RunMeta = M => {
   const { run } = M, bits = [];
   const item = (k, v) => bits.push(span(span({ class: "k" }, k), " ", v));
   if (run.slug && run.slug !== "local") item("run", code(run.slug.slice(0, 12)));
-  if (run.commit) item("commit", a({ href: run.commit }, localName(run.commit).slice(0, 8)));
+  if (run.sha) {
+    item("commit", run.commit ? a({ href: run.commit }, run.sha.slice(0, 8))
+                              : code(run.sha.slice(0, 8)));
+  }
+  if (run.started) item("ran", run.started.replace("T", " ").replace("+00:00", "Z"));
+  if (run.ciRun) item("ci", a({ href: run.ciRun }, "job"));
   if (run.version) item("mustrd", run.version);
   item("triples", String(M.store.size()));
   return div({ class: "runmeta" }, bits);

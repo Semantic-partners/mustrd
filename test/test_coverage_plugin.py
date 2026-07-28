@@ -49,7 +49,12 @@ def test_full_report_term_coverage_and_cq(tmp_path):
     cq_table = text.split("### Competency Questions", 1)[1].split("\n### ", 1)[0]
     pop_row = next(ln for ln in cq_table.splitlines() if "population of Rotterdam" in ln)
     assert pop_row.endswith("| — | — | — |")  # no test, no status
-    assert "Duplicate competency questions" not in text
+    # Two CQ nodes share a question -> flagged as duplicates and excluded from the
+    # count above (still "4 competency questions"), not listed in the CQ table.
+    assert "⚠️ Duplicate competency questions" in text
+    assert "On which continent is Rotterdam?" in text
+    assert "continentOfRotterdamCQ" in text and "continentOfRotterdamCQCopy" in text
+    assert "On which continent is Rotterdam?" not in cq_table  # excluded from the table
     assert "⚠️ undeclared: place:hasEconomicArea (input data)" in text
     assert "⚠️ undeclared: gov:appointedOn (SPARQL)" in text
 
