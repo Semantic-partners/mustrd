@@ -7,7 +7,7 @@ from requests import Response, HTTPError, RequestException
 from bs4 import BeautifulSoup
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)     # not the root logger: this is a library
 
 
 def query_azg(anzo_config: dict, query: str,

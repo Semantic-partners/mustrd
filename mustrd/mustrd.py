@@ -39,7 +39,10 @@ log = logging.getLogger(__name__)
 requests.packages.urllib3.disable_warnings()
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ":HIGH:!DH:!aNULL"
 
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
+# No logging configuration here. mustrd is a library: importing it must not
+# touch the root logger, or it silently destroys the configuration of whatever
+# imported it. Deciding where records go is the application's job — see
+# cli.py's _configure_logging, and pytest's own logging plugin.
 
 
 def debug_requests_on():
@@ -54,12 +57,12 @@ def debug_requests_on():
 
 
 def debug_requests_off():
-    """Switches off logging of the requests module, might be some side-effects"""
+    """Switches off logging of the requests module."""
     HTTPConnection.debuglevel = 0
 
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.WARNING)
-    root_logger.handlers = []
+    # Only the requests logger: this used to also blank the root logger's
+    # handlers, which — since it runs on import — deleted the logging setup of
+    # anything that imported mustrd, mustrd's own CLI included.
     requests_log = logging.getLogger("requests.packages.urllib3")
     requests_log.setLevel(logging.WARNING)
     requests_log.propagate = False

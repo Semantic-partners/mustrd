@@ -52,6 +52,44 @@ jobs:
           # install our working copy of mustrd as a local package, and run the tests as a mustrdPlugin
           poetry run pip install -e .
           poetry run pytest --mustrd --config="test/test_config_local.ttl"
+
+      # The viewer's own tests. The stub-DOM harness (test_viewer.py) runs on every
+      # cell above; these need a real browser, so they run once. Without it the
+      # browser tests skip themselves rather than fail.
+      - name: Install chromium for the viewer browser tests
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: poetry run playwright install --with-deps chromium
+      - name: Test the viewer in a browser
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: poetry run pytest test/test_viewer_browser.py -v
+
+      # The report for this run, for reviewers to open from the PR. Built from
+      # mustrd's own suite (so it shows real failures when there are any) and from
+      # the worked example (so it shows coverage and competency questions).
+      - name: Build the run report
+        if: ${{ always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        run: |
+          mkdir -p report
+          # --md as well as --viewer: the HTML is the interactive report, the
+          # Markdown is what can render inline in the PR comment (GitHub strips
+          # script/style, so the page itself can only be downloaded).
+          poetry run python -m mustrd.cli report --config test/test_config_local.ttl \
+            --viewer report/mustrd-suite.html \
+            --md report/mustrd-suite.md \
+            --viewer-title "mustrd suite — ${GITHUB_SHA::7}" || true
+          poetry run python -m mustrd.cli report --config docs/examples/geography-example/mustrd-config.ttl \
+            --term-coverage --cq \
+            --viewer report/geography-example.html \
+            --md report/geography-example.md \
+            --viewer-title "Geography example — ${GITHUB_SHA::7}"
+      - name: Upload the run report
+        id: report
+        if: ${{ always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mustrd-report
+          path: report/
+          if-no-files-found: warn
       # Coverage comment runs once, from a single canonical cell, so the
       # matrix does not post six duplicate comments / race the coverage branch.
       - name: Coverage comment

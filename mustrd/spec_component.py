@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Tuple, List, Type
@@ -11,7 +12,6 @@ from rdflib.term import Node
 from rdflib.plugins.stores.memory import Memory
 import edn_format
 
-from . import logger_setup
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
 from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
@@ -143,14 +143,23 @@ def get_components_roots(spec_graph: Graph, subject: URIRef, run_config: dict):
     return roots
 
 
-# From the list of component potential roots, return the first path that exists
+# Every file a run actually read, as {spec IRI: {reference as written: resolved path}}.
+# Recorded at the one point where a relative reference becomes a real path, so a
+# report can embed exactly what mustrd loaded and link the reference in the spec
+# to it — with no second copy of the resolution rules to drift out of step.
+referenced_files: dict = defaultdict(dict)
+
+
 def get_file_absolute_path(spec_component_details: SpecComponentDetails, relative_file_path: str):
+    """The first of the component's candidate roots where the file exists."""
     if not relative_file_path:
         raise ValueError("Cannot get absolute path of None")
     absolute_file_paths = list(map(lambda root_path: Path(os.path.join(root_path, relative_file_path)),
                                    spec_component_details.root_paths))
     for absolute_file_path in absolute_file_paths:
         if (os.path.exists(absolute_file_path)):
+            referenced_files[str(spec_component_details.subject)][
+                str(relative_file_path)] = str(absolute_file_path)
             return absolute_file_path
     raise FileNotFoundError(f"Could not find file {relative_file_path=} in any of the {absolute_file_paths=}")
 

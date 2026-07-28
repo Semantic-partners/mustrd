@@ -1,0 +1,2081 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geography example — mustrd run report</title>
+<!--
+  mustrd run viewer — a single self-contained page, driven entirely by RDF.
+
+  There is no build step and no network dependency: the run's Turtle is embedded
+  below (or dropped in / fetched with ?ttl=), parsed by the Turtle parser in this
+  file, and the whole UI is built from the resulting triples using the
+  cov:/must:/cq:/dqv: vocabularies. See mustrd/model/coverage-ontology.ttl.
+
+  The UI is VanJS (1.6.1, MIT, ~5KB, vendored inline below) — reactive DOM
+  construction, so the page holds no HTML strings and nothing needs escaping.
+-->
+<style>
+  :root {
+    --bg: #0f1117; --surface: #171a23; --surface-2: #1e222d; --raise: #252a37;
+    --border: #2a2f3d; --hair: #21252f;
+    --text: #e4e6ec; --muted: #8b90a0; --heading: #f4f5f8;
+    --accent: #6ee7b7; --accent-2: #93c5fd;
+    --pass: #34d399; --pass-soft: #10291f; --pass-line: #1f5a41;
+    --fail: #f87171; --fail-soft: #2c1416; --fail-line: #6b2529;
+    --skip: #a78bfa; --skip-soft: #1e1a2e; --skip-line: #40356b;
+    --warn: #fbbf24; --warn-soft: #2a2010; --warn-line: #5e4715;
+    --info: #60a5fa; --info-soft: #111c2e; --info-line: #24446f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.8);
+    --radius: 12px;
+    --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  /* Three theme states: follow the OS by default, or an explicit data-theme (set
+     by the ◐ button) which wins in either direction. Dark is the base palette,
+     so the two light rules below carry the light one. */
+  :root[data-theme="light"] {
+    --bg: #eef1f5; --surface: #ffffff; --surface-2: #f5f7fa; --raise: #eceff4;
+    --border: #d4dae2; --hair: #e5e9ef;
+    --text: #29323c; --muted: #616c7a; --heading: #111a24;
+    --accent: #0d8f6f; --accent-2: #2563eb;
+    --pass: #0f8a5f; --pass-soft: #e3f5ec; --pass-line: #a5d9c2;
+    --fail: #c62f38; --fail-soft: #fdeaea; --fail-line: #edb4b6;
+    --skip: #6d4ec9; --skip-soft: #efeafc; --skip-line: #c6b8ee;
+    --warn: #96650b; --warn-soft: #fdf1dc; --warn-line: #e6c98c;
+    --info: #1d63c9; --info-soft: #e7effc; --info-line: #b3ccf0;
+    --shadow: 0 1px 2px rgba(17,26,36,.05), 0 10px 28px -16px rgba(17,26,36,.25);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --bg: #eef1f5; --surface: #ffffff; --surface-2: #f5f7fa; --raise: #eceff4;
+      --border: #d4dae2; --hair: #e5e9ef;
+      --text: #29323c; --muted: #616c7a; --heading: #111a24;
+      --accent: #0d8f6f; --accent-2: #2563eb;
+      --pass: #0f8a5f; --pass-soft: #e3f5ec; --pass-line: #a5d9c2;
+      --fail: #c62f38; --fail-soft: #fdeaea; --fail-line: #edb4b6;
+      --skip: #6d4ec9; --skip-soft: #efeafc; --skip-line: #c6b8ee;
+      --warn: #96650b; --warn-soft: #fdf1dc; --warn-line: #e6c98c;
+      --info: #1d63c9; --info-soft: #e7effc; --info-line: #b3ccf0;
+      --shadow: 0 1px 2px rgba(17,26,36,.05), 0 10px 28px -16px rgba(17,26,36,.25);
+      color-scheme: light;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--font-mono); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 1.6rem clamp(.85rem, 3vw, 2rem) 5rem; }
+
+  /* ---------- header ---------- */
+  header.top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.4rem; }
+  .brand { display: flex; align-items: baseline; gap: .55rem; }
+  .brand h1 {
+    font-family: var(--font-display); font-weight: 600; color: var(--heading);
+    font-size: clamp(1.5rem, 3.4vw, 2.1rem); margin: 0; letter-spacing: -.015em;
+  }
+  .brand .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--accent); }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .68rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 .35rem;
+  }
+  .runmeta { display: flex; flex-wrap: wrap; gap: .35rem .9rem; font-size: .78rem; color: var(--muted); }
+  .runmeta .k { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .08em; font-size: .66rem; opacity: .8; }
+  .actions { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+
+  button, .btn {
+    font: inherit; font-size: .8rem; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: .38rem .7rem;
+    cursor: pointer; display: inline-flex; align-items: center; gap: .4rem;
+  }
+  button:hover, .btn:hover { background: var(--raise); }
+
+  /* ---------- summary tiles ---------- */
+  .tiles { display: grid; gap: .8rem; margin: 1.6rem 0 0;
+           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .85rem 1rem; box-shadow: var(--shadow);
+  }
+  .tile .label {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .tile .big { font-size: 1.75rem; font-weight: 600; color: var(--heading); line-height: 1.15; margin: .25rem 0 .1rem; }
+  .tile .big small { font-size: .8rem; font-weight: 400; color: var(--muted); }
+  .tile .sub { font-size: .76rem; color: var(--muted); }
+  .bar { display: flex; height: 6px; border-radius: 99px; overflow: hidden; background: var(--raise); margin-top: .55rem; }
+  .bar span { display: block; }
+  .bar .p { background: var(--pass); } .bar .f { background: var(--fail); } .bar .s { background: var(--skip); }
+  .bar .c { background: var(--accent); } .bar .q { background: var(--info); }
+
+  /* ---------- tabs ---------- */
+  nav.tabs { margin: 1.8rem 0 0; border-bottom: 1px solid var(--border); }
+  nav.tabs .tabrow { display: flex; flex-wrap: wrap; gap: .3rem; }
+  nav.tabs button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    border-radius: 0; padding: .55rem .8rem; color: var(--muted); font-size: .86rem;
+  }
+  nav.tabs button:hover { background: var(--hair); color: var(--text); }
+  nav.tabs button[aria-selected="true"] { color: var(--heading); border-bottom-color: var(--accent); font-weight: 600; }
+  nav.tabs .n { font-family: var(--font-mono); font-size: .72rem; opacity: .75; }
+
+  main { margin-top: 1.4rem; }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem; }
+  .search {
+    flex: 1 1 240px; min-width: 180px; font: inherit; font-size: .85rem; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .45rem .7rem;
+  }
+  .search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .chip {
+    font-size: .78rem; padding: .3rem .65rem; border-radius: 99px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { color: var(--heading); border-color: var(--cl, var(--accent)); background: var(--cs, var(--raise)); font-weight: 600; }
+  .chip.pass { --cl: var(--pass-line); --cs: var(--pass-soft); }
+  .chip.fail { --cl: var(--fail-line); --cs: var(--fail-soft); }
+  .chip.skip { --cl: var(--skip-line); --cs: var(--skip-soft); }
+  .chip .n { font-family: var(--font-mono); opacity: .8; }
+
+  /* ---------- cards / sections ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 1rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .8rem; margin: 2rem 0 .9rem; }
+  .sec-head h2 { font-family: var(--font-display); font-size: 1.22rem; color: var(--heading); margin: 0; font-weight: 600; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--hair); }
+  .sec-head .n { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); }
+  .note { font-size: .83rem; color: var(--muted); max-width: 78ch; }
+  .empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); font-size: .9rem; }
+
+  /* ---------- test tree ---------- */
+  .grp { border-top: 1px solid var(--hair); }
+  .card > .grp:first-child { border-top: none; }
+  .grp > summary {
+    display: flex; align-items: center; gap: .6rem; padding: .6rem .9rem;
+    cursor: pointer; background: var(--surface-2); list-style: none;
+  }
+  .grp > summary::-webkit-details-marker { display: none; }
+  .grp > summary::before {
+    content: "▸"; color: var(--muted); font-size: .7rem; width: .7rem; flex: none;
+    transition: transform .12s ease;
+  }
+  .grp[open] > summary::before { transform: rotate(90deg); }
+  .grp > summary:hover { background: var(--raise); }
+  .grp .gname { font-family: var(--font-mono); font-size: .84rem; color: var(--heading); }
+  .grp .gmeta { margin-left: auto; display: flex; gap: .5rem; align-items: center; font-size: .74rem; color: var(--muted); }
+
+  .tests { list-style: none; margin: 0; padding: 0; }
+  .tests > li { border-top: 1px solid var(--hair); }
+  .t { display: flex; align-items: center; gap: .6rem; padding: .45rem .9rem .45rem 1.9rem; cursor: pointer; list-style: none; }
+  .t::-webkit-details-marker { display: none; }
+  .t:hover { background: var(--surface-2); }
+  .t .name { font-family: var(--font-mono); font-size: .82rem; overflow-wrap: anywhere; }
+  .t .right { margin-left: auto; display: flex; gap: .7rem; align-items: center; font-size: .74rem; color: var(--muted); }
+  .dur { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .pill {
+    font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: .1rem .45rem; border-radius: 5px; border: 1px solid var(--pl, var(--border));
+    background: var(--ps, var(--raise)); color: var(--pc, var(--muted)); white-space: nowrap;
+  }
+  .pill.passed { --pc: var(--pass); --ps: var(--pass-soft); --pl: var(--pass-line); }
+  .pill.failed { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }
+  .pill.skipped { --pc: var(--skip); --ps: var(--skip-soft); --pl: var(--skip-line); }
+  .pill.covered { --pc: var(--pass); --ps: var(--pass-soft); --pl: var(--pass-line); }
+  .pill.query-only { --pc: var(--warn); --ps: var(--warn-soft); --pl: var(--warn-line); }
+  .pill.schema { --pc: var(--info); --ps: var(--info-soft); --pl: var(--info-line); }
+  .pill.unused { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }
+  .pill.plain { --pc: var(--muted); }
+
+  .detail { padding: .3rem .9rem 1rem 1.9rem; background: var(--surface-2); font-size: .82rem; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .8rem; }
+  .kv dt { font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .terms { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .15rem; }
+  .term-chip {
+    font-family: var(--font-mono); font-size: .74rem; padding: .08rem .4rem;
+    border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text);
+  }
+
+  /* ---------- coverage table ---------- */
+  .tblwrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .84rem; }
+  th, td { text-align: left; padding: .4rem .7rem; border-top: 1px solid var(--hair); }
+  thead th {
+    border-top: none; border-bottom: 1px solid var(--border); background: var(--surface-2);
+    font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--muted); font-weight: 600; white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
+  }
+  th.c, td.c { text-align: center; }
+  tbody tr.term { cursor: pointer; }
+  tbody tr.term:hover { background: var(--surface-2); }
+  tbody tr.ex > td { background: var(--surface-2); font-size: .8rem; padding-top: .2rem; padding-bottom: .2rem; }
+  .tname { font-family: var(--font-mono); white-space: nowrap; }
+  .glyph { color: var(--muted); opacity: .8; }
+  .yes { color: var(--pass); } .no { color: var(--muted); opacity: .45; }
+  abbr { text-decoration: none; border-bottom: 1px dotted var(--muted); cursor: help; }
+
+  /* ---------- cq / issue cards ---------- */
+  .cq { padding: .85rem 1rem; border-top: 1px solid var(--hair); }
+  .card > .cq:first-child { border-top: none; }
+  .cq .q { font-size: .98rem; color: var(--heading); font-weight: 600; margin: 0 0 .4rem; }
+  .cq .badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+  .cq ul { margin: .25rem 0 0; padding-left: 1.1rem; }
+  .cq li { margin: .15rem 0; }
+  .warnrow { color: var(--warn); }
+
+  /* ---------- embedded source ---------- */
+  a.srclink { border-bottom: 1px dotted currentColor; }
+  .src { margin-top: .5rem; }
+  .src > summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: .5rem;
+    font-family: var(--font-mono); font-size: .76rem; color: var(--muted);
+    padding: .25rem 0;
+  }
+  .src > summary::-webkit-details-marker { display: none; }
+  .src > summary::before { content: "▸"; font-size: .7rem; transition: transform .12s ease; }
+  .src[open] > summary::before { transform: rotate(90deg); }
+  .src > summary:hover { color: var(--text); }
+  pre.code {
+    margin: .3rem 0 0; padding: .7rem .85rem; overflow: auto; max-height: 24rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--font-mono); font-size: .76rem; line-height: 1.5;
+    white-space: pre; tab-size: 2;
+  }
+  /* Turtle / SPARQL tokens. Punctuation and strings recede; the terms, keywords
+     and variables — what you are actually reading — come forward. */
+  .tok-comment { color: var(--muted); font-style: italic; }
+  .tok-string  { color: var(--pass); }
+  .tok-iri     { color: var(--accent-2); }
+  .tok-pname   { color: var(--accent); }
+  .tok-bnode   { color: var(--muted); }
+  .tok-kw      { color: var(--warn); font-weight: 600; }
+  .tok-fn      { color: var(--accent-2); }
+  .tok-var     { color: var(--skip); }
+  .tok-num     { color: var(--info); }
+  .tok-suffix  { color: var(--muted); }
+  .tok-punct   { color: var(--muted); opacity: .7; }
+  /* A string that names a file this page embedded. */
+  a.tok-file { color: var(--pass); text-decoration: underline; text-decoration-style: dotted; }
+  a.tok-file:hover { color: var(--accent); text-decoration-style: solid; }
+
+  /* ---------- files pane ---------- */
+  .filepane { display: grid; grid-template-columns: minmax(180px, 15rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  @media (max-width: 720px) { .filepane { grid-template-columns: 1fr; } }
+  .filelist { padding: .4rem; max-height: 74vh; overflow: auto; }
+  .filegroup {
+    display: flex; gap: .4rem; align-items: baseline; padding: .5rem .55rem .3rem;
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .filegroup .n { margin-left: auto; }
+  .fileitem {
+    display: flex; flex-direction: column; align-items: flex-start; gap: .1rem;
+    width: 100%; text-align: left; background: none; border: none; border-radius: 8px;
+    padding: .35rem .55rem; cursor: pointer;
+  }
+  .fileitem:hover { background: var(--surface-2); }
+  .fileitem[aria-pressed="true"] { background: var(--raise); }
+  .fileitem[aria-pressed="true"] .fname { color: var(--accent); font-weight: 600; }
+  .fileitem .fname { font-family: var(--font-mono); font-size: .8rem; overflow-wrap: anywhere; }
+  .fileitem .fmeta { font-size: .68rem; color: var(--muted); overflow-wrap: anywhere; }
+  .filebody { display: flex; flex-direction: column; max-height: 74vh; }
+  .filebody .head {
+    display: flex; align-items: center; gap: .8rem; padding: .55rem .9rem;
+    border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .filebody .head .path { font-family: var(--font-mono); font-size: .78rem; overflow-wrap: anywhere; }
+  .filebody pre.code { margin: 0; border: none; border-radius: 0; max-height: none; flex: 1; }
+
+  /* source overlay, opened from any file reference */
+  .sheet {
+    position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+    background: rgba(0,0,0,.6); padding: clamp(.5rem, 4vh, 3rem) clamp(.5rem, 4vw, 3rem);
+  }
+  .sheet .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column;
+    max-height: 100%; width: 100%; max-width: 980px; margin: 0 auto; overflow: hidden;
+  }
+  .sheet .head {
+    display: flex; align-items: center; gap: .8rem; padding: .6rem .9rem;
+    border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .sheet .head .path { font-family: var(--font-mono); font-size: .8rem; overflow-wrap: anywhere; }
+  .btns { margin-left: auto; display: flex; gap: .4rem; align-items: center; flex: none; }
+  .sheet pre.code { margin: 0; border: none; border-radius: 0; max-height: none; flex: 1; }
+
+  /* ---------- dropzone ---------- */
+  .drop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center;
+    z-index: 20; font-size: 1.1rem; color: #fff; pointer-events: none;
+  }
+  .drop .inner { border: 2px dashed var(--accent); border-radius: 16px; padding: 3rem 4rem; background: var(--surface); color: var(--text); }
+  [hidden] { display: none !important; }
+  .err {
+    background: var(--fail-soft); color: var(--fail); padding: 1rem;
+    border: 1px solid var(--fail-line); border-radius: var(--radius);
+    white-space: pre-wrap;              /* load errors explain themselves at length */
+    font-size: .86rem; line-height: 1.5;
+  }
+  footer { margin-top: 3rem; font-size: .76rem; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<!-- The page builds itself: the two JSON blocks below are the only markup, and
+     VanJS constructs the DOM from the RDF in them. Everything is inlined at
+     render time from mustrd/templates/viewer/ — see mustrd/viewer.py. -->
+<script id="mustrd-data" type="application/json">"@prefix cov: \u003chttps://mustrd.org/coverage/\u003e .\n@prefix cq: \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix dqv: \u003chttp://www.w3.org/ns/dqv#\u003e .\n@prefix foaf: \u003chttp://xmlns.com/foaf/0.1/\u003e .\n@prefix gov: \u003chttp://example.org/governance#\u003e .\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix owl: \u003chttp://www.w3.org/2002/07/owl#\u003e .\n@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix prov: \u003chttp://www.w3.org/ns/prov#\u003e .\n@prefix rdfs: \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e .\n@prefix xsd: \u003chttp://www.w3.org/2001/XMLSchema#\u003e .\n\n\u003chttp://example.org/place/example/populationOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cq:question \"What is the population of Rotterdam?\" ;\n    cov:sourceFile \"specs/population-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/assertion/countryOfRotterdamCQ/countryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:outcome cov:Passed .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/assertion/divisionAndCountryOfRotterdamCQ/divisionAndCountryOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:outcome cov:Passed ;\n    cov:requiresOntology place: .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/assertion/duplicate/continentOfRotterdamCQ\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:duplicateOf \u003chttp://example.org/place/example/continentOfRotterdamCQCopy\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/continentOfRotterdamCQ\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/assertion/duplicate/continentOfRotterdamCQCopy\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:duplicateOf \u003chttp://example.org/place/example/continentOfRotterdamCQ\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/continentOfRotterdamCQCopy\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/assertion/mayorOfRotterdamCQ/mayorOfRotterdam\u003e a cov:Assertion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:onCompetencyQuestion \u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e ;\n    cov:onTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:outcome cov:Passed .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/tbox-in-data/divisionAndCountryOfRotterdam\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:aboutTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:detail \"place:Province a owl:Class\",\n        \"place:Province rdfs:subClassOf place:AdministrativeDivision\" ;\n    cov:issueType cov:TBoxInTestData .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/appointedOn\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:aboutTerm gov:appointedOn ;\n    cov:aboutTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/hasEconomicArea\u003e a cov:QualityIssue ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:aboutTerm place:hasEconomicArea ;\n    cov:aboutTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:issueType cov:UsedButNotDeclared ;\n    cov:reference \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/measurement/termCoverageByCompetencyQuestions\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByCompetencyQuestions ;\n    dqv:value 0.7778 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/measurement/termCoverageByTests\u003e a dqv:QualityMeasurement ;\n    dqv:computedOn gov:,\n        \u003chttp://example.org/governance/1.0.0\u003e,\n        place:,\n        \u003chttp://example.org/place/1.0.0\u003e ;\n    dqv:isMeasurementOf cov:termCoverageByTests ;\n    dqv:value 0.8889 ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/result/http.__example.org_place_example_continentOfRotterdam-duplicate-competency-questions.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0025 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/continentOfRotterdam\u003e ;\n    cov:testName \"duplicate-competency-questions.mustrd.ttl\" ;\n    cov:testType \"mustrd\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/result/http.__example.org_place_example_countryOfRotterdam-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0044 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cov:testName \"country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"mustrd\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/result/http.__example.org_place_example_divisionAndCountryOfRotterdam-division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0049 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cov:testName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"mustrd\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/result/http.__example.org_place_example_mayorOfRotterdam-mayor-of-rotterdam.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0032 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cov:testName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:testType \"mustrd\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/result/http.__example.org_place_example_regionLookup-region-lookup.mustrd.ttl\u003e a cov:TestResult ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:className \"rdflib\" ;\n    cov:duration 0.0024 ;\n    cov:module \"docs/examples/geography-example/mustrd-config.ttl\" ;\n    cov:resultOutcome cov:Passed ;\n    cov:resultTest \u003chttp://example.org/place/example/regionLookup\u003e ;\n    cov:testName \"region-lookup.mustrd.ttl\" ;\n    cov:testType \"mustrd\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.Mayor\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.Mayor/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term gov:Mayor .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.governs\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.governs/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term gov:governs .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.AdministrativeDivision\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:QueryOnly ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:QueryOnly ;\n    cov:term place:AdministrativeDivision .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/divisionAndCountryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/mayorOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:City .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Continent\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Continent/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Continent .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Country\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Country/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Country/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Country .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Place\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"domain of place:isLocatedIn\",\n        \"range of place:isLocatedIn\",\n        \"superclass of place:AdministrativeDivision\",\n        \"superclass of place:City\",\n        \"superclass of place:Continent\",\n        \"superclass of place:Country\",\n        \"superclass of place:Province\",\n        \"superclass of place:Region\" ;\n    cov:term place:Place .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Province\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Province/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Province .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Region\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Unused ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Region/by/regionLookup\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"class\" ;\n    cov:role cov:Covered ;\n    cov:term place:Region .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.basedOnStandard\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Structural ;\n    cov:inData false ;\n    cov:inQuery false ;\n    cov:kind \"property\" ;\n    cov:role cov:Structural ;\n    cov:structuralReason \"ontology property\" ;\n    cov:term place:basedOnStandard .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.isLocatedIn\u003e a cov:TermCoverage ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cov:cqRole cov:Covered ;\n    cov:exercise \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.isLocatedIn/by/countryOfRotterdam\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:kind \"property\" ;\n    cov:role cov:Covered ;\n    cov:term place:isLocatedIn .\n\nplace:basedOnStandard a owl:OntologyProperty ;\n    rdfs:comment \"The published standard this vocabulary is based on.\" .\n\n\u003chttp://example.org/place/example/continentOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_continent.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_duplicate-competency-questions.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_continentOfRotterdam/0\u003e ;\n    cov:usesInData \u003chttp://example.org/world#onContinent\u003e ;\n    cov:usesInQuery \u003chttp://example.org/world#onContinent\u003e ;\n    must:specFileName \"duplicate-competency-questions.mustrd.ttl\" ;\n    must:specSourceFile \"specs/duplicate-competency-questions.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/countryOfRotterdam\u003e ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cov:sourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cov:sourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    prov:wasGeneratedBy \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e ;\n    cq:cqSpec \u003chttp://example.org/place/example/mayorOfRotterdam\u003e ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cov:sourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/#tool\u003e a prov:SoftwareAgent ;\n    rdfs:label \"mustrd\" ;\n    owl:versionInfo \"0.7.4\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/appointedOn/by/mayorOfRotterdam\u003e a cov:Reference ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/issue/used-but-not-declared/hasEconomicArea/by/countryOfRotterdam\u003e a cov:Reference ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_continent.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"data/continent.ttl\" ;\n    cov:fileReference \"continent.ttl\" ;\n    cov:fileText \"\"\"# Instance data for the continentOfRotterdam test. It uses a namespace OUTSIDE\n# the ontologies under test (world:), on purpose \u2014 so the test touches no declared\n# term and changes no coverage number.\n@prefix world: \u003chttp://example.org/world#\u003e .\n@prefix ex:    \u003chttp://example.org/\u003e .\n\nex:Rotterdam world:onContinent world:Europe .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_country.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"data/country.ttl\" ;\n    cov:fileReference \"country.ttl\" ;\n    cov:fileText \"\"\"@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix ex:    \u003chttp://example.org/\u003e .\n\nex:Rotterdam a place:City    ; place:isLocatedIn ex:NL .\n# place:hasEconomicArea is used here but is not declared in place.ttl \u2014 the\n# report flags it as \"used but not declared\".\nex:NL        a place:Country ; place:isLocatedIn ex:Europe ; place:hasEconomicArea ex:EU .\nex:Europe    a place:Continent .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_division.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"data/division.ttl\" ;\n    cov:fileReference \"division.ttl\" ;\n    cov:fileText \"\"\"@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix ex:    \u003chttp://example.org/\u003e .\n@prefix owl:   \u003chttp://www.w3.org/2002/07/owl#\u003e .\n@prefix rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e .\n\n# The class hierarchy the query's rdfs:subClassOf* path walks. (Only the axioms\n# the query needs; the authoritative declarations live in ontology/place.ttl.)\nplace:Province a owl:Class ; rdfs:subClassOf place:AdministrativeDivision .\n\nex:Rotterdam   a place:City     ; place:isLocatedIn ex:ZuidHolland .\nex:ZuidHolland a place:Province ; place:isLocatedIn ex:NL .\nex:NL          a place:Country  ; place:isLocatedIn ex:Europe .\nex:Europe      a place:Continent .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_mayor.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"data/mayor.ttl\" ;\n    cov:fileReference \"mayor.ttl\" ;\n    cov:fileText \"\"\"@prefix gov:   \u003chttp://example.org/governance#\u003e .\n@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix ex:    \u003chttp://example.org/\u003e .\n\nex:Aboutaleb a gov:Mayor ; gov:governs ex:Rotterdam .\nex:Rotterdam a place:City .\n\nex:Halsema   a gov:Mayor ; gov:governs ex:Amsterdam .\nex:Amsterdam a place:City .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_region.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"data/region.ttl\" ;\n    cov:fileReference \"region.ttl\" ;\n    cov:fileText \"\"\"@prefix place: \u003chttp://example.org/place#\u003e .\n@prefix ex:    \u003chttp://example.org/\u003e .\n\nex:Randstad a place:Region .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:countryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In which country is Rotterdam?\" ;\n    cq:cqSpec :countryOfRotterdam .\n\n:countryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"country.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"country\" ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/division-and-country-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:divisionAndCountryOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"In what administrative division of what country is Rotterdam?\" ;\n    cq:cqSpec :divisionAndCountryOfRotterdam .\n\n:divisionAndCountryOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"division.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"division\" ; must:boundValue ex:ZuidHolland ],\n                                                [ must:variable \"country\"  ; must:boundValue ex:NL ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_duplicate-competency-questions.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/duplicate-competency-questions.mustrd.ttl\" ;\n    cov:fileText \"\"\"# Two competency-question nodes that share the SAME question text but have\n# different CQ URIs \u2014 almost always a copy/paste slip. mustrd detects this: both\n# are excluded from the coverage calculation and reported under \"Duplicate\n# competency questions\", each linked to the other with cov:duplicateOf in the RDF\n# output.\n#\n# Detection is by *question text*, not tests: continentOfRotterdamCQ links a real\n# test (:continentOfRotterdam, below), yet it makes no difference \u2014 the duplicate\n# is still dropped and its cq:cqSpec ignored. And because that test deliberately\n# uses terms from a namespace OUTSIDE the ontologies under test (world:), it\n# touches no declared term, so the coverage report is unchanged by its presence.\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix world: \u003chttp://example.org/world#\u003e .\n@prefix :      \u003chttp://example.org/place/example/\u003e .\n\n:continentOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"On which continent is Rotterdam?\" ;\n    cq:cqSpec :continentOfRotterdam .      # a real test \u2014 but ignored (duplicate)\n\n:continentOfRotterdamCQCopy\n    a cq:CompetencyQuestion ;\n    cq:question \"On which continent is Rotterdam?\" .\n\n:continentOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"continent.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX world: \u003chttp://example.org/world#\u003e\nSELECT ?continent WHERE { ?city world:onContinent ?continent }\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"continent\" ; must:boundValue world:Europe ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/mayor-of-rotterdam.mustrd.ttl\" ;\n    cov:fileText \"\"\"@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix cq:   \u003chttps://mustrd.org/competencyQuestion/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:mayorOfRotterdamCQ\n    a cq:CompetencyQuestion ;\n    cq:question \"Who is the mayor of Rotterdam?\" ;\n    cq:cqSpec :mayorOfRotterdam .\n\n:mayorOfRotterdam\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"mayor.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 # Bind the city the question asks about, rather than hard-coding\n                 # it in the query text.\n                 must:hasBinding [ must:variable \"city\" ; must:boundValue ex:Rotterdam ] ;\n                 must:queryText \\\"\\\"\\\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"mayor\" ; must:boundValue ex:Aboutaleb ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_region-lookup.mustrd.ttl\u003e a cov:SourceFile ;\n    cov:filePath \"specs/region-lookup.mustrd.ttl\" ;\n    cov:fileText \"\"\"# A valid mustrd test that exercises place:Region, but which NO\n# cq:CompetencyQuestion links to. It shows the difference between the two\n# coverage numbers: this test covers place:Region (so Test Term Coverage is\n# \u2705 covered), yet no competency question does (so CQ Term Coverage is \u274c unused).\n@prefix must: \u003chttps://mustrd.org/model/\u003e .\n@prefix ex:   \u003chttp://example.org/\u003e .\n@prefix :     \u003chttp://example.org/place/example/\u003e .\n\n:regionLookup\n    a must:TestSpec ;\n    must:given [ a must:FileDataset ; must:file \"region.ttl\" ] ;\n    must:when  [ a must:TextSparqlSource ;\n                 must:queryType must:SelectSparql ;\n                 must:queryText \\\"\\\"\\\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\\\"\\\"\\\" ] ;\n    must:then  [ a must:TableDataset ;\n                 must:hasRow [ must:hasBinding [ must:variable \"region\" ; must:boundValue ex:Randstad ] ] ] .\n\"\"\" ;\n    cov:mediaType \"text/turtle\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_continentOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX world: \u003chttp://example.org/world#\u003e\nSELECT ?continent WHERE { ?city world:onContinent ?continent }\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?country WHERE {\n  ?city place:isLocatedIn ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nPREFIX rdfs:  \u003chttp://www.w3.org/2000/01/rdf-schema#\u003e\nSELECT ?division ?country WHERE {\n  ?city place:isLocatedIn ?division .\n  ?division a/rdfs:subClassOf* place:AdministrativeDivision .\n  ?division place:isLocatedIn+ ?country .\n  ?country a place:Country .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX gov:   \u003chttp://example.org/governance#\u003e\nPREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?mayor WHERE {\n  ?mayor a gov:Mayor ;\n         gov:governs ?city .\n  OPTIONAL { ?mayor gov:appointedOn ?date }\n  ?city a place:City .\n}\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_regionLookup/0\u003e a cov:SourceFile ;\n    cov:fileText \"\"\"PREFIX place: \u003chttp://example.org/place#\u003e\nSELECT ?region WHERE { ?region a place:Region }\"\"\" ;\n    cov:mediaType \"application/sparql-query\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.Mayor/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/gov.governs/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.AdministrativeDivision/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData false ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.City/by/mayorOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/mayorOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Continent/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Continent/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Country/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Country/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Province/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery false ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.Region/by/regionLookup\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/regionLookup\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.isLocatedIn/by/countryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/countryOfRotterdam\u003e .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/term/place.isLocatedIn/by/divisionAndCountryOfRotterdam\u003e a cov:Exercise ;\n    cov:inData true ;\n    cov:inQuery true ;\n    cov:test \u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e .\n\nplace:Province a owl:Class ;\n    rdfs:subClassOf place:AdministrativeDivision .\n\n\u003chttp://example.org/place/example/continentOfRotterdamCQ\u003e a cq:CompetencyQuestion ;\n    cq:question \"On which continent is Rotterdam?\" ;\n    cov:sourceFile \"specs/duplicate-competency-questions.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/continentOfRotterdamCQCopy\u003e a cq:CompetencyQuestion ;\n    cq:question \"On which continent is Rotterdam?\" ;\n    cov:sourceFile \"specs/duplicate-competency-questions.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/regionLookup\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_region.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_region-lookup.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_regionLookup/0\u003e ;\n    cov:usesInData place:Region ;\n    cov:usesInQuery place:Region ;\n    must:specFileName \"region-lookup.mustrd.ttl\" ;\n    must:specSourceFile \"specs/region-lookup.mustrd.ttl\" .\n\ngov: a owl:Ontology ;\n    rdfs:comment \"A tiny vocabulary for governance roles and the places they govern.\" ;\n    owl:versionIRI \u003chttp://example.org/governance/1.0.0\u003e ;\n    cov:sourceFile \"ontology/governance.ttl\" .\n\ngov:Mayor a owl:Class ;\n    rdfs:comment \"A person who governs a city.\" ;\n    rdfs:subClassOf foaf:Person .\n\ngov:governs a owl:ObjectProperty ;\n    rdfs:comment \"Relates a person to a place they are responsible for governing.\" ;\n    rdfs:domain foaf:Person ;\n    rdfs:range place:City .\n\nplace:AdministrativeDivision a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Continent a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Region a owl:Class ;\n    rdfs:comment \"A broad area of land; not yet exercised by any competency question.\" ;\n    rdfs:subClassOf place:Place .\n\nplace: a owl:Ontology ;\n    rdfs:comment \"A minimal vocabulary for places and how they are geographically contained within one another.\" ;\n    owl:versionIRI \u003chttp://example.org/place/1.0.0\u003e ;\n    cov:sourceFile \"ontology/place.ttl\" .\n\nplace:Country a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:isLocatedIn a owl:ObjectProperty,\n        owl:TransitiveProperty ;\n    rdfs:comment \"Relates a place to a place that geographically contains it.\" ;\n    rdfs:domain place:Place ;\n    rdfs:range place:Place .\n\nplace:City a owl:Class ;\n    rdfs:subClassOf place:Place .\n\nplace:Place a owl:Class ;\n    rdfs:comment \"Anything with a geographic location.\" .\n\n\u003chttp://example.org/place/example/mayorOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_mayor.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_mayor-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_mayorOfRotterdam/0\u003e ;\n    cov:usesInData gov:Mayor,\n        gov:governs,\n        place:City ;\n    cov:usesInQuery gov:Mayor,\n        gov:appointedOn,\n        gov:governs,\n        place:City ;\n    must:specFileName \"mayor-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/mayor-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/countryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_country.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_countryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:hasEconomicArea,\n        place:isLocatedIn ;\n    cov:usesInQuery place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttp://example.org/place/example/divisionAndCountryOfRotterdam\u003e a must:TestSpec ;\n    cov:embeddedSource \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/data_division.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/file/specs_division-and-country-of-rotterdam.mustrd.ttl\u003e,\n        \u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6/source/query/http.__example.org_place_example_divisionAndCountryOfRotterdam/0\u003e ;\n    cov:usesInData place:City,\n        place:Continent,\n        place:Country,\n        place:Province,\n        place:isLocatedIn ;\n    cov:usesInQuery place:AdministrativeDivision,\n        place:Country,\n        place:isLocatedIn ;\n    must:specFileName \"division-and-country-of-rotterdam.mustrd.ttl\" ;\n    must:specSourceFile \"specs/division-and-country-of-rotterdam.mustrd.ttl\" .\n\n\u003chttps://mustrd.org/coverage/run/1793a2ce722b42509bc8750c77325ab6\u003e a cov:CoverageRun ;\n    prov:startedAtTime \"2026-07-28T13:44:24+00:00\"^^xsd:dateTime ;\n    prov:used gov:,\n        place: ;\n    prov:wasAssociatedWith \u003chttps://mustrd.org/#tool\u003e ;\n    cov:gitCommit \"0aeb060a4882bb46c783bd5660ad39426c873e6c\" .\n\n"</script>
+<script id="mustrd-config" type="application/json">{"srcBase": "../"}</script>
+<script>
+"use strict";
+/* ===================================================================
+   VanJS 1.6.1 — https://vanjs.org
+
+   Vendored verbatim from the npm package `vanjs-core@1.6.1`, with one
+   change: the trailing `export default {...}` becomes the return value
+   of an IIFE assigned to `van`, so it loads as a plain inline script
+   with no module or bundler step. Nothing else is altered.
+
+   MIT License
+
+   Copyright (c) 2023 VanJS (Vanilla JavaScript)
+
+   Permission is hereby granted, free of charge, to any person obtaining a
+   copy of this software and associated documentation files (the "Software"),
+   to deal in the Software without restriction, including without limitation
+   the rights to use, copy, modify, merge, publish, distribute, sublicense,
+   and/or sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+   =================================================================== */
+var van = (function () {
+  // This file consistently uses `let` keyword instead of `const` for reducing the bundle size.
+
+  // Global variables - aliasing some builtin symbols to reduce the bundle size.
+  let protoOf = Object.getPrototypeOf
+  let changedStates, derivedStates, curDeps, curNewDerives, alwaysConnectedDom = {isConnected: 1}
+  let gcCycleInMs = 1000, statesToGc, propSetterCache = {}
+  let objProto = protoOf(alwaysConnectedDom), funcProto = protoOf(protoOf), _undefined
+
+  let addAndScheduleOnFirst = (set, s, f, waitMs) =>
+    (set ?? (waitMs ? setTimeout(f, waitMs) : queueMicrotask(f), new Set)).add(s)
+
+  let runAndCaptureDeps = (f, deps, arg) => {
+    let prevDeps = curDeps
+    curDeps = deps
+    try {
+      return f(arg)
+    } catch (e) {
+      console.error(e)
+      return arg
+    } finally {
+      curDeps = prevDeps
+    }
+  }
+
+  let keepConnected = l => l.filter(b => b._dom?.isConnected)
+
+  let addStatesToGc = d => statesToGc = addAndScheduleOnFirst(statesToGc, d, () => {
+    for (let s of statesToGc)
+      s._bindings = keepConnected(s._bindings),
+      s._listeners = keepConnected(s._listeners)
+    statesToGc = _undefined
+  }, gcCycleInMs)
+
+  let stateProto = {
+    get val() {
+      curDeps?._getters?.add(this)
+      return this.rawVal
+    },
+
+    get oldVal() {
+      curDeps?._getters?.add(this)
+      return this._oldVal
+    },
+
+    set val(v) {
+      curDeps?._setters?.add(this)
+      if (v !== this.rawVal) {
+        this.rawVal = v
+        this._bindings.length + this._listeners.length ?
+          (derivedStates?.add(this), changedStates = addAndScheduleOnFirst(changedStates, this, updateDoms)) :
+          this._oldVal = v
+      }
+    },
+  }
+
+  let state = initVal => ({
+    __proto__: stateProto,
+    rawVal: initVal,
+    _oldVal: initVal,
+    _bindings: [],
+    _listeners: [],
+  })
+
+  let bind = (f, dom) => {
+    let deps = {_getters: new Set, _setters: new Set}, binding = {f}, prevNewDerives = curNewDerives
+    curNewDerives = []
+    let newDom = runAndCaptureDeps(f, deps, dom)
+    newDom = (newDom ?? document).nodeType ? newDom : new Text(newDom)
+    for (let d of deps._getters)
+      deps._setters.has(d) || (addStatesToGc(d), d._bindings.push(binding))
+    for (let l of curNewDerives) l._dom = newDom
+    curNewDerives = prevNewDerives
+    return binding._dom = newDom
+  }
+
+  let derive = (f, s = state(), dom) => {
+    let deps = {_getters: new Set, _setters: new Set}, listener = {f, s}
+    listener._dom = dom ?? curNewDerives?.push(listener) ?? alwaysConnectedDom
+    s.val = runAndCaptureDeps(f, deps, s.rawVal)
+    for (let d of deps._getters)
+      deps._setters.has(d) || (addStatesToGc(d), d._listeners.push(listener))
+    return s
+  }
+
+  let add = (dom, ...children) => {
+    for (let c of children.flat(Infinity)) {
+      let protoOfC = protoOf(c ?? 0)
+      let child = protoOfC === stateProto ? bind(() => c.val) :
+        protoOfC === funcProto ? bind(c) : c
+      child != _undefined && dom.append(child)
+    }
+    return dom
+  }
+
+  let tag = (ns, name, ...args) => {
+    let [{is, ...props}, ...children] = protoOf(args[0] ?? 0) === objProto ? args : [{}, ...args]
+    let dom = ns ? document.createElementNS(ns, name, {is}) : document.createElement(name, {is})
+    for (let [k, v] of Object.entries(props)) {
+      let getPropDescriptor = proto => proto &&
+        (Object.getOwnPropertyDescriptor(proto, k) ?? getPropDescriptor(protoOf(proto)))
+      let propSetter = !ns && !is && !name.includes("-") ?
+        propSetterCache[name + "," + k] ??= getPropDescriptor(protoOf(dom))?.set ?? 0 :
+        getPropDescriptor(protoOf(dom))?.set
+      let isEvent = k.startsWith("on")
+      let setter = isEvent ?
+        (v, oldV) => {
+          let event = k.slice(2)
+          dom.removeEventListener(event, oldV)
+          dom.addEventListener(event, v)
+        } :
+        propSetter ? propSetter.bind(dom) : dom.setAttribute.bind(dom, k)
+      let protoOfV = protoOf(v ?? 0)
+      isEvent || protoOfV === funcProto && (v = derive(v), protoOfV = stateProto)
+      protoOfV === stateProto ? bind(() => (setter(v.val, v._oldVal), dom)) : setter(v)
+    }
+    return add(dom, children)
+  }
+
+  let handler = ns => ({get: (_, name) => tag.bind(_undefined, ns, name)})
+
+  let update = (dom, newDom) => newDom ? newDom !== dom && dom.replaceWith(newDom) : dom.remove()
+
+  let updateDoms = () => {
+    let iterationsLeft = 100, derivedStatesArray = [...changedStates].filter(s => s.rawVal !== s._oldVal)
+    do {
+      derivedStates = new Set
+      for (let l of new Set(derivedStatesArray.flatMap(s => s._listeners = keepConnected(s._listeners))))
+        derive(l.f, l.s, l._dom), l._dom = _undefined
+    } while (--iterationsLeft && (derivedStatesArray = [...derivedStates]).length)
+    let changedStatesArray = [...changedStates].filter(s => s.rawVal !== s._oldVal)
+    changedStates = _undefined
+    for (let b of new Set(changedStatesArray.flatMap(s => s._bindings = keepConnected(s._bindings))))
+      update(b._dom, bind(b.f, b._dom)), b._dom = _undefined
+    for (let s of changedStatesArray) s._oldVal = s.rawVal
+  }
+  return {
+    tags: new Proxy(ns => new Proxy(tag, handler(ns)), handler()),
+    hydrate: (dom, f) => update(dom, bind(f, dom)),
+    add, state, derive,
+  }
+})();
+
+/* ======================================================================
+   1. Turtle parser  —  text -> {triples, prefixes}
+
+   Yes, a hand-written Turtle parser. Three reasons it earns its place:
+
+   Nothing to compromise. This report is meant to travel — a CI artifact, an
+   email attachment, a file on a static site opened years later. Every line it
+   executes is in the file you are reading, it fetches nothing at view time, and
+   its only vendored dependency is 127 auditable lines of VanJS. A page that
+   pulls a parser from a CDN at view time is a supply chain, and a report is a
+   record: it should not be able to change its mind about what a run said, and
+   nobody should have to trust a registry to read one.
+
+   It is cheap. 235 lines against roughly 50KB for a minified N3.js — which is an
+   excellent library and the right answer if this ever needs to be a general RDF
+   reader. Note what the page actually invites: dropping in *another mustrd run*,
+   to compare or merge it. That input is Turtle mustrd emitted, from a version of
+   this same codebase. Arbitrary RDF from anywhere is explicitly not the promise;
+   it usually works, and when it does not it fails loudly and says so, with the
+   JSON-LD reader below as the way through. If that promise ever widens, this is
+   the file to replace, and `parseTurtle` has exactly one call site.
+
+   And it is a fair advertisement for the format. That a usefully complete
+   reader for a graph serialisation fits in 235 lines is most of the argument
+   for Turtle: the grammar is small, the data is self-describing, and the whole
+   pipeline — spec, ontology, coverage, results — stays one kind of thing all
+   the way to the browser.
+
+   Scope: prefix/base directives (both syntaxes), IRIs, prefixed names with
+   escapes and %-encoding, all four string forms, datatypes and language tags,
+   numbers, booleans, `a`, blank node labels, [] property lists, () collections.
+   Not RDF-star, not TriG graphs, no full Unicode PN_CHARS validation. It throws
+   with an offset and a snippet rather than quietly mis-parsing, and the JSON-LD
+   reader below is the escape hatch when a real parser produced the file.
+
+   TriG is the intended next step, not a reason to reach for N3.js. Runs
+   accumulated over time want a graph each — `GRAPH <…/run/{sha}> { … }` — so the
+   viewer can hold a history and diff it, which is the whole point of minting
+   stable IRIs in the first place. The grammar delta is small: a `GRAPH`-prefixed
+   or bare `<iri> { … }` block, and `{ … }` for the default graph. The work is
+   downstream of the parse, not in it — `triples.push` here is a single funnel
+   that becomes `quads.push`, `makeStore` grows a graph dimension, and the model
+   readers gain an opinion about which run they are reading. Deliberately not
+   started: half a graph model — parsing TriG and then flattening it — would lose
+   exactly the information a run history is for.
+
+   Terms are interned as strings so the indexes can use plain Maps:
+     IRI      "<iri>"
+     blank    "_:id"
+     literal  "L" SEP lang SEP datatype SEP lexical-form   (SEP = U+0001)
+   ====================================================================== */
+var RDF  = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+var RDFS = "http://www.w3.org/2000/01/rdf-schema#";
+var OWL  = "http://www.w3.org/2002/07/owl#";
+var XSD  = "http://www.w3.org/2001/XMLSchema#";
+var SKOS = "http://www.w3.org/2004/02/skos/core#";
+var COV  = "https://mustrd.org/coverage/";
+var MUST = "https://mustrd.org/model/";
+var CQNS = "https://mustrd.org/competencyQuestion/";
+var DQV  = "http://www.w3.org/ns/dqv#";
+var PROV = "http://www.w3.org/ns/prov#";
+
+var SEP = "\u0001";                 // never occurs in an IRI or a sane literal
+function K(iri) { return "<" + iri + ">"; }
+function isIri(k) { return k.charCodeAt(0) === 60; }
+function isLit(k) { return k.charCodeAt(0) === 76 && k.charCodeAt(1) === 1; }
+function iriOf(k) { return k.slice(1, -1); }
+function litOf(k) {
+  var a = k.indexOf(SEP, 2), b = k.indexOf(SEP, a + 1);
+  return { lang: k.slice(2, a), dt: k.slice(a + 1, b), v: k.slice(b + 1) };
+}
+function mkLit(v, dt, lang) { return "L" + SEP + (lang || "") + SEP + (dt || "") + SEP + v; }
+/** Display string for any term: a literal's lexical form, else the IRI / bnode id. */
+function text(k) {
+  if (k === null || k === undefined) return null;
+  return isLit(k) ? litOf(k).v : isIri(k) ? iriOf(k) : k;
+}
+function truthy(k) { return k !== null && k !== undefined && litOf(k).v === "true"; }
+function num(k) { if (k === null || k === undefined) return null; var f = parseFloat(litOf(k).v); return isNaN(f) ? null : f; }
+
+var PN_LOCAL_STOP = "\t\r\n \"'`;,()[]{}^";
+var NUM_RE = /[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/y;
+var BNODE_RE = /[^\t\r\n "'`;,()[\]{}^.]+/y;
+
+function parseTurtle(src) {
+  var i = 0, n = src.length, base = "", bn = 0;
+  var prefixes = Object.create(null), triples = [];
+
+  function fail(msg) {
+    var near = src.slice(Math.max(0, i - 40), i + 40).replace(/\s+/g, " ");
+    throw new Error("Turtle: " + msg + " at offset " + i + " near …" + near + "…");
+  }
+  function ws() {
+    for (;;) {
+      while (i < n && (src[i] === " " || src[i] === "\t" || src[i] === "\n" || src[i] === "\r")) i++;
+      if (src[i] === "#") { while (i < n && src[i] !== "\n") i++; } else return;
+    }
+  }
+  function eat(s) { if (src.startsWith(s, i)) { i += s.length; return true; } return false; }
+  function eatCI(s) {
+    if (src.substr(i, s.length).toLowerCase() === s.toLowerCase()) { i += s.length; return true; }
+    return false;
+  }
+  function escape() {
+    i++;                                     // the backslash
+    var c = src[i++];
+    if (c === "t") return "\t";
+    if (c === "b") return "\b";
+    if (c === "n") return "\n";
+    if (c === "r") return "\r";
+    if (c === "f") return "\f";
+    if (c === "u") { var h = src.substr(i, 4); i += 4; return String.fromCharCode(parseInt(h, 16)); }
+    if (c === "U") { var H = src.substr(i, 8); i += 8; return String.fromCodePoint(parseInt(H, 16)); }
+    return c;                                // \" \' \\ and reserved-char escapes
+  }
+  function resolve(iri) {
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(iri) || !base) return iri;
+    try { return new URL(iri, base).href; } catch (e) { return iri; }
+  }
+  function iriRef() {
+    i++;                                     // '<'
+    var s = "";
+    while (i < n && src[i] !== ">") s += src[i] === "\\" ? escape() : src[i++];
+    if (src[i] !== ">") fail("unterminated IRI");
+    i++;
+    return resolve(s);
+  }
+  function pname() {
+    var start = i;
+    while (i < n && src[i] !== ":" && PN_LOCAL_STOP.indexOf(src[i]) < 0 && src[i] !== ".") i++;
+    if (src[i] !== ":") { i = start; return null; }
+    var pfx = src.slice(start, i);
+    i++;
+    var local = "";
+    while (i < n) {
+      var c = src[i];
+      if (c === "\\") { local += escape(); continue; }
+      if (c === "%") { local += src.substr(i, 3); i += 3; continue; }
+      if (PN_LOCAL_STOP.indexOf(c) >= 0) break;
+      if (c === ".") {                        // '.' is legal inside a local name, not at its end
+        var nx = src[i + 1];
+        if (nx === undefined || PN_LOCAL_STOP.indexOf(nx) >= 0 || nx === ".") break;
+      }
+      local += c; i++;
+    }
+    var ns = prefixes[pfx];
+    if (ns === undefined) fail('undefined prefix "' + pfx + ':"');
+    return ns + local;
+  }
+  function stringLit() {
+    var q = eat('"""') ? '"""' : eat("'''") ? "'''"
+          : src[i] === '"' ? (i++, '"') : src[i] === "'" ? (i++, "'") : null;
+    if (q === null) return null;
+    var s = "";
+    for (;;) {
+      if (i >= n) fail("unterminated string");
+      if (src.startsWith(q, i)) { i += q.length; return s; }
+      s += src[i] === "\\" ? escape() : src[i++];
+    }
+  }
+  function numberLit() {
+    NUM_RE.lastIndex = i;                    // sticky: no slicing, so parsing stays linear
+    var m = NUM_RE.exec(src);
+    if (!m) return null;
+    var lex = m[0];
+    i += lex.length;
+    var dt = /[eE]/.test(lex) ? XSD + "double" : lex.indexOf(".") >= 0 ? XSD + "decimal" : XSD + "integer";
+    return mkLit(lex, dt, null);
+  }
+  /** Any subject/object. Emits nested triples for [] property lists and () lists. */
+  function term() {
+    ws();
+    var c = src[i];
+    if (c === "<") return K(iriRef());
+    if (c === "_" && src[i + 1] === ":") {
+      i += 2;
+      BNODE_RE.lastIndex = i;                // '.' is not accepted, so "_:b0 ." terminates cleanly
+      var m = BNODE_RE.exec(src);
+      if (!m) fail("empty blank node label");
+      i += m[0].length;
+      return "_:" + m[0];
+    }
+    if (c === "[") {
+      i++;
+      var b = "_:b" + (bn++);
+      ws();
+      if (src[i] === "]") { i++; return b; }
+      predObjList(b);
+      ws();
+      if (src[i] !== "]") fail("expected ]");
+      i++;
+      return b;
+    }
+    if (c === "(") {
+      i++;
+      var items = [];
+      for (;;) { ws(); if (src[i] === ")") { i++; break; } if (i >= n) fail("unterminated collection"); items.push(term()); }
+      if (!items.length) return K(RDF + "nil");
+      var head = "_:b" + (bn++), cur = head;
+      for (var x = 0; x < items.length; x++) {
+        triples.push([cur, K(RDF + "first"), items[x]]);
+        var rest = x === items.length - 1 ? K(RDF + "nil") : "_:b" + (bn++);
+        triples.push([cur, K(RDF + "rest"), rest]);
+        cur = rest;
+      }
+      return head;
+    }
+    if (c === '"' || c === "'") {
+      var v = stringLit();
+      if (eat("^^")) { ws(); var dt = src[i] === "<" ? iriRef() : pname(); return mkLit(v, dt, null); }
+      if (src[i] === "@") { i++; var lg = ""; while (i < n && /[A-Za-z0-9-]/.test(src[i])) lg += src[i++]; return mkLit(v, null, lg); }
+      return mkLit(v, null, null);
+    }
+    if (c === "+" || c === "-" || c === "." || (c >= "0" && c <= "9")) {
+      var nl = numberLit();
+      if (nl) return nl;
+    }
+    if (src.startsWith("true", i) && PN_LOCAL_STOP.indexOf(src[i + 4] || " ") >= 0) { i += 4; return mkLit("true", XSD + "boolean", null); }
+    if (src.startsWith("false", i) && PN_LOCAL_STOP.indexOf(src[i + 5] || " ") >= 0) { i += 5; return mkLit("false", XSD + "boolean", null); }
+    var p = pname();
+    if (p === null) fail("unrecognised term");
+    return K(p);
+  }
+  function verb() {
+    ws();
+    if (src[i] === "a" && PN_LOCAL_STOP.indexOf(src[i + 1] || " ") >= 0) { i++; return K(RDF + "type"); }
+    if (src[i] === "<") return K(iriRef());
+    var p = pname();
+    if (p === null) fail("expected a predicate");
+    return K(p);
+  }
+  function predObjList(s) {
+    for (;;) {
+      var p = verb();
+      for (;;) {
+        triples.push([s, p, term()]);
+        ws();
+        if (src[i] === ",") { i++; continue; }
+        break;
+      }
+      ws();
+      if (src[i] === ";") {
+        i++; ws();
+        if (src[i] === "." || src[i] === "]" || i >= n) return;   // trailing ';'
+        continue;
+      }
+      return;
+    }
+  }
+
+  for (;;) {
+    ws();
+    if (i >= n) break;
+    if (src[i] === "@" || /^(prefix|base)\b/i.test(src.slice(i, i + 7))) {
+      var sparqlStyle = src[i] !== "@";
+      if (!sparqlStyle) i++;
+      if (eatCI("prefix")) {
+        ws();
+        var start = i;
+        while (i < n && src[i] !== ":") i++;
+        var pfx = src.slice(start, i);
+        i++; ws();
+        prefixes[pfx] = iriRef();
+        ws();
+        if (!sparqlStyle) { if (!eat(".")) fail("expected . after @prefix"); }
+        else eat(".");
+        continue;
+      }
+      if (eatCI("base")) {
+        ws(); base = iriRef(); ws();
+        if (!sparqlStyle) { if (!eat(".")) fail("expected . after @base"); } else eat(".");
+        continue;
+      }
+      fail("unknown directive");
+    }
+    var subj = term();
+    ws();
+    if (src[i] === ".") { i++; continue; }          // bare [] block
+    predObjList(subj);
+    ws();
+    if (!eat(".")) fail("expected . at end of statement");
+  }
+  return { triples: triples, prefixes: prefixes };
+}
+
+/* ======================================================================
+   2. JSON-LD (rdflib's expanded output) -> the same {triples, prefixes}
+   ====================================================================== */
+function parseJsonLd(src) {
+  var doc = JSON.parse(src);
+  var nodes = Array.isArray(doc) ? doc : doc["@graph"] ? doc["@graph"] : [doc];
+  var triples = [];
+  function objTerm(o) {
+    if (typeof o === "string") return K(o);
+    if (o["@id"]) return o["@id"].indexOf("_:") === 0 ? o["@id"] : K(o["@id"]);
+    if ("@value" in o) {
+      var v = o["@value"];
+      var dt = o["@type"] || (typeof v === "number" ? (Number.isInteger(v) ? XSD + "integer" : XSD + "decimal")
+                            : typeof v === "boolean" ? XSD + "boolean" : null);
+      return mkLit(String(v), dt, o["@language"] || null);
+    }
+    return null;
+  }
+  nodes.forEach(function (node) {
+    var id = node["@id"];
+    if (!id) return;
+    var s = id.indexOf("_:") === 0 ? id : K(id);
+    Object.keys(node).forEach(function (p) {
+      if (p === "@id") return;
+      var vals = Array.isArray(node[p]) ? node[p] : [node[p]];
+      var pk = p === "@type" ? K(RDF + "type") : K(p);
+      vals.forEach(function (v) {
+        var o = p === "@type" ? K(typeof v === "string" ? v : v["@id"]) : objTerm(v);
+        if (o) triples.push([s, pk, o]);
+      });
+    });
+  });
+  return { triples: triples, prefixes: Object.create(null) };
+}
+
+/* ======================================================================
+   3. Store — two indexes over interned terms, plus IRI shortening
+
+   SPO answers "objects of (subject, predicate)" and POS answers "subjects of
+   (predicate, object)", which between them cover every question the model layer
+   asks: walk out from a node, or find all nodes of a type. OSP would answer
+   "everything that points at this object" — nothing needs it yet, and an unused
+   index is just memory and a third place for `add` to go wrong. If TriG lands
+   (see turtle.js), a graph dimension is the addition that will matter, not OSP.
+   ====================================================================== */
+function makeStore() {
+  var spo = new Map(), pos = new Map(), all = [], seen = new Set();
+  var prefixes = Object.create(null), ordered = [];
+
+  function idx(m, a, b, c) {
+    var x = m.get(a); if (!x) { x = new Map(); m.set(a, x); }
+    var y = x.get(b); if (!y) { y = []; x.set(b, y); }
+    y.push(c);
+  }
+  function rebuildPrefixes() {
+    ordered = Object.keys(prefixes).map(function (p) { return [prefixes[p], p]; })
+      .sort(function (a, b) { return b[0].length - a[0].length; });
+  }
+  return {
+    prefixes: prefixes,
+    size: function () { return all.length; },
+    add: function (parsed) {
+      // First binding for a prefix wins, so merging a second file cannot silently
+      // rebind a prefix the first one already used for display.
+      Object.keys(parsed.prefixes).forEach(function (p) {
+        if (p && prefixes[p] === undefined) prefixes[p] = parsed.prefixes[p];
+      });
+      rebuildPrefixes();
+      parsed.triples.forEach(function (t) {
+        var sig = t[0] + "\u0002" + t[1] + "\u0002" + t[2];
+        if (seen.has(sig)) return;            // graphs merge cleanly (stable IRIs, no dupes)
+        seen.add(sig);
+        all.push(t);
+        idx(spo, t[0], t[1], t[2]);
+        idx(pos, t[1], t[2], t[0]);
+      });
+    },
+    /** Objects of (subjectKey, predicateIRI). */
+    objs: function (s, p) { var x = spo.get(s); if (!x) return []; return x.get(K(p)) || []; },
+    one: function (s, p) { var v = this.objs(s, p); return v.length ? v[0] : null; },
+    /** Subjects of (predicateIRI, objectKey). */
+    subj: function (p, oKey) { var x = pos.get(K(p)); if (!x) return []; return x.get(oKey) || []; },
+    typed: function (cls) { return this.subj(RDF + "type", K(cls)); },
+    has: function (s, p, oKey) { return this.objs(s, p).indexOf(oKey) >= 0; },
+    triples: function () { return all; },
+    /** IRI -> qname using the loaded @prefix bindings (longest namespace wins). */
+    short: function (iri) {
+      for (var x = 0; x < ordered.length; x++) {
+        if (iri.indexOf(ordered[x][0]) === 0) return ordered[x][1] + ":" + iri.slice(ordered[x][0].length);
+      }
+      return iri;
+    }
+  };
+}
+
+function localName(iri) {
+  var s = String(iri), h = s.lastIndexOf("#"), sl = s.lastIndexOf("/");
+  var cut = Math.max(h, sl);
+  return cut >= 0 ? s.slice(cut + 1) : s;
+}
+
+/* ======================================================================
+   4. Model — read the run out of the graph
+   ====================================================================== */
+var OUTCOME = {};
+OUTCOME[COV + "Passed"] = "passed";
+OUTCOME[COV + "Failed"] = "failed";
+OUTCOME[COV + "Skipped"] = "skipped";
+var ROLE = {};
+ROLE[COV + "Covered"] = "covered";
+ROLE[COV + "QueryOnly"] = "query-only";
+ROLE[COV + "Structural"] = "schema";
+ROLE[COV + "Unused"] = "unused";
+
+function outcomeOf(st, s, p) {
+  var o = st.one(s, p);
+  return o && isIri(o) ? (OUTCOME[iriOf(o)] || "failed") : null;
+}
+
+/** cov:SourceFile nodes attached to a spec: the verbatim Turtle it is defined by
+    and the SPARQL it ran, so the report needs no access to the original files. */
+function readSources(st, s) {
+  return st.objs(s, COV + "embeddedSource").map(function (n) {
+    return {
+      path: text(st.one(n, COV + "filePath")),
+      // How a spec named it (must:file "mayor.ttl"), when that is not the path —
+      // what lets the reference inside a spec link to the copy embedded here.
+      references: st.objs(n, COV + "fileReference").map(text),
+      media: text(st.one(n, COV + "mediaType")) || "text/turtle",
+      body: text(st.one(n, COV + "fileText")) || ""
+    };
+  }).sort(function (a, b) {
+    return sourceOrder(a) - sourceOrder(b) || (a.path || "").localeCompare(b.path || "");
+  });
+}
+
+/** Reading order for a test's sources: the spec that defines it, then the query it
+    runs, then the data it loads, then the SPARQL as executed. Alphabetical order
+    put the spec last, behind the files it references. */
+function sourceOrder(src) {
+  if (!src.path) return 3;                      // the query as executed
+  if (/\.mustrd\.ttl$/.test(src.path)) return 0;
+  return /sparql/i.test(src.media) ? 1 : 2;
+}
+
+/** {iri: {name, source, sources, …}} for every must:TestSpec in the graph. */
+function readSpecs(st) {
+  var out = {};
+  st.typed(MUST + "TestSpec").forEach(function (s) {
+    if (!isIri(s)) return;
+    out[iriOf(s)] = {
+      iri: iriOf(s),
+      name: text(st.one(s, MUST + "specFileName")) || localName(iriOf(s)),
+      source: text(st.one(s, MUST + "specSourceFile")),
+      sources: readSources(st, s),
+      inData: st.objs(s, COV + "usesInData").filter(isIri).map(iriOf).sort(),
+      inQuery: st.objs(s, COV + "usesInQuery").filter(isIri).map(iriOf).sort()
+    };
+  });
+  return out;
+}
+
+/** Every embedded source, indexed by the ways a report might refer to it — so a
+    file reference anywhere in the page can open the text that was actually read,
+    instead of linking into a filesystem the reader does not have.
+
+    Returns {byPath, byRef}: byPath for the report's own links (which use the
+    run-relative path), byRef for references as they appear inside a spec —
+    `must:file "mayor.ttl"`, `must:fileurl "file://./data/mayor.ttl"` — plus the
+    bare file name as a last resort. */
+function sourceIndex(specs) {
+  var byPath = {}, byRef = {}, list = [];
+  var note = function (key, src) {
+    if (key && !byRef[key]) byRef[key] = src;
+  };
+  Object.keys(specs).sort().forEach(function (specIri) {
+    (specs[specIri].sources || []).forEach(function (src) {
+      if (src.path) {
+        if (byPath[src.path]) return;             // one entry per file, not per spec
+        byPath[src.path] = src;
+        note(src.path, src);
+        note(src.path.split("/").pop(), src);
+        (src.references || []).forEach(function (ref) {
+          note(ref, src);
+          note(String(ref).replace(/^file:\/\//, "").replace(/^\.\//, ""), src);
+        });
+      }
+      // A query has no path — it is the text as executed — so it is identified by
+      // the spec that ran it.
+      src.id = src.path || (specIri + "#query" + list.length);
+      src.owner = specIri;
+      src.group = src.path && /\.mustrd\.ttl$/.test(src.path) ? "Specs"
+        : /sparql/i.test(src.media) ? "Queries" : "Data";
+      list.push(src);
+    });
+  });
+  return { byPath: byPath, byRef: byRef, list: list };
+}
+
+/** cov:TestResult records, grouped module -> class, Playwright-style. */
+function readTests(st, specs) {
+  var rows = st.typed(COV + "TestResult").map(function (r) {
+    var spec = st.one(r, COV + "resultTest");
+    var specIri = spec && isIri(spec) ? iriOf(spec) : null;
+    return {
+      status: outcomeOf(st, r, COV + "resultOutcome") || "failed",
+      type: text(st.one(r, COV + "testType")) || "",
+      module: text(st.one(r, COV + "module")) || "",
+      cls: text(st.one(r, COV + "className")) || "",
+      name: text(st.one(r, COV + "testName")) || localName(iriOf(r)),
+      duration: num(st.one(r, COV + "duration")),
+      spec: specIri ? specs[specIri] || { iri: specIri, name: localName(specIri) } : null,
+      source: text(st.one(r, COV + "sourceFile"))
+    };
+  });
+  rows.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+  var groups = [], byKey = new Map();
+  rows.forEach(function (t) {
+    var label = [t.module, t.cls].filter(Boolean).join(" › ") || "tests";
+    var g = byKey.get(label);
+    if (!g) { g = { label: label, tests: [], passed: 0, failed: 0, skipped: 0, duration: 0 }; byKey.set(label, g); groups.push(g); }
+    g.tests.push(t);
+    g[t.status] = (g[t.status] || 0) + 1;
+    g.duration += t.duration || 0;
+  });
+  groups.sort(function (a, b) { return a.label.localeCompare(b.label); });
+  var totals = { passed: 0, failed: 0, skipped: 0, duration: 0, total: rows.length };
+  rows.forEach(function (t) { totals[t.status] = (totals[t.status] || 0) + 1; totals.duration += t.duration || 0; });
+  return { groups: groups, totals: totals, rows: rows };
+}
+
+/** dqv:QualityMeasurement values, keyed by metric IRI. */
+function readMeasurements(st) {
+  var out = {};
+  st.typed(DQV + "QualityMeasurement").forEach(function (m) {
+    var metric = st.one(m, DQV + "isMeasurementOf");
+    if (metric && isIri(metric)) out[iriOf(metric)] = num(st.one(m, DQV + "value"));
+  });
+  return out;
+}
+
+function readOntologies(st) {
+  return st.typed(OWL + "Ontology").filter(isIri).map(function (o) {
+    return {
+      iri: iriOf(o),
+      path: text(st.one(o, COV + "sourceFile")),
+      version: text(st.one(o, OWL + "versionIRI")),
+      comment: text(st.one(o, RDFS + "comment")) || text(st.one(o, RDFS + "label"))
+    };
+  }).sort(function (a, b) { return a.iri.localeCompare(b.iri); });
+}
+
+/** cov:TermCoverage records -> {iri: {kind, role, cqRole, inData, inQuery, reasons, exercises}}. */
+function readTerms(st, specs) {
+  var terms = {};
+  st.typed(COV + "TermCoverage").forEach(function (tc) {
+    var t = st.one(tc, COV + "term");
+    if (!t || !isIri(t)) return;
+    var role = st.one(tc, COV + "role"), cq = st.one(tc, COV + "cqRole");
+    var exercises = st.objs(tc, COV + "exercise").map(function (e) {
+      var tst = st.one(e, COV + "test");
+      var iri = tst && isIri(tst) ? iriOf(tst) : null;
+      var meta = iri ? specs[iri] : null;
+      return {
+        iri: iri, name: (meta && meta.name) || (iri && localName(iri)) || "?",
+        source: meta && meta.source,
+        inData: truthy(st.one(e, COV + "inData")), inQuery: truthy(st.one(e, COV + "inQuery"))
+      };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    terms[iriOf(t)] = {
+      iri: iriOf(t),
+      kind: text(st.one(tc, COV + "kind")) || "class",
+      role: (role && isIri(role) && ROLE[iriOf(role)]) || "unused",
+      cqRole: cq && isIri(cq) ? ROLE[iriOf(cq)] || "unused" : null,
+      inData: truthy(st.one(tc, COV + "inData")),
+      inQuery: truthy(st.one(tc, COV + "inQuery")),
+      reasons: st.objs(tc, COV + "structuralReason").map(text).sort(),
+      exercises: exercises
+    };
+  });
+  return terms;
+}
+
+/** Order terms as an rdfs:subClassOf forest with rdfs:domain properties nested
+    beneath their class — the shape the Markdown report uses. Falls back to a
+    flat, namespace-sorted list when the ontology TBox is not in the graph. */
+function orderTerms(st, terms) {
+  var iris = Object.keys(terms);
+  var declared = new Set(iris);
+  var classes = iris.filter(function (t) { return terms[t].kind === "class"; });
+  var props = iris.filter(function (t) { return terms[t].kind !== "class"; });
+  var byShort = function (a, b) { return st.short(a).localeCompare(st.short(b)); };
+
+  var parent = {}, children = {};
+  classes.forEach(function (c) {
+    var sup = st.objs(K(c), RDFS + "subClassOf").filter(isIri).map(iriOf)
+      .filter(function (p) { return declared.has(p) && p !== c; }).sort(byShort);
+    if (sup.length) { parent[c] = sup[0]; (children[sup[0]] = children[sup[0]] || []).push(c); }
+  });
+  var attached = {}, loose = [];
+  props.sort(byShort).forEach(function (p) {
+    var dom = st.objs(K(p), RDFS + "domain").filter(isIri).map(iriOf)
+      .filter(function (d) { return declared.has(d); }).sort(byShort);
+    if (dom.length) (attached[dom[0]] = attached[dom[0]] || []).push(p);
+    else loose.push(p);
+  });
+
+  var rows = [], seen = new Set();
+  function walk(iri, depth, glyph) {
+    if (seen.has(iri)) return;
+    seen.add(iri);
+    rows.push({ iri: iri, depth: depth, glyph: glyph, t: terms[iri] });
+    (attached[iri] || []).forEach(function (p) { walk(p, depth + 1, "▸"); });
+    (children[iri] || []).sort(byShort).forEach(function (c) { walk(c, depth + 1, "↳"); });
+  }
+  classes.filter(function (c) { return !parent[c]; }).sort(byShort).forEach(function (c) { walk(c, 0, ""); });
+  classes.sort(byShort).forEach(function (c) { walk(c, 0, ""); });      // cycle safety net
+  loose.forEach(function (p) { walk(p, 0, ""); });
+  return rows;
+}
+
+function readCoverage(st, specs) {
+  var terms = readTerms(st, specs);
+  var iris = Object.keys(terms);
+  if (!iris.length) return null;
+  var m = readMeasurements(st);
+  var schema = iris.filter(function (t) { return terms[t].role === "schema"; });
+  var denom = iris.length - schema.length;
+  var covered = iris.filter(function (t) { return terms[t].role === "covered"; }).length;
+  var hasCq = m[COV + "termCoverageByCompetencyQuestions"] !== undefined;
+  var coveredCq = iris.filter(function (t) { return terms[t].cqRole === "covered"; }).length;
+  return {
+    terms: terms, rows: orderTerms(st, terms), ontologies: readOntologies(st),
+    declared: iris.length, schema: schema.length, denom: denom, covered: covered,
+    pct: denom ? Math.round(100 * covered / denom) : 0,
+    hasCq: hasCq, coveredCq: coveredCq,
+    cqPct: denom ? Math.round(100 * coveredCq / denom) : 0,
+    ratio: m[COV + "termCoverageByTests"], cqRatio: m[COV + "termCoverageByCompetencyQuestions"]
+  };
+}
+
+/** A run makes two kinds of cov:Assertion about a competency question: that a test
+    verified it (cov:onTest + cov:outcome), or that it duplicates another CQ
+    (cov:duplicateOf). Both are run-scoped — neither is a property of the CQ
+    itself — so they are read from the assertions and kept apart here. An assertion
+    with no cov:onTest is not a phantom test. */
+function readCqs(st, specs) {
+  var verifications = {}, duplicates = {};
+  st.typed(COV + "Assertion").forEach(function (a) {
+    var cq = st.one(a, COV + "onCompetencyQuestion");
+    if (!cq || !isIri(cq)) return;
+    var id = iriOf(cq);
+
+    var peers = st.objs(a, COV + "duplicateOf").filter(isIri).map(iriOf);
+    if (peers.length) {
+      duplicates[id] = (duplicates[id] || []).concat(peers);
+      return;
+    }
+    var t = st.one(a, COV + "onTest");
+    if (!t || !isIri(t)) return;
+    (verifications[id] = verifications[id] || []).push({
+      spec: specs[iriOf(t)] || { iri: iriOf(t), name: localName(iriOf(t)) },
+      status: outcomeOf(st, a, COV + "outcome"),
+      // An ontology whose class hierarchy the test matches its data *through*, so
+      // it has to be loaded for the test to pass. IRIs, not a flag: which ontology
+      // is the useful part.
+      requiresOntology: st.objs(a, COV + "requiresOntology").filter(isIri).map(iriOf)
+    });
+  });
+  var out = st.typed(CQNS + "CompetencyQuestion").filter(isIri).map(function (c) {
+    var iri = iriOf(c);
+    var linked = st.objs(c, CQNS + "cqSpec").filter(isIri).map(iriOf);
+    var tests = (verifications[iri] || []).sort(function (a, b) {
+      return ((a.spec && a.spec.name) || "").localeCompare((b.spec && b.spec.name) || "");
+    });
+    var resolved = new Set(tests.map(function (t) { return t.spec && t.spec.iri; }));
+    return {
+      iri: iri, name: localName(iri),
+      questions: st.objs(c, CQNS + "question").map(text).sort(),
+      source: text(st.one(c, COV + "sourceFile")),
+      duplicateOf: (duplicates[iri] || []).sort(),
+      tests: tests,
+      missing: linked.filter(function (l) { return !resolved.has(l) && !specs[l]; })
+    };
+  });
+  out.sort(function (a, b) { return ((a.questions[0] || a.name)).localeCompare(b.questions[0] || b.name); });
+  return out;
+}
+
+function readIssues(st, specs) {
+  function refs(issue) {
+    return st.objs(issue, COV + "reference").map(function (r) {
+      var t = st.one(r, COV + "test");
+      var iri = t && isIri(t) ? iriOf(t) : null;
+      var meta = iri ? specs[iri] : null;
+      return {
+        name: (meta && meta.name) || (iri && localName(iri)) || "?", source: meta && meta.source,
+        inData: truthy(st.one(r, COV + "inData")), inQuery: truthy(st.one(r, COV + "inQuery"))
+      };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+  var undeclared = st.subj(COV + "issueType", K(COV + "UsedButNotDeclared")).map(function (issue) {
+    var t = st.one(issue, COV + "aboutTerm");
+    return { term: t && isIri(t) ? iriOf(t) : "?", refs: refs(issue) };
+  }).sort(function (a, b) { return a.term.localeCompare(b.term); });
+  var tbox = st.subj(COV + "issueType", K(COV + "TBoxInTestData")).map(function (issue) {
+    var t = st.one(issue, COV + "aboutTest");
+    var meta = t && isIri(t) ? specs[iriOf(t)] : null;
+    return {
+      name: (meta && meta.name) || (t && isIri(t) ? localName(iriOf(t)) : "?"),
+      source: meta && meta.source,
+      axioms: st.objs(issue, COV + "detail").map(text).sort()
+    };
+  }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  return { undeclared: undeclared, tbox: tbox };
+}
+
+/** The run's own provenance. Each run mints a fresh IRI so runs accumulate rather
+    than clobber, and the revision is stated outright (cov:gitCommit, with
+    cov:gitCommitUrl as the clickable form) rather than inferred from a prov:used
+    link that happened to look like a commit URL. */
+function readRun(st) {
+  var runs = st.typed(COV + "CoverageRun");
+  if (!runs.length) return {};
+  var r = runs[0];
+  var agent = st.one(r, PROV + "wasAssociatedWith");
+  var iri = isIri(r) ? iriOf(r) : null;
+  return {
+    iri: iri,
+    slug: iri ? localName(iri) : null,
+    sha: text(st.one(r, COV + "gitCommit")),
+    commit: text(st.one(r, COV + "gitCommitUrl")),
+    repo: text(st.one(r, COV + "gitRepository")),
+    ciRun: text(st.one(r, COV + "ciRun")),
+    started: text(st.one(r, PROV + "startedAtTime")),
+    version: agent ? text(st.one(agent, OWL + "versionInfo")) : null
+  };
+}
+
+/* ======================================================================
+   5. UI — VanJS
+
+   Builds DOM, never HTML strings: text goes in as Text nodes, so there is no
+   escaping to get wrong, and state drives the updates. The whole UI is a
+   function of six states — the loaded model, the current tab, the filter text,
+   the outcome and role toggles, and the open source sheet — bound at the
+   smallest useful granularity, so typing in a filter re-renders the list but
+   not the toolbar it is typed into.
+   ====================================================================== */
+const {
+  a, abbr, button, code, dd, details, div, dl, dt, em, footer, h1, h2, header,
+  input, label, li, main: mainTag, nav, p, pre, section, small, span, strong,
+  summary, table, tbody, td, th, thead, tr, ul
+} = van.tags;
+const { state } = van;
+
+let CFG = {};
+
+/* ---- state ---- */
+const model = state(null);                  // the run, read out of the graph
+const tab = state("tests");
+const query = state("");
+const show = { passed: state(true), failed: state(true), skipped: state(true) };
+const ROLES = ["covered", "query-only", "schema", "unused"];
+const roleOn = Object.fromEntries(ROLES.map(r => [r, state(false)]));
+const sheet = state(null);                  // source file shown over the page
+const filePick = state(null);               // id of the file open in the Files tab
+const dragging = state(false);
+const failure = state("");                  // a load/parse error to surface
+
+/* ---- presentational helpers ---- */
+const pill = (kind, txt) => span({ class: "pill " + kind }, txt || kind);
+const tick = on => span({ class: on ? "yes" : "no" }, on ? "✓" : "–");
+const dur = s => s == null ? "" : s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(2) + "s";
+const secHead = (title, n) =>
+  div({ class: "sec-head" }, h2(title), span({ class: "rule" }),
+      n === undefined ? [] : span({ class: "n" }, n));
+const empty = msg => div({ class: "card" }, p({ class: "empty" }, msg));
+const short = iri => model.val ? model.val.store.short(iri) : iri;
+const hits = text =>
+  !query.val || String(text).toLowerCase().includes(query.val.toLowerCase());
+
+/* ---- source references ----------------------------------------------------
+   A path in the graph only resolves from the directory the run happened in, so
+   prefer the copy embedded in this page (opens in place), then a configured base
+   URL (a repo link, when published from CI), and otherwise plain text rather
+   than a link that would 404. */
+const srcBase = () => CFG.srcBase || "";
+
+const srcRef = (path, name = path) => {
+  if (!path) return name || "";
+  const src = model.val?.sources[path];
+  if (src) {
+    return a({ class: "srclink", href: "#", title: "Show " + path,
+               onclick: ev => {
+                 ev.preventDefault();
+                 copied.val = false;          // no stale "Copied ✓" on a new file
+                 sheet.val = src;
+               } }, name);
+  }
+  const base = srcBase();
+  return base ? a({ href: base + path, title: path }, name)
+              : span({ title: path }, name);
+};
+
+/* ---- syntax highlighting for the embedded Turtle / SPARQL -----------------
+   A token walk rather than a chain of replacements, because two things a reader
+   of a mustrd spec actually needs cannot be done with a flat regex:
+
+   Nested SPARQL. A spec's query arrives as `must:queryText """SELECT …"""`. As
+   one string token that is a wall of a single colour, which is exactly the part
+   you came to read. So the walk remembers the predicate it just passed, and when
+   a long string belongs to a query predicate — or simply opens like a query —
+   its contents are highlighted as SPARQL inside the quotes.
+
+   Navigable references. `must:file "mayor.ttl"` names a file this page has
+   embedded (see sources_rdf.py). Rendered as a link, it opens that file, so a
+   spec can be read outwards to its data instead of dead-ending at a name.
+
+   Everything is Text nodes and <span>s, so highlighting can only ever change how
+   the source looks, never what it says. */
+
+const TOKEN = {
+  turtle: {
+    re: new RegExp([
+      "(#[^\\n]*)",                                             // 1 comment
+      "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?''')",              // 2 long string
+      "(\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')", // 3 short string
+      "(<[^>\\s]*>)",                                           // 4 IRI
+      "(@prefix|@base|\\bPREFIX\\b|\\bBASE\\b)",                // 5 directive
+      "(\\ba\\b|\\btrue\\b|\\bfalse\\b)",                       // 6 keyword
+      "(\\^\\^|@[A-Za-z][\\w-]*)",                              // 7 datatype / language
+      "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                         // 8 prefixed name
+      "(_:[\\w.-]+)",                                           // 9 blank node
+      "(-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)",           // 10 number
+      "([;,.\\[\\]()])"                                         // 11 punctuation
+    ].join("|"), "g"),
+    classes: [null, "comment", "string", "string", "iri", "kw", "kw", "suffix",
+              "pname", "bnode", "num", "punct"],
+    long: 2, short: 3, iri: 4, pname: 8, punct: 11
+  },
+  sparql: {
+    re: new RegExp([
+      "(#[^\\n]*)",                                             // 1 comment
+      "(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?''')",              // 2 long string
+      "(\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')", // 3 short string
+      "(<[^>\\s]*>)",                                           // 4 IRI
+      "([?$][A-Za-z_]\\w*)",                                    // 5 variable
+      "\\b(SELECT|CONSTRUCT|ASK|DESCRIBE|WHERE|INSERT|DELETE|DATA|GRAPH|" +
+        "OPTIONAL|FILTER|BIND|VALUES|UNION|MINUS|SERVICE|PREFIX|BASE|DISTINCT|" +
+        "REDUCED|ORDER|GROUP|BY|HAVING|LIMIT|OFFSET|AS|NOT|EXISTS|IN|WITH|" +
+        "USING|FROM|NAMED|SILENT|CLEAR|DROP|CREATE|LOAD|INTO|COPY|MOVE|ADD|" +
+        "TRUE|FALSE|A)\\b",                                     // 6 keyword
+      "\\b(COUNT|SUM|MIN|MAX|AVG|SAMPLE|GROUP_CONCAT|STR|LANG|DATATYPE|BOUND|" +
+        "IRI|URI|BNODE|RAND|ABS|CEIL|FLOOR|ROUND|CONCAT|STRLEN|UCASE|LCASE|" +
+        "CONTAINS|STRSTARTS|STRENDS|STRBEFORE|STRAFTER|REPLACE|REGEX|NOW|YEAR|" +
+        "MONTH|DAY|HOURS|MINUTES|SECONDS|COALESCE|IF|SAMETERM|ISIRI|ISBLANK|" +
+        "ISLITERAL|ISNUMERIC)\\b",                              // 7 function
+      "(\\^\\^|@[A-Za-z][\\w-]*)",                              // 8 datatype / language
+      "([A-Za-z][\\w.-]*:[\\w.\\-%]*)",                         // 9 prefixed name
+      "(-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)",           // 10 number
+      // Punctuation, including the property-path operators — `a/rdfs:subClassOf*`
+      // is idiomatic in these specs and reads badly as undifferentiated text.
+      "([{};,.()\\[\\]*/|!+?^-])"                               // 11 punctuation
+    ].join("|"), "gi"),
+    classes: [null, "comment", "string", "string", "iri", "var", "kw", "fn",
+              "suffix", "pname", "num", "punct"],
+    long: 2, short: 3, iri: 4, pname: 9, punct: 11
+  }
+};
+
+/** Predicates whose value is a query, and the shape of a query that arrives
+    without one (a bare string dropped into the page, say). */
+const QUERY_PREDICATE = /(?:^|:)(?:queryText|queryString|query)$/i;
+const LOOKS_LIKE_QUERY =
+  /^\s*(?:#[^\n]*\n\s*)*(PREFIX|BASE|SELECT|CONSTRUCT|ASK|DESCRIBE|INSERT|DELETE|WITH)\b/i;
+
+const tok = (cls, s) => cls ? span({ class: "tok-" + cls }, s) : s;
+
+/** The embedded file a spec's reference names, if this page has it. */
+const findSource = ref => {
+  const index = model.val && model.val.sourceRefs;
+  if (!index || !ref) return null;
+  return index[ref]
+    || index[String(ref).replace(/^file:\/\//, "").replace(/^\.\//, "")]
+    || index[String(ref).split("/").pop()]
+    || null;
+};
+
+const quoteOf = raw =>
+  raw.startsWith('"""') ? '"""' : raw.startsWith("'''") ? "'''" : raw[0];
+
+const fileLink = (src, name) => a({
+  class: "srclink tok-file", href: "#", title: `Show ${src.path}`,
+  onclick: ev => { ev.preventDefault(); copied.val = false; sheet.val = src; }
+}, name);
+
+/** A string token: SPARQL inside the quotes when it is a query, a link when it
+    names a file this page carries, and otherwise just a string. */
+const stringToken = (raw, predicate) => {
+  const quote = quoteOf(raw);
+  const inner = raw.slice(quote.length, raw.length - quote.length);
+  const wrap = body => [tok("string", quote), body, tok("string", quote)].flat();
+
+  if (QUERY_PREDICATE.test(predicate || "") || LOOKS_LIKE_QUERY.test(inner)) {
+    return wrap(highlightAs(inner, "sparql"));
+  }
+  const src = findSource(inner);
+  return src ? wrap(fileLink(src, inner)) : tok("string", raw);
+};
+
+/** An IRI token. A file can be named as one too — `must:fileurl
+    <file://./select-query.sparql>` — so it gets the same treatment as a string
+    that names a file. */
+const iriToken = raw => {
+  const inner = raw.slice(1, -1);
+  const src = findSource(inner);
+  return src
+    ? [tok("punct", "<"), fileLink(src, inner), tok("punct", ">")]
+    : tok("iri", raw);
+};
+
+const highlightAs = (body, lang) => {
+  const { re, classes, long, short, iri, pname, punct } = TOKEN[lang];
+  const out = [];
+  let last = 0, m, predicate = null;
+  re.lastIndex = 0;
+  while ((m = re.exec(body)) !== null) {
+    if (!m[0].length) { re.lastIndex++; continue; }        // never loop forever
+    if (m.index > last) out.push(body.slice(last, m.index));
+    last = m.index + m[0].length;
+
+    const group = classes.findIndex((c, g) => g && m[g] !== undefined);
+    if (group === long || group === short) {
+      out.push(stringToken(m[0], predicate));
+      continue;
+    }
+    if (group === iri) { out.push(iriToken(m[0])); continue; }
+    if (group === pname) predicate = m[0];
+    else if (group === punct && (m[0] === ";" || m[0] === ".")) predicate = null;
+    out.push(tok(classes[group], m[0]));
+  }
+  if (last < body.length) out.push(body.slice(last));
+  return out.flat();
+};
+
+/** Which grammar, if any, fits a media type. N-Triples and N-Quads are Turtle
+    subsets so they read correctly as Turtle; a CSV or an EDN file does not, and
+    gets left alone rather than mis-coloured. */
+const grammarFor = media => {
+  const m = String(media || "");
+  if (/sparql/i.test(m)) return "sparql";
+  if (/turtle|n-triples|n-quads|trig|n3/i.test(m)) return "turtle";
+  return null;
+};
+
+const highlight = (body, media) => {
+  const lang = grammarFor(media);
+  return lang ? highlightAs(body, lang) : [body];
+};
+
+const sourceLabel = src =>
+  src.path || (/sparql/i.test(src.media) ? "SPARQL (as executed)" : "source");
+
+/* ---- taking a file with you ---- */
+const fileName = src => src.path ? src.path.split("/").pop()
+  : /sparql/i.test(src.media) ? "query.rq" : "source.ttl";
+
+const dataHref = src =>
+  `data:${src.media};charset=utf-8,${encodeURIComponent(src.body)}`;
+
+/** Copy without the Clipboard API where it is unavailable — which includes a
+    report opened over plain http, or from file:// in some browsers. */
+const selectAndCopy = body => {
+  const area = document.createElement("textarea");
+  area.value = body;
+  area.setAttribute("readonly", "");
+  area.setAttribute("style", "position:fixed;left:-9999px;top:0");
+  document.body.appendChild(area);
+  area.select();
+  try { document.execCommand("copy"); } finally { area.remove(); }
+};
+
+const copyText = body => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(body).catch(() => selectAndCopy(body));
+    }
+  } catch (e) { /* fall through */ }
+  selectAndCopy(body);
+  return Promise.resolve();
+};
+
+const copied = state(false);
+let copiedTimer = null;
+
+const copyButton = body => button({
+  title: "Copy to the clipboard",
+  onclick: () => {
+    copyText(body);
+    copied.val = true;
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => copied.val = false, 1600);
+  }
+}, () => copied.val ? "Copied ✓" : "Copy");
+
+const downloadButton = src => a({
+  class: "btn", download: fileName(src), href: dataHref(src),
+  title: `Download ${fileName(src)}`
+}, "Download");
+
+const fileActions = src => div({ class: "btns" }, downloadButton(src), copyButton(src.body));
+const codeBlock = src => pre({ class: "code" }, highlight(src.body, src.media));
+const sourceDetails = sources => (sources || []).map(src =>
+  details({ class: "src" },
+    summary(sourceLabel(src), " · ", src.media),
+    codeBlock(src)));
+
+/* ---- toolbar pieces ---- */
+/** Note `rawVal`, not `val`.
+
+    Reading `query.val` here would register the filter state as a dependency of
+    whichever binding is rendering the toolbar — the tab body — so every keystroke
+    would rebuild the toolbar, replace this input, and take the caret with it.
+    `rawVal` seeds the field without subscribing, leaving the only subscribers the
+    inner bindings that render the filtered list. */
+const searchBox = placeholder => input({
+  class: "search", type: "search", placeholder, value: query.rawVal,
+  oninput: ev => query.val = ev.target.value
+});
+const toggleChip = (st, cls, name, count) => button({
+  class: "chip " + (cls || ""),
+  "aria-pressed": () => String(st.val),
+  onclick: () => st.val = !st.val
+}, name, count === undefined ? [] : span({ class: "n" }, count));
+
+/** Expand/collapse every disclosure in the results area. Plain DOM: which
+    <details> are open is view state the model has no opinion about. */
+const setAllOpen = open => document.getElementById("main")
+  ?.querySelectorAll("details").forEach(d => d.open = open);
+
+/* ======================================================================
+   6. Tabs
+   ====================================================================== */
+const CHIP_CLASS = { passed: "pass", failed: "fail", skipped: "skip" };
+
+const TestsTab = M => div(
+  div({ class: "toolbar" },
+    searchBox("Filter tests…"),
+    div({ class: "chips" }, Object.keys(show).map(s =>
+      toggleChip(show[s], CHIP_CLASS[s], s, M.tests.totals[s] || 0))),
+    button({ onclick: () => setAllOpen(true) }, "Expand all"),
+    button({ onclick: () => setAllOpen(false) }, "Collapse all")),
+  () => TestGroups(M));
+
+const testShown = t => show[t.status]?.val &&
+  hits(`${t.name} ${t.module} ${t.cls} ${t.spec ? t.spec.iri : ""}`);
+
+const TestGroups = M => {
+  const groups = M.tests.groups.map(g => {
+    const visible = g.tests.filter(testShown);
+    if (!visible.length) return null;
+    return details({ class: "grp", open: visible.some(t => t.status === "failed") || !!query.val },
+      summary(
+        span({ class: "gname" }, g.label),
+        span({ class: "gmeta" },
+          g.failed ? pill("failed", g.failed + " failed") : [],
+          g.skipped ? pill("skipped", g.skipped + " skipped") : [],
+          span(`${visible.length} test${visible.length === 1 ? "" : "s"}`),
+          span({ class: "dur" }, dur(g.duration)))),
+      ul({ class: "tests" }, visible.map(TestRow)));
+  }).filter(Boolean);
+  return groups.length ? div({ class: "card" }, groups)
+                       : empty("No tests match the current filter.");
+};
+
+const termChips = iris => div({ class: "terms" },
+  iris.map(t => span({ class: "term-chip", title: t }, short(t))));
+
+const TestRow = t => {
+  const kv = [];
+  const row = (k, v) => kv.push(dt(k), dd(v));
+  if (t.spec) {
+    if (t.spec.source) row("spec file", srcRef(t.spec.source));
+    row("spec IRI", code(t.spec.iri));
+    if (t.spec.inData?.length) row("in data", termChips(t.spec.inData));
+    if (t.spec.inQuery?.length) row("in SPARQL", termChips(t.spec.inQuery));
+    const answers = model.val.cqs.filter(c =>
+      c.tests.some(x => x.spec && x.spec.iri === t.spec.iri));
+    if (answers.length) row("answers", answers.map(c => div(c.questions[0] || c.name)));
+  } else if (t.source) {
+    row("file", srcRef(t.source));
+  }
+  if (t.type) row("type", t.type);
+
+  const sources = sourceDetails(t.spec?.sources);
+  return li(details(
+    summary({ class: "t" },
+      pill(t.status),
+      span({ class: "name" }, t.name),
+      span({ class: "right" }, span({ class: "dur" }, dur(t.duration)))),
+    kv.length || sources.length
+      ? div({ class: "detail" }, kv.length ? dl({ class: "kv" }, kv) : [], sources)
+      : []));
+};
+
+const CoverageTab = M => {
+  const C = M.coverage;
+  if (!C) {
+    return empty(["This run has no ontology term coverage. Re-run with ",
+                  code("--term-coverage"), ", and declare ",
+                  code("mustrdTest:hasOntologyPath"), " in the config."]);
+  }
+  const count = role => Object.values(C.terms).filter(t => t.role === role).length;
+  return div(
+    div({ class: "toolbar" },
+      searchBox("Filter terms…"),
+      div({ class: "chips" }, ROLES.map(r => toggleChip(roleOn[r], "", r, count(r))))),
+    p({ class: "note" },
+      "A term counts as ", strong("covered"), " when a passing test ",
+      strong("populates it in input data"), ". A term named only in a query is ",
+      strong("query-only"), " and does not count. ", strong("structural"),
+      " terms are load-bearing but excluded from the denominator. Classes nest by ",
+      code("rdfs:subClassOf"), " (↳), properties under their ", code("rdfs:domain"),
+      " (▸). Click a row for the per-test breakdown."),
+    div({ class: "card tblwrap" }, table(
+      thead(tr(
+        th("Term"), th("Kind"),
+        th({ class: "c" }, abbr({ title: "A passing test asserts the term in its given data" }, "In data")),
+        th({ class: "c" }, abbr({ title: "A passing test's SPARQL names the term" }, "In SPARQL")),
+        th({ class: "c" }, "Test coverage"),
+        th({ class: "c" }, "CQ coverage"))),
+      () => TermRows(C))),
+    C.ontologies.length
+      ? [secHead("Ontologies measured", C.ontologies.length),
+         div({ class: "card" }, C.ontologies.map(OntologyCard))]
+      : []);
+};
+
+const OntologyCard = o => div({ class: "cq" },
+  p({ class: "q mono" }, o.iri),
+  o.comment ? p({ class: "note" }, o.comment) : [],
+  o.path ? p({ class: "note" }, srcRef(o.path)) : [],
+  o.version ? p({ class: "note mono" }, "version: " + o.version) : []);
+
+const TermRows = C => {
+  const anyRole = ROLES.some(r => roleOn[r].val);
+  const rows = [];
+  C.rows
+    .filter(r => (!anyRole || roleOn[r.t.role].val) && hits(`${short(r.iri)} ${r.iri}`))
+    .forEach(({ iri, depth, glyph, t }) => {
+      const pad = depth * 1.15;
+      // Per-row disclosure: a bound `hidden`, so expanding one term does not
+      // rebuild the table.
+      const open = state(false);
+      const hidden = () => !open.val;
+      const indent = extra => `padding-left:${pad + extra}rem`;
+
+      rows.push(tr({ class: "term", title: iri,
+                     onclick: ev => { if (!ev.target.closest("a")) open.val = !open.val; } },
+        td({ class: "tname", style: indent(0.7) },
+           glyph ? [span({ class: "glyph" }, glyph), " "] : [], short(iri)),
+        td(t.kind),
+        td({ class: "c" }, tick(t.inData)),
+        td({ class: "c" }, tick(t.inQuery)),
+        td({ class: "c" }, pill(t.role)),
+        td({ class: "c" }, t.cqRole ? pill(t.cqRole) : [])));
+
+      if (t.reasons.length) {
+        rows.push(tr({ class: "ex", hidden },
+          td({ colspan: 6, class: "note", style: indent(2.2) },
+             "structural because: " + t.reasons.join("; "))));
+      }
+      t.exercises.forEach(e => rows.push(tr({ class: "ex", hidden },
+        td({ style: indent(2.2) },
+           span({ class: "glyph" }, "•"), " ", srcRef(e.source, e.name)),
+        td(), td({ class: "c" }, tick(e.inData)), td({ class: "c" }, tick(e.inQuery)),
+        td(), td())));
+    });
+  return tbody(rows.length ? rows : tr(td({ colspan: 6, class: "empty" }, "No terms match.")));
+};
+
+const CqsTab = M => {
+  if (!M.cqs.length) {
+    return empty(["No competency questions in this graph. Re-run with ", code("--cq"), "."]);
+  }
+  return div(
+    div({ class: "toolbar" }, searchBox("Filter questions…")),
+    () => {
+      const cards = M.cqs
+        .filter(c => hits(c.questions.join(" ") + " " + c.name))
+        .map(CqCard);
+      return cards.length ? div({ class: "card" }, cards) : empty("No questions match.");
+    });
+};
+
+const cqBadges = c => [
+  c.duplicateOf.length
+    ? pill("query-only", `duplicate of ${c.duplicateOf.length === 1
+        ? localName(c.duplicateOf[0])
+        : c.duplicateOf.length + " others"}`)
+    : [],
+  !c.tests.length ? pill("unused", "no linked test")
+    : c.tests.some(t => t.status === "failed") ? pill("failed", "failing")
+    : pill("passed", "verified")
+];
+
+const CqCard = c => div({ class: "cq" },
+  p({ class: "q" }, c.questions[0] || c.name),
+  div({ class: "badges" }, cqBadges(c)),
+  c.questions.length > 1
+    ? p({ class: "note" }, "also asked as: " + c.questions.slice(1).join(" · ")) : [],
+  c.duplicateOf.length
+    ? p({ class: "note" }, "same question as ",
+        ...c.duplicateOf.map((peer, i) => [i ? ", " : "", code(localName(peer))]),
+        " — all of them excluded from the coverage calculation")
+    : [],
+  c.tests.length || c.missing.length
+    ? ul(
+        c.tests.map(t => li(
+          pill(t.status || "plain", t.status || "unknown"), " ",
+          t.spec ? srcRef(t.spec.source, t.spec.name) : "?",
+          (t.requiresOntology || []).map(o =>
+            [" ", span({ class: "pill schema", title: o },
+                       "needs " + (short(o) === o ? localName(o) : short(o)))]))),
+        c.missing.map(iri => li({ class: "warnrow" },
+          "cq:cqSpec points at ", code(iri),
+          ", which no test in this run provides")))
+    : [],
+  c.source ? p({ class: "note" }, "defined in ", srcRef(c.source)) : []);
+
+const where = r =>
+  " — " + [r.inData && "in data", r.inQuery && "in SPARQL"].filter(Boolean).join(" and ");
+
+const IssuesTab = M => {
+  const { undeclared, tbox } = M.issues;
+  if (!undeclared.length && !tbox.length) return empty("No quality issues found in this run. ✨");
+  return div(
+    undeclared.length ? [
+      secHead("Used but not declared", undeclared.length),
+      p({ class: "note" },
+        "Terms a test references inside a measured ontology’s namespace that the " +
+        "ontology never declares — usually a typo or a missing definition."),
+      div({ class: "card" }, undeclared.map(u => div({ class: "cq" },
+        p({ class: "q mono" }, short(u.term)),
+        p({ class: "note mono" }, u.term),
+        ul(u.refs.map(r => li(srcRef(r.source, r.name),
+                              span({ class: "note" }, where(r))))))))
+    ] : [],
+    tbox.length ? [
+      secHead("TBox in test data", tbox.length),
+      p({ class: "note" },
+        "Schema axioms found in a test’s input data, where only instance data belongs."),
+      div({ class: "card" }, tbox.map(t => div({ class: "cq" },
+        p({ class: "q" }, srcRef(t.source, t.name)),
+        ul(t.axioms.map(ax => li({ class: "mono" }, ax))))))
+    ] : []);
+};
+
+/* ---- Files ----------------------------------------------------------------
+   Everything the run read, in one place. Reachable by clicking a reference in a
+   spec too, but that opens the sheet over what you were reading; this is for
+   browsing what the report actually carries — often the first surprise is how
+   much that is. */
+const FILE_GROUPS = ["Specs", "Queries", "Data"];
+
+const fileEntry = src => button({
+  class: "fileitem",
+  "aria-pressed": () => String(filePick.val === src.id),
+  onclick: () => filePick.val = src.id
+},
+  span({ class: "fname" }, src.path ? src.path.split("/").pop() : "query"),
+  span({ class: "fmeta" }, src.path ? src.path.replace(/\/[^/]*$/, "") : localName(src.owner)));
+
+const FilesTab = M => div(
+  div({ class: "toolbar" },
+    searchBox("Filter files…"),
+    span({ class: "note" },
+      `${M.files.length} file${M.files.length === 1 ? "" : "s"} embedded in this report`)),
+  () => FilePane(M));
+
+/** Matches on content as well as name: finding which spec mentions a term is the
+    thing you actually want from a filter over a pile of Turtle. */
+const fileHits = src =>
+  hits(`${src.path || ""} ${src.owner} ${src.media}`) ||
+  (query.val.length > 2 && hits(src.body));
+
+const FilePane = M => {
+  const files = M.files.filter(fileHits);
+  if (!files.length) return empty("No files match.");
+
+  const chosen = files.find(f => f.id === filePick.val) || files[0];
+  return div({ class: "filepane" },
+    div({ class: "filelist card" }, FILE_GROUPS.map(group => {
+      const inGroup = files.filter(f => f.group === group);
+      return inGroup.length
+        ? [div({ class: "filegroup" }, group, span({ class: "n" }, inGroup.length)),
+           inGroup.map(fileEntry)]
+        : [];
+    })),
+    div({ class: "card filebody" },
+      div({ class: "head" },
+        span({ class: "path" }, sourceLabel(chosen), " · ", chosen.media),
+        fileActions(chosen)),
+      codeBlock(chosen)));
+};
+
+const GraphTab = M => {
+  const prefixes = Object.keys(M.store.prefixes).sort();
+  const graph = { path: "mustrd-run.ttl", media: "text/turtle", body: M.raw };
+  return div(
+    div({ class: "toolbar" },
+      M.raw ? fileActions(graph) : [],
+      span({ class: "note" }, `${M.store.size()} triples, ${prefixes.length} prefixes`)),
+    prefixes.length
+      ? div({ class: "card tblwrap" }, table(
+          thead(tr(th("Prefix"), th("Namespace"))),
+          tbody(prefixes.map(pfx => tr(td({ class: "mono" }, pfx + ":"),
+                                       td({ class: "mono" }, M.store.prefixes[pfx]))))))
+      : [],
+    M.raw
+      ? [secHead("Turtle"),
+         div({ class: "card" }, pre({
+           class: "code", style: "max-height:70vh;border:none;border-radius:0"
+         }, highlight(M.raw, "text/turtle")))]
+      : []);
+};
+
+const TABS = [
+  { id: "tests", label: "Tests", count: M => M.tests.totals.total, view: TestsTab },
+  { id: "coverage", label: "Coverage", count: M => M.coverage ? M.coverage.declared : 0, view: CoverageTab },
+  { id: "cqs", label: "Competency questions", count: M => M.cqs.length, view: CqsTab },
+  { id: "issues", label: "Issues", count: M => M.issues.undeclared.length + M.issues.tbox.length, view: IssuesTab },
+  { id: "files", label: "Files", count: M => M.files.length, view: FilesTab },
+  { id: "graph", label: "Graph", count: () => null, view: GraphTab }
+];
+
+const liveTabs = M => {
+  const live = TABS.filter(t => { const c = t.count(M); return c === null || c > 0; });
+  return live.length ? live : [TABS.at(-1)];
+};
+
+/* ======================================================================
+   7. Summary tiles, shell
+   ====================================================================== */
+const bar = parts => div({ class: "bar" },
+  parts.filter(([, pct]) => pct > 0)
+       .map(([cls, pct]) => span({ class: cls, style: `width:${pct}%` })));
+
+const tile = (name, big, sub, parts) => div({ class: "tile" },
+  div({ class: "label" }, name),
+  div({ class: "big" }, big[0], " ", small(big[1])),
+  div({ class: "sub" }, sub),
+  parts ? bar(parts) : []);
+
+const Tiles = M => {
+  const tiles = [], t = M.tests.totals, C = M.coverage;
+  if (t.total) {
+    const pc = k => 100 * (t[k] || 0) / t.total;
+    tiles.push(tile("Tests", [t.passed || 0, `/ ${t.total} passed`],
+      `${t.failed || 0} failed · ${t.skipped || 0} skipped · ${dur(t.duration)}`,
+      [["p", pc("passed")], ["f", pc("failed")], ["s", pc("skipped")]]));
+  }
+  if (C) {
+    tiles.push(tile("Term coverage by tests", [C.pct + "%", `${C.covered}/${C.denom} terms`],
+      `${C.declared} declared · ${C.schema} structural excluded`, [["c", C.pct]]));
+    if (C.hasCq) {
+      tiles.push(tile("Coverage by competency question",
+        [C.cqPct + "%", `${C.coveredCq}/${C.denom} terms`],
+        `${C.covered - C.coveredCq} covered by tests but no CQ`, [["q", C.cqPct]]));
+    }
+  }
+  if (M.cqs.length) {
+    const verified = M.cqs.filter(c =>
+      c.tests.length && c.tests.every(x => x.status === "passed")).length;
+    tiles.push(tile("Competency questions", [verified, `/ ${M.cqs.length} verified`],
+      `${M.cqs.filter(c => !c.tests.length).length} with no linked test`,
+      [["p", 100 * verified / M.cqs.length]]));
+  }
+  return section({ class: "tiles" }, tiles);
+};
+
+const RunMeta = M => {
+  const { run } = M, bits = [];
+  const item = (k, v) => bits.push(span(span({ class: "k" }, k), " ", v));
+  if (run.slug && run.slug !== "local") item("run", code(run.slug.slice(0, 12)));
+  if (run.sha) {
+    item("commit", run.commit ? a({ href: run.commit }, run.sha.slice(0, 8))
+                              : code(run.sha.slice(0, 8)));
+  }
+  if (run.started) item("ran", run.started.replace("T", " ").replace("+00:00", "Z"));
+  if (run.ciRun) item("ci", a({ href: run.ciRun }, "job"));
+  if (run.version) item("mustrd", run.version);
+  item("triples", String(M.store.size()));
+  return div({ class: "runmeta" }, bits);
+};
+
+/** Cycle explicit light → explicit dark → follow the OS. */
+const toggleTheme = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "light" ? "dark" : cur === "dark" ? "" : "light";
+  if (next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+  try { localStorage.setItem("mustrd-theme", next); } catch (e) { /* private mode */ }
+};
+
+const NoData = () => div({ class: "card" }, p({ class: "empty" },
+  "No run data loaded.", div(), div(),
+  "Drop a ", code(".ttl"), " / ", code(".jsonld"), " from ",
+  code("mustrd report --term-coverage-rdf"), " or ", code("--results-rdf"),
+  " onto this page, use ", em("Load TTL"), ", or append ",
+  code("?ttl=path/to/run.ttl"), " to the URL."));
+
+const Shell = () => [
+  div({ class: "wrap" },
+    header({ class: "top" },
+      div(
+        p({ class: "eyebrow" }, "mustrd · spec-by-example for RDF & SPARQL"),
+        div({ class: "brand" }, span({ class: "dot" }),
+            h1({ id: "pageTitle" }, document.title || "Run report")),
+        () => model.val ? RunMeta(model.val) : div({ class: "runmeta" })),
+      div({ class: "actions" },
+        label({ class: "btn" }, "Load TTL", input({
+          type: "file", hidden: true, multiple: true,
+          accept: ".ttl,.turtle,.n3,.nt,.jsonld,.json",
+          onchange: ev => loadFiles(ev.target.files)
+        })),
+        button({ title: "Toggle light / dark", onclick: toggleTheme }, "◐"))),
+
+    () => model.val ? Tiles(model.val) : section({ class: "tiles" }),
+
+    nav({ class: "tabs", role: "tablist" }, () => {
+      const M = model.val;
+      return div({ class: "tabrow" }, !M ? [] : liveTabs(M).map(t => button({
+        role: "tab", "data-tab": t.id,
+        "aria-selected": () => String(tab.val === t.id),
+        onclick: () => { tab.val = t.id; query.val = ""; }
+      }, t.label, t.count(M) === null ? [] : span({ class: "n" }, t.count(M)))));
+    }),
+
+    mainTag({ id: "main" }, () => {
+      if (failure.val) return div({ class: "err" }, failure.val);
+      const M = model.val;
+      if (!M?.store.size()) return NoData();
+      const live = liveTabs(M);
+      return (live.find(t => t.id === tab.val) || live[0]).view(M);
+    }),
+
+    footer(() => div(
+      "Rendered in the browser from ",
+      strong(model.val ? String(model.val.store.size()) : "0"),
+      " triples of RDF (", code("cov:"), "/", code("must:"), "/", code("cq:"), "/",
+      code("dqv:"), "). Drop another mustrd run — ", code(".ttl"), " or ",
+      code(".jsonld"), " — anywhere on the page to merge it in."))),
+
+  div({ class: "drop", hidden: () => !dragging.val },
+    div({ class: "inner" }, "Drop ", code(".ttl"), " / ", code(".jsonld"), " to load")),
+
+  div({ class: "sheet", hidden: () => !sheet.val,
+        onclick: ev => { if (ev.target === ev.currentTarget) sheet.val = null; } },
+    () => div({ class: "panel" },
+      div({ class: "head" },
+        span({ class: "path" },
+              sheet.val ? `${sourceLabel(sheet.val)}  ·  ${sheet.val.media}` : ""),
+        div({ class: "btns" },
+          sheet.val ? [downloadButton(sheet.val), copyButton(sheet.val.body)] : [],
+          button({ onclick: () => sheet.val = null }, "Close ✕"))),
+      sheet.val ? codeBlock(sheet.val) : pre({ class: "code" })))
+];
+
+/* ======================================================================
+   8. Loading data
+   ====================================================================== */
+const STORE = makeStore();
+let RAW = "";
+
+const rebuild = () => {
+  const specs = readSpecs(STORE);
+  const index = sourceIndex(specs);
+  model.val = {
+    store: STORE, raw: RAW, specs,
+    sources: index.byPath, sourceRefs: index.byRef, files: index.list,
+    run: readRun(STORE),
+    tests: readTests(STORE, specs),
+    coverage: readCoverage(STORE, specs),
+    cqs: readCqs(STORE, specs),
+    issues: readIssues(STORE, specs)
+  };
+  // Keep the selected tab valid as data arrives — a results-only graph has no
+  // Coverage tab, for instance.
+  const live = liveTabs(model.val);
+  if (!live.some(t => t.id === tab.val)) tab.val = live[0].id;
+};
+
+const ingest = (name, body) => {
+  STORE.add(/\.(jsonld|json)$/i.test(name) ? parseJsonLd(body) : parseTurtle(body));
+  RAW = RAW ? `${RAW}\n\n# ---- ${name} ----\n${body}` : body;
+  failure.val = "";
+  rebuild();
+};
+
+/** The reader in turtle.js is compact by design (see its header). It covers what
+    mustrd emits and ordinary Turtle besides, but it is not a conformance-tested
+    parser — so when it gives up on someone else's file, say which limitation
+    they have hit and point at the path that uses JSON.parse instead. */
+const loadError = (name, message) => /\.(jsonld|json)$/i.test(name)
+  ? `${name}: ${message}`
+  : `${name}: ${message}
+
+This page reads Turtle with a small parser that covers what mustrd emits — it \
+does not implement RDF-star, TriG named graphs, or every Turtle corner. If the \
+file is valid, convert it (rdflib: --term-coverage-jsonld / --results-jsonld, or \
+riot --output=jsonld) and drop the JSON-LD instead.`;
+
+const loadFiles = files => [...files].forEach(f => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { ingest(f.name, String(reader.result)); }
+    catch (e) { failure.val = loadError(f.name, e.message); }
+  };
+  reader.readAsText(f);
+});
+
+/* ---- page-level events ---- */
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") sheet.val = null; });
+let dragDepth = 0;
+window.addEventListener("dragenter", ev => {
+  ev.preventDefault();
+  if (++dragDepth === 1) dragging.val = true;
+});
+window.addEventListener("dragover", ev => ev.preventDefault());
+window.addEventListener("dragleave", () => {
+  if (--dragDepth <= 0) { dragDepth = 0; dragging.val = false; }
+});
+window.addEventListener("drop", ev => {
+  ev.preventDefault();
+  dragDepth = 0;
+  dragging.val = false;
+  if (ev.dataTransfer?.files.length) loadFiles(ev.dataTransfer.files);
+});
+
+/* ---- boot: mount, then the inlined data, then ?ttl= ---- */
+(() => {
+  const readJson = id => {
+    try { return JSON.parse(document.getElementById(id).textContent); }
+    catch (e) { return null; }
+  };
+  CFG = readJson("mustrd-config") || {};
+
+  try {
+    const saved = localStorage.getItem("mustrd-theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+  } catch (e) { /* private mode */ }
+
+  const params = new URLSearchParams(location.search);
+  const title = params.get("title");
+  if (title) document.title = title;
+
+  van.add(document.body, Shell());
+
+  const inline = readJson("mustrd-data");
+  if (typeof inline === "string" && inline.trim()) {
+    try { ingest("run.ttl", inline); }
+    catch (e) { failure.val = "Embedded data: " + e.message; }
+  }
+
+  params.getAll("ttl").concat(params.getAll("jsonld")).forEach(url =>
+    fetch(url)
+      .then(r => r.ok ? r.text() : Promise.reject(new Error(`${r.status} ${r.statusText}`)))
+      .then(body => ingest(url, body))
+      .catch(e => failure.val = `Could not load ${url}: ${e.message}`));
+})();
+</script>
+</body>
+</html>

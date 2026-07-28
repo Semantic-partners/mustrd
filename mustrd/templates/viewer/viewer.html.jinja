@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<!--
+  mustrd run viewer — a single self-contained page, driven entirely by RDF.
+
+  There is no build step and no network dependency: the run's Turtle is embedded
+  below (or dropped in / fetched with ?ttl=), parsed by the Turtle parser in this
+  file, and the whole UI is built from the resulting triples using the
+  cov:/must:/cq:/dqv: vocabularies. See mustrd/model/coverage-ontology.ttl.
+
+  The UI is VanJS (1.6.1, MIT, ~5KB, vendored inline below) — reactive DOM
+  construction, so the page holds no HTML strings and nothing needs escaping.
+-->
+<style>
+{% include "viewer/viewer.css" %}
+</style>
+</head>
+<body>
+<!-- The page builds itself: the two JSON blocks below are the only markup, and
+     VanJS constructs the DOM from the RDF in them. Everything is inlined at
+     render time from mustrd/templates/viewer/ — see mustrd/viewer.py. -->
+<script id="mustrd-data" type="application/json">{{ data_json }}</script>
+<script id="mustrd-config" type="application/json">{{ config_json }}</script>
+<script>
+"use strict";
+{% include "viewer/van.js" %}
+
+{% include "viewer/turtle.js" %}
+
+{% include "viewer/store.js" %}
+
+{% include "viewer/model.js" %}
+
+{% include "viewer/ui.js" %}
+</script>
+</body>
+</html>
