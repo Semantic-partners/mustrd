@@ -110,6 +110,23 @@
     border-radius: 12px;
     padding: 1.5rem;
   }
+
+  /* Demo video. width/height on the element keep the aspect ratio reserved so
+     the page does not reflow once the poster loads. */
+  .demo { margin: 2rem 0 0; }
+  .demo video {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--code-bg);
+  }
+  .demo figcaption {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
   .feature h3 {
     color: var(--accent);
     font-size: 1rem;
@@ -520,13 +537,53 @@
        single self-contained file. No build step, no CDN, no server: attach it to a
        CI run or open it from disk. Drop another run's <code>.ttl</code> onto the
        page to load it.</p>
-    <pre><span class="cm"># one file: tests, coverage, competency questions, issues</span>
-mustrd report --config tests.ttl --viewer report.html
-
-<span class="cm"># or from pytest, same flag</span>
-pytest --mustrd --config=tests.ttl --viewer=report.html</pre>
+    <figure class="demo">
+      <video controls preload="metadata" playsinline
+             poster="/media/viewer-demo-poster.jpg"
+             width="1280" height="800">
+        <source src="/media/viewer-demo.mp4" type="video/mp4">
+        <a href="/media/viewer-demo.mp4">Download the demo video</a> (MP4, 70 seconds)
+      </video>
+      <figcaption>A run report, driven entirely by the RDF it carries.
+        <a href="/examples/geography-example/report/">Open the real thing</a> —
+        it is one file, so <em>View Source</em> is the whole story.</figcaption>
+    </figure>
     <p><a href="/examples/geography-example/report/">See a live example report</a>
        &middot; <a href="/coverage">the coverage vocabulary</a></p>
+  </section>
+
+  <!-- Two ways to run -->
+  <section>
+    <h2>Two ways to <span>run</span></h2>
+    <p>The same engine, the same configuration file, the same reports. Pick whichever
+       fits where you are.</p>
+    <div class="features">
+      <div class="feature">
+        <h3>As a pytest plugin</h3>
+        <p>Specs become tests in your existing suite, so they run in CI and appear in
+           the VS Code Test Explorer next to everything else.</p>
+        <pre>pip install mustrd
+
+pytest --mustrd \
+  --config=mustrd-config.ttl \
+  --viewer=report.html</pre>
+      </div>
+      <div class="feature">
+        <h3>As a command</h3>
+        <p>No pytest. Useful in a pipeline step, a pre-commit hook, or anywhere a
+           test runner would just be in the way. Exits non-zero if a spec fails.</p>
+        <pre>pip install mustrd
+
+mustrd run    --config mustrd-config.ttl
+mustrd report --config mustrd-config.ttl \
+  --viewer report.html</pre>
+      </div>
+    </div>
+    <p><code>mustrd run</code> executes the specs and prints a result table.
+       <code>mustrd report</code> does the same and writes the artefacts you ask for
+       — <code>--viewer</code> for the HTML page above, <code>--md</code> for
+       Markdown, <code>--term-coverage-rdf</code> / <code>--results-rdf</code> for
+       the graph itself. Both take the same flags as the plugin.</p>
   </section>
 
   <!-- Status -->
