@@ -327,6 +327,29 @@ def test_hostile_literal_cannot_escape_the_script_block():
     assert "&lt;b&gt;t&lt;/b&gt; &amp; more" in html
 
 
+def test_md_still_has_content_alongside_viewer(tmp_path):
+    """`--viewer --md` with neither --term-coverage nor --cq wrote an empty file:
+    --viewer implies the CQ overlay in the *graph*, which sent --md down the
+    assembled-report branch, and that branch renders nothing without the flags that
+    ask for its sections. CI hit it; both reports go in the PR comment."""
+    md = tmp_path / "report.md"
+    html = tmp_path / "report.html"
+    # A config with no :hasOntologyPath, so there is no coverage to assemble and
+    # --viewer's CQ overlay is the only thing that made this branch trigger. This is
+    # the configuration CI runs.
+    main(["report", "--config", "test/test_config_local.ttl",
+          "--viewer", str(html), "--md", str(md)])
+    text = md.read_text(encoding="utf-8")
+    assert text.strip(), "--md wrote an empty file"
+    assert "Mustrd" in text and "success" in text     # the plain result list
+
+    # Where coverage *is* computed, --md still gets the assembled report.
+    both = tmp_path / "both.md"
+    assert main(["report", "--config", CONFIG, "--term-coverage", "--cq",
+                 "--viewer", str(html), "--md", str(both)]) == 0
+    assert "# Ontologies Report" in both.read_text(encoding="utf-8")
+
+
 def test_viewer_with_no_data_is_still_a_usable_viewer():
     """Rendered with no graphs, the page boots into its 'drop a file' empty state —
     it is a viewer for any mustrd graph, not just the run that produced it."""

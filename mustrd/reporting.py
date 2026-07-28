@@ -391,12 +391,17 @@ def produce_report(all_specs, cq_defs, test_results, last_is_mustrd,
     coverage, ontology_graph, graph = build_report_data(
         all_specs, cq_defs, opts, report_coverage, report_cq, ident)
 
-    # Markdown report.
+    # Markdown report. What --md contains is decided by whether the assembled
+    # report has anything in it, not by which graphs were built: --viewer asks for
+    # the CQ overlay in the graph but must not change --md, and render_markdown
+    # gates its sections on --term-coverage/--cq. Deciding on the graph flags wrote
+    # an empty file for `--viewer --md` against a config with no ontology.
     if opts.md_path:
+        md = ""
         if report_coverage or report_cq:
             md = render_markdown(graph, ontology_graph, coverage,
                                  os.path.dirname(opts.md_path) or ".", opts)
-        else:
+        if not md.strip():
             md = render_result_list(test_results, last_is_mustrd)
         _ensure_parent(opts.md_path)
         with open(opts.md_path, "w", encoding="utf-8") as file:
