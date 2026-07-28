@@ -317,14 +317,24 @@ Vocabulary) + **PROV-O**, plus a small `cov:` vocabulary in
   test data*, linked to the term / test.
 - **Competency questions** — each `cq:CompetencyQuestion` node (its `cq:question`
   and `cq:cqSpec` links) with a `cov:Assertion` per linked test (`cov:onTest`,
-  `cov:outcome` Passed/Failed, `cov:requiresOntology`); duplicate-question CQs
-  carry `cov:duplicate`. Each test also records its `cov:usesInData`/`usesInQuery`
-  domain terms. This is what CQ↔test/term linking looks like in the graph, and
-  what the Competency Questions Report is rendered from.
-- **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent and
-  `prov:used` the ontologies (and the commit in CI). All instances get **stable
-  minted IRIs** (run slug = commit SHA in CI, else `local`) — no blank nodes — so
-  runs merge and diff cleanly.
+  `cov:outcome` Passed/Failed, and `cov:requiresOntology` → the **ontology IRI**
+  the test only matches its data *through*, when applicable). A duplicate-question
+  CQ gets a `cov:Assertion` too — `cov:onCompetencyQuestion` it, `cov:duplicateOf`
+  its peer(s) — so the duplication is a run *finding*, not a triple on the CQ node.
+  These are object references, not booleans: presence carries the context (which
+  ontology, which peer CQs), and the renderer derives the yes/no flags it shows.
+  Each test also records its `cov:usesInData`/`usesInQuery` domain terms. This is
+  what CQ↔test/term linking looks like in the graph, and what the Competency
+  Questions Report is rendered from.
+- **Provenance** — a `cov:CoverageRun` (`prov:Activity`) with the mustrd agent,
+  `prov:used` the ontologies, `prov:startedAtTime` when it ran, `cov:gitRepository`
+  the source repo, `cov:gitCommit` the revision SHA (and `cov:gitCommitUrl` /
+  `cov:ciRun` links to the commit page and CI job when hosted). Each run gets a
+  **fresh**
+  minted IRI (a UUID, or `MUSTRD_RUN_ID`
+  if set) so successive runs **accumulate** in a knowledge graph rather than
+  clobber; every child IRI is minted under it, and there are no blank nodes, so
+  runs still merge and diff cleanly.
 
 Because the tests, competency questions and ontology terms are all real IRIs, a
 consumer can query across the merged graph — e.g. coverage % per ontology version

@@ -1,5 +1,7 @@
 import logging
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import pytest
 import os
 from pathlib import Path
@@ -14,7 +16,7 @@ from mustrd.TestResult import (
     ResultList, get_result_list,
 )
 from mustrd.coverage import compute_coverage, apply_term_links
-from mustrd.ontology import load_ontology, ontology_report, local_name
+from mustrd.ontology import load_ontology, ontology_report, local_name, term_ontology_index
 from mustrd.cq import cq_facts
 from mustrd.coverage_rdf import coverage_graph, cq_graph
 from mustrd.coverage_render import coverage_context, read_ontologies
@@ -555,26 +557,69 @@ class MustrdTestPlugin:
             return None, None, None
 
     @staticmethod
-    def _run_ident():
-        """run_slug / commit / mustrd_version for a graph, from the CI env."""
-        sha = os.environ.get("GITHUB_SHA")
+    def _git(*args):
+        """Best-effort `git ...`, returning stripped stdout or None."""
+        try:
+            import subprocess
+            out = subprocess.run(["git", *args], capture_output=True, text=True, timeout=5)
+            return out.stdout.strip() or None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _git_sha():
+        """The commit the run was computed at: GITHUB_SHA in CI, else local HEAD."""
+        return os.environ.get("GITHUB_SHA") or MustrdTestPlugin._git("rev-parse", "HEAD")
+
+    @staticmethod
+    def _git_repo():
+        """The source repository URL: GITHUB_REPOSITORY in CI, else the local
+        `origin` remote, normalised to an https URL (git@host:o/r.git -> https://host/o/r)."""
         server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
         repo = os.environ.get("GITHUB_REPOSITORY")
+        if repo:
+            return f"{server}/{repo}"
+        url = MustrdTestPlugin._git("config", "--get", "remote.origin.url")
+        if not url:
+            return None
+        url = url[:-4] if url.endswith(".git") else url
+        if url.startswith("git@"):
+            host, _, path = url[4:].partition(":")
+            url = f"https://{host}/{path}"
+        return url
+
+    @staticmethod
+    def _run_ident():
+        """Provenance for the run node: a FRESH run id each time (so runs
+        accumulate in a KG), the source repository, the git SHA, the start time,
+        and links to the commit and (in CI) the Actions run. MUSTRD_RUN_ID pins the
+        id for reproducible output. mustrd version for the agent."""
+        repo_url = MustrdTestPlugin._git_repo()
+        sha = MustrdTestPlugin._git_sha()
+        ci_run_id = os.environ.get("GITHUB_RUN_ID")
         try:
             from importlib.metadata import version
             mustrd_version = version("mustrd")
         except Exception:
             mustrd_version = None
-        return {"run_slug": sha or "local",
-                "commit": f"{server}/{repo}/commit/{sha}" if (sha and repo) else None,
-                "mustrd_version": mustrd_version}
+        return {
+            "run_slug": os.environ.get("MUSTRD_RUN_ID") or uuid.uuid4().hex,
+            "git_sha": sha,
+            "repo_url": repo_url,
+            "started": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "commit_url": f"{repo_url}/commit/{sha}" if (repo_url and sha) else None,
+            "ci_run": f"{repo_url}/actions/runs/{ci_run_id}" if (repo_url and ci_run_id) else None,
+            "mustrd_version": mustrd_version,
+        }
 
     def _coverage_graph(self, coverage):
         """Build the canonical coverage RDF graph."""
         ontologies = [{"uri": r["uri"], "version": r.get("version"),
                        "description": r.get("description"), "path": r.get("path")}
                       for r in ontology_report(self.ontology_paths) if r.get("uri")]
-        return coverage_graph(coverage, ontologies, **self._run_ident())
+        return coverage_graph(coverage, ontologies,
+                              term_ontology=term_ontology_index(self.ontology_paths),
+                              **self._run_ident())
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) and the

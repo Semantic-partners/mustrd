@@ -378,7 +378,8 @@ def test_requires_ontology_when_query_needs_class_hierarchy():
     SELECT ?x WHERE { ?x a/rdfs:subClassOf* onto:Place }"""
     spec = _spec(given=data, queries=[query])
     cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", spec)])
-    assert cov["per_cq"][0]["tests"][0]["requires_ontology"] is True
+    # the driving superclass is recorded (its declaring ontology is resolved at emit)
+    assert cov["per_cq"][0]["tests"][0]["requires_ontology_terms"] == ["http://onto.org/Place"]
 
 
 def test_not_requires_ontology_when_data_has_queried_type():
@@ -393,7 +394,7 @@ def test_not_requires_ontology_when_data_has_queried_type():
     SELECT ?x WHERE { ?x a onto:Country }"""
     spec = _spec(given=data, queries=[query])
     cov = compute_coverage([spec], ontology=_graph(ONTO), cq_defs=[_cqdef("Q?", spec)])
-    assert cov["per_cq"][0]["tests"][0]["requires_ontology"] is False
+    assert cov["per_cq"][0]["tests"][0]["requires_ontology_terms"] == []
 
 
 def test_undeclared_term_used_in_data_is_flagged_as_input_data():
