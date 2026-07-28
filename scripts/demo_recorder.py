@@ -92,6 +92,58 @@ CURSOR_SCRIPT = """
 })();
 """
 
+# Narrative overlay. Captions are drawn into the page — same trick as the cursor
+# — so they are captured in the recording itself. No sidecar subtitle file (which
+# GitHub's PR player ignores anyway) and no ffmpeg burn-in pass. A caption can sit
+# in the lower third, or be anchored to a point so it reads next to whatever is
+# being pointed at. Reads on a light or a dark page.
+CAPTION_SCRIPT = """
+(() => {
+  const ensure = () => {
+    let el = document.getElementById('__demo_caption');
+    if (el) return el;
+    const style = document.createElement('style');
+    style.textContent = `
+      #__demo_caption {
+        position: fixed; z-index: 2147483646; pointer-events: none;
+        max-width: 30rem; padding: 10px 16px; border-radius: 10px;
+        background: rgba(17,20,24,.92); color: #fff;
+        font: 500 15px/1.4 -apple-system, system-ui, sans-serif;
+        box-shadow: 0 6px 24px rgba(0,0,0,.35);
+        opacity: 0; transition: opacity .28s ease;
+        left: 50%; bottom: 40px; transform: translateX(-50%);
+      }
+      #__demo_caption.point { transform: translate(-50%, -100%); }
+    `;
+    document.head.appendChild(style);
+    el = document.createElement('div');
+    el.id = '__demo_caption';
+    document.body.appendChild(el);
+    return el;
+  };
+  window.__demoSay = (text, opts) => {
+    const el = ensure();
+    el.textContent = text;
+    if (opts && opts.x != null) {
+      el.classList.add('point');
+      el.style.left = opts.x + 'px';
+      el.style.top = opts.y + 'px';
+      el.style.bottom = 'auto';
+    } else {
+      el.classList.remove('point');
+      el.style.top = 'auto';
+      el.style.left = '50%';
+      el.style.bottom = (opts && opts.bottom != null ? opts.bottom : 40) + 'px';
+    }
+    el.style.opacity = '1';
+  };
+  window.__demoHide = () => {
+    const el = document.getElementById('__demo_caption');
+    if (el) el.style.opacity = '0';
+  };
+})();
+"""
+
 
 class Demo:
     """The page, plus interactions the injected cursor can be seen doing.
@@ -109,6 +161,21 @@ class Demo:
         """Pause long enough for a viewer to read what just happened."""
         self.page.wait_for_timeout(ms)
 
+    # --- narrative -----------------------------------------------------------
+    def say(self, text, ms=2200, at=None, bottom=40):
+        """Show a caption for `ms`, then hide it. By default it sits in the lower
+        third; pass `at=<locator>` to anchor it just above that element, so the
+        narrative reads next to whatever is on screen. Doubles as a beat."""
+        opts = {"bottom": bottom}
+        if at is not None:
+            box = at.bounding_box()
+            if box is not None:
+                opts = {"x": box["x"] + box["width"] / 2, "y": max(box["y"] - 12, 40)}
+        self.page.evaluate("([t, o]) => window.__demoSay(t, o)", [text, opts])
+        self.page.wait_for_timeout(ms)
+        self.page.evaluate("() => window.__demoHide()")
+        self.page.wait_for_timeout(260)            # let it fade before the next move
+
     # --- finding things ------------------------------------------------------
     def find(self, placeholder):
         return self.page.get_by_placeholder(placeholder)
@@ -118,6 +185,12 @@ class Demo:
 
     def button(self, name):
         return self.page.get_by_role("button", name=name)
+
+    def link(self, name):
+        return self.page.get_by_role("link", name=name)
+
+    def text(self, value, exact=True):
+        return self.page.get_by_text(value, exact=exact)
 
     # --- interacting ---------------------------------------------------------
     def glide(self, locator, steps=22):
@@ -132,16 +205,27 @@ class Demo:
                              box["y"] + box["height"] / 2, steps=steps)
         return True
 
-    def click(self, locator, settle=280):
+    def click(self, locator, settle=280, optional=False):
         """Glide to a target, pause so the viewer sees what is about to be hit,
-        then press it."""
+        then press it. Raises if the target isn't there — a renamed control
+        should fail the recording loudly, not silently drop the beat. Pass
+        `optional=True` for a step that is allowed to be absent."""
         if not self.glide(locator):
-            return False
+            if optional:
+                return False
+            raise LookupError(f"click target not found or not visible: {locator}")
         self.page.wait_for_timeout(settle)
         self.page.mouse.down()
         self.page.wait_for_timeout(90)
         self.page.mouse.up()
         return True
+
+    def select(self, locator, value=None, label=None):
+        """Glide to a <select> so the cursor is seen on it, then choose an option
+        (by value or visible label)."""
+        self.glide(locator)
+        self.page.wait_for_timeout(200)
+        locator.select_option(value=value, label=label)
 
     def type_into(self, locator, text, delay=110):
         """Click into a field and type at a readable speed."""
@@ -203,6 +287,7 @@ def record(target, tour, out="demo.mp4", viewport=(1280, 800),
             device_scale_factor=1, color_scheme=color_scheme,
         )
         context.add_init_script(CURSOR_SCRIPT)
+        context.add_init_script(CAPTION_SCRIPT)
         page = context.new_page()
         page.goto(_to_url(target))
         if ready:
