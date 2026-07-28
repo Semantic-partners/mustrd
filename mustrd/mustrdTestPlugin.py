@@ -457,7 +457,11 @@ class MustrdTestPlugin:
             spec_src = getattr(spec, 'spec_source_file', None) if spec is not None else None
             run_results.append(RunResult(
                 status=result.outcome,
-                test_type="mustrd" if is_mustrd else "pytest",
+                # Carrying a spec is what makes it a mustrd test. `is_mustrd` above
+                # is really "was this item parametrised" (originalname != name),
+                # which is false for a spec collected as its own item — it drives
+                # the Markdown ResultList's grouping, not the kind of test.
+                test_type="mustrd" if spec is not None else "pytest",
                 module=module_name, class_name=class_name, test_name=test_name,
                 spec_uri=str(spec_uri) if spec_uri is not None else None,
                 spec_file_name=getattr(spec, 'spec_file_name', None) if spec is not None else None,
