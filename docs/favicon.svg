@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The mustrd bottle, from the logo in index.html. Simplified for a 16px tab:
+       the squirt arc, the highlight stripe and the label's "M" all fall below a
+       pixel at this size, so only the shapes that still read are kept. The tilt
+       is the angle the logo animates to (35deg). Colours are the site's
+       --bg / --accent3 / --accent. -->
+  <rect width="32" height="32" rx="7" fill="#0f1117"/>
+  <g transform="translate(16,16) rotate(35) scale(0.29) translate(-40,-60)">
+    <path fill="#fbbf24" d="
+      M28,52 C28,48 30,44 32,42
+      C33,40 33,38 33,36
+      L33,28 L47,28 L47,36
+      C47,38 47,40 48,42
+      C50,44 52,48 52,52
+      L54,100 C54,108 50,112 40,112
+      C30,112 26,108 26,100 Z"/>
+    <rect fill="#0f1117" x="29" y="68" width="22" height="28" rx="3"/>
+    <rect fill="#6ee7b7" x="31" y="16" width="18" height="14" rx="3"/>
+    <path fill="#6ee7b7" d="M36,16 L36,12 C36,10 38,8 40,8 C42,8 44,10 44,12 L44,16 Z"/>
+  </g>
+</svg>
