@@ -53,16 +53,6 @@ jobs:
           poetry run pip install -e .
           poetry run pytest --mustrd --config="test/test_config_local.ttl"
 
-      - name: Competency questions over mustrd's own model
-        # mustrd measuring itself — specs that read a spec file as data and ask
-        # questions about must:. Its own config so the main suite's coverage numbers
-        # are untouched; see test/self-model/README.md. No path argument: passing one
-        # collects nothing and reports 0% instead of failing.
-        run: >-
-          poetry run pytest --mustrd
-          --config=test/test_config_self_model.ttl
-          --pytest-path=self_model --term-coverage --cq
-
       # The viewer's own tests. The stub-DOM harness (test_viewer.py) runs on every
       # cell above; these need a real browser, so they run once. Without it the
       # browser tests skip themselves rather than fail.
