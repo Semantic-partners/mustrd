@@ -239,6 +239,8 @@ def render_html(g: Graph, slug: str) -> str:
 <meta charset="utf-8">
 <title>{e(str(label or slug))}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate" type="text/turtle" href="/{e(slug)}.ttl">
 <link rel="alternate" type="application/rdf+xml" href="/{e(slug)}.rdf">
 <link rel="alternate" type="application/ld+json" href="/{e(slug)}.jsonld">

@@ -50,6 +50,19 @@ def test_run_returns_zero_when_all_pass():
     assert main(["run", "--config", CONFIG]) == 0
 
 
+def test_module_entry_point_runs_the_cli():
+    """`python -m mustrd` has to work, not just the `mustrd` console script. The
+    script is a generated launcher .exe on Windows, and it goes wrong in ways the
+    package cannot fix: AV blocks it, or a global pip writes it to an interpreter
+    that is not the one on PATH. The module form binds to the interpreter running
+    it, so it is the escape hatch — keep it wired up."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "mustrd", "run", "--config", CONFIG],
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert proc.returncode == 0, proc.stderr
+    assert "0 failures" in proc.stdout
+
+
 @pytest.mark.parametrize("console_encoding", ["cp1252", "ascii"])
 def test_report_survives_a_non_utf8_console(console_encoding):
     """The coverage report is not ASCII — the term tree uses ↳ and ▸. A Windows
