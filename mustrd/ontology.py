@@ -74,8 +74,32 @@ def wk_qname(uri) -> str:
     return s
 
 
-def is_domain_term(uri) -> bool:
-    return isinstance(uri, URIRef) and not any(str(uri).startswith(ns) for ns in WELL_KNOWN)
+def measured_namespaces(graph: Graph) -> frozenset:
+    """The namespaces a graph declares itself to be — its owl:Ontology IRIs.
+
+    Used to decide what counts as a domain term: "well-known" is relative to what
+    you are measuring, not absolute. Pointing --ontology at mustrd's own model
+    should measure must:, even though must: is infrastructure when the subject is
+    somebody's domain vocabulary."""
+    if graph is None:
+        return frozenset()
+    return frozenset(str(s) for s in graph.subjects(RDF.type, OWL.Ontology))
+
+
+def is_domain_term(uri, measured=()) -> bool:
+    """Whether `uri` is a term of the ontology under test rather than of the
+    vocabulary it is written in.
+
+    `measured` are namespaces being explicitly measured; a term in one of those
+    counts even if its namespace is on the WELL_KNOWN list. Without that, a
+    vocabulary on the list can never be the subject of a coverage run — which is
+    what stopped mustrd measuring its own model."""
+    if not isinstance(uri, URIRef):
+        return False
+    s = str(uri)
+    if any(s.startswith(ns) for ns in measured):
+        return True
+    return not any(s.startswith(ns) for ns in WELL_KNOWN)
 
 
 def namespace(iri: str) -> str:
@@ -204,25 +228,29 @@ def term_ontology_index(paths) -> dict:
     return index
 
 
-def declared_terms(graph: Graph) -> dict:
+def declared_terms(graph: Graph, measured=None) -> dict:
     """Map each declared class/property IRI in the graph to 'class' or 'property'.
 
     Restricted to non-well-known namespaces (the ontology under test, not the
-    RDF/RDFS/OWL/SKOS vocabulary it is written in).
+    RDF/RDFS/OWL/SKOS vocabulary it is written in) — except for namespaces the
+    graph declares as its own, which is how a well-known vocabulary can still be
+    the ontology under test. `measured` defaults to the graph's own owl:Ontology
+    IRIs.
     """
+    measured = measured_namespaces(graph) if measured is None else measured
     terms = {}
     for t in CLASS_TYPES:
         for s in graph.subjects(RDF.type, t):
-            if is_domain_term(s):
+            if is_domain_term(s, measured):
                 terms.setdefault(str(s), "class")
     for t in PROPERTY_TYPES:
         for s in graph.subjects(RDF.type, t):
-            if is_domain_term(s):
+            if is_domain_term(s, measured):
                 terms[str(s)] = "property"  # a property label wins over a class collision
     return terms
 
 
-def metadata_terms(graph: Graph) -> dict:
+def metadata_terms(graph: Graph, measured=None) -> dict:
     """Domain terms declared *only* as annotation/ontology properties.
 
     Maps each such IRI to a reason label ("annotation property" /
@@ -231,10 +259,11 @@ def metadata_terms(graph: Graph) -> dict:
     unused one as a schema term rather than a gap. A term also declared as a
     class or a substantive property is excluded — it is not "just metadata".
     """
+    measured = measured_namespaces(graph) if measured is None else measured
     meta = {}
     for typ, label in METADATA_PROPERTY_TYPES.items():
         for s in graph.subjects(RDF.type, typ):
-            if is_domain_term(s):
+            if is_domain_term(s, measured):
                 meta.setdefault(str(s), label)
     substantive = set()
     for typ in CLASS_TYPES:
