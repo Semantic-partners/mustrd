@@ -33,7 +33,7 @@
 | test/\_\_init\_\_.py                                                |        0 |        0 |    100% |           |
 | test/addspec\_source\_file\_to\_spec\_graph.py                      |        8 |        0 |    100% |           |
 | test/graph\_util.py                                                 |       10 |        8 |     20% |      5-13 |
-| test/test\_cli.py                                                   |       61 |        0 |    100% |           |
+| test/test\_cli.py                                                   |       65 |        0 |    100% |           |
 | test/test\_construct\_spec.py                                       |      275 |        6 |     98% |128, 254, 355, 421, 546, 598 |
 | test/test\_coverage.py                                              |      253 |        0 |    100% |           |
 | test/test\_coverage\_plugin.py                                      |      157 |        0 |    100% |           |
@@ -52,7 +52,7 @@
 | test/test\_viewer.py                                                |      227 |        1 |     99% |        55 |
 | test/test\_viewer\_browser.py                                       |      100 |       67 |     33% |42-47, 67-78, 82-88, 94-103, 115-122, 127-145, 149-155, 159-164, 170-175, 181 |
 | test/unit\_test.py                                                  |      106 |        0 |    100% |           |
-| **TOTAL**                                                           | **6072** |  **754** | **88%** |           |
+| **TOTAL**                                                           | **6076** |  **754** | **88%** |           |
 
 
 ## Setup coverage badge
