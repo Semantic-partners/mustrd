@@ -38,20 +38,16 @@ log = logging.getLogger(__name__)
 
 requests.packages.urllib3.disable_warnings()
 
-# Widen the cipher list on urllib3 1.x only.
+# Legacy cipher-list tweak, urllib3 1.x only.
 #
-# `:HIGH:!DH:!aNULL` is the long-standing workaround for a TLS handshake against a
-# server offering small Diffie-Hellman parameters ("dh key too small") — excluding
-# DH forces ECDHE instead. urllib3 2.0 removed DEFAULT_CIPHERS outright, because its
-# own default list is already restricted to modern suites and no longer offers the
-# legacy DH ones this was working around. So on 2.x there is nothing to patch and
-# the guard is not a degradation.
+# A long-standing adjustment for negotiating TLS with particular deployments, kept
+# for anyone still resolving urllib3 1.x. urllib3 2.0 removed DEFAULT_CIPHERS and
+# manages its own list, so on 2.x there is nothing here to patch.
 #
-# This is why urllib3 was pinned to 1.26.19. The pin, not the workaround, was the
-# problem: it held the package six advisories behind. If you need a specific cipher
-# string on urllib3 2.x, it is a per-session SSLContext
-# (`urllib3.util.ssl_.create_urllib3_context(ciphers=...)`) mounted on the adapter,
-# not a global mutation.
+# This is why urllib3 was pinned to 1.26.19. The pin, not the tweak, was the problem:
+# it held the package five advisories behind. Per-connection cipher configuration on
+# urllib3 2.x lives in anzo_utils.MUSTRD_SSL_CIPHERS — an SSLContext on a mounted
+# adapter, rather than a global mutation.
 if hasattr(requests.packages.urllib3.util.ssl_, "DEFAULT_CIPHERS"):
     requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ":HIGH:!DH:!aNULL"
 

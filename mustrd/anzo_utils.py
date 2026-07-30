@@ -12,23 +12,24 @@ import logging
 
 logger = logging.getLogger(__name__)     # not the root logger: this is a library
 
-# Talking to an Anzo with an old TLS stack.
+# Configurable TLS ciphers.
 #
-# mustrd used to do this globally, by appending ":HIGH:!DH:!aNULL" to
-# urllib3's DEFAULT_CIPHERS at import time — which is why urllib3 was pinned to
-# 1.26.19. urllib3 2.0 deleted DEFAULT_CIPHERS, and its own defaults are stricter,
-# so an Anzo that only offers legacy suites can now fail the handshake where it
-# previously connected.
+# Which cipher suites a connection can negotiate depends on how the server it is
+# talking to has been deployed and terminated — that is a site matter, and it varies.
+# mustrd used to force one answer globally, appending ":HIGH:!DH:!aNULL" to urllib3's
+# DEFAULT_CIPHERS at import time, which is why urllib3 was pinned to 1.26.19.
+# urllib3 2.0 removed DEFAULT_CIPHERS and manages its own list, so that knob is gone
+# and a connection that previously negotiated may need the list widening again.
 #
-# The old behaviour is not restored by default: silently relaxing TLS for every
-# user to suit one server is the wrong trade. Instead it is opt-in, and you choose
-# the cipher string. For a genuinely old Anzo, lowering OpenSSL's security level is
-# usually what is needed rather than naming suites:
+# Not restored by default: silently relaxing TLS for every user and every host, to
+# suit one deployment, is the wrong trade. It is opt-in, and the string is yours to
+# choose, because only you know what the far end needs. Adjusting OpenSSL's security
+# level is often more effective than naming individual suites:
 #
 #     export MUSTRD_SSL_CIPHERS='DEFAULT:@SECLEVEL=1'
 #
-# This applies only to Anzo requests. Those already pass verify=False, so the
-# context below matches that rather than weakening anything further.
+# These requests already pass verify=False, so the context below matches that rather
+# than weakening anything further.
 SSL_CIPHERS_ENV = "MUSTRD_SSL_CIPHERS"
 
 _session = None

@@ -1,9 +1,9 @@
-"""The Anzo TLS escape hatch.
+"""Configurable TLS ciphers for anzo_utils.
 
-These need no Anzo — every Anzo test in test_mustrd_anzo.py is skipped unless one is
-configured, which is exactly why the cipher behaviour needs pinning here instead. The
-old global urllib3 DEFAULT_CIPHERS mutation disappeared with urllib3 2.x, and nothing
-in CI would have noticed.
+These need no server. Every test in test_mustrd_anzo.py skips unless one is
+configured, which is exactly why the cipher behaviour needs pinning here instead:
+the old global urllib3 DEFAULT_CIPHERS mutation disappeared with urllib3 2.x and
+nothing in CI would have noticed.
 """
 import ssl
 
