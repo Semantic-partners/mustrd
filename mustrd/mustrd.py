@@ -37,7 +37,19 @@ from functools import wraps
 log = logging.getLogger(__name__)
 
 requests.packages.urllib3.disable_warnings()
-requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ":HIGH:!DH:!aNULL"
+
+# Legacy cipher-list tweak, urllib3 1.x only.
+#
+# A long-standing adjustment for negotiating TLS with particular deployments, kept
+# for anyone still resolving urllib3 1.x. urllib3 2.0 removed DEFAULT_CIPHERS and
+# manages its own list, so on 2.x there is nothing here to patch.
+#
+# This is why urllib3 was pinned to 1.26.19. The pin, not the tweak, was the problem:
+# it held the package five advisories behind. Per-connection cipher configuration on
+# urllib3 2.x lives in anzo_utils.MUSTRD_SSL_CIPHERS — an SSLContext on a mounted
+# adapter, rather than a global mutation.
+if hasattr(requests.packages.urllib3.util.ssl_, "DEFAULT_CIPHERS"):
+    requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ":HIGH:!DH:!aNULL"
 
 # No logging configuration here. mustrd is a library: importing it must not
 # touch the root logger, or it silently destroys the configuration of whatever

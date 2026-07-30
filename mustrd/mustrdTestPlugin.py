@@ -28,7 +28,6 @@ from mustrd.mustrd import (
 )
 from mustrd.namespace import MUST, MUSTRDTEST
 
-import pathlib
 import traceback
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
@@ -333,16 +332,20 @@ class MustrdTestPlugin:
         return None
 
     @pytest.hookimpl
-    def pytest_collect_file(self, parent, path):
-        logger.debug(f"Collecting file: {path}")
+    def pytest_collect_file(self, parent, file_path):
+        # `file_path: pathlib.Path`, not the old `path: py.path.local`. pytest 7.0
+        # added this argument and deprecated the other; pytest 9 turned taking the
+        # deprecated one into an error, which broke collection outright. The node
+        # constructor's own `path=` kwarg below is a different thing and unchanged.
+        logger.debug(f"Collecting file: {file_path}")
         # Only collect .ttl files that are mustrd suite config files
-        if not str(path).endswith('.ttl'):
+        if not str(file_path).endswith('.ttl'):
             return None
-        if Path(path).resolve() != Path(self.test_config_file).resolve():
-            logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {path}")
+        if file_path.resolve() != Path(self.test_config_file).resolve():
+            logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {file_path}")
             return None
 
-        mustrd_file = MustrdFile.from_parent(parent, path=pathlib.Path(path), mustrd_plugin=self)
+        mustrd_file = MustrdFile.from_parent(parent, path=file_path, mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
 
