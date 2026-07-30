@@ -88,10 +88,21 @@ test-data:composingSeveralInputsCQ
 # a spec answers it by querying that data. Every question above instead asks whether
 # *mustrd* supports something, and the specs are evidence about the tool.
 #
-# Same shape, different subject. cq:CompetencyQuestion is being borrowed here
-# because it is the only thing in the model with prose plus links to the specs that
-# back it. A capability is arguably its own class — and it would want something a
-# competency question does not: which triple stores it holds for. "Does inherited
-# state work on GraphDB?" is a real question this suite could answer, since specs
-# already carry must:filterOnTripleStore, and it has no equivalent for a domain CQ.
+# Same shape, different subject. cq:CompetencyQuestion is borrowed here because it
+# is the only thing in the model carrying prose plus links to the specs that back it.
+#
+# The thing being described is an affordance: mustrd offers an action, and the spec
+# author has the matching effectivity — mustrd affords "take the query from a file",
+# the author writes must:fileurl. Neither half is the affordance alone. Turvey's
+# formalisation makes an affordance a *disposition*, which BFO already has, realized
+# in a process. So the affordance is a disposition of mustrd, a spec run is the
+# process that realizes it, and a pass is the evidence.
+#
+# Which is why cq:cqSpec is thin, and not merely inelegant: a disposition is
+# realized under conditions, and here those conditions are the triple store.
+# "mustrd affords DELETE" is false as stated — it holds on some stores and, as of
+# this commit, not on RdfLib. Specs already carry must:filterOnTripleStore, so the
+# suite knows; a flat link from question to spec throws it away.
+#
+# Not modelled yet. Naming the gap is cheaper than guessing at the vocabulary.
 # ---------------------------------------------------------------------------
