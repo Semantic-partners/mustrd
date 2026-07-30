@@ -588,6 +588,44 @@ mustrd report --config mustrd-config.ttl \
        the graph itself. Both take the same flags as the plugin.</p>
   </section>
 
+  <!-- Windows -->
+  <section>
+    <h2>Windows, including <span>locked down</span></h2>
+    <p>Windows is a tested platform, not an afterthought — CI runs the whole suite on
+       it against Python 3.11, 3.12 and 3.13. The reports use box-drawing characters
+       and emoji, and a Windows console still defaults to cp1252 where printing those
+       throws, so the CLI reconfigures its own streams to UTF-8 on startup. That
+       failure mode is handled rather than left to you.</p>
+    <div class="features">
+      <div class="feature">
+        <h3>Ordinary Windows</h3>
+        <p>Nothing special to do. Paths inside a config resolve relative to the config
+           file rather than the working directory, so drive letters and backslashes are
+           fine and you can run from anywhere.</p>
+        <pre>pytest --mustrd --config=test\config.ttl
+
+mustrd report --config test\config.ttl \
+  --viewer report.html</pre>
+      </div>
+      <div class="feature">
+        <h3>Locked-down Windows</h3>
+        <p>Enterprise builds commonly block the bare <code>.exe</code> shims pip
+           installs into <code>Scripts\</code>. The package installs fine, but the
+           <code>mustrd</code> command won't start. Run the module through the venv's
+           interpreter instead.</p>
+        <pre>python -m venv .venv
+.venv/Scripts/python -m pip install mustrd
+
+.venv/Scripts/python -m mustrd report \
+  --config config.ttl</pre>
+      </div>
+    </div>
+    <p><code>python -m mustrd</code> is exactly equivalent to the <code>mustrd</code>
+       command &mdash; same entry point, same flags. It exists for this.
+       <a href="https://github.com/Semantic-partners/mustrd#running-on-locked-down-windows">More
+       in the README</a>.</p>
+  </section>
+
   <!-- Status -->
   <section>
     <h2>Status</h2>
@@ -596,6 +634,7 @@ mustrd report --config mustrd-config.ttl \
       <li class="stable">SELECT / CONSTRUCT / UPDATE specs: stable</li>
       <li class="stable">SHACL spec validation: stable</li>
       <li class="stable">pytest plugin with VS Code: stable</li>
+      <li class="stable">Linux and Windows, Python 3.11&ndash;3.13, CI-tested: stable</li>
       <li class="stable">GraphDB integration: stable</li>
       <li class="stable">Anzo integration: stable</li>
       <li class="impl">Markdown test reports: implemented</li>

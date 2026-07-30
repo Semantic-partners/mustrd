@@ -6,7 +6,7 @@
 Ensure you have python3 installed, before you begin.
 To install the necessary dependencies, run the following command from the project root.
 
-`pip3 install  -r requirements.txt`
+`poetry install`
 
 Run the following command to execute the accompanying tests specifications.
 
@@ -24,9 +24,8 @@ Run `pytest` from the project root.
 
 == Additional Notes for Developers
 Mustrd remains very much under development. It is anticipated that additional functionality and triplestore support will be added over time. The project uses https://python-poetry.org/docs/[Poetry] to manage dependencies so it will be necessary to have this installed to contribute towards the project. The link contains instructions on how to install and use this.
-As the project is actually built from the requirements.txt file at the project root, it is necessary to export dependencies from poetry to this file before committing and pushing changes to the repository, using the following command.
 
-`poetry export -f requirements.txt --without-hashes > requirements.txt`
+`pyproject.toml` and `poetry.lock` are the only sources of dependency truth. There is no exported `requirements.txt` to keep in step — the wheel is built by `poetry build`, and CI installs with `poetry install`.
 
 
 
