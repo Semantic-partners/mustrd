@@ -7,7 +7,7 @@ from rdflib.namespace import Namespace
 
 from mustrd.mustrd import Specification, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE
-from mustrd.spec_component import parse_spec_component, ThenSpec
+from mustrd.spec_component import parse_spec_component, GivenSpec, ThenSpec
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 import logging
@@ -229,6 +229,69 @@ class TestRunSpec:
                                       [ must:variable "o" ;
                                         must:boundValue  test-data:obj ; ] ;
                ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
+        with pytest.raises(ValueError) as error_message:
+            parse_spec_component(subject=spec_uri,
+                                 predicate=MUST.given,
+                                 spec_graph=spec_graph,
+                                 run_config=None,
+                                 mustrd_triple_store=self.triple_store)
+        assert "Invalid combination of data source type" in str(error_message.value)
+        assert "Valid combinations are:" in str(error_message.value)
+
+    def test_foreign_data_source_type_is_ignored(self):
+        # A source node may carry types mustrd does not own — here the given is also
+        # an entry in the caller's own catalogue. Dispatch is on (type, predicate),
+        # so the unrecognised type must be skipped rather than sent to Default.
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.org/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        @prefix cat: <https://example.org/catalogue/> .
+
+        test-data:my_first_spec
+            a must:TestSpec ;
+                must:given [ a must:StatementsDataset, cat:CatalogueEntry ;
+                                   must:hasStatement [ a             rdf:Statement ;
+                                       rdf:subject   test-data:sub ;
+                                       rdf:predicate test-data:pred ;
+                                       rdf:object    test-data:obj ; ] ; ] .
+        """
+        spec_graph.parse(data=spec, format='ttl')
+
+        spec_uri = TEST_DATA.my_first_spec
+        addspec_source_file_to_spec_graph(spec_graph, spec_uri, __name__)
+
+        given_component = parse_spec_component(subject=spec_uri,
+                                               predicate=MUST.given,
+                                               spec_graph=spec_graph,
+                                               run_config=None,
+                                               mustrd_triple_store=self.triple_store)
+
+        assert isinstance(given_component, GivenSpec)
+        expected = Graph()
+        expected.parse(data=self.given_sub_pred_obj, format="ttl")
+        assert isomorphic(expected, given_component.value)
+
+    def test_only_foreign_data_source_types_still_errors(self):
+        # The other half: ignoring foreign types must not swallow a genuinely
+        # malformed source. With nothing recognised there is no handler to pick,
+        # so this still falls through to Default and reports as it always did.
+        spec_graph = Graph()
+        spec = """
+        @prefix must: <https://mustrd.org/model/> .
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        @prefix cat: <https://example.org/catalogue/> .
+
+        test-data:my_first_spec
+            a must:TestSpec ;
+                must:given [ a cat:CatalogueEntry, cat:NamedQuery ] .
         """
         spec_graph.parse(data=spec, format='ttl')
 

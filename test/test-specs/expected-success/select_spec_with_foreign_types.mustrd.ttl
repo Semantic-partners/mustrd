@@ -1,0 +1,36 @@
+# A spec whose source nodes carry rdf:types mustrd does not own.
+#
+# The motivating case: the query at a must:fileurl is ALSO an entry in the caller's
+# own catalogue. One node that is both the thing mustrd runs and the thing the
+# catalogue lists. Dispatch is on (rdf:type, predicate), so before mustrd ignored
+# unrecognised types it walked every one of them and the foreign type made the whole
+# spec fail through the Default handler.
+#
+# Foreign types on all three components, because each is dispatched separately.
+# Everything else here is deliberately ordinary — if this spec fails, it is because
+# of the extra types and nothing else.
+
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+@prefix cat:       <https://example.org/catalogue/> .
+
+
+test-data:a_complete_select_scenario_with_foreign_types
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataset, cat:CatalogueEntry ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub ;
+                                     rdf:predicate test-data:pred ;
+                                     rdf:object    test-data:obj ; ] ; ] ;
+    must:when  [ a must:FileSparqlSource, cat:NamedQuery ;
+                 must:fileurl <file://./select-query.sparql> ;
+                 must:queryType must:SelectSparql ; ] ;
+    must:then  [ a must:TableDataset, cat:CatalogueEntry ;
+                 must:hasRow [ must:hasBinding [ must:variable "s" ;
+                                                 must:boundValue test-data:sub ; ],
+                                               [ must:variable "p" ;
+                                                 must:boundValue test-data:pred ; ],
+                                               [ must:variable "o" ;
+                                                 must:boundValue test-data:obj ; ] ;
+               ] ; ] .
