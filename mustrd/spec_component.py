@@ -454,14 +454,17 @@ def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentD
         spec_component = GivenSpec()
     else:
         spec_component = ThenSpec()
-    store = Memory()
-    g = URIRef("http://localhost:7200/test-graph")
-    spec_component.value = ConjunctiveGraph(store=store)
-    spec_graph = Graph(store=store, identifier=g)
+    spec_component.value = ConjunctiveGraph(store=Memory())
 
     data = get_spec_from_statements(spec_component_details.subject, spec_component_details.predicate,
                                     spec_component_details.spec_graph)
-    spec_graph.parse(data=data)
+    # Into the DEFAULT graph, not a named one. An unqualified `DELETE ... WHERE`
+    # operates on the dataset's default graph (SPARQL 1.1 §3.1.3), so given data
+    # sitting in a named graph is matched by the WHERE — a ConjunctiveGraph reads
+    # as the union — and then not deleted. rdflib <= 7.1.4 deleted it anyway;
+    # 7.6.0 is conformant, which is what broke every update spec. Reads are
+    # unaffected either way, so the default graph is simply the correct home.
+    spec_component.value.default_context.parse(data=data)
     return spec_component
 
 
