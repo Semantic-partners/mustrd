@@ -334,6 +334,8 @@ MustRD is a work in progress, built to meet the needs of our projects across mul
 
 We invite you to try it, raise issues, or contribute via pull requests. If you need custom features, contact us for consultancy rates, and we may prioritize your request.
 
+Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the two test suites, and the traps.
+
 ## Releasing
 
 Maintainers: releases are cut by pushing a version tag (`git tag 0.7.5 && git push origin 0.7.5`). See [RELEASING.md](RELEASING.md) for the full flow, including beta/candidate releases.
