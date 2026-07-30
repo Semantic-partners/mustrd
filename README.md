@@ -91,6 +91,65 @@ This will validate your SPARQL queries against the defined dataset and expected 
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
 
+#### What a run can produce
+
+Every flag below works identically on `pytest --mustrd` and on `mustrd report`:
+
+| Flag | You get | Detail |
+| --- | --- | --- |
+| *(none)* | pass/fail to the terminal | above |
+| `--md=report.md` | Markdown summary, for a CI job summary or a PR comment | [Competency questions & coverage](#competency-questions--ontology-coverage) |
+| `--viewer=report.html` | one self-contained HTML report — no server, no CDN | [The HTML report](#the-html-report) |
+| `--cq` | competency-question table: which questions your tests answer | [Competency questions & coverage](#competency-questions--ontology-coverage) |
+| `--term-coverage` | how much of your ontology the tests actually exercise | [Ontology term coverage](#ontology-term-coverage) |
+| `--term-coverage-rdf=cov.ttl` | the same coverage as RDF (DQV + PROV) | [Ontology term coverage](#ontology-term-coverage) |
+| `--results-rdf=run.ttl` | per-test results as RDF | [The HTML report](#the-html-report) |
+
+```bash
+# the usual pair: something to read in the terminal, something to attach to CI
+pytest --mustrd --config=config.ttl --cq --term-coverage --md=report.md --viewer=report.html
+```
+
+`--viewer` already implies the coverage and competency-question graphs; `--cq` and
+`--term-coverage` only affect the terminal and `--md` output.
+
+#### Running on Windows
+
+Windows is a supported, CI-tested platform — the matrix covers `windows-latest` on
+Python 3.11, 3.12 and 3.13. Both front ends work the same as on Linux:
+
+```powershell
+pytest --mustrd --config=test\test_config_local.ttl --md=report.md
+mustrd report --config test\test_config_local.ttl --viewer report.html
+```
+
+Two things differ in practice:
+
+- **Non-ASCII output is handled for you.** The reports use `↳`, `▸`, `✅` and `❌`,
+  and a Windows console still defaults to cp1252, where printing those raises
+  `UnicodeEncodeError`. The CLI reconfigures its own streams to UTF-8 on startup, so
+  this is not something you need to work around. If you drive mustrd from your own
+  script and see an encoding error, `set PYTHONIOENCODING=utf-8` fixes it.
+- **Paths in a config are resolved relative to the config file**, not the working
+  directory, so backslashes and drive letters are fine and you can run from anywhere.
+
+#### Running on locked-down Windows
+
+Enterprise builds commonly block the bare `.exe` shims that pip installs into
+`Scripts\`. The package installs fine, but the `mustrd` command won't start. Run the
+module through the venv's interpreter instead:
+
+```
+python -m venv .venv
+.venv/Scripts/python -m pip install mustrd
+
+.venv/Scripts/python -m mustrd report --config config.ttl --viewer report.html
+.venv/Scripts/python -m pytest --mustrd --config=config.ttl --md=report.md
+```
+
+`python -m mustrd` is exactly equivalent to the `mustrd` command — same entry point,
+same flags. It exists for this.
+
 #### Integrating with Visual Studio Code (vscode)
 We have a pytest plugin.
 1. Choose a python interpreter (probably a venv)
@@ -103,6 +162,22 @@ We have a pytest plugin.
 ```
 4. VS Code should auto discover your tests and they'll show up in the flask icon 'tab'.
 ![alt text](image.png)
+
+#### Also worth installing: Mentor
+
+If you are writing RDF in VS Code, get [**Mentor**](https://github.com/faubulous/mentor-vscode)
+(`faubulous.mentor`, [mentor-vscode.dev](https://mentor-vscode.dev/), GPL-3.0). It is
+the missing IDE for knowledge graphs, and it makes authoring mustrd specs markedly
+less painful: syntax highlighting and validation for Turtle, TriG, N-Triples,
+N-Quads, RDF/XML and SPARQL, browsable RDFS/OWL/SHACL/SKOS definition trees with
+structural reasoning, workspace-wide autocomplete with prefix.cc lookup, go-to-definition
+and cross-file references, prefix and IRI renaming, and a built-in triple store you
+can run SPARQL against.
+
+A mustrd spec is just Turtle, and Mentor treats it as such — jump straight from a
+`must:fileurl` to the query it points at, or from a term in a spec to its definition
+in your ontology. Nothing to configure on our side. Credit where it's due: it is an
+excellent piece of work and not ours.
 
 ## Competency questions & ontology coverage
 
@@ -258,6 +333,8 @@ does not pass.
 MustRD is a work in progress, built to meet the needs of our projects across multiple clients and vendor stacks. While we find it useful, it may not meet your needs out of the box.
 
 We invite you to try it, raise issues, or contribute via pull requests. If you need custom features, contact us for consultancy rates, and we may prioritize your request.
+
+Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the two test suites, and the traps.
 
 ## Releasing
 
