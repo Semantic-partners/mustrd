@@ -1,0 +1,108 @@
+# What this suite claims mustrd can do, and which specs back each claim.
+#
+# Each question here covers SEVERAL specs — the point is the capability, not the
+# file. `cq:cqSpec` is 0..n, so one question can name every spec that evidences it,
+# and `--cq` then reports the question as answered only if those specs pass.
+#
+#   pytest --mustrd --config=test/test_config_local.ttl --cq
+#
+# Named with a leading underscore so it sorts to the top of the directory and reads
+# as an index rather than as another spec. It declares no must:TestSpec of its own.
+#
+# NOTE these are questions about *mustrd's own behaviour*, not about a dataset —
+# see the note at the end of this file.
+
+@prefix cq:        <https://mustrd.org/competencyQuestion/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+
+test-data:eachQueryTypeCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Can a spec test each kind of SPARQL — SELECT, CONSTRUCT, and the update forms?" ;
+    cq:cqSpec test-data:a_complete_select_scenario ,
+              test-data:a_complete_construct_scenario ,
+              test-data:a_complete_insert_scenario ,
+              test-data:a_complete_delete_scenario ,
+              test-data:a_complete_delete_insert_scenario ,
+              test-data:a_complete_insert_data_scenario ,
+              test-data:a_complete_delete_data_scenario .
+
+
+test-data:piecesFromFilesCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Can a spec's given data, its query and its expected result each come from a file instead of being written inline?" ;
+    cq:cqSpec test-data:a_complete_select_scenario_given_file ,
+              test-data:a_complete_select_scenario_given_file_then_file ,
+              test-data:a_complete_construct_scenario_when_file_then_file ,
+              test-data:a_complete_construct_scenario_when_file_then_file_as_uris ,
+              test-data:a_complete_select_scenario_with_bound_variable_and_query_file ,
+              test-data:a_complete_construct_scenario_from_folders .
+
+
+test-data:expressingAnExpectedResultCQ
+    a cq:CompetencyQuestion ;
+    cq:question "How can a spec express what it expects — a table of bindings, a graph, a specific row order, or nothing at all?" ;
+    cq:cqSpec test-data:a_complete_select_scenario ,
+              test-data:a_complete_construct_scenario ,
+              test-data:a_complete_select_scenario_ordered ,
+              test-data:a_complete_select_scenario_expected_empty_result ,
+              test-data:a_complete_select_scenario_multiline_result ,
+              test-data:a_complete_construct_scenario_multiline_result .
+
+
+test-data:parameterisingAQueryCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Can a spec parameterise its query by binding variables before it runs?" ;
+    cq:cqSpec test-data:a_complete_select_scenario_with_variables ,
+              test-data:a_complete_construct_scenario_with_variables ,
+              test-data:a_complete_select_scenario_with_variables_and_varied_casing ,
+              test-data:a_complete_select_scenario_with_bound_variable_and_query_file .
+
+
+test-data:typedAndOptionalResultsCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Are literal datatypes and unbound OPTIONAL results compared correctly rather than by their string form?" ;
+    cq:cqSpec test-data:a_complete_select_scenario_variables_datatypes ,
+              test-data:a_complete_select_scenario_optional_result ,
+              test-data:a_complete_delete_insert_with_optional_scenario .
+
+
+test-data:nonTrivialSparqlCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Does a spec still hold when the query is not a flat pattern — a sub-SELECT, or an OPTIONAL inside an update?" ;
+    cq:cqSpec test-data:a_complete_delete_insert_with_subselect_scenario ,
+              test-data:a_complete_delete_insert_with_optional_scenario .
+
+
+test-data:composingSeveralInputsCQ
+    a cq:CompetencyQuestion ;
+    cq:question "Can a spec combine several given datasets, and several expected results, into one comparison?" ;
+    cq:cqSpec test-data:a_complete_construct_scenario_multiple_given_multiple_then .
+
+
+# ---------------------------------------------------------------------------
+# On the abstraction
+#
+# These are not competency questions in the usual sense. A competency question asks
+# whether a *dataset* can answer something — "In which country is Rotterdam?" — and
+# a spec answers it by querying that data. Every question above instead asks whether
+# *mustrd* supports something, and the specs are evidence about the tool.
+#
+# Same shape, different subject. cq:CompetencyQuestion is borrowed here because it
+# is the only thing in the model carrying prose plus links to the specs that back it.
+#
+# The thing being described is an affordance: mustrd offers an action, and the spec
+# author has the matching effectivity — mustrd affords "take the query from a file",
+# the author writes must:fileurl. Neither half is the affordance alone. Turvey's
+# formalisation makes an affordance a *disposition*, which BFO already has, realized
+# in a process. So the affordance is a disposition of mustrd, a spec run is the
+# process that realizes it, and a pass is the evidence.
+#
+# Which is why cq:cqSpec is thin, and not merely inelegant: a disposition is
+# realized under conditions, and here those conditions are the triple store.
+# "mustrd affords DELETE" is false as stated — it holds on some stores and, as of
+# this commit, not on RdfLib. Specs already carry must:filterOnTripleStore, so the
+# suite knows; a flat link from question to spec throws it away.
+#
+# Not modelled yet. Naming the gap is cheaper than guessing at the vocabulary.
+# ---------------------------------------------------------------------------
