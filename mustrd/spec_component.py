@@ -93,7 +93,14 @@ def parse_spec_component(subject: URIRef,
     spec_components = []
     for spec_component_node in spec_component_nodes:
         data_source_types = get_data_source_types(subject, predicate, spec_graph, spec_component_node)
-        for data_source_type in data_source_types:
+        # A source node may legitimately carry types mustrd does not own — e.g. the
+        # query at a must:fileurl also being labelled a named query in the caller's
+        # own vocabulary. Dispatch only the types mustrd has a handler for, so the
+        # extras are ignored rather than fatal; if NONE are recognised, fall through
+        # to the Default handler, which reports the valid combinations as before.
+        known = [t for t in data_source_types
+                 if (t, predicate) in get_spec_component.methods]
+        for data_source_type in (known or data_source_types):
             log.debug(f"parse_spec_component {spec_component_node} {data_source_type} {mustrd_triple_store=}")
             spec_component_details = SpecComponentDetails(
                 subject=subject,
