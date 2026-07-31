@@ -30,6 +30,15 @@
     overflow-x: hidden;
   }
 
+  /* Links in prose. Without this, section and figcaption links fall back to the
+     UA default #0000EE / visited #551A8B — unreadable on the dark background.
+     .cta and footer links override the colour below. */
+  a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
+
   .container {
     max-width: 960px;
     margin: 0 auto;
@@ -550,8 +559,8 @@
         <a href="/examples/geography-example/report/">Open the real thing</a> —
         it is one file, so <em>View Source</em> is the whole story.</figcaption>
     </figure>
-    <p><a href="/examples/geography-example/report/">See a live example report</a>
-       &middot; <a href="/coverage">the coverage vocabulary</a></p>
+    <p>The vocabulary it is all rendered from:
+       <a href="/coverage">the coverage ontology</a>.</p>
   </section>
 
   <!-- Two ways to run -->
