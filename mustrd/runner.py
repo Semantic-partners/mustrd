@@ -88,7 +88,7 @@ def _outcome(result):
     return "passed" if isinstance(result, (SpecPassed, SpecPassedWithWarning)) else "failed"
 
 
-def _triple_store_name(spec):
+def triple_store_name(spec):
     ts = getattr(spec, "triple_store", None)
     if isinstance(ts, dict):
         return str(ts.get("uri") or ts.get("type") or "rdflib").split("/")[-1].split("#")[-1]
@@ -122,7 +122,7 @@ def run_config(config_path, secrets=None, selected_tests=None, ignore_focus=Fals
                                         selected_tests=selected_tests,
                                         ignore_focus=ignore_focus)
         for spec in specs:
-            ts = _triple_store_name(spec)
+            ts = triple_store_name(spec)
             t0 = time.perf_counter()
             result = run_spec(spec)
             duration = time.perf_counter() - t0
