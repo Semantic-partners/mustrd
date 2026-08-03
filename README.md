@@ -163,6 +163,11 @@ We have a pytest plugin.
 4. VS Code should auto discover your tests and they'll show up in the flask icon 'tab'.
 ![alt text](image.png)
 
+Each `.mustrd.ttl` is a node in the tree, in the folder it actually lives in, with
+one test under it per spec and triple store (`<spec>@<store>`). Running a single
+one runs exactly that one. `:hasPytestPath` no longer shapes the tree — the
+directories do — but it still filters, via `--pytest-path`.
+
 #### Also worth installing: Mentor
 
 If you are writing RDF in VS Code, get [**Mentor**](https://github.com/faubulous/mentor-vscode)
