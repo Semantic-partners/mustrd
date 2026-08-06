@@ -570,7 +570,8 @@ def run_spec(spec: Specification) -> SpecResult:
 def get_triple_store_graph(triple_store_graph_path: Path) -> Graph:
     # Config only. Secrets are loaded separately into a map (see get_credentials),
     # never merged in here, so this graph can be serialised, logged or dumped
-    # without leaking auth.
+    # without exposing auth. Before merging the secrets source in here for
+    # convenience, read docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
     return Graph().parse(triple_store_graph_path)
 
 
@@ -581,7 +582,8 @@ def get_credentials(triple_store_graph_path: Path, secrets: str = None) -> dict:
     Secrets come from the inline `secrets` turtle (e.g. a CI-supplied string) or,
     failing that, the sibling `<config>_secrets<ext>` file. They are parsed into a
     throwaway graph purely to extract the map, then discarded — the secret triples
-    never join the config graph.
+    never join the config graph. See
+    docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
     """
     secrets_graph = Graph()
     if secrets:
@@ -681,7 +683,8 @@ def get_triple_store_config_dispatch(
 
 # Reads the connection details for one triple store out of the config graph and
 # into its dict, dispatched on the store type. Credentials come from the map, not
-# the graph.
+# the graph. New store type -> register a method here, don't add a conditional.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 get_triple_store_config = MultiMethod(
     "get_triple_store_config", get_triple_store_config_dispatch
 )
@@ -1034,6 +1037,8 @@ def render_result_diff_dispatch(res, info):
 # One dispatch table for rendering a result, keyed on the result class, so the
 # two call sites (write_result_diff_to_log and display_verbose) can't drift apart
 # again. `info` is the sink — a logger method, print, or a string collector.
+# New result type -> register a method, don't add a conditional at the call sites.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 render_result_diff = MultiMethod("render_result_diff", render_result_diff_dispatch)
 
 

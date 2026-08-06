@@ -18,6 +18,10 @@ from edn_format import loads, Keyword
 
 log = logging.getLogger(__name__)
 
+# Dispatch on the store type / query type axes goes through the multimethods
+# below — new backends and query types register a method, they do not add a
+# conditional. See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
+
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
     ts = triple_store['type']

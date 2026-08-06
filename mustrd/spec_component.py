@@ -250,6 +250,8 @@ def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) ->
     return spec_component_details.data_source_type, spec_component_details.predicate
 
 
+# New (source type, predicate) combination -> register a method, don't add a
+# conditional. See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
 
