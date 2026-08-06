@@ -5,10 +5,12 @@ from typing import List
 from urllib.parse import quote
 from rdflib import Graph
 import requests
-from requests import Response, HTTPError, RequestException
+from requests import Response
 from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
 import logging
+
+from mustrd.utils import manage_http_response
 
 logger = logging.getLogger(__name__)     # not the root logger: this is a library
 
@@ -109,17 +111,15 @@ def query_configuration(anzo_config: dict, query: str, format: str = "json"):
 
 
 # https://github.com/Semantic-partners/mustrd/issues/73
+def _anzo_auth_detail(content_string: str) -> str:
+    # Anzo returns an HTML error page on auth failure; surface just its <title>.
+    return BeautifulSoup(content_string, 'html.parser').title.string
+
+
 def manage_anzo_response(response: Response) -> str:
-    content_string = response.content.decode("utf-8")
-    if response.status_code == 200:
-        logging.debug(f"Response content: {content_string}")
-        return content_string
-    elif response.status_code == 403:
-        html = BeautifulSoup(content_string, 'html.parser')
-        title_tag = html.title.string
-        raise HTTPError(f"Anzo authentication error, status code: {response.status_code}, content: {title_tag}")
-    else:
-        raise RequestException(f"Anzo error, status code: {response.status_code}, content: {content_string}")
+    return manage_http_response(
+        response, "Anzo",
+        success_codes=(200,), auth_codes=(403,), auth_detail=_anzo_auth_detail)
 
 
 def send_anzo_query(anzo_config, url, params, query, is_update=False):

@@ -18,7 +18,9 @@ import logging
 
 import requests
 from rdflib import Graph
-from requests import ConnectionError, HTTPError, RequestException, Response
+from requests import ConnectionError, Response
+
+from .utils import manage_http_response
 
 log = logging.getLogger(__name__)
 
@@ -50,17 +52,9 @@ def _auth_and_headers(triple_store: dict, extra_headers: dict = None):
 
 # https://docs.stardog.com/operating-stardog/server-administration/server-monitoring#http-status-codes
 def manage_stardog_response(response: Response) -> str:
-    content_string = response.content.decode("utf-8")
-    if response.status_code in (200, 201):
-        return content_string
-    elif response.status_code == 204:
-        return None
-    elif response.status_code in (401, 403):
-        raise HTTPError(
-            f"Stardog authentication error, status code: {response.status_code}, content: {content_string}")
-    else:
-        raise RequestException(
-            f"Stardog error, status code: {response.status_code}, content: {content_string}")
+    return manage_http_response(
+        response, "Stardog",
+        success_codes=(200, 201, 204), auth_codes=(401, 403))
 
 
 def dataset_graphs(triple_store: dict) -> list:
