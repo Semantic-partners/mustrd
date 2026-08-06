@@ -1,61 +1,9 @@
-import tempfile
-import os
 import unittest
 
-import toml
 from rdflib import Graph, Literal, URIRef, RDF
 
-from mustrd.mustrd import get_credential_from_file, get_triple_stores
+from mustrd.mustrd import get_triple_stores
 from mustrd.namespace import TRIPLESTORE
-
-
-class TestGetCredentialFromFile(unittest.TestCase):
-    def setUp(self):
-        # Create a temporary config file for testing
-        self.config_file = tempfile.NamedTemporaryFile(delete=False)
-        config_data = {
-            "triple_store_name": {
-                "username": "test_user",
-                "password": "test_password"
-            }
-        }
-        self.config_file.write(toml.dumps(config_data).encode("utf-8"))
-        self.config_file.close()
-
-    def tearDown(self):
-        # Remove the temporary config file
-        os.remove(self.config_file.name)
-
-    def test_get_credential_from_file(self):
-        triple_store_name = "triple_store_name"
-        credential = "username"
-        config_path = self.config_file.name
-        result = get_credential_from_file(triple_store_name, credential, config_path)
-        expected = "test_user"
-        self.assertEqual(result, expected)
-
-    def test_get_credential_from_file_missing_parameter(self):
-        triple_store_name = "triple_store_name"
-        credential = "username"
-        config_path = None
-        with self.assertRaises(ValueError):
-            get_credential_from_file(triple_store_name, credential, config_path)
-
-    def test_get_credential_from_file_missing_file(self):
-        triple_store_name = "triple_store_name"
-        credential = "username"
-        config_path = "nonexistent_file.ini"
-        with self.assertRaises(FileNotFoundError):
-            get_credential_from_file(triple_store_name, credential, config_path)
-
-    def test_get_credential_from_file_invalid_config_file(self):
-        triple_store_name = "triple_store_name"
-        credential = "username"
-        config_path = self.config_file.name
-        with open(config_path, "w") as f:
-            f.write("invalid config")
-        with self.assertRaises(ValueError):
-            get_credential_from_file(triple_store_name, credential, config_path)
 
 
 class TestGetTripleStores(unittest.TestCase):

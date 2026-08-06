@@ -1,7 +1,6 @@
 import os
 from typing import Tuple, List, Union, Optional
 
-import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
@@ -816,32 +815,6 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
             f"Cannot establish connection to {triple_store['type']}. "
             f"Missing required parameter(s): {', '.join(missing_params)}."
         )
-
-
-def get_credential_from_file(
-    triple_store_name: URIRef, credential: str, config_path: Literal
-) -> str:
-    log.debug(
-        f"get_credential_from_file {triple_store_name}, {credential}, {config_path}"
-    )
-    if not config_path:
-        raise ValueError(
-            f"Cannot establish connection defined in {triple_store_name}. "
-            f"Missing required parameter: {credential}."
-        )
-    path = Path(config_path)
-    log.debug(f"get_credential_from_file {path}")
-
-    if not os.path.isfile(path):
-        log.error(f"couldn't find {path}")
-        raise FileNotFoundError(f"Credentials config file not found: {path}")
-    try:
-        with open(path, "rb") as f:
-            config = tomli.load(f)
-    except tomli.TOMLDecodeError as e:
-        log.error(f"config error {path} {e}")
-        raise ValueError(f"Error reading credentials config file: {e}")
-    return config[str(triple_store_name)][credential]
 
 
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
