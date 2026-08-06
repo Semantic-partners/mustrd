@@ -1029,33 +1029,63 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def write_result_diff_to_log(res, info):
-    if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(f"{Fore.BLUE} In Expected Not In Actual:")
-        info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-        info(f"{Fore.RED} in_actual_not_in_expected")
-        info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-        info(f"{Fore.GREEN} in_both")
-        info(res.graph_comparison.in_both.serialize(format="ttl"))
+def render_result_diff_dispatch(res, info):
+    return type(res)
 
-    if isinstance(res, SelectSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.message)
-        info(res.table_comparison.to_markdown())
-    if isinstance(res, SpecPassedWithWarning):
-        info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-        info(res.warning)
-    if (
-        isinstance(res, TripleStoreConnectionError)
-        or isinstance(res, SparqlExecutionError)
-        or isinstance(res, SparqlParseFailure)
-    ):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.exception)
-    if isinstance(res, SpecInvalid):
-        info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
-        info(res.message)
+
+# One dispatch table for rendering a result, keyed on the result class, so the
+# two call sites (write_result_diff_to_log and display_verbose) can't drift apart
+# again. `info` is the sink — a logger method, print, or a string collector.
+render_result_diff = MultiMethod("render_result_diff", render_result_diff_dispatch)
+
+
+@render_result_diff.method(UpdateSpecFailure)
+@render_result_diff.method(ConstructSpecFailure)
+def _render_graph_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(f"{Fore.BLUE} In Expected Not In Actual:")
+    info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+    info(f"{Fore.RED} in_actual_not_in_expected")
+    info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+    info(f"{Fore.GREEN} in_both")
+    info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+
+@render_result_diff.method(SelectSpecFailure)
+def _render_select_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.message)
+    info(res.table_comparison.to_markdown())
+
+
+@render_result_diff.method(SpecPassedWithWarning)
+def _render_passed_with_warning(res, info):
+    info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+    info(res.warning)
+
+
+@render_result_diff.method(TripleStoreConnectionError)
+@render_result_diff.method(SparqlExecutionError)
+@render_result_diff.method(SparqlParseFailure)
+def _render_error(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.exception)
+
+
+@render_result_diff.method(SpecInvalid)
+def _render_invalid(res, info):
+    info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
+    info(res.message)
+
+
+@render_result_diff.method(Default)
+def _render_nothing(res, info):
+    # SpecPassed and anything else with no diff to show.
+    pass
+
+
+def write_result_diff_to_log(res, info):
+    render_result_diff(res, info)
 
 
 def calculate_row_difference(
@@ -1238,41 +1268,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
 def display_verbose(results: List[SpecResult]):
     for res in results:
-        if isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-            log.info(
-                res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl")
-            )
-            log.info()
-            log.info(f"{Fore.RED} in_actual_not_in_expected")
-            log.info(
-                res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl")
-            )
-            log.info(f"{Fore.GREEN} in_both")
-            log.info(res.graph_comparison.in_both.serialize(format="ttl"))
-
-        if isinstance(res, SelectSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
-            log.info(res.table_comparison.to_markdown())
-        if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        if isinstance(res, SpecPassedWithWarning):
-            log.info(
-                f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}"
-            )
-            log.info(res.warning)
-        if (
-            isinstance(res, TripleStoreConnectionError)
-            or type(res, SparqlExecutionError)
-            or isinstance(res, SparqlParseFailure)
-        ):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.exception)
-        if isinstance(res, SpecInvalid):
-            log.info(f"{Fore.YELLOW}Invalid {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
+        render_result_diff(res, log.info)
 
 
 # Preserve the original run_when_impl multimethod
