@@ -200,6 +200,64 @@ class TestGetTripleStores(unittest.TestCase):
         self.assertEqual(len(triple_stores), 1)
         self.assertIn("error", triple_stores[0])
 
+    def test_secrets_never_enter_config_graph(self):
+        # The config graph is loaded on its own; secrets are parsed separately
+        # into the map and must not appear in the config graph.
+        import tempfile
+        from pathlib import Path
+        from mustrd.mustrd import get_triple_store_graph, get_credentials
+        from mustrd.namespace import TRIPLESTORE
+
+        with tempfile.TemporaryDirectory() as d:
+            config_path = Path(d) / "ts.ttl"
+            config_path.write_text(
+                "@prefix : <https://mustrd.org/triplestore/> .\n"
+                ":store a :GraphDb ; :url \"http://localhost\" ; :repository \"r\" .\n"
+            )
+            (Path(d) / "ts_secrets.ttl").write_text(
+                "@prefix : <https://mustrd.org/triplestore/> .\n"
+                ":store :username \"admin\" ; :password \"s3cret\" .\n"
+            )
+
+            config_graph = get_triple_store_graph(config_path)
+            credentials = get_credentials(config_path)
+
+            # No password/username triple leaked into the config graph
+            self.assertEqual(list(config_graph.triples((None, TRIPLESTORE.password, None))), [])
+            self.assertEqual(list(config_graph.triples((None, TRIPLESTORE.username, None))), [])
+            serialised = config_graph.serialize(format="ttl")
+            self.assertNotIn("s3cret", serialised)
+            # ...but they are in the credentials map
+            store = URIRef("https://mustrd.org/triplestore/store")
+            self.assertEqual(credentials[str(store)], {"username": "admin", "password": "s3cret"})
+
+    def test_credentials_extracted_into_map_keyed_by_store(self):
+        from mustrd.mustrd import extract_credentials
+        g = Graph()
+        a = URIRef("https://mustrd.org/model/A")
+        b = URIRef("https://mustrd.org/model/B")
+        g.add((a, TRIPLESTORE.username, Literal("user-a")))
+        g.add((a, TRIPLESTORE.password, Literal("pass-a")))
+        g.add((b, TRIPLESTORE.token, Literal("token-b")))
+
+        credentials = extract_credentials(g)
+
+        self.assertEqual(credentials[str(a)], {"username": "user-a", "password": "pass-a"})
+        self.assertEqual(credentials[str(b)], {"token": "token-b"})
+
+    def test_apply_credentials_only_sets_what_is_present(self):
+        from mustrd.mustrd import apply_credentials
+        a = URIRef("https://mustrd.org/model/A")
+        credentials = {str(a): {"username": "user-a", "password": "pass-a"}}
+        ts = {}
+        apply_credentials(ts, a, credentials)
+        self.assertEqual(ts, {"username": "user-a", "password": "pass-a"})
+
+        # A store with no entry in the map gets nothing set — not the string "None".
+        ts2 = {}
+        apply_credentials(ts2, URIRef("https://mustrd.org/model/missing"), credentials)
+        self.assertEqual(ts2, {})
+
     def test_unsupported_triple_store_type(self):
         # create a test graph with an unsupported triple store type
         graph = Graph()

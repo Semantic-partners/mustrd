@@ -3,7 +3,7 @@ import logger_setup
 import sys
 import os
 from rdflib import Graph
-from .mustrd import get_triple_store_graph, run_specs, get_triple_stores, review_results, validate_specs, get_specs
+from .mustrd import get_triple_store_graph, get_credentials, run_specs, get_triple_stores, review_results, validate_specs, get_specs
 from pathlib import Path
 from .namespace import TRIPLESTORE
 from .utils import get_project_root
@@ -40,7 +40,10 @@ def main(argv):
     if args.config:
         triplestore_spec_path = Path(args.config)
         log.info(f"Path for triple store configuration is {triplestore_spec_path}")
-        triple_stores = get_triple_stores(get_triple_store_graph(triplestore_spec_path))
+        triple_stores = get_triple_stores(
+            get_triple_store_graph(triplestore_spec_path),
+            get_credentials(triplestore_spec_path),
+        )
     else:
         log.info("No triple store configuration added, running default configuration")
         triple_stores = [{'type': TRIPLESTORE.RdfLib}]

@@ -568,18 +568,36 @@ def run_spec(spec: Specification) -> SpecResult:
     #         mustrd_triple_store.clear_graph()
 
 
-def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
+def get_triple_store_graph(triple_store_graph_path: Path) -> Graph:
+    # Config only. Secrets are loaded separately into a map (see get_credentials),
+    # never merged in here, so this graph can be serialised, logged or dumped
+    # without leaking auth.
+    return Graph().parse(triple_store_graph_path)
+
+
+def get_credentials(triple_store_graph_path: Path, secrets: str = None) -> dict:
+    """Build the credentials map from the secrets source, keeping it out of the
+    config graph entirely.
+
+    Secrets come from the inline `secrets` turtle (e.g. a CI-supplied string) or,
+    failing that, the sibling `<config>_secrets<ext>` file. They are parsed into a
+    throwaway graph purely to extract the map, then discarded — the secret triples
+    never join the config graph.
+    """
+    secrets_graph = Graph()
     if secrets:
-        return Graph().parse(triple_store_graph_path).parse(data=secrets)
+        secrets_graph.parse(data=secrets)
     else:
         secret_path = triple_store_graph_path.parent / Path(
             triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
         )
-        return Graph().parse(triple_store_graph_path).parse(secret_path)
+        if os.path.isfile(secret_path):
+            secrets_graph.parse(secret_path)
+    return extract_credentials(secrets_graph)
 
 
 # Parse and validate triple store configuration
-def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
+def get_triple_stores(triple_store_graph: Graph, credentials: dict = None) -> list[dict]:
     triple_stores = []
     shacl_graph = Graph().parse(
         Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl"))
@@ -600,6 +618,11 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             f"Triple store configuration not conform to the shapes. SHACL report: {results_text}",
             results_graph,
         )
+    # Credentials come in as a map keyed by store URI, kept out of the config
+    # graph. For backward compatibility, if a caller passes none we fall back to
+    # reading any auth embedded in the graph itself.
+    if credentials is None:
+        credentials = extract_credentials(triple_store_graph)
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples(
         (None, RDF.type, None)
     ):
@@ -608,19 +631,58 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         triple_store["uri"] = triple_store_config
         # Fill in the store-specific connection details. Dispatch on the store
         # type so a new backend is a registered method, not another elif here.
-        get_triple_store_config(triple_store, triple_store_graph, triple_store_config)
+        get_triple_store_config(triple_store, triple_store_graph, triple_store_config, credentials)
         triple_stores.append(triple_store)
     return triple_stores
 
 
+# Names auth lives under in both the config graph and the credentials map.
+CREDENTIAL_PROPERTIES = {
+    TRIPLESTORE.token: "token",
+    TRIPLESTORE.username: "username",
+    TRIPLESTORE.password: "password",
+}
+
+
+def extract_credentials(triple_store_graph: Graph) -> dict:
+    """Auth for every store, as {store URI: {token/username/password: value}}.
+
+    Read from the graph — so the existing turtle `_secrets` file keeps working —
+    but pulled into a map here so it is handled apart from behaviour-affecting
+    config rather than intertwined with it.
+    """
+    credentials: dict = {}
+    for predicate, key in CREDENTIAL_PROPERTIES.items():
+        for store, _, value in triple_store_graph.triples((None, predicate, None)):
+            credentials.setdefault(str(store), {})[key] = str(value)
+    return credentials
+
+
+def apply_credentials(triple_store: dict, triple_store_config: URIRef, credentials: dict):
+    """Copy a store's auth from the credentials map onto its config dict.
+
+    Only sets what is present, so an absent credential stays absent (and is
+    caught by the store's required-parameter check) rather than becoming the
+    string "None".
+    """
+    creds = (credentials or {}).get(str(triple_store_config), {})
+    if creds.get("token"):
+        triple_store["token"] = creds["token"]
+    if creds.get("username") is not None:
+        triple_store["username"] = creds["username"]
+        triple_store["password"] = creds.get("password")
+
+
 def get_triple_store_config_dispatch(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ) -> URIRef:
     return triple_store["type"]
 
 
 # Reads the connection details for one triple store out of the config graph and
-# into its dict, dispatched on the store type.
+# into its dict, dispatched on the store type. Credentials come from the map, not
+# the graph.
 get_triple_store_config = MultiMethod(
     "get_triple_store_config", get_triple_store_config_dispatch
 )
@@ -628,7 +690,8 @@ get_triple_store_config = MultiMethod(
 
 @get_triple_store_config.method(TRIPLESTORE.RdfLib)
 def _get_triple_store_config_rdflib(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     # In-memory store: nothing external to configure.
     pass
@@ -636,14 +699,16 @@ def _get_triple_store_config_rdflib(
 
 @get_triple_store_config.method(Default)
 def _get_triple_store_config_default(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["error"] = f"Triple store not implemented: {triple_store['type']}"
 
 
 @get_triple_store_config.method(TRIPLESTORE.Anzo)
 def get_anzo_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -651,19 +716,7 @@ def get_anzo_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["gqe_uri"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.gqeURI
     )
@@ -683,7 +736,8 @@ def get_anzo_configuration(
 
 @get_triple_store_config.method(TRIPLESTORE.GraphDb)
 def get_graphDB_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -691,20 +745,7 @@ def get_graphDB_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        log.error(f"Credential retrieval failed {e}")
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["repository"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.repository
     )
@@ -719,7 +760,8 @@ def get_graphDB_configuration(
 
 @get_triple_store_config.method(TRIPLESTORE.Stardog)
 def get_stardog_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -730,26 +772,9 @@ def get_stardog_configuration(
     triple_store["database"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.database
     )
-    # Prefer a bearer token; fall back to basic-auth credentials when absent.
-    token = triple_store_graph.value(
-        subject=triple_store_config, predicate=TRIPLESTORE.token
-    )
-    if token is not None:
-        triple_store["token"] = str(token)
-    else:
-        try:
-            username = triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-            password = triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-            if username is not None:
-                triple_store["username"] = str(username)
-                triple_store["password"] = str(password)
-        except (FileNotFoundError, ValueError) as e:
-            log.error(f"Credential retrieval failed {e}")
-            triple_store["error"] = e
+    # Auth comes from the credentials map. The backend prefers the bearer token
+    # and falls back to basic auth, so setting whichever is present is enough.
+    apply_credentials(triple_store, triple_store_config, credentials)
     # The materialised graph the given data loads into, plus the extra graphs the
     # query dataset is built from: any number of materialised and virtual graphs,
     # so one query can be tested against a chosen combination of the two.
