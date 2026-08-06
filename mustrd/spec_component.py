@@ -17,7 +17,6 @@ from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
 from .utils import get_mustrd_root
-from urllib.parse import urlparse
 import logging
 
 log = logging.getLogger(__name__)
@@ -304,12 +303,12 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
 
 @get_spec_component.method((MUST.FileDataset, MUST.given))
-def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> GivenSpec:
+def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = GivenSpec()
     return load_spec_component(spec_component_details, spec_component)
 
 @get_spec_component.method((MUST.FileDataset, MUST.then))
-def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> ThenSpec:
+def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
     return load_spec_component(spec_component_details, spec_component)
 
@@ -599,53 +598,10 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-@get_spec_component.method((MUST.SpadeEdnGroupSource, MUST.when))
-def _get_spec_component_spadeednsource_when(spec_component_details: SpecComponentDetails) -> SpadeEdnGroupSourceWhenSpec:
-    from edn_format import Keyword
-
-    spec_component = SpadeEdnGroupSourceWhenSpec()
-    spec_component.file = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.fileName
-    )
-    spec_component.groupId = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.groupId
-    )
-    spec_component.queryType = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.queryType
-    )
-
-    # Initialize `value` by parsing the `file` attribute if available
-    if spec_component.file:
-        try:
-            with open(spec_component.file, "r") as edn_file:
-                edn_content = edn_file.read()
-                parsed_edn = edn_format.loads(edn_content)
-
-                # Extract group data based on group ID
-                step_groups = parsed_edn.get(Keyword("step-groups"), [])
-                group_data = next((item for item in step_groups if item.get(Keyword("group-id")) == spec_component.groupId), None)
-
-                if not group_data:
-                    raise ValueError(f"Group ID {spec_component.groupId} not found in EDN file {spec_component.file}")
-
-                # Create a list of WhenSpec objects
-                when_specs = []
-                for step in group_data.get(Keyword("steps"), []):
-                    step_type = step.get(Keyword("type"))
-                    step_file = step.get(Keyword("filepath"))
-
-                    if step_type == Keyword("sparql-file"):
-                        when_specs.append(WhenSpec(value=step_file, queryType=MUST.InsertSparql))
-
-                spec_component.value = when_specs
-        except Exception as e:
-            log.error(f"Failed to parse EDN file {spec_component.file}: {e}")
-            spec_component.value = None
-
-    return spec_component
+# NOTE: the (SpadeEdnGroupSource, when) handler lives further down as
+# _get_spec_component_spade_edn_group_source_when. An earlier duplicate was
+# registered on this same key here and never dispatched (the later registration
+# won); it has been removed.
 
 
 def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> List[Node]:

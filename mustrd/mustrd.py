@@ -1,10 +1,10 @@
 import os
-from typing import Tuple, List, Union, Optional
+from typing import Tuple, List, Union
 
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from pyparsing import ParseException
 from pathlib import Path
@@ -31,7 +31,6 @@ from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
 from multimethods import MultiMethod, Default
 import traceback
-from functools import wraps
 
 log = logging.getLogger(__name__)
 
@@ -550,7 +549,6 @@ def run_spec(spec: Specification) -> SpecResult:
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
-        stacktrace = traceback.format_exc()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
         log.error(message, exc_info=True)

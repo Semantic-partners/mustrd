@@ -14,7 +14,6 @@ from .mustrdAnzo import execute_construct as execute_construct_anzo
 from .mustrdAnzo import execute_select as execute_select_anzo
 from .spec_component import AnzoWhenSpec, WhenSpec, SpadeEdnGroupSourceWhenSpec
 import logging
-from edn_format import loads, Keyword
 
 log = logging.getLogger(__name__)
 
@@ -146,7 +145,7 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 
 
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.SpadeEdnGroupSource))
-def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+def _spade_edn_group_source_anzo(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     merged_result = None
@@ -173,7 +172,7 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
-def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     edn_file_dir = os.path.dirname(when.file)  # Get the directory of the EDN file
