@@ -139,6 +139,67 @@ class TestGetTripleStores(unittest.TestCase):
         self.assertEqual(triple_stores[0]["repository"], Literal("Test"))
         self.assertEqual(triple_stores[0]["input_graph"], Literal("http://example.com/input-graph"))
 
+    def test_get_triple_stores_with_stardog_token(self):
+        triple_store_graph = Graph()
+        rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+        triple_store_uri = URIRef("https://mustrd.org/model/StardogConfig1")
+        triple_store_graph.add((triple_store_uri, rdf_type, TRIPLESTORE.Stardog))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://stardog.example.com")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.port, Literal("5820")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.database, Literal("mustrd")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.token, Literal("my-bearer-token")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.materialisedGraph, Literal("http://example.com/materialised-1")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.virtualGraph, Literal("virtual://source-a")))
+
+        triple_stores = get_triple_stores(triple_store_graph)
+
+        self.assertEqual(len(triple_stores), 1)
+        ts = triple_stores[0]
+        self.assertNotIn("error", ts)
+        self.assertEqual(ts["type"], TRIPLESTORE.Stardog)
+        self.assertEqual(ts["database"], Literal("mustrd"))
+        self.assertEqual(ts["token"], "my-bearer-token")
+        # No basic-auth credentials when a token is supplied
+        self.assertIsNone(ts.get("username"))
+        self.assertEqual(ts["input_graph"], Literal("http://example.com/input-graph"))
+        self.assertEqual(ts["materialised_graphs"], ["http://example.com/materialised-1"])
+        self.assertEqual(ts["virtual_graphs"], ["virtual://source-a"])
+
+    def test_get_triple_stores_with_stardog_basic_auth_fallback(self):
+        triple_store_graph = Graph()
+        rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+        triple_store_uri = URIRef("https://mustrd.org/model/StardogConfig2")
+        triple_store_graph.add((triple_store_uri, rdf_type, TRIPLESTORE.Stardog))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://stardog.example.com:5820")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.database, Literal("mustrd")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.username, Literal("admin")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.password, Literal("admin")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
+
+        triple_stores = get_triple_stores(triple_store_graph)
+
+        self.assertEqual(len(triple_stores), 1)
+        ts = triple_stores[0]
+        self.assertNotIn("error", ts)
+        self.assertIsNone(ts.get("token"))
+        self.assertEqual(ts["username"], "admin")
+        self.assertEqual(ts["password"], "admin")
+
+    def test_get_triple_stores_stardog_requires_auth(self):
+        triple_store_graph = Graph()
+        rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+        triple_store_uri = URIRef("https://mustrd.org/model/StardogConfig3")
+        triple_store_graph.add((triple_store_uri, rdf_type, TRIPLESTORE.Stardog))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.url, Literal("http://stardog.example.com:5820")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.database, Literal("mustrd")))
+        triple_store_graph.add((triple_store_uri, TRIPLESTORE.inputGraph, Literal("http://example.com/input-graph")))
+
+        triple_stores = get_triple_stores(triple_store_graph)
+
+        self.assertEqual(len(triple_stores), 1)
+        self.assertIn("error", triple_stores[0])
+
     def test_unsupported_triple_store_type(self):
         # create a test graph with an unsupported triple store type
         graph = Graph()

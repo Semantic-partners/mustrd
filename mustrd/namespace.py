@@ -80,6 +80,7 @@ class TRIPLESTORE(DefinedNamespace):
     RdfLib: URIRef
     GraphDb: URIRef
     Anzo: URIRef
+    Stardog: URIRef
     ExternalTripleStore: URIRef
     InternalTripleStore: URIRef
 
@@ -91,6 +92,15 @@ class TRIPLESTORE(DefinedNamespace):
     username: URIRef
     password: URIRef
     repository: URIRef
+
+    # Stardog config parameters
+    token: URIRef       # bearer token (preferred); falls back to username/password
+    database: URIRef    # Stardog database name
+    # Graphs combined into the dataset a query runs over. Both are repeatable, so a
+    # single query can be tested against any mix of physically-stored (materialised)
+    # and data-virtualisation (virtual) named graphs.
+    materialisedGraph: URIRef
+    virtualGraph: URIRef
 
 
 # namespace for pytest_mustrd config

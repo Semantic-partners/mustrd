@@ -30,7 +30,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
-from multimethods import MultiMethod
+from multimethods import MultiMethod, Default
 import traceback
 from functools import wraps
 
@@ -606,24 +606,42 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
         triple_store = {}
         triple_store["type"] = triple_store_type
         triple_store["uri"] = triple_store_config
-        # Anzo graph via anzo
-        if triple_store_type == TRIPLESTORE.Anzo:
-            get_anzo_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-        # GraphDB
-        elif triple_store_type == TRIPLESTORE.GraphDb:
-            get_graphDB_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-
-        elif triple_store_type != TRIPLESTORE.RdfLib:
-            triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
-
+        # Fill in the store-specific connection details. Dispatch on the store
+        # type so a new backend is a registered method, not another elif here.
+        get_triple_store_config(triple_store, triple_store_graph, triple_store_config)
         triple_stores.append(triple_store)
     return triple_stores
 
 
+def get_triple_store_config_dispatch(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+) -> URIRef:
+    return triple_store["type"]
+
+
+# Reads the connection details for one triple store out of the config graph and
+# into its dict, dispatched on the store type.
+get_triple_store_config = MultiMethod(
+    "get_triple_store_config", get_triple_store_config_dispatch
+)
+
+
+@get_triple_store_config.method(TRIPLESTORE.RdfLib)
+def _get_triple_store_config_rdflib(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+):
+    # In-memory store: nothing external to configure.
+    pass
+
+
+@get_triple_store_config.method(Default)
+def _get_triple_store_config_default(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+):
+    triple_store["error"] = f"Triple store not implemented: {triple_store['type']}"
+
+
+@get_triple_store_config.method(TRIPLESTORE.Anzo)
 def get_anzo_configuration(
     triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
 ):
@@ -663,6 +681,7 @@ def get_anzo_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.GraphDb)
 def get_graphDB_configuration(
     triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
 ):
@@ -696,6 +715,71 @@ def get_graphDB_configuration(
         check_triple_store_params(triple_store, ["url", "repository"])
     except ValueError as e:
         triple_store["error"] = e
+
+
+@get_triple_store_config.method(TRIPLESTORE.Stardog)
+def get_stardog_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["database"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.database
+    )
+    # Prefer a bearer token; fall back to basic-auth credentials when absent.
+    token = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.token
+    )
+    if token is not None:
+        triple_store["token"] = str(token)
+    else:
+        try:
+            username = triple_store_graph.value(
+                subject=triple_store_config, predicate=TRIPLESTORE.username
+            )
+            password = triple_store_graph.value(
+                subject=triple_store_config, predicate=TRIPLESTORE.password
+            )
+            if username is not None:
+                triple_store["username"] = str(username)
+                triple_store["password"] = str(password)
+        except (FileNotFoundError, ValueError) as e:
+            log.error(f"Credential retrieval failed {e}")
+            triple_store["error"] = e
+    # The materialised graph the given data loads into, plus the extra graphs the
+    # query dataset is built from: any number of materialised and virtual graphs,
+    # so one query can be tested against a chosen combination of the two.
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    triple_store["output_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.outputGraph
+    )
+    triple_store["materialised_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.materialisedGraph
+        )
+    ]
+    triple_store["virtual_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.virtualGraph
+        )
+    ]
+    try:
+        check_triple_store_params(triple_store, ["url", "database"])
+    except ValueError as e:
+        triple_store["error"] = e
+    if triple_store.get("token") is None and triple_store.get("username") is None:
+        triple_store["error"] = ValueError(
+            f"Cannot establish connection to {triple_store['type']}. "
+            "Provide either a token or username/password."
+        )
 
 
 def check_triple_store_params(triple_store: dict, required_params: List[str]):
