@@ -19,9 +19,9 @@ Two shapes were explicitly being avoided:
    and the query path — three places to keep in step.
 2. Layers of abstract classes whose only end product is a single HTTP request.
    A request is fundamentally a map — URL, method, params, headers, body — and
-   burying that map under a class hierarchy is an exemplar of what Rich Hickey
-   calls interfaces hiding maps: the ossified interface obscures the open data
-   underneath and stops you handling it generically. Each registered method here
+   burying that map under a class hierarchy is the trap Rich Hickey argues
+   against (see References): a bespoke object interface ossifies what is really
+   open data and stops you handling it generically. Each registered method here
    is kept flat: it builds the request — the map — directly, in one readable
    function, and dispatch happens on values, not on a type lattice.
 
@@ -98,8 +98,9 @@ reflexively. Revisit this ADR if tooling shifts the economics again.
   - *`if`/`elif` copied across the config/upload/query paths*: the multi-site
     drift this avoids.
   - *A stack of abstract classes ending in one HTTP request*: rejected as
-    interfaces hiding a map (Hickey) — the request is data and should stay data;
-    flat per-backend functions that build it directly, dispatched on values.
+    interfaces hiding a map (Hickey; see References) — the request is data and
+    should stay data; flat per-backend functions that build it directly,
+    dispatched on values.
   - *`match` / `functools.singledispatch` / a `{key: handler}` dict*: reasonable
     standard-library options, and preferable where a single local dispatch is all
     that is needed.
@@ -111,3 +112,14 @@ reflexively. Revisit this ADR if tooling shifts the economics again.
   principle.
 - The multimethod definitions link back to this ADR so the rule — including the
   tripwire — is visible at the point of change.
+
+## References
+Rich Hickey's talks, which the data-over-interfaces framing draws on:
+
+- *Simple Made Easy* (Strange Loop, 2011) — simple vs. easy, and "complecting":
+  braiding together things that could stand apart (here, the request data and the
+  machinery of constructing it).
+- *The Value of Values* (JaxConf / GOTO, 2012) — prefer values/plain data over
+  objects that trap information behind method interfaces.
+- *Effective Programs — 10 Years of Clojure* (Clojure/conj, 2017) — the critique
+  of encoding information as bespoke classes rather than generic data (maps).
