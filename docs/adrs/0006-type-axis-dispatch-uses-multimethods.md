@@ -56,6 +56,12 @@ dispatch key stays a guard, not a method — e.g. "is the configured store Anzo?
 inside a handler that already dispatched on the spec's declared source (see
 `require_anzo`).
 
+Detector for the abstraction stack this avoids — indirection vs abstraction:
+delete the wrapper classes and imagine what's left is the data (a dict) plus the
+single call that consumes it. If no capability is lost, the layers were
+indirection dressed as abstraction: a real abstraction removes detail, indirection
+only relocates it. Prefer the flat form.
+
 ## Tripwire: reconsider in the agentic-coding age
 The usual argument for this pattern is that hand-written switches get copy-pasted
 and the copies drift. That argument is weaker — and differently shaped — when an
