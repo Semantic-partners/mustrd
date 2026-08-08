@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_36f028580bb02cc8_test_spec_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-31 08:25 +0000
+            created at 2026-08-08 08:33 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -83,7 +83,7 @@
     <p class="run"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="key">import</span> <span class="nam">os</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t"><span class="key">import</span> <span class="nam">pytest</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="key">from</span> <span class="nam">rdflib</span> <span class="key">import</span> <span class="nam">Graph</span><span class="op">,</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t"><span class="key">from</span> <span class="nam">mustrd</span><span class="op">.</span><span class="nam">steprunner</span> <span class="key">import</span> <span class="nam">_spade_edn_group_source</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t"><span class="key">from</span> <span class="nam">mustrd</span><span class="op">.</span><span class="nam">steprunner</span> <span class="key">import</span> <span class="nam">_spade_edn_group_source_rdflib</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">from</span> <span class="nam">mustrd</span><span class="op">.</span><span class="nam">namespace</span> <span class="key">import</span> <span class="nam">MUST</span><span class="op">,</span> <span class="nam">TRIPLESTORE</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t"><span class="key">from</span> <span class="nam">mustrd</span><span class="op">.</span><span class="nam">spec_component</span> <span class="key">import</span> <span class="nam">SpadeEdnGroupSourceWhenSpec</span><span class="op">,</span> <span class="nam">WhenSpec</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -128,7 +128,7 @@
     <p class="run run2"><span class="n"><a id="t46" href="#t46">46</a></span><span class="t">    <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t47" href="#t47">47</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t48" href="#t48">48</a></span><span class="t">    <span class="com"># Run the method</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t49" href="#t49">49</a></span><span class="t">    <span class="nam">result</span> <span class="op">=</span> <span class="nam">_spade_edn_group_source</span><span class="op">(</span><span class="nam">spec_uri</span><span class="op">,</span> <span class="nam">triple_store</span><span class="op">,</span> <span class="nam">when_spec</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t49" href="#t49">49</a></span><span class="t">    <span class="nam">result</span> <span class="op">=</span> <span class="nam">_spade_edn_group_source_rdflib</span><span class="op">(</span><span class="nam">spec_uri</span><span class="op">,</span> <span class="nam">triple_store</span><span class="op">,</span> <span class="nam">when_spec</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t50" href="#t50">50</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t51" href="#t51">51</a></span><span class="t">    <span class="com"># Verify that the file path was resolved correctly</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t52" href="#t52">52</a></span><span class="t">    <span class="nam">expected_filepath</span> <span class="op">=</span> <span class="nam">os</span><span class="op">.</span><span class="nam">path</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="nam">os</span><span class="op">.</span><span class="nam">path</span><span class="op">.</span><span class="nam">dirname</span><span class="op">(</span><span class="nam">edn_file_path</span><span class="op">)</span><span class="op">,</span> <span class="str">"insert.rq"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -157,7 +157,7 @@
             <a class="nav" href="z_36f028580bb02cc8_test_spec_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-31 08:25 +0000
+            created at 2026-08-08 08:33 +0000
         </p>
     </div>
 </footer>
