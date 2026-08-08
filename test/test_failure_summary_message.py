@@ -170,12 +170,59 @@ def test_rows_disagreeing_on_values_fall_back_to_the_bare_name():
     assert describe_differing_columns(df_diff) == "o"
 
 
-def test_a_long_value_is_elided():
-    long_value = "x" * 100
-    df_diff = diff_of({"o": [long_value]}, {"o": ["y"]})
+def test_a_long_value_is_elided_around_what_differs():
+    # Cutting the tail off a pair of near-identical values would show the reader
+    # the half they already agree on and hide the half they do not.
+    shared = "The quick brown fox jumps over the lazy dog and keeps on running past "
+    df_diff = diff_of({"o": [shared + "alpha"]}, {"o": [shared + "beta"]})
 
     described = describe_differing_columns(df_diff)
-    assert described == f'o (expected "{"x" * 60}…", actual "y")'
+
+    assert "alpha" in described and "beta" in described
+    assert described == (
+        'o (expected "…unning past alpha", actual "…unning past beta")'
+    )
+
+
+def test_a_long_iri_is_elided_inside_its_brackets():
+    shared = "http://example.org/ontology/very/long/path/segment/to/the/thing/"
+    df_diff = diff_of({"s": [shared + "alpha"]}, {"s": [shared + "beta"]})
+
+    assert describe_differing_columns(df_diff) == (
+        "s (expected <…o/the/thing/alpha>, actual <…o/the/thing/beta>)"
+    )
+
+
+def test_a_difference_in_the_middle_keeps_context_both_sides():
+    df_diff = diff_of(
+        {"o": ["prefix " * 8 + "ALPHA" + " suffix" * 8]},
+        {"o": ["prefix " * 8 + "BETA" + " suffix" * 8]},
+    )
+
+    described = describe_differing_columns(df_diff)
+
+    assert described.startswith('o (expected "…')
+    assert "ALPHA suffix suf…" in described
+    assert "BETA suffix suf…" in described
+
+
+def test_two_long_values_with_nothing_in_common_keep_both_ends():
+    df_diff = diff_of({"o": ["a" * 80]}, {"o": ["b" * 80]})
+
+    described = describe_differing_columns(df_diff)
+
+    # No shared run to anchor on, so each side keeps its head and its tail.
+    assert described == (
+        f'o (expected "{"a" * 30}…{"a" * 30}", actual "{"b" * 30}…{"b" * 30}")'
+    )
+
+
+def test_only_one_side_long_still_shows_the_short_side_whole():
+    df_diff = diff_of({"o": ["x" * 100]}, {"o": ["y"]})
+
+    described = describe_differing_columns(df_diff)
+
+    assert described.endswith('actual "y")')
 
 
 def test_a_column_that_does_not_actually_differ_is_left_out():
