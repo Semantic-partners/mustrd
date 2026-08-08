@@ -113,6 +113,17 @@ your `given` declares:
 Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s) — differs in: o (expected ex:object, actual ex:obj)
 ```
 
+And the one that is hardest to see and easiest to make — two IRIs alike but for
+`http` and `https` — is named rather than printed:
+
+```
+Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s) — differs in: s (scheme: expected http, actual https)
+```
+
+One character, four in, in a pair of long near-identical strings. Only claimed
+when the scheme really is the whole difference; if anything after it differs too
+you get both IRIs, because "scheme" would send you after the wrong thing.
+
 Some details worth knowing, because they are what make it readable on real data:
 
 - **The pair is only named when the two shapes match.** A row- or column-count

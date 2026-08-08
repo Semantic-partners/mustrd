@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Tuple, List, Union
 
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -1074,7 +1075,7 @@ def describe_differing_columns(df_diff, namespace_manager=None) -> str:
                 continue
             named.append(f"{binding} (datatype)")
             detail = describe_column_diff(
-                df_diff, column, "datatype: ", namespace_manager)
+                df_diff, column, "datatype", namespace_manager)
             detailed.append(f"{binding} ({detail})" if detail else f"{binding} (datatype)")
         else:
             named.append(column)
@@ -1103,7 +1104,7 @@ def column_differs(df_diff, column: str) -> bool:
     )
 
 
-def describe_column_diff(df_diff, column: str, prefix: str = "",
+def describe_column_diff(df_diff, column: str, kind: str = "",
                          namespace_manager=None) -> str:
     """`expected "one", actual "two"` for one column, or "" if it cannot be said.
 
@@ -1126,8 +1127,42 @@ def describe_column_diff(df_diff, column: str, prefix: str = "",
         return ""
 
     want, got = pairs.pop()
+
+    # Two IRIs alike but for http/https are the hardest difference to see and
+    # one of the commonest to make: one character, four in, in a pair of long
+    # near-identical strings. Say which, rather than printing both and leaving
+    # the reader to diff them by eye.
+    scheme = differing_scheme(want, got)
+    if scheme:
+        want_scheme, got_scheme = scheme
+        label = f"{kind} scheme" if kind else "scheme"
+        return f"{label}: expected {want_scheme}, actual {got_scheme}"
+
     shown_want, shown_got = render_cell_pair(want, got, namespace_manager)
-    return f"{prefix}expected {shown_want}, actual {shown_got}"
+    return f"{kind}: expected {shown_want}, actual {shown_got}" if kind else \
+        f"expected {shown_want}, actual {shown_got}"
+
+
+# scheme://rest, per RFC 3986's scheme grammar.
+_SCHEME = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://(.*)$", re.DOTALL)
+
+
+def differing_scheme(want: str, got: str) -> Union[Tuple[str, str], None]:
+    """The two schemes when a pair of IRIs is identical but for them.
+
+    None if either is not an IRI, if the schemes agree, or if anything after the
+    scheme differs too — in which case the scheme is not the whole story and
+    saying so would mislead.
+    """
+    want_parts = _SCHEME.match(want)
+    got_parts = _SCHEME.match(got)
+    if not want_parts or not got_parts:
+        return None
+    if want_parts.group(2) != got_parts.group(2):
+        return None
+    if want_parts.group(1) == got_parts.group(1):
+        return None
+    return want_parts.group(1), got_parts.group(1)
 
 
 # rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
