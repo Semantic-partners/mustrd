@@ -113,16 +113,23 @@ your `given` declares:
 Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s) — differs in: o (expected ex:object, actual ex:obj)
 ```
 
-And the one that is hardest to see and easiest to make — two IRIs alike but for
-`http` and `https` — is named rather than printed:
+The ones that are hardest to see and easiest to make are two IRIs naming the
+same thing under a different scheme or host. Those are named rather than
+printed:
 
 ```
-Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s) — differs in: s (scheme: expected http, actual https)
+— differs in: s (scheme: expected http, actual https)
+— differs in: s (host: expected company.dev, actual company.com)
+— differs in: s (origin: expected http://company.dev, actual https://company.com)
 ```
 
-One character, four in, in a pair of long near-identical strings. Only claimed
-when the scheme really is the whole difference; if anything after it differs too
-you get both IRIs, because "scheme" would send you after the wrong thing.
+The same ontology served from a dev host and a prod one, or over `http` on one
+side and `https` on the other, agrees everywhere the eye lands. Printing both
+IRIs makes it a spot-the-difference puzzle; eliding them makes it worse.
+
+Only claimed when the origin really is the whole difference. If anything after
+the host differs too you get both IRIs, because naming the host would send you
+after the wrong thing.
 
 Some details worth knowing, because they are what make it readable on real data:
 

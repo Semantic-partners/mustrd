@@ -1128,41 +1128,59 @@ def describe_column_diff(df_diff, column: str, kind: str = "",
 
     want, got = pairs.pop()
 
-    # Two IRIs alike but for http/https are the hardest difference to see and
-    # one of the commonest to make: one character, four in, in a pair of long
-    # near-identical strings. Say which, rather than printing both and leaving
-    # the reader to diff them by eye.
-    scheme = differing_scheme(want, got)
-    if scheme:
-        want_scheme, got_scheme = scheme
-        label = f"{kind} scheme" if kind else "scheme"
-        return f"{label}: expected {want_scheme}, actual {got_scheme}"
+    # Two IRIs naming the same thing under a different scheme or host are the
+    # hardest difference to see and among the commonest to make: `http` against
+    # `https`, or a dev host against a prod one. Say which part disagrees rather
+    # than printing both and leaving the reader to diff them by eye — eliding
+    # only makes it worse, since the strings agree everywhere the eye lands.
+    origin = differing_origin(want, got)
+    if origin:
+        what, want_part, got_part = origin
+        label = f"{kind} {what}" if kind else what
+        return f"{label}: expected {want_part}, actual {got_part}"
 
     shown_want, shown_got = render_cell_pair(want, got, namespace_manager)
     return f"{kind}: expected {shown_want}, actual {shown_got}" if kind else \
         f"expected {shown_want}, actual {shown_got}"
 
 
-# scheme://rest, per RFC 3986's scheme grammar.
-_SCHEME = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://(.*)$", re.DOTALL)
+# scheme://authority/rest, per RFC 3986. The authority runs to the first "/",
+# "?" or "#", so it carries a port when there is one.
+_IRI_ORIGIN = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://([^/?#]*)(.*)$", re.DOTALL)
 
 
-def differing_scheme(want: str, got: str) -> Union[Tuple[str, str], None]:
-    """The two schemes when a pair of IRIs is identical but for them.
+def differing_origin(want: str, got: str) -> Union[Tuple[str, str, str], None]:
+    """`(what, want_part, got_part)` when two IRIs differ only before the path.
 
-    None if either is not an IRI, if the schemes agree, or if anything after the
-    scheme differs too — in which case the scheme is not the whole story and
-    saying so would mislead.
+    `what` is `scheme`, `host`, or `origin` when both moved at once — so the
+    label names the part that actually disagrees rather than making the reader
+    work it out.
+
+    None if either is not an IRI, if they agree, or if anything after the
+    authority differs too. In that last case the origin is not the whole story
+    and naming it would send the reader after the wrong thing.
     """
-    want_parts = _SCHEME.match(want)
-    got_parts = _SCHEME.match(got)
+    want_parts = _IRI_ORIGIN.match(want)
+    got_parts = _IRI_ORIGIN.match(got)
     if not want_parts or not got_parts:
         return None
-    if want_parts.group(2) != got_parts.group(2):
+    if want_parts.group(3) != got_parts.group(3):
         return None
-    if want_parts.group(1) == got_parts.group(1):
-        return None
-    return want_parts.group(1), got_parts.group(1)
+
+    scheme_differs = want_parts.group(1) != got_parts.group(1)
+    host_differs = want_parts.group(2) != got_parts.group(2)
+
+    if scheme_differs and not host_differs:
+        return "scheme", want_parts.group(1), got_parts.group(1)
+    if host_differs and not scheme_differs:
+        return "host", want_parts.group(2), got_parts.group(2)
+    if scheme_differs and host_differs:
+        return (
+            "origin",
+            f"{want_parts.group(1)}://{want_parts.group(2)}",
+            f"{got_parts.group(1)}://{got_parts.group(2)}",
+        )
+    return None
 
 
 # rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
