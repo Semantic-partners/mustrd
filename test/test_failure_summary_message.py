@@ -251,6 +251,55 @@ def test_a_datatype_differing_only_by_scheme_says_so():
     )
 
 
+def test_a_dev_host_against_a_prod_host_is_named():
+    # A real one: the same ontology served from company.dev in development and
+    # company.com in production. Everything but four characters agrees, and they
+    # sit where the eye is least likely to land.
+    path = "/ontology/2024/core/thing"
+    df_diff = diff_of(
+        {"s": ["http://company.dev" + path]},
+        {"s": ["http://company.com" + path]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (host: expected company.dev, actual company.com)"
+    )
+
+
+def test_a_port_is_part_of_the_host():
+    df_diff = diff_of(
+        {"s": ["http://example.org:8080/thing"]},
+        {"s": ["http://example.org:9090/thing"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (host: expected example.org:8080, actual example.org:9090)"
+    )
+
+
+def test_scheme_and_host_moving_together_are_named_as_the_origin():
+    path = "/ontology/2024/core/thing"
+    df_diff = diff_of(
+        {"s": ["http://company.dev" + path]},
+        {"s": ["https://company.com" + path]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (origin: expected http://company.dev, actual https://company.com)"
+    )
+
+
+def test_a_host_difference_that_is_not_the_whole_story_is_not_claimed_as_one():
+    df_diff = diff_of(
+        {"s": ["http://company.dev/a"]},
+        {"s": ["http://company.com/b"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (expected <http://company.dev/a>, actual <http://company.com/b>)"
+    )
+
+
 def test_a_scheme_difference_that_is_not_the_whole_story_is_not_claimed_as_one():
     # Scheme AND path differ. Saying "scheme" would send the reader after the
     # wrong thing entirely.
