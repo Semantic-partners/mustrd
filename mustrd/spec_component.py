@@ -196,11 +196,22 @@ def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
     if len(spec_components) == 1:
         return spec_components[0]
     else:
-        graph = Graph()
+        # Quad-aware: `graph += other` reads the union and drops which graph each
+        # triple came from, so combining two givens used to flatten any named
+        # graph a .trig had contributed.
+        combined = ConjunctiveGraph(store=Memory())
         for spec_component in spec_components:
-            graph += spec_component.value
+            value = spec_component.value
+            if value is None:
+                continue
+            if isinstance(value, ConjunctiveGraph):
+                combined.addN((s, p, o, ctx)
+                              for ctx in value.contexts()
+                              for s, p, o in ctx)
+            else:
+                combined.default_context += value
         given_spec = GivenSpec()
-        given_spec.value = graph
+        given_spec.value = combined
         return given_spec
 
 
@@ -225,7 +236,12 @@ def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
 @combine_specs.method(TableThenSpec)
 def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThenSpec:
     if len(spec_components) != 1:
-        raise ValueError("Parsing of multiple components of MUST.then for tables not implemented")
+        # Graph `then`s combine by union; two tables have no such meaning, so a
+        # spec gets one. Say which spec and what the rule is — the old wording
+        # ("multiple components of MUST.then") read as though a single table had
+        # several parts, and sent readers looking at the wrong thing.
+        raise ValueError(
+            f"A spec may declare at most one table must:then, found {len(spec_components)}")
     return spec_components[0]
 
 
@@ -268,12 +284,9 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
                                                         predicate=MUST.fileName)
 
     path = get_path('given_path', file_name, spec_component_details)
-    try:
-        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
-    except ParserError as e:
-        log.error(f"Problem parsing {path}, error of type {type(e)}")
-        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-    return spec_component
+    # Same loader as MUST.FileDataset, so a folder-sourced given keeps its named
+    # graphs too rather than only the file-sourced one.
+    return load_dataset_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.FolderSparqlSource, MUST.when))
@@ -358,15 +371,44 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         except AttributeError:
             raise ValueError(f"Unsupported file format: {path.suffix}")
 
-        if file_format is not None:
-            g = Graph()
-            try:
-                g.parse(data=get_spec_component_from_file(path), format=file_format)
-            except ParserError as e:
-                log.error(f"Problem parsing {path}, error of type {type(e)}")
-                raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-            spec_component.value = g
-            return spec_component
+        if file_format is None:
+            # This used to fall off the end of the function and return None,
+            # which surfaced much later as an unrelated error about a spec
+            # component that was never built.
+            raise ValueError(f"Unsupported file format: {path.suffix}")
+
+        # Parse into a quad-aware graph, always — a quad format (.trig, .nq,
+        # .trix) parsed into a plain Graph puts its quads in the store's named
+        # contexts, which that Graph cannot see, so the component came back
+        # EMPTY. An empty `given` then read as no given at all, and rdflib specs
+        # were rejected with "Unable to run Inherited State tests on Rdflib" — a
+        # message about a feature the spec never asked for.
+        # ConjunctiveGraph, not Dataset: both resolve a GRAPH clause and both
+        # read as the union, but iterating a Dataset yields QUADS, and plenty of
+        # mustrd (coverage, reporting, graph comparison) iterates a given
+        # expecting triples. Same reason StatementsDataset already uses one.
+        quads = ConjunctiveGraph(store=Memory())
+        try:
+            quads.parse(data=get_spec_component_from_file(path), format=file_format)
+        except ParserError as e:
+            log.error(f"Problem parsing {path}, error of type {type(e)}")
+            raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
+        # A `then` is compared triple-by-triple against the query's result graph,
+        # which has no named graphs to compare against — so it keeps the flat
+        # Graph it has always been. Only `given` keeps its contexts, which is
+        # what lets a GRAPH clause in the `when` resolve.
+        spec_component.value = quads if isinstance(spec_component, GivenSpec) else _flatten(quads)
+        return spec_component
+
+
+def _flatten(quads: ConjunctiveGraph) -> Graph:
+    """The union of every graph in the dataset, as one plain Graph."""
+    g = Graph()
+    for triple in quads.triples((None, None, None)):
+        g.add(triple)
+    for prefix, namespace in quads.namespaces():
+        g.bind(prefix, namespace)
+    return g
 
 
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
