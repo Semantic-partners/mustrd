@@ -1271,7 +1271,9 @@ class TestRunSelectSpec:
             message = then_result.message
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert message == "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s) — differs in: o"
+            assert message == (
+                "Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
+                " — differs in: o (expected test-data:object, actual test-data:obj)")
             assert table_diff == """|    | ('o', 'expected')                             | ('o', 'actual')                            |
 |---:|:----------------------------------------------|:-------------------------------------------|
 |  1 | https://semanticpartners.com/data/test/object | https://semanticpartners.com/data/test/obj |""" # noqa
@@ -1331,7 +1333,10 @@ class TestRunSelectSpec:
             message = then_result.message
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s) — differs in: obj, p, s, o"
+            assert message == (
+                "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s) — differs in: "
+                "obj (expected test-data:obj, actual empty), "
+                "o (expected empty, actual test-data:obj)")
             assert table_diff == """|    | ('obj', 'expected')                        | ('obj', 'actual')   | ('obj_datatype', 'expected')            | ('obj_datatype', 'actual')   | ('p', 'expected')                           | ('p', 'actual')                             | ('p_datatype', 'expected')              | ('p_datatype', 'actual')                | ('s', 'expected')                          | ('s', 'actual')                            | ('s_datatype', 'expected')              | ('s_datatype', 'actual')                | ('o', 'expected')   | ('o', 'actual')                            | ('o_datatype', 'expected')   | ('o_datatype', 'actual')                |
 |---:|:-------------------------------------------|:--------------------|:----------------------------------------|:-----------------------------|:--------------------------------------------|:--------------------------------------------|:----------------------------------------|:----------------------------------------|:-------------------------------------------|:-------------------------------------------|:----------------------------------------|:----------------------------------------|:--------------------|:-------------------------------------------|:-----------------------------|:----------------------------------------|
 |  0 | https://semanticpartners.com/data/test/obj |                     | http://www.w3.org/2001/XMLSchema#anyURI |                              | https://semanticpartners.com/data/test/pred | https://semanticpartners.com/data/test/pred | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI | https://semanticpartners.com/data/test/sub | https://semanticpartners.com/data/test/sub | http://www.w3.org/2001/XMLSchema#anyURI | http://www.w3.org/2001/XMLSchema#anyURI |                     | https://semanticpartners.com/data/test/obj |                              | http://www.w3.org/2001/XMLSchema#anyURI |""" # noqa
@@ -1905,7 +1910,10 @@ class TestRunSelectSpec:
             message = then_result.message
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert message == "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s) — differs in: o"
+            assert message == (
+                "Expected 1 row(s) and 3 column(s), got 1 row(s) and 3 column(s) — differs in: "
+                "o (expected <https://semanticpartners.com/data/test/obj2>, "
+                "actual <https://semanticpartners.com/data/test/obj>)")
             assert table_diff == """|    | ('o', 'expected')                           | ('o', 'actual')                            |
 |---:|:--------------------------------------------|:-------------------------------------------|
 |  0 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj |""" # noqa

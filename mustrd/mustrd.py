@@ -965,6 +965,10 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
         resultDf.shape[0],
         round(resultDf.shape[1] / 2),
         df_diff,
+        # The result's terms came out of the given, so its prefixes are the ones
+        # the spec author writes them with. Without this every IRI in the summary
+        # is a full one, which is what the summary exists to avoid.
+        getattr(spec.given, "namespace_manager", None),
     )
     return df_diff, message
 
@@ -1001,7 +1005,8 @@ def _no_results(resultDf: DataFrame, spec: Specification):
 
 
 def build_summary_message(
-    expected_rows, expected_columns, got_rows, got_columns, df_diff=None
+    expected_rows, expected_columns, got_rows, got_columns, df_diff=None,
+    namespace_manager=None,
 ):
     message = (
         f"Expected {expected_rows} row(s) and {expected_columns} column(s), "
@@ -1014,23 +1019,36 @@ def build_summary_message(
     # listing every column would just be noise.
     # https://github.com/Semantic-partners/mustrd/issues/240
     if (expected_rows, expected_columns) == (got_rows, got_columns):
-        differing = describe_differing_columns(df_diff)
+        differing = describe_differing_columns(df_diff, namespace_manager)
         if differing:
             message += f" — differs in: {differing}"
     return message
 
 
-def describe_differing_columns(df_diff) -> str:
-    """The columns present in a diff, as
-    `value, month (datatype: expected xsd:string, actual xsd:gYearMonth)`.
+# A cell longer than this is elided in the summary. The diff below has it whole;
+# the summary's job is to be readable at a glance.
+MAX_SUMMARY_CELL = 60
+
+# Past this the line has stopped being a summary, so it drops back to bare column
+# names. Reached by a wide result where many columns differ at once — exactly the
+# case where the diff table, not one line, is the right tool.
+MAX_SUMMARY_DETAIL = 240
+
+
+def describe_differing_columns(df_diff, namespace_manager=None) -> str:
+    """The columns present in a diff, with what each one differed by, as
+    `o (expected "one", actual "two"), month (datatype: expected xsd:string, ...)`.
 
     `DataFrame.compare` gives a (column, expected|actual) MultiIndex, and mustrd
     carries each binding as a value column plus a `<name>_datatype` column. A
     binding whose value differs is named once — its datatype almost always
-    differs too, and saying so twice adds nothing. `(datatype)` is therefore
+    differs too, and saying so twice adds nothing. `(datatype: ...)` is therefore
     reserved for the case the reader cannot otherwise see: same text, different
-    type — and there the two type IRIs ARE the whole failure, so they are named
-    here rather than left to be hunted for in the diff below.
+    type.
+
+    Either way the pair IS the failure, so it goes on the line the reader looks
+    at first rather than being hunted for in the diff below. Falls back to bare
+    names when the detail would be too long to read.
     """
     if df_diff is None or getattr(df_diff, "empty", True):
         return ""
@@ -1040,32 +1058,64 @@ def describe_differing_columns(df_diff) -> str:
         return ""
 
     columns = [str(column) for column in columns]
+    # Not every column in the frame is a difference: when the two tables have
+    # different shapes or column names the diff is built side by side rather than
+    # by DataFrame.compare, and carries the matching columns too.
+    differing = [column for column in columns if column_differs(df_diff, column)]
+    columns = differing or columns
+
     values = {column for column in columns if not column.endswith("_datatype")}
 
-    described = []
+    named, detailed = [], []
     for column in columns:
         if column.endswith("_datatype"):
             binding = column[: -len("_datatype")]
             if binding in values:
                 continue
-            described.append(f"{binding} ({describe_datatype_diff(df_diff, column)})")
+            named.append(f"{binding} (datatype)")
+            detail = describe_column_diff(
+                df_diff, column, "datatype: ", namespace_manager)
+            detailed.append(f"{binding} ({detail})" if detail else f"{binding} (datatype)")
         else:
-            described.append(column)
-    return ", ".join(dict.fromkeys(described))
+            named.append(column)
+            detail = describe_column_diff(
+                df_diff, column, namespace_manager=namespace_manager)
+            detailed.append(f"{column} ({detail})" if detail else column)
+
+    detailed_message = ", ".join(dict.fromkeys(detailed))
+    if len(detailed_message) <= MAX_SUMMARY_DETAIL:
+        return detailed_message
+    return ", ".join(dict.fromkeys(named))
 
 
-def describe_datatype_diff(df_diff, column: str) -> str:
-    """`datatype: expected xsd:string, actual xsd:gYearMonth` for one column.
+def column_differs(df_diff, column: str) -> bool:
+    """Whether any row of this column has a different expected and actual."""
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return True
 
-    Falls back to a bare `datatype` when the rows do not agree on one pair of
-    types — naming a pair that only some rows have would be worse than naming
-    none, and the diff below still has every row.
+    return any(
+        str(want) != str(got)
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) or pandas.notna(got)
+    )
+
+
+def describe_column_diff(df_diff, column: str, prefix: str = "",
+                         namespace_manager=None) -> str:
+    """`expected "one", actual "two"` for one column, or "" if it cannot be said.
+
+    Empty when the rows do not agree on one pair — naming a pair that only some
+    rows have would be worse than naming none, and the diff below still has
+    every row.
     """
     try:
         expected = df_diff[(column, "expected")]
         actual = df_diff[(column, "actual")]
     except KeyError:
-        return "datatype"
+        return ""
 
     pairs = {
         (str(want), str(got))
@@ -1073,23 +1123,40 @@ def describe_datatype_diff(df_diff, column: str) -> str:
         if pandas.notna(want) and pandas.notna(got)
     }
     if len(pairs) != 1:
-        return "datatype"
+        return ""
 
     want, got = pairs.pop()
-    return f"datatype: expected {shorten_iri(want)}, actual {shorten_iri(got)}"
+    return (f"{prefix}expected {render_cell(want, namespace_manager)}, "
+            f"actual {render_cell(got, namespace_manager)}")
 
 
-# rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a datatype reads as the
-# reader writes it in a spec. Anything unknown stays a full IRI in angle
-# brackets rather than being truncated into ambiguity.
+# rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
+# writes it in a spec. Anything unknown stays a full IRI in angle brackets rather
+# than being truncated into ambiguity.
 _iri_shortener = Graph().namespace_manager
 
 
-def shorten_iri(iri: str) -> str:
+def shorten_iri(iri: str, namespace_manager=None) -> str:
     try:
-        return _iri_shortener.normalizeUri(iri)
+        return (namespace_manager or _iri_shortener).normalizeUri(iri)
     except Exception:
         return iri
+
+
+def render_cell(cell: str, namespace_manager=None) -> str:
+    """A table cell as it would be written in a spec: `ex:sub`, `"one"`, `empty`.
+
+    The diff carries values as bare strings with no marker for which are IRIs, so
+    this goes on the shape of the text. Getting it wrong costs a pair of quotes,
+    not meaning.
+    """
+    if cell == "":
+        return "empty"
+    if cell.startswith(("http://", "https://", "urn:")):
+        return shorten_iri(cell, namespace_manager)
+    if len(cell) > MAX_SUMMARY_CELL:
+        cell = cell[:MAX_SUMMARY_CELL] + "…"
+    return f'"{cell}"'
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
