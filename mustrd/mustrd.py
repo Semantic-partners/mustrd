@@ -1021,14 +1021,16 @@ def build_summary_message(
 
 
 def describe_differing_columns(df_diff) -> str:
-    """The columns present in a diff, as `value, month (datatype)`.
+    """The columns present in a diff, as
+    `value, month (datatype: expected xsd:string, actual xsd:gYearMonth)`.
 
     `DataFrame.compare` gives a (column, expected|actual) MultiIndex, and mustrd
     carries each binding as a value column plus a `<name>_datatype` column. A
     binding whose value differs is named once — its datatype almost always
     differs too, and saying so twice adds nothing. `(datatype)` is therefore
     reserved for the case the reader cannot otherwise see: same text, different
-    type.
+    type — and there the two type IRIs ARE the whole failure, so they are named
+    here rather than left to be hunted for in the diff below.
     """
     if df_diff is None or getattr(df_diff, "empty", True):
         return ""
@@ -1046,10 +1048,48 @@ def describe_differing_columns(df_diff) -> str:
             binding = column[: -len("_datatype")]
             if binding in values:
                 continue
-            described.append(f"{binding} (datatype)")
+            described.append(f"{binding} ({describe_datatype_diff(df_diff, column)})")
         else:
             described.append(column)
     return ", ".join(dict.fromkeys(described))
+
+
+def describe_datatype_diff(df_diff, column: str) -> str:
+    """`datatype: expected xsd:string, actual xsd:gYearMonth` for one column.
+
+    Falls back to a bare `datatype` when the rows do not agree on one pair of
+    types — naming a pair that only some rows have would be worse than naming
+    none, and the diff below still has every row.
+    """
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return "datatype"
+
+    pairs = {
+        (str(want), str(got))
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) and pandas.notna(got)
+    }
+    if len(pairs) != 1:
+        return "datatype"
+
+    want, got = pairs.pop()
+    return f"datatype: expected {shorten_iri(want)}, actual {shorten_iri(got)}"
+
+
+# rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a datatype reads as the
+# reader writes it in a spec. Anything unknown stays a full IRI in angle
+# brackets rather than being truncated into ambiguity.
+_iri_shortener = Graph().namespace_manager
+
+
+def shorten_iri(iri: str) -> str:
+    try:
+        return _iri_shortener.normalizeUri(iri)
+    except Exception:
+        return iri
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:

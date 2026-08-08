@@ -15,6 +15,8 @@ import pytest
 
 from mustrd.mustrd import build_summary_message, describe_differing_columns
 
+XSD = "http://www.w3.org/2001/XMLSchema#"
+
 
 def diff_of(expected: dict, actual: dict) -> pandas.DataFrame:
     """The (column, expected|actual) MultiIndex frame mustrd compares with."""
@@ -24,15 +26,63 @@ def diff_of(expected: dict, actual: dict) -> pandas.DataFrame:
 
 
 def test_shapes_match_so_the_differing_column_is_named():
+    # A datatype-only mismatch IS the two type IRIs, so the summary carries them
+    # and the reader never has to reach the diff.
     df_diff = diff_of(
-        {"month": ["2025-01"], "month_datatype": ["http://www.w3.org/2001/XMLSchema#string"]},
-        {"month": ["2025-01"], "month_datatype": ["http://www.w3.org/2001/XMLSchema#gYearMonth"]},
+        {"month": ["2025-01"], "month_datatype": [XSD + "string"]},
+        {"month": ["2025-01"], "month_datatype": [XSD + "gYearMonth"]},
     )
     message = build_summary_message(1, 1, 1, 1, df_diff)
 
     assert message == (
         "Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s)"
-        " — differs in: month (datatype)"
+        " — differs in: month (datatype: expected xsd:string, actual xsd:gYearMonth)"
+    )
+
+
+def test_rows_agreeing_on_one_pair_of_types_name_it():
+    df_diff = diff_of(
+        {"m": ["a", "b"], "m_datatype": [XSD + "string"] * 2},
+        {"m": ["a", "b"], "m_datatype": [XSD + "gYearMonth"] * 2},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "m (datatype: expected xsd:string, actual xsd:gYearMonth)"
+    )
+
+
+def test_rows_disagreeing_on_types_fall_back_to_a_bare_datatype():
+    # Naming a pair only some rows have would be worse than naming none; the
+    # diff below still has every row.
+    df_diff = diff_of(
+        {"m": ["a", "b"], "m_datatype": [XSD + "string"] * 2},
+        {"m": ["a", "b"], "m_datatype": [XSD + "gYearMonth", XSD + "date"]},
+    )
+
+    assert describe_differing_columns(df_diff) == "m (datatype)"
+
+
+def test_a_datatype_outside_the_known_prefixes_stays_a_full_iri():
+    df_diff = diff_of(
+        {"m": ["a"], "m_datatype": ["http://example.org/my#T"]},
+        {"m": ["a"], "m_datatype": [XSD + "string"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "m (datatype: expected <http://example.org/my#T>, actual xsd:string)"
+    )
+
+
+def test_a_value_column_and_a_datatype_only_column_together():
+    df_diff = diff_of(
+        {"s": ["x"], "s_datatype": [XSD + "string"],
+         "m": ["a"], "m_datatype": [XSD + "string"]},
+        {"s": ["y"], "s_datatype": [XSD + "string"],
+         "m": ["a"], "m_datatype": [XSD + "date"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s, m (datatype: expected xsd:string, actual xsd:date)"
     )
 
 
