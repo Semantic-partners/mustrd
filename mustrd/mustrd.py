@@ -1,11 +1,10 @@
 import os
-from typing import Tuple, List, Union, Optional
+from typing import Tuple, List, Union
 
-import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from pyparsing import ParseException
 from pathlib import Path
@@ -30,9 +29,8 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
-from multimethods import MultiMethod
+from multimethods import MultiMethod, Default
 import traceback
-from functools import wraps
 
 log = logging.getLogger(__name__)
 
@@ -551,7 +549,6 @@ def run_spec(spec: Specification) -> SpecResult:
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
-        stacktrace = traceback.format_exc()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
         log.error(message, exc_info=True)
@@ -568,18 +565,38 @@ def run_spec(spec: Specification) -> SpecResult:
     #         mustrd_triple_store.clear_graph()
 
 
-def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
+def get_triple_store_graph(triple_store_graph_path: Path) -> Graph:
+    # Config only. Secrets are loaded separately into a map (see get_credentials),
+    # never merged in here, so this graph can be serialised, logged or dumped
+    # without exposing auth. Before merging the secrets source in here for
+    # convenience, read docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
+    return Graph().parse(triple_store_graph_path)
+
+
+def get_credentials(triple_store_graph_path: Path, secrets: str = None) -> dict:
+    """Build the credentials map from the secrets source, keeping it out of the
+    config graph entirely.
+
+    Secrets come from the inline `secrets` turtle (e.g. a CI-supplied string) or,
+    failing that, the sibling `<config>_secrets<ext>` file. They are parsed into a
+    throwaway graph purely to extract the map, then discarded — the secret triples
+    never join the config graph. See
+    docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
+    """
+    secrets_graph = Graph()
     if secrets:
-        return Graph().parse(triple_store_graph_path).parse(data=secrets)
+        secrets_graph.parse(data=secrets)
     else:
         secret_path = triple_store_graph_path.parent / Path(
             triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
         )
-        return Graph().parse(triple_store_graph_path).parse(secret_path)
+        if os.path.isfile(secret_path):
+            secrets_graph.parse(secret_path)
+    return extract_credentials(secrets_graph)
 
 
 # Parse and validate triple store configuration
-def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
+def get_triple_stores(triple_store_graph: Graph, credentials: dict = None) -> list[dict]:
     triple_stores = []
     shacl_graph = Graph().parse(
         Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl"))
@@ -600,32 +617,98 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             f"Triple store configuration not conform to the shapes. SHACL report: {results_text}",
             results_graph,
         )
+    # Credentials come in as a map keyed by store URI, kept out of the config
+    # graph. For backward compatibility, if a caller passes none we fall back to
+    # reading any auth embedded in the graph itself.
+    if credentials is None:
+        credentials = extract_credentials(triple_store_graph)
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples(
         (None, RDF.type, None)
     ):
         triple_store = {}
         triple_store["type"] = triple_store_type
         triple_store["uri"] = triple_store_config
-        # Anzo graph via anzo
-        if triple_store_type == TRIPLESTORE.Anzo:
-            get_anzo_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-        # GraphDB
-        elif triple_store_type == TRIPLESTORE.GraphDb:
-            get_graphDB_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-
-        elif triple_store_type != TRIPLESTORE.RdfLib:
-            triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
-
+        # Fill in the store-specific connection details. Dispatch on the store
+        # type so a new backend is a registered method, not another elif here.
+        get_triple_store_config(triple_store, triple_store_graph, triple_store_config, credentials)
         triple_stores.append(triple_store)
     return triple_stores
 
 
+# Names auth lives under in both the config graph and the credentials map.
+CREDENTIAL_PROPERTIES = {
+    TRIPLESTORE.token: "token",
+    TRIPLESTORE.username: "username",
+    TRIPLESTORE.password: "password",
+}
+
+
+def extract_credentials(triple_store_graph: Graph) -> dict:
+    """Auth for every store, as {store URI: {token/username/password: value}}.
+
+    Read from the graph — so the existing turtle `_secrets` file keeps working —
+    but pulled into a map here so it is handled apart from behaviour-affecting
+    config rather than intertwined with it.
+    """
+    credentials: dict = {}
+    for predicate, key in CREDENTIAL_PROPERTIES.items():
+        for store, _, value in triple_store_graph.triples((None, predicate, None)):
+            credentials.setdefault(str(store), {})[key] = str(value)
+    return credentials
+
+
+def apply_credentials(triple_store: dict, triple_store_config: URIRef, credentials: dict):
+    """Copy a store's auth from the credentials map onto its config dict.
+
+    Only sets what is present, so an absent credential stays absent (and is
+    caught by the store's required-parameter check) rather than becoming the
+    string "None".
+    """
+    creds = (credentials or {}).get(str(triple_store_config), {})
+    if creds.get("token"):
+        triple_store["token"] = creds["token"]
+    if creds.get("username") is not None:
+        triple_store["username"] = creds["username"]
+        triple_store["password"] = creds.get("password")
+
+
+def get_triple_store_config_dispatch(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+) -> URIRef:
+    return triple_store["type"]
+
+
+# Reads the connection details for one triple store out of the config graph and
+# into its dict, dispatched on the store type. Credentials come from the map, not
+# the graph. New store type -> register a method here, don't add a conditional.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
+get_triple_store_config = MultiMethod(
+    "get_triple_store_config", get_triple_store_config_dispatch
+)
+
+
+@get_triple_store_config.method(TRIPLESTORE.RdfLib)
+def _get_triple_store_config_rdflib(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    # In-memory store: nothing external to configure.
+    pass
+
+
+@get_triple_store_config.method(Default)
+def _get_triple_store_config_default(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["error"] = f"Triple store not implemented: {triple_store['type']}"
+
+
+@get_triple_store_config.method(TRIPLESTORE.Anzo)
 def get_anzo_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -633,19 +716,7 @@ def get_anzo_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["gqe_uri"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.gqeURI
     )
@@ -663,8 +734,10 @@ def get_anzo_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.GraphDb)
 def get_graphDB_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -672,20 +745,7 @@ def get_graphDB_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        log.error(f"Credential retrieval failed {e}")
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["repository"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.repository
     )
@@ -698,6 +758,55 @@ def get_graphDB_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.Stardog)
+def get_stardog_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["database"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.database
+    )
+    # Auth comes from the credentials map. The backend prefers the bearer token
+    # and falls back to basic auth, so setting whichever is present is enough.
+    apply_credentials(triple_store, triple_store_config, credentials)
+    # The materialised graph the given data loads into, plus the extra graphs the
+    # query dataset is built from: any number of materialised and virtual graphs,
+    # so one query can be tested against a chosen combination of the two.
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    triple_store["output_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.outputGraph
+    )
+    triple_store["materialised_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.materialisedGraph
+        )
+    ]
+    triple_store["virtual_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.virtualGraph
+        )
+    ]
+    try:
+        check_triple_store_params(triple_store, ["url", "database"])
+    except ValueError as e:
+        triple_store["error"] = e
+    if triple_store.get("token") is None and triple_store.get("username") is None:
+        triple_store["error"] = ValueError(
+            f"Cannot establish connection to {triple_store['type']}. "
+            "Provide either a token or username/password."
+        )
+
+
 def check_triple_store_params(triple_store: dict, required_params: List[str]):
     missing_params = [
         param for param in required_params if triple_store.get(param) is None
@@ -707,32 +816,6 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
             f"Cannot establish connection to {triple_store['type']}. "
             f"Missing required parameter(s): {', '.join(missing_params)}."
         )
-
-
-def get_credential_from_file(
-    triple_store_name: URIRef, credential: str, config_path: Literal
-) -> str:
-    log.debug(
-        f"get_credential_from_file {triple_store_name}, {credential}, {config_path}"
-    )
-    if not config_path:
-        raise ValueError(
-            f"Cannot establish connection defined in {triple_store_name}. "
-            f"Missing required parameter: {credential}."
-        )
-    path = Path(config_path)
-    log.debug(f"get_credential_from_file {path}")
-
-    if not os.path.isfile(path):
-        log.error(f"couldn't find {path}")
-        raise FileNotFoundError(f"Credentials config file not found: {path}")
-    try:
-        with open(path, "rb") as f:
-            config = tomli.load(f)
-    except tomli.TOMLDecodeError as e:
-        log.error(f"config error {path} {e}")
-        raise ValueError(f"Error reading credentials config file: {e}")
-    return config[str(triple_store_name)][credential]
 
 
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
@@ -945,33 +1028,65 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def write_result_diff_to_log(res, info):
-    if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(f"{Fore.BLUE} In Expected Not In Actual:")
-        info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-        info(f"{Fore.RED} in_actual_not_in_expected")
-        info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-        info(f"{Fore.GREEN} in_both")
-        info(res.graph_comparison.in_both.serialize(format="ttl"))
+def render_result_diff_dispatch(res, info):
+    return type(res)
 
-    if isinstance(res, SelectSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.message)
-        info(res.table_comparison.to_markdown())
-    if isinstance(res, SpecPassedWithWarning):
-        info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-        info(res.warning)
-    if (
-        isinstance(res, TripleStoreConnectionError)
-        or isinstance(res, SparqlExecutionError)
-        or isinstance(res, SparqlParseFailure)
-    ):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.exception)
-    if isinstance(res, SpecInvalid):
-        info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
-        info(res.message)
+
+# One dispatch table for rendering a result, keyed on the result class, so the
+# two call sites (write_result_diff_to_log and display_verbose) can't drift apart
+# again. `info` is the sink — a logger method, print, or a string collector.
+# New result type -> register a method, don't add a conditional at the call sites.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
+render_result_diff = MultiMethod("render_result_diff", render_result_diff_dispatch)
+
+
+@render_result_diff.method(UpdateSpecFailure)
+@render_result_diff.method(ConstructSpecFailure)
+def _render_graph_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(f"{Fore.BLUE} In Expected Not In Actual:")
+    info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+    info(f"{Fore.RED} in_actual_not_in_expected")
+    info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+    info(f"{Fore.GREEN} in_both")
+    info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+
+@render_result_diff.method(SelectSpecFailure)
+def _render_select_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.message)
+    info(res.table_comparison.to_markdown())
+
+
+@render_result_diff.method(SpecPassedWithWarning)
+def _render_passed_with_warning(res, info):
+    info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+    info(res.warning)
+
+
+@render_result_diff.method(TripleStoreConnectionError)
+@render_result_diff.method(SparqlExecutionError)
+@render_result_diff.method(SparqlParseFailure)
+def _render_error(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.exception)
+
+
+@render_result_diff.method(SpecInvalid)
+def _render_invalid(res, info):
+    info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
+    info(res.message)
+
+
+@render_result_diff.method(Default)
+def _render_nothing(res, info):
+    # SpecPassed and anything else with no diff to show.
+    pass
+
+
+def write_result_diff_to_log(res, info):
+    render_result_diff(res, info)
 
 
 def calculate_row_difference(
@@ -1154,41 +1269,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
 def display_verbose(results: List[SpecResult]):
     for res in results:
-        if isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-            log.info(
-                res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl")
-            )
-            log.info()
-            log.info(f"{Fore.RED} in_actual_not_in_expected")
-            log.info(
-                res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl")
-            )
-            log.info(f"{Fore.GREEN} in_both")
-            log.info(res.graph_comparison.in_both.serialize(format="ttl"))
-
-        if isinstance(res, SelectSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
-            log.info(res.table_comparison.to_markdown())
-        if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        if isinstance(res, SpecPassedWithWarning):
-            log.info(
-                f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}"
-            )
-            log.info(res.warning)
-        if (
-            isinstance(res, TripleStoreConnectionError)
-            or type(res, SparqlExecutionError)
-            or isinstance(res, SparqlParseFailure)
-        ):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.exception)
-        if isinstance(res, SpecInvalid):
-            log.info(f"{Fore.YELLOW}Invalid {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
+        render_result_diff(res, log.info)
 
 
 # Preserve the original run_when_impl multimethod

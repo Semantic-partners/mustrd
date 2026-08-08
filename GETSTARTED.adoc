@@ -57,6 +57,29 @@ Additional mandatory properties depend on the triplestore:
 
 * Only `repository` is mandatory. If `inputGraph` is not defined, all graphs in the repository will be queried.
 
+==== For Stardog:
+
+* `database` is required to identify the Stardog database to run against.
+* `inputGraph` is required: it is the materialised named graph the `given` data is loaded into.
+* Authentication prefers a bearer `token`. If no token is given, `username`/`password` basic auth is used instead (store these in the `_secrets` file).
+* `materialisedGraph` and `virtualGraph` are optional and repeatable. Each names an additional graph to include in the dataset a query runs over, so the *same* query can be tested against a chosen combination of materialised (physically stored) and virtual (data-virtualisation) named graphs. To compare combinations, define several Stardog configs that differ only in which graphs they include, and run the same spec against each.
+
+For example:
+
+[source,turtle]
+----
+@prefix : <https://mustrd.org/triplestore/> .
+
+:stardog_materialised_and_virtual a :Stardog ;
+    :url "http://localhost" ;
+    :port "5820" ;
+    :database "mustrd" ;
+    :token "your-bearer-token" ;
+    :inputGraph "http://mustrd.org/test_graph" ;
+    :materialisedGraph "http://example.org/reference-data" ;
+    :virtualGraph "virtual://customers" .
+----
+
 === Test Configuration
 
 The default test configuration is located in the MustRD template project: https://github.com/Semantic-partners/mustrd-template/blob/main/test/mustrd_configuration.ttl

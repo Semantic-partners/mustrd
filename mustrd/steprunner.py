@@ -4,6 +4,7 @@ import os
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
 from rdflib import Graph, URIRef
+from . import mustrdGraphDb, mustrdStardog
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
 from .mustrdRdfLib import execute_update as execute_update_rdflib
@@ -11,15 +12,14 @@ from .mustrdAnzo import get_query_from_step, upload_given as upload_given_anzo
 from .mustrdAnzo import execute_update as execute_update_anzo
 from .mustrdAnzo import execute_construct as execute_construct_anzo
 from .mustrdAnzo import execute_select as execute_select_anzo
-from .mustrdGraphDb import upload_given as upload_given_graphdb
-from .mustrdGraphDb import execute_update as execute_update_graphdb
-from .mustrdGraphDb import execute_construct as execute_construct_graphdb
-from .mustrdGraphDb import execute_select as execute_select_graphdb
 from .spec_component import AnzoWhenSpec, WhenSpec, SpadeEdnGroupSourceWhenSpec
 import logging
-from edn_format import loads, Keyword
 
 log = logging.getLogger(__name__)
+
+# Dispatch on the store type / query type axes goes through the multimethods
+# below — new backends and query types register a method, they do not add a
+# conditional. See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 
 
 def dispatch_upload_given(triple_store: dict, given: Graph):
@@ -36,11 +36,6 @@ def _upload_given_rdflib(triple_store: dict, given: Graph):
     triple_store["given"] = given
 
 
-@upload_given.method(TRIPLESTORE.GraphDb)
-def _upload_given_graphdb(triple_store: dict, given: Graph):
-    upload_given_graphdb(triple_store, given)
-
-
 @upload_given.method(TRIPLESTORE.Anzo)
 def _upload_given_anzo(triple_store: dict, given: Graph):
     upload_given_anzo(triple_store, given)
@@ -54,6 +49,33 @@ def dispatch_run_when(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
 
 
 run_when_impl = MultiMethod('run_when', dispatch_run_when)
+
+
+def register_sparql_http_backend(triple_store_type: URIRef, backend):
+    """Wire a standard SPARQL-1.1-over-HTTP backend into the dispatch tables.
+
+    Any module exposing upload_given / execute_update / execute_construct /
+    execute_select with the conventional (triple_store, when.value, when.bindings)
+    signatures gets all four operations registered for triple_store_type. Adding
+    such a backend is then one call instead of a wrapper per (type, query-type)
+    pair. Stores that need bespoke handling (Anzo's query steps, RdfLib's
+    in-memory given) register their own methods explicitly below.
+    """
+    upload_given.method(triple_store_type)(
+        lambda triple_store, given: backend.upload_given(triple_store, given))
+    run_when_impl.method((triple_store_type, MUST.UpdateSparql))(
+        lambda spec_uri, triple_store, when:
+            backend.execute_update(triple_store, when.value, when.bindings))
+    run_when_impl.method((triple_store_type, MUST.ConstructSparql))(
+        lambda spec_uri, triple_store, when:
+            backend.execute_construct(triple_store, when.value, when.bindings))
+    run_when_impl.method((triple_store_type, MUST.SelectSparql))(
+        lambda spec_uri, triple_store, when:
+            backend.execute_select(triple_store, when.value, when.bindings))
+
+
+register_sparql_http_backend(TRIPLESTORE.GraphDb, mustrdGraphDb)
+register_sparql_http_backend(TRIPLESTORE.Stardog, mustrdStardog)
 
 
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
@@ -78,21 +100,6 @@ def _anzo_run_when_construct(spec_uri: URIRef, triple_store: dict, when: AnzoWhe
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.SelectSparql))
 def _anzo_run_when_select(spec_uri: URIRef, triple_store: dict, when: AnzoWhenSpec):
     return execute_select_anzo(triple_store, when.value, when.bindings)
-
-
-@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.UpdateSparql))
-def _graphdb_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    return execute_update_graphdb(triple_store, when.value, when.bindings)
-
-
-@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.ConstructSparql))
-def _graphdb_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    return execute_construct_graphdb(triple_store, when.value, when.bindings)
-
-
-@run_when_impl.method((TRIPLESTORE.GraphDb, MUST.SelectSparql))
-def _graphdb_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
-    return execute_select_graphdb(triple_store, when.value, when.bindings)
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.UpdateSparql))
@@ -138,7 +145,7 @@ def _multi_run_when_anzo_query_driven_update(spec_uri: URIRef, triple_store: dic
 
 
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.SpadeEdnGroupSource))
-def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+def _spade_edn_group_source_anzo(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     merged_result = None
@@ -165,7 +172,7 @@ def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdn
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
-def _spade_edn_group_source(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
     log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     edn_file_dir = os.path.dirname(when.file)  # Get the directory of the EDN file
@@ -201,7 +208,7 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
     elif when.queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
         msg = "SPARQL DESCRIBE not implemented."
-    elif triple_store['type'] not in [TRIPLESTORE.Anzo, TRIPLESTORE.GraphDb, TRIPLESTORE.RdfLib]:
+    elif triple_store['type'] not in {key[0] for key in run_when_impl.methods if isinstance(key, tuple)}:
         msg = f"{when.queryType} not implemented for {triple_store['type']}"
     else:
         log.warning(f"Skipping {spec_uri},  {when.queryType} is not a valid SPARQL query type.")
