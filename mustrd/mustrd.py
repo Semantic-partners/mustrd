@@ -303,6 +303,15 @@ def add_spec_validation(
     spec_graph: Graph,
 ):
 
+    # The file is merged into spec_graph ONCE, however many specs it declares.
+    # It used to be re-parsed inside the per-spec loop, so a file with N specs
+    # contributed N copies of itself — and because every parse mints fresh blank
+    # nodes, the copies did not merge. Each spec then appeared to have N `given`
+    # / `when` / `then` component nodes. Graph components survived it (combining
+    # N identical graphs is a no-op) but a table `then` did not: combine_specs
+    # saw more than one TableThenSpec and rejected the spec as unimplemented.
+    any_spec_collected = False
+
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
         # Always add file name and source file to the graph for error reporting
         file_graph.add([subject_uri, MUST.specSourceFile, Literal(str(file))])
@@ -317,15 +326,7 @@ def add_spec_validation(
             subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
         if len(error_messages) == 0:
             subject_uris.add(subject_uri)
-            this_spec_graph = Graph()
-            this_spec_graph.parse(file)
-            spec_uris_in_this_file = list(
-                this_spec_graph.subjects(RDF.type, MUST.TestSpec)
-            )
-            for spec in spec_uris_in_this_file:
-                this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-            spec_graph += this_spec_graph
+            any_spec_collected = True
         else:
             error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
@@ -335,6 +336,12 @@ def add_spec_validation(
                 )
                 for triple_store in triple_stores
             ]
+
+    if any_spec_collected:
+        # file_graph already carries specSourceFile / specFileName for every spec
+        # in the file, so it is exactly what the re-parse produced — minus the
+        # duplication.
+        spec_graph += file_graph
 
 
 def get_specs(
@@ -519,7 +526,11 @@ def run_spec(spec: Specification) -> SpecResult:
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
     )
-    if spec.given:
+    # `is not None`, not truthiness: an empty graph is falsy, so a given that
+    # parsed to nothing used to be reported as an inherited-state spec — a
+    # feature the spec never mentioned. Inherited state is the absence of a
+    # given, which is `None`.
+    if spec.given is not None:
         given_as_turtle = spec.given.serialize(format="turtle")
         log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
@@ -953,6 +964,7 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
         round(then.shape[1] / 2),
         resultDf.shape[0],
         round(resultDf.shape[1] / 2),
+        df_diff,
     )
     return df_diff, message
 
@@ -988,11 +1000,56 @@ def _no_results(resultDf: DataFrame, spec: Specification):
     return df_diff, build_summary_message(0, 0, 0, 0)
 
 
-def build_summary_message(expected_rows, expected_columns, got_rows, got_columns):
-    return (
+def build_summary_message(
+    expected_rows, expected_columns, got_rows, got_columns, df_diff=None
+):
+    message = (
         f"Expected {expected_rows} row(s) and {expected_columns} column(s), "
         f"got {got_rows} row(s) and {got_columns} column(s)"
     )
+    # Only when the two shapes are identical. Then this line, read alone, says
+    # nothing is wrong — and on a wide result the one column that differs can sit
+    # off the right-hand edge of the diff below, so the reader looks in the wrong
+    # place. When the shapes DO differ the line already carries the news, and
+    # listing every column would just be noise.
+    # https://github.com/Semantic-partners/mustrd/issues/240
+    if (expected_rows, expected_columns) == (got_rows, got_columns):
+        differing = describe_differing_columns(df_diff)
+        if differing:
+            message += f" — differs in: {differing}"
+    return message
+
+
+def describe_differing_columns(df_diff) -> str:
+    """The columns present in a diff, as `value, month (datatype)`.
+
+    `DataFrame.compare` gives a (column, expected|actual) MultiIndex, and mustrd
+    carries each binding as a value column plus a `<name>_datatype` column. A
+    binding whose value differs is named once — its datatype almost always
+    differs too, and saying so twice adds nothing. `(datatype)` is therefore
+    reserved for the case the reader cannot otherwise see: same text, different
+    type.
+    """
+    if df_diff is None or getattr(df_diff, "empty", True):
+        return ""
+    try:
+        columns = list(dict.fromkeys(df_diff.columns.get_level_values(0)))
+    except (AttributeError, IndexError):
+        return ""
+
+    columns = [str(column) for column in columns]
+    values = {column for column in columns if not column.endswith("_datatype")}
+
+    described = []
+    for column in columns:
+        if column.endswith("_datatype"):
+            binding = column[: -len("_datatype")]
+            if binding in values:
+                continue
+            described.append(f"{binding} (datatype)")
+        else:
+            described.append(column)
+    return ", ".join(dict.fromkeys(described))
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:

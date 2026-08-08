@@ -1,0 +1,83 @@
+"""The one-line summary above a table diff.
+
+On a value- or datatype-only mismatch the expected and actual shapes are
+identical, so "Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s)"
+reads as though nothing is wrong — and on a wide result the column that actually
+differs can sit off the right-hand edge of the diff below it. The summary names
+the differing columns in exactly that case, and stays out of the way when the
+shapes already carry the news.
+
+https://github.com/Semantic-partners/mustrd/issues/240
+"""
+
+import pandas
+import pytest
+
+from mustrd.mustrd import build_summary_message, describe_differing_columns
+
+
+def diff_of(expected: dict, actual: dict) -> pandas.DataFrame:
+    """The (column, expected|actual) MultiIndex frame mustrd compares with."""
+    return pandas.DataFrame(expected).compare(
+        pandas.DataFrame(actual), result_names=("expected", "actual")
+    )
+
+
+def test_shapes_match_so_the_differing_column_is_named():
+    df_diff = diff_of(
+        {"month": ["2025-01"], "month_datatype": ["http://www.w3.org/2001/XMLSchema#string"]},
+        {"month": ["2025-01"], "month_datatype": ["http://www.w3.org/2001/XMLSchema#gYearMonth"]},
+    )
+    message = build_summary_message(1, 1, 1, 1, df_diff)
+
+    assert message == (
+        "Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s)"
+        " — differs in: month (datatype)"
+    )
+
+
+def test_shapes_differ_so_the_column_list_is_left_off():
+    # The row counts already say what is wrong; listing every column here would
+    # be noise, and on a wide result a long one.
+    df_diff = diff_of(
+        {"s": ["a", "b"], "s_datatype": ["u", "u"]},
+        {"s": ["c", "d"], "s_datatype": ["u", "u"]},
+    )
+    message = build_summary_message(1, 3, 2, 3, df_diff)
+
+    assert message == "Expected 1 row(s) and 3 column(s), got 2 row(s) and 3 column(s)"
+
+
+def test_no_diff_adds_nothing():
+    assert build_summary_message(1, 1, 1, 1, pandas.DataFrame()) == (
+        "Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s)"
+    )
+    assert build_summary_message(0, 0, 0, 0) == (
+        "Expected 0 row(s) and 0 column(s), got 0 row(s) and 0 column(s)"
+    )
+
+
+def test_a_binding_whose_value_differs_is_named_once():
+    # A changed value almost always changes the datatype column too. Saying
+    # "o, o (datatype)" adds nothing, so (datatype) is reserved for the case the
+    # reader cannot otherwise see: same text, different type.
+    df_diff = diff_of(
+        {"o": ["1"], "o_datatype": ["int"]},
+        {"o": ["2"], "o_datatype": ["string"]},
+    )
+
+    assert describe_differing_columns(df_diff) == "o"
+
+
+def test_columns_keep_the_order_of_the_diff():
+    df_diff = diff_of(
+        {"s": ["a"], "p": ["b"], "o": ["c"]},
+        {"s": ["x"], "p": ["y"], "o": ["z"]},
+    )
+
+    assert describe_differing_columns(df_diff) == "s, p, o"
+
+
+@pytest.mark.parametrize("not_a_diff", [None, pandas.DataFrame()])
+def test_describe_tolerates_nothing_to_describe(not_a_diff):
+    assert describe_differing_columns(not_a_diff) == ""
