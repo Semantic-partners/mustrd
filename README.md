@@ -91,6 +91,64 @@ This will validate your SPARQL queries against the defined dataset and expected 
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
 
+#### When a spec fails
+
+A failing SELECT names the binding that differs and what it differs by, on the
+first line — before the table. The commonest failure of all, right shape and
+wrong value, otherwise reports two identical shapes and leaves you to find the
+one cell that matters:
+
+```
+Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s) — differs in: month (datatype: expected xsd:string, actual xsd:gYearMonth)
+
+|    | ('month_datatype', 'expected')          | ('month_datatype', 'actual')                |
+|---:|:----------------------------------------|:--------------------------------------------|
+|  0 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#gYearMonth |
+```
+
+A wrong term rather than a wrong type reads the same way, using the prefixes
+your `given` declares:
+
+```
+Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s) — differs in: o (expected ex:object, actual ex:obj)
+```
+
+The ones that are hardest to see and easiest to make are two IRIs naming the
+same thing under a different scheme or host. Those are named rather than
+printed:
+
+```
+— differs in: s (scheme: expected http, actual https)
+— differs in: s (host: expected company.dev, actual company.com)
+— differs in: s (origin: expected http://company.dev, actual https://company.com)
+```
+
+The same ontology served from a dev host and a prod one, or over `http` on one
+side and `https` on the other, agrees everywhere the eye lands. Printing both
+IRIs makes it a spot-the-difference puzzle; eliding them makes it worse.
+
+Only claimed when the origin really is the whole difference. If anything after
+the host differs too you get both IRIs, because naming the host would send you
+after the wrong thing.
+
+Some details worth knowing, because they are what make it readable on real data:
+
+- **The pair is only named when the two shapes match.** A row- or column-count
+  mismatch already says what is wrong, and listing every column would be noise.
+- **A binding whose value differs is named once.** Its datatype nearly always
+  differs too; `(datatype: …)` is reserved for the case you cannot see otherwise
+  — same text, different type.
+- **A long value is elided around the difference, not from the start** — cutting
+  the tail off two near-identical IRIs would show you the half they agree on and
+  hide the half they don't:
+
+  ```
+  — differs in: s (expected <…o/the/thing/alpha>, actual <…o/the/thing/beta>)
+  ```
+
+- **A wide result falls back to bare column names.** Past a readable length the
+  line has stopped being a summary, and the table below is the right tool.
+
 #### What a run can produce
 
 Every flag below works identically on `pytest --mustrd` and on `mustrd report`:

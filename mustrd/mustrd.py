@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Tuple, List, Union
 
 from rdflib.plugins.parsers.notation3 import BadSyntax
@@ -303,6 +304,15 @@ def add_spec_validation(
     spec_graph: Graph,
 ):
 
+    # The file is merged into spec_graph ONCE, however many specs it declares.
+    # It used to be re-parsed inside the per-spec loop, so a file with N specs
+    # contributed N copies of itself — and because every parse mints fresh blank
+    # nodes, the copies did not merge. Each spec then appeared to have N `given`
+    # / `when` / `then` component nodes. Graph components survived it (combining
+    # N identical graphs is a no-op) but a table `then` did not: combine_specs
+    # saw more than one TableThenSpec and rejected the spec as unimplemented.
+    any_spec_collected = False
+
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
         # Always add file name and source file to the graph for error reporting
         file_graph.add([subject_uri, MUST.specSourceFile, Literal(str(file))])
@@ -317,15 +327,7 @@ def add_spec_validation(
             subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
         if len(error_messages) == 0:
             subject_uris.add(subject_uri)
-            this_spec_graph = Graph()
-            this_spec_graph.parse(file)
-            spec_uris_in_this_file = list(
-                this_spec_graph.subjects(RDF.type, MUST.TestSpec)
-            )
-            for spec in spec_uris_in_this_file:
-                this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-            spec_graph += this_spec_graph
+            any_spec_collected = True
         else:
             error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
@@ -335,6 +337,12 @@ def add_spec_validation(
                 )
                 for triple_store in triple_stores
             ]
+
+    if any_spec_collected:
+        # file_graph already carries specSourceFile / specFileName for every spec
+        # in the file, so it is exactly what the re-parse produced — minus the
+        # duplication.
+        spec_graph += file_graph
 
 
 def get_specs(
@@ -519,7 +527,11 @@ def run_spec(spec: Specification) -> SpecResult:
     log.debug(
         f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
     )
-    if spec.given:
+    # `is not None`, not truthiness: an empty graph is falsy, so a given that
+    # parsed to nothing used to be reported as an inherited-state spec — a
+    # feature the spec never mentioned. Inherited state is the absence of a
+    # given, which is `None`.
+    if spec.given is not None:
         given_as_turtle = spec.given.serialize(format="turtle")
         log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
@@ -953,6 +965,11 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
         round(then.shape[1] / 2),
         resultDf.shape[0],
         round(resultDf.shape[1] / 2),
+        df_diff,
+        # The result's terms came out of the given, so its prefixes are the ones
+        # the spec author writes them with. Without this every IRI in the summary
+        # is a full one, which is what the summary exists to avoid.
+        getattr(spec.given, "namespace_manager", None),
     )
     return df_diff, message
 
@@ -988,11 +1005,282 @@ def _no_results(resultDf: DataFrame, spec: Specification):
     return df_diff, build_summary_message(0, 0, 0, 0)
 
 
-def build_summary_message(expected_rows, expected_columns, got_rows, got_columns):
-    return (
+def build_summary_message(
+    expected_rows, expected_columns, got_rows, got_columns, df_diff=None,
+    namespace_manager=None,
+):
+    message = (
         f"Expected {expected_rows} row(s) and {expected_columns} column(s), "
         f"got {got_rows} row(s) and {got_columns} column(s)"
     )
+    # Only when the two shapes are identical. Then this line, read alone, says
+    # nothing is wrong — and on a wide result the one column that differs can sit
+    # off the right-hand edge of the diff below, so the reader looks in the wrong
+    # place. When the shapes DO differ the line already carries the news, and
+    # listing every column would just be noise.
+    # https://github.com/Semantic-partners/mustrd/issues/240
+    if (expected_rows, expected_columns) == (got_rows, got_columns):
+        differing = describe_differing_columns(df_diff, namespace_manager)
+        if differing:
+            message += f" — differs in: {differing}"
+    return message
+
+
+# A cell longer than this is elided in the summary. The diff below has it whole;
+# the summary's job is to be readable at a glance.
+MAX_SUMMARY_CELL = 60
+
+# Past this the line has stopped being a summary, so it drops back to bare column
+# names. Reached by a wide result where many columns differ at once — exactly the
+# case where the diff table, not one line, is the right tool.
+MAX_SUMMARY_DETAIL = 240
+
+
+def describe_differing_columns(df_diff, namespace_manager=None) -> str:
+    """The columns present in a diff, with what each one differed by, as
+    `o (expected "one", actual "two"), month (datatype: expected xsd:string, ...)`.
+
+    `DataFrame.compare` gives a (column, expected|actual) MultiIndex, and mustrd
+    carries each binding as a value column plus a `<name>_datatype` column. A
+    binding whose value differs is named once — its datatype almost always
+    differs too, and saying so twice adds nothing. `(datatype: ...)` is therefore
+    reserved for the case the reader cannot otherwise see: same text, different
+    type.
+
+    Either way the pair IS the failure, so it goes on the line the reader looks
+    at first rather than being hunted for in the diff below. Falls back to bare
+    names when the detail would be too long to read.
+    """
+    if df_diff is None or getattr(df_diff, "empty", True):
+        return ""
+    try:
+        columns = list(dict.fromkeys(df_diff.columns.get_level_values(0)))
+    except (AttributeError, IndexError):
+        return ""
+
+    columns = [str(column) for column in columns]
+    # Not every column in the frame is a difference: when the two tables have
+    # different shapes or column names the diff is built side by side rather than
+    # by DataFrame.compare, and carries the matching columns too.
+    differing = [column for column in columns if column_differs(df_diff, column)]
+    columns = differing or columns
+
+    values = {column for column in columns if not column.endswith("_datatype")}
+
+    named, detailed = [], []
+    for column in columns:
+        if column.endswith("_datatype"):
+            binding = column[: -len("_datatype")]
+            if binding in values:
+                continue
+            named.append(f"{binding} (datatype)")
+            detail = describe_column_diff(
+                df_diff, column, "datatype", namespace_manager)
+            detailed.append(f"{binding} ({detail})" if detail else f"{binding} (datatype)")
+        else:
+            named.append(column)
+            detail = describe_column_diff(
+                df_diff, column, namespace_manager=namespace_manager)
+            detailed.append(f"{column} ({detail})" if detail else column)
+
+    detailed_message = ", ".join(dict.fromkeys(detailed))
+    if len(detailed_message) <= MAX_SUMMARY_DETAIL:
+        return detailed_message
+    return ", ".join(dict.fromkeys(named))
+
+
+def column_differs(df_diff, column: str) -> bool:
+    """Whether any row of this column has a different expected and actual."""
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return True
+
+    return any(
+        str(want) != str(got)
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) or pandas.notna(got)
+    )
+
+
+def describe_column_diff(df_diff, column: str, kind: str = "",
+                         namespace_manager=None) -> str:
+    """`expected "one", actual "two"` for one column, or "" if it cannot be said.
+
+    Empty when the rows do not agree on one pair — naming a pair that only some
+    rows have would be worse than naming none, and the diff below still has
+    every row.
+    """
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return ""
+
+    pairs = {
+        (str(want), str(got))
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) and pandas.notna(got)
+    }
+    if len(pairs) != 1:
+        return ""
+
+    want, got = pairs.pop()
+
+    # Two IRIs naming the same thing under a different scheme or host are the
+    # hardest difference to see and among the commonest to make: `http` against
+    # `https`, or a dev host against a prod one. Say which part disagrees rather
+    # than printing both and leaving the reader to diff them by eye — eliding
+    # only makes it worse, since the strings agree everywhere the eye lands.
+    origin = differing_origin(want, got)
+    if origin:
+        what, want_part, got_part = origin
+        label = f"{kind} {what}" if kind else what
+        return f"{label}: expected {want_part}, actual {got_part}"
+
+    shown_want, shown_got = render_cell_pair(want, got, namespace_manager)
+    return f"{kind}: expected {shown_want}, actual {shown_got}" if kind else \
+        f"expected {shown_want}, actual {shown_got}"
+
+
+# scheme://authority/rest, per RFC 3986. The authority runs to the first "/",
+# "?" or "#", so it carries a port when there is one.
+_IRI_ORIGIN = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://([^/?#]*)(.*)$", re.DOTALL)
+
+
+def differing_origin(want: str, got: str) -> Union[Tuple[str, str, str], None]:
+    """`(what, want_part, got_part)` when two IRIs differ only before the path.
+
+    `what` is `scheme`, `host`, or `origin` when both moved at once — so the
+    label names the part that actually disagrees rather than making the reader
+    work it out.
+
+    None if either is not an IRI, if they agree, or if anything after the
+    authority differs too. In that last case the origin is not the whole story
+    and naming it would send the reader after the wrong thing.
+    """
+    want_parts = _IRI_ORIGIN.match(want)
+    got_parts = _IRI_ORIGIN.match(got)
+    if not want_parts or not got_parts:
+        return None
+    if want_parts.group(3) != got_parts.group(3):
+        return None
+
+    scheme_differs = want_parts.group(1) != got_parts.group(1)
+    host_differs = want_parts.group(2) != got_parts.group(2)
+
+    if scheme_differs and not host_differs:
+        return "scheme", want_parts.group(1), got_parts.group(1)
+    if host_differs and not scheme_differs:
+        return "host", want_parts.group(2), got_parts.group(2)
+    if scheme_differs and host_differs:
+        return (
+            "origin",
+            f"{want_parts.group(1)}://{want_parts.group(2)}",
+            f"{got_parts.group(1)}://{got_parts.group(2)}",
+        )
+    return None
+
+
+# rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
+# writes it in a spec. Anything unknown stays a full IRI in angle brackets rather
+# than being truncated into ambiguity.
+_iri_shortener = Graph().namespace_manager
+
+
+def shorten_iri(iri: str, namespace_manager=None) -> str:
+    try:
+        return (namespace_manager or _iri_shortener).normalizeUri(iri)
+    except Exception:
+        return iri
+
+
+def render_cell_pair(want: str, got: str, namespace_manager=None) -> Tuple[str, str]:
+    """Both sides of a difference, as they would be written in a spec.
+
+    Two long cells are elided AROUND what differs, not from the start. Cutting
+    the tail off a pair of near-identical IRIs shows the reader the half they
+    already agree on and hides the half they don't, which is the opposite of the
+    job — the summary exists so nobody has to hunt for the difference.
+    """
+    want_text = cell_text(want, namespace_manager)
+    got_text = cell_text(got, namespace_manager)
+    if max(len(want_text), len(got_text)) > MAX_SUMMARY_CELL:
+        # An IRI with no prefix to hand comes back in angle brackets. Elide
+        # inside them, or the window eats the opening one and leaves a stray
+        # closing bracket.
+        bracketed = (want_text.startswith("<") and want_text.endswith(">")
+                     and got_text.startswith("<") and got_text.endswith(">"))
+        if bracketed:
+            inner_want, inner_got = elide_around_difference(
+                want_text[1:-1], got_text[1:-1])
+            want_text, got_text = f"<{inner_want}>", f"<{inner_got}>"
+        else:
+            want_text, got_text = elide_around_difference(want_text, got_text)
+    return quote_cell(want_text, want), quote_cell(got_text, got)
+
+
+def cell_text(cell: str, namespace_manager=None) -> str:
+    """The bare term in a cell: a shortened IRI, or a literal's lexical form.
+
+    The diff carries values as bare strings with no marker for which are IRIs, so
+    this goes on the shape of the text. Getting it wrong costs a pair of quotes,
+    not meaning.
+    """
+    if cell.startswith(("http://", "https://", "urn:")):
+        return shorten_iri(cell, namespace_manager)
+    return cell
+
+
+def quote_cell(text: str, original: str) -> str:
+    """`ex:sub`, `"one"`, `empty` — quotes only where a literal is being shown."""
+    if original == "":
+        return "empty"
+    if original.startswith(("http://", "https://", "urn:")):
+        return text
+    return f'"{text}"'
+
+
+# Shared characters kept either side of the difference, so it reads in context
+# rather than as a fragment.
+SUMMARY_CELL_CONTEXT = 12
+
+
+def elide_around_difference(left: str, right: str) -> Tuple[str, str]:
+    """Both strings narrowed to a window over what differs, `…` marking each cut.
+
+    Two IRIs that agree for 80 characters and then diverge come back as
+    `…rt/to/thing/alpha` and `…rt/to/thing/beta`: the difference is on screen,
+    with enough of the shared run either side to place it.
+    """
+    shortest = min(len(left), len(right))
+
+    prefix = 0
+    while prefix < shortest and left[prefix] == right[prefix]:
+        prefix += 1
+
+    suffix = 0
+    while suffix < shortest - prefix and left[-1 - suffix] == right[-1 - suffix]:
+        suffix += 1
+
+    start = max(0, prefix - SUMMARY_CELL_CONTEXT)
+
+    def window(text: str) -> str:
+        end = min(len(text), len(text) - suffix + SUMMARY_CELL_CONTEXT)
+        clipped = text[start:max(start, end)]
+        if len(clipped) > MAX_SUMMARY_CELL:
+            # The differing run is itself longer than a cell's budget. Keep both
+            # of its ends: where it starts diverging and where it stops.
+            half = MAX_SUMMARY_CELL // 2
+            clipped = f"{clipped[:half]}…{clipped[-half:]}"
+        return (
+            ("…" if start > 0 else "")
+            + clipped
+            + ("…" if end < len(text) else "")
+        )
+
+    return window(left), window(right)
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:

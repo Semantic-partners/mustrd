@@ -1,0 +1,30 @@
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# The counterpart to select_spec_given_trig_reads_named_graph: an unqualified
+# query over the same .trig still sees every graph, so keeping the quads has not
+# narrowed what a when without a GRAPH clause can read.
+
+test-data:select_spec_given_trig_unqualified_reads_every_graph
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given-named-graphs.trig> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "SELECT ?s ?p ?o WHERE { ?s ?p ?o } ORDER BY ?s" ;
+                 must:queryType must:SelectSparql ; ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ sh:order 1 ;
+                               must:hasBinding [ must:variable "s" ;
+                                                 must:boundValue test-data:sub ; ] ,
+                                               [ must:variable "p" ;
+                                                 must:boundValue test-data:pred ; ] ,
+                                               [ must:variable "o" ;
+                                                 must:boundValue test-data:obj ; ] ; ] ,
+                             [ sh:order 2 ;
+                               must:hasBinding [ must:variable "s" ;
+                                                 must:boundValue test-data:sub2 ; ] ,
+                                               [ must:variable "p" ;
+                                                 must:boundValue test-data:pred2 ; ] ,
+                                               [ must:variable "o" ;
+                                                 must:boundValue test-data:obj2 ; ] ; ] ; ] .
