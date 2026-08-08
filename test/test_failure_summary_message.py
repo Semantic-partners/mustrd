@@ -82,7 +82,8 @@ def test_a_value_column_and_a_datatype_only_column_together():
     )
 
     assert describe_differing_columns(df_diff) == (
-        "s, m (datatype: expected xsd:string, actual xsd:date)"
+        's (expected "x", actual "y"), '
+        "m (datatype: expected xsd:string, actual xsd:date)"
     )
 
 
@@ -109,14 +110,14 @@ def test_no_diff_adds_nothing():
 
 def test_a_binding_whose_value_differs_is_named_once():
     # A changed value almost always changes the datatype column too. Saying
-    # "o, o (datatype)" adds nothing, so (datatype) is reserved for the case the
-    # reader cannot otherwise see: same text, different type.
+    # "o (...), o (datatype: ...)" adds nothing, so (datatype) is reserved for
+    # the case the reader cannot otherwise see: same text, different type.
     df_diff = diff_of(
-        {"o": ["1"], "o_datatype": ["int"]},
-        {"o": ["2"], "o_datatype": ["string"]},
+        {"o": ["1"], "o_datatype": [XSD + "integer"]},
+        {"o": ["2"], "o_datatype": [XSD + "string"]},
     )
 
-    assert describe_differing_columns(df_diff) == "o"
+    assert describe_differing_columns(df_diff) == 'o (expected "1", actual "2")'
 
 
 def test_columns_keep_the_order_of_the_diff():
@@ -125,7 +126,78 @@ def test_columns_keep_the_order_of_the_diff():
         {"s": ["x"], "p": ["y"], "o": ["z"]},
     )
 
-    assert describe_differing_columns(df_diff) == "s, p, o"
+    assert describe_differing_columns(df_diff) == (
+        's (expected "a", actual "x"), p (expected "b", actual "y"), '
+        'o (expected "c", actual "z")'
+    )
+
+
+def test_an_iri_value_is_shortened_by_the_spec_s_own_prefixes():
+    from rdflib import Graph
+
+    given = Graph().parse(
+        data='@prefix ex: <https://example.org/> . ex:a ex:b ex:c .', format="ttl")
+    df_diff = diff_of(
+        {"s": ["https://example.org/sub"]},
+        {"s": ["https://example.org/subject"]},
+    )
+
+    assert describe_differing_columns(df_diff, given.namespace_manager) == (
+        "s (expected ex:sub, actual ex:subject)"
+    )
+
+
+def test_an_iri_value_with_no_prefix_to_hand_stays_a_full_iri():
+    df_diff = diff_of(
+        {"s": ["https://example.org/sub"]},
+        {"s": ["https://example.org/subject"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (expected <https://example.org/sub>, actual <https://example.org/subject>)"
+    )
+
+
+def test_a_missing_cell_reads_as_empty():
+    df_diff = diff_of({"o": ["one"]}, {"o": [""]})
+
+    assert describe_differing_columns(df_diff) == 'o (expected "one", actual empty)'
+
+
+def test_rows_disagreeing_on_values_fall_back_to_the_bare_name():
+    df_diff = diff_of({"o": ["a", "b"]}, {"o": ["c", "d"]})
+
+    assert describe_differing_columns(df_diff) == "o"
+
+
+def test_a_long_value_is_elided():
+    long_value = "x" * 100
+    df_diff = diff_of({"o": [long_value]}, {"o": ["y"]})
+
+    described = describe_differing_columns(df_diff)
+    assert described == f'o (expected "{"x" * 60}…", actual "y")'
+
+
+def test_a_column_that_does_not_actually_differ_is_left_out():
+    # When the two tables have different shapes or column names the diff is
+    # built side by side rather than by DataFrame.compare, so it carries the
+    # matching columns too. "expected X, actual X" is worse than silence.
+    df_diff = pandas.DataFrame({
+        ("s", "expected"): ["same"], ("s", "actual"): ["same"],
+        ("o", "expected"): ["one"], ("o", "actual"): ["two"],
+    })
+
+    assert describe_differing_columns(df_diff) == 'o (expected "one", actual "two")'
+
+
+def test_many_differing_columns_fall_back_to_bare_names():
+    # Past a readable length the line has stopped being a summary, and the diff
+    # table is the right tool.
+    wide_expected = {f"c{i}": [f"expected-value-number-{i}"] for i in range(8)}
+    wide_actual = {f"c{i}": [f"actual-value-number-{i}"] for i in range(8)}
+    df_diff = diff_of(wide_expected, wide_actual)
+
+    assert describe_differing_columns(df_diff) == "c0, c1, c2, c3, c4, c5, c6, c7"
 
 
 @pytest.mark.parametrize("not_a_diff", [None, pandas.DataFrame()])
