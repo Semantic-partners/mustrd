@@ -22,6 +22,17 @@ MustRD is a Spec-By-Example ontology with a reference Python implementation, ins
 
 MustRD is designed to be triplestore/SPARQL engine agnostic, leveraging open standards to ensure compatibility across different platforms.
 
+Write a spec once, run it against any supported engine:
+
+| Engine | Protocol | Notes |
+| --- | --- | --- |
+| RDFLib | Embedded, in-memory | The default. No server, no configuration. |
+| GraphDB | HTTP SPARQL endpoint | Repository-based. Optional named graphs. |
+| Stardog | HTTP SPARQL protocol | Bearer-token or basic auth. Runs one query over a chosen combination of materialised and virtual named graphs. |
+| Anzo | HTTP REST API | Graphmart layers, query builders, AnzoGraph. |
+
+Engine configuration lives in a triplestore `.ttl` — see `GETSTARTED.adoc`.
+
 ### What it is NOT
 
 MustRD is not an alternative to SHACL. While SHACL validates data structures, MustRD focuses on validating data transformations and query results.
