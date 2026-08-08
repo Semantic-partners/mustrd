@@ -511,7 +511,14 @@ Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)
   <span class="cm">—</span> differs in: <span class="sym">o</span> (expected <span class="kw">ex:object</span>, actual <span class="lit">ex:obj</span>)
 
 <span class="cm">// a long value is elided around the difference, not from the start</span>
-  <span class="cm">—</span> differs in: <span class="sym">s</span> (expected <span class="kw">&lt;…o/the/thing/alpha&gt;</span>, actual <span class="lit">&lt;…o/the/thing/beta&gt;</span>)</pre>
+  <span class="cm">—</span> differs in: <span class="sym">s</span> (expected <span class="kw">&lt;…o/the/thing/alpha&gt;</span>, actual <span class="lit">&lt;…o/the/thing/beta&gt;</span>)
+
+<span class="cm">// http vs https — one character, four in, in two long near-identical strings</span>
+  <span class="cm">—</span> differs in: <span class="sym">s</span> (scheme: expected <span class="kw">http</span>, actual <span class="lit">https</span>)</pre>
+    <p>That last one is the commonest mistake and the hardest to spot, so it is named
+       rather than printed — but only when the scheme really is the whole difference.
+       If anything after it differs too you get both IRIs, because "scheme" would
+       send you after the wrong thing.</p>
     <p>Then the table, narrowed to the columns that actually differ. On a wide result
        the differing column can sit off the right-hand edge, which is why the line
        above it carries the answer.</p>

@@ -217,6 +217,62 @@ def test_two_long_values_with_nothing_in_common_keep_both_ends():
     )
 
 
+def test_http_vs_https_is_named_as_a_scheme_difference():
+    # One of the commonest mistakes and the hardest to see: one character, four
+    # in, in a pair of long near-identical strings. Printing both and leaving
+    # the reader to diff them by eye is the thing this whole message avoids.
+    iri = "http://example.org/ontology/2024/core/very/long/path/to/the/thing"
+    df_diff = diff_of({"s": [iri]}, {"s": [iri.replace("http", "https", 1)]})
+
+    assert describe_differing_columns(df_diff) == (
+        "s (scheme: expected http, actual https)"
+    )
+
+
+def test_a_short_scheme_difference_is_named_the_same_way():
+    df_diff = diff_of(
+        {"s": ["http://example.org/thing"]},
+        {"s": ["https://example.org/thing"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (scheme: expected http, actual https)"
+    )
+
+
+def test_a_datatype_differing_only_by_scheme_says_so():
+    df_diff = diff_of(
+        {"m": ["a"], "m_datatype": [XSD + "string"]},
+        {"m": ["a"], "m_datatype": [XSD.replace("http", "https", 1) + "string"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "m (datatype scheme: expected http, actual https)"
+    )
+
+
+def test_a_scheme_difference_that_is_not_the_whole_story_is_not_claimed_as_one():
+    # Scheme AND path differ. Saying "scheme" would send the reader after the
+    # wrong thing entirely.
+    df_diff = diff_of(
+        {"s": ["http://example.org/a"]},
+        {"s": ["https://example.org/b"]},
+    )
+
+    assert describe_differing_columns(df_diff) == (
+        "s (expected <http://example.org/a>, actual <https://example.org/b>)"
+    )
+
+
+def test_the_same_scheme_is_not_reported_as_differing():
+    df_diff = diff_of(
+        {"s": ["http://example.org/a"]},
+        {"s": ["http://example.org/b"]},
+    )
+
+    assert "scheme" not in describe_differing_columns(df_diff)
+
+
 def test_only_one_side_long_still_shows_the_short_side_whole():
     df_diff = diff_of({"o": ["x" * 100]}, {"o": ["y"]})
 
