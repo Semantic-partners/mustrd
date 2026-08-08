@@ -1126,8 +1126,8 @@ def describe_column_diff(df_diff, column: str, prefix: str = "",
         return ""
 
     want, got = pairs.pop()
-    return (f"{prefix}expected {render_cell(want, namespace_manager)}, "
-            f"actual {render_cell(got, namespace_manager)}")
+    shown_want, shown_got = render_cell_pair(want, got, namespace_manager)
+    return f"{prefix}expected {shown_want}, actual {shown_got}"
 
 
 # rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
@@ -1143,20 +1143,91 @@ def shorten_iri(iri: str, namespace_manager=None) -> str:
         return iri
 
 
-def render_cell(cell: str, namespace_manager=None) -> str:
-    """A table cell as it would be written in a spec: `ex:sub`, `"one"`, `empty`.
+def render_cell_pair(want: str, got: str, namespace_manager=None) -> Tuple[str, str]:
+    """Both sides of a difference, as they would be written in a spec.
+
+    Two long cells are elided AROUND what differs, not from the start. Cutting
+    the tail off a pair of near-identical IRIs shows the reader the half they
+    already agree on and hides the half they don't, which is the opposite of the
+    job — the summary exists so nobody has to hunt for the difference.
+    """
+    want_text = cell_text(want, namespace_manager)
+    got_text = cell_text(got, namespace_manager)
+    if max(len(want_text), len(got_text)) > MAX_SUMMARY_CELL:
+        # An IRI with no prefix to hand comes back in angle brackets. Elide
+        # inside them, or the window eats the opening one and leaves a stray
+        # closing bracket.
+        bracketed = (want_text.startswith("<") and want_text.endswith(">")
+                     and got_text.startswith("<") and got_text.endswith(">"))
+        if bracketed:
+            inner_want, inner_got = elide_around_difference(
+                want_text[1:-1], got_text[1:-1])
+            want_text, got_text = f"<{inner_want}>", f"<{inner_got}>"
+        else:
+            want_text, got_text = elide_around_difference(want_text, got_text)
+    return quote_cell(want_text, want), quote_cell(got_text, got)
+
+
+def cell_text(cell: str, namespace_manager=None) -> str:
+    """The bare term in a cell: a shortened IRI, or a literal's lexical form.
 
     The diff carries values as bare strings with no marker for which are IRIs, so
     this goes on the shape of the text. Getting it wrong costs a pair of quotes,
     not meaning.
     """
-    if cell == "":
-        return "empty"
     if cell.startswith(("http://", "https://", "urn:")):
         return shorten_iri(cell, namespace_manager)
-    if len(cell) > MAX_SUMMARY_CELL:
-        cell = cell[:MAX_SUMMARY_CELL] + "…"
-    return f'"{cell}"'
+    return cell
+
+
+def quote_cell(text: str, original: str) -> str:
+    """`ex:sub`, `"one"`, `empty` — quotes only where a literal is being shown."""
+    if original == "":
+        return "empty"
+    if original.startswith(("http://", "https://", "urn:")):
+        return text
+    return f'"{text}"'
+
+
+# Shared characters kept either side of the difference, so it reads in context
+# rather than as a fragment.
+SUMMARY_CELL_CONTEXT = 12
+
+
+def elide_around_difference(left: str, right: str) -> Tuple[str, str]:
+    """Both strings narrowed to a window over what differs, `…` marking each cut.
+
+    Two IRIs that agree for 80 characters and then diverge come back as
+    `…rt/to/thing/alpha` and `…rt/to/thing/beta`: the difference is on screen,
+    with enough of the shared run either side to place it.
+    """
+    shortest = min(len(left), len(right))
+
+    prefix = 0
+    while prefix < shortest and left[prefix] == right[prefix]:
+        prefix += 1
+
+    suffix = 0
+    while suffix < shortest - prefix and left[-1 - suffix] == right[-1 - suffix]:
+        suffix += 1
+
+    start = max(0, prefix - SUMMARY_CELL_CONTEXT)
+
+    def window(text: str) -> str:
+        end = min(len(text), len(text) - suffix + SUMMARY_CELL_CONTEXT)
+        clipped = text[start:max(start, end)]
+        if len(clipped) > MAX_SUMMARY_CELL:
+            # The differing run is itself longer than a cell's budget. Keep both
+            # of its ends: where it starts diverging and where it stops.
+            half = MAX_SUMMARY_CELL // 2
+            clipped = f"{clipped[:half]}…{clipped[-half:]}"
+        return (
+            ("…" if start > 0 else "")
+            + clipped
+            + ("…" if end < len(text) else "")
+        )
+
+    return window(left), window(right)
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
