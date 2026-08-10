@@ -35,6 +35,8 @@ class MUST(DefinedNamespace):
     variable: URIRef
     boundValue: URIRef
     focus: URIRef
+    # Opt-in: compare a graph `then` graph-by-graph rather than as one flat union.
+    matchNamedGraphs: URIRef
 
     # Specification data sources
     TableDataset: URIRef

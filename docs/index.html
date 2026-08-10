@@ -496,6 +496,24 @@
     </table>
   </section>
 
+  <!-- Named graphs -->
+  <section>
+    <h2>Named graphs, <span>when you want them</span></h2>
+    <p>A quad <code>given</code> keeps its graphs, so a <code>when</code> can read one
+       with a <code>GRAPH</code> clause — and a <code>when</code> without one still sees
+       everything.</p>
+    <p>A <code>then</code>, though, is compared as one flat union by default. You should
+       not have to say which graph a triple is in just to assert that it exists. When the
+       graph a triple lands in <em>is</em> the thing under test — a pipeline writing each
+       layer to its own graph — opt in:</p>
+    <pre><span class="sym">must:then</span> [ a <span class="kw">must:FileDataset</span> ;
+             <span class="sym">must:matchNamedGraphs</span> <span class="lit">true</span> ;
+             <span class="sym">must:file</span> <span class="str">"data/expected.trig"</span> ] .</pre>
+    <p>Now the layout is part of the assertion: the right triples in the wrong graphs is a
+       failure, and the failure names the graphs that differ rather than handing you a
+       merged diff to work out which layer moved.</p>
+  </section>
+
   <!-- Failure output -->
   <section>
     <h2>A failure that <span>tells you</span></h2>
@@ -555,6 +573,7 @@ Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)
       <tr><td>OrderedTableDataset</td><td>Tabular data with row ordering (ORDER BY)</td></tr>
       <tr><td>FolderDataset</td><td>File path passed as a runtime argument</td></tr>
       <tr><td>EmptyTable / EmptyGraph</td><td>Expect no results</td></tr>
+      <tr><td>Quad file (.trig, .nq)</td><td>A <code>given</code> keeps its named graphs, so a <code>GRAPH</code> clause resolves</td></tr>
       <tr><td>InheritedDataset</td><td>Keep existing graph state (chain specs)</td></tr>
     </table>
   </section>

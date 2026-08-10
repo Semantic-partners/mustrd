@@ -90,7 +90,9 @@ def test_collection_full():
         "select_spec_variable_datatypes.mustrd.ttl",
         "select_spec_with_foreign_types.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl",
+        "update_spec_then_ignores_graphs_by_default.mustrd.ttl",
+        "update_spec_then_matches_named_graphs.mustrd.ttl"
     }
 
     expected_invalid = {
@@ -166,6 +168,8 @@ def test_collection_path():
         "construct_spec.mustrd.ttl",
         "construct_spec_mulitline_result.mustrd.ttl",
         "construct_spec_variable.mustrd.ttl",
+        "update_spec_then_ignores_graphs_by_default.mustrd.ttl",
+        "update_spec_then_matches_named_graphs.mustrd.ttl",
     }
     assert item_names == expected_item_names, (
         f"Expected item names: {expected_item_names}\n"
@@ -224,7 +228,9 @@ def test_collection_pytest_path_is_a_startsWithCheck():
         "select_spec_variable_datatypes.mustrd.ttl",
         "select_spec_with_foreign_types.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl",
+        "update_spec_then_ignores_graphs_by_default.mustrd.ttl",
+        "update_spec_then_matches_named_graphs.mustrd.ttl"
     ]
     # Assert that we only collected tests from the specified path
     assert item_names == expected_item_names, (
@@ -283,7 +289,9 @@ def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuite
         "select_spec_variable_datatypes.mustrd.ttl",
         "select_spec_with_foreign_types.mustrd.ttl",
         "spade_edn_group_source_then_file.mustrd.ttl",
-        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl"
+        "spade_edn_group_source_with_two_steps_then_file.mustrd.ttl",
+        "update_spec_then_ignores_graphs_by_default.mustrd.ttl",
+        "update_spec_then_matches_named_graphs.mustrd.ttl"
     ]
     assert item_names == expected_item_names, (
         f"Expected item names: {expected_item_names}\n"

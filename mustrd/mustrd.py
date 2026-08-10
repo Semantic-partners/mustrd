@@ -12,6 +12,7 @@ from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
 from rdflib import Dataset, Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -499,6 +500,8 @@ def check_result(spec: Specification, result: Union[str, Graph]):
         # rdflib's graph_diff/isomorphic iterate what they are given: a Dataset
         # yields QUADS and they unpack triples. Levelling here rather than in the
         # backend keeps the store's own state quad-aware for the next step.
+        if getattr(spec.then, "match_named_graphs", False):
+            return check_named_graph_result(spec, result)
         if isinstance(result, Dataset):
             result = flatten_to_graph(result)
         graph_compare = graph_comparison(spec.then.value, result)
@@ -521,6 +524,61 @@ def check_result(spec: Specification, result: Union[str, Graph]):
                 return UpdateSpecFailure(
                     spec.spec_uri, spec.triple_store["type"], graph_compare
                 )
+
+
+def graphs_by_name(value) -> dict:
+    """`{graph name: Graph}` for a dataset, or the default graph alone for a Graph.
+
+    A result that carries no contexts still has to be comparable against a
+    graph-aware `then`, so it reads as one graph named for rdflib's default.
+    """
+    if not isinstance(value, Dataset):
+        return {str(DATASET_DEFAULT_GRAPH_ID): value}
+    with rdflib_internals_quiet():
+        return {str(graph.identifier): graph for graph in value.graphs()
+                if len(graph) or str(graph.identifier) != str(DATASET_DEFAULT_GRAPH_ID)}
+
+
+def check_named_graph_result(spec: Specification, result) -> SpecResult:
+    """Compare a `then` graph-by-graph, for a spec that asked with
+    `must:matchNamedGraphs true`.
+
+    A triple in the right dataset but the wrong graph is a failure here, which is
+    the whole point of asking. The failure names the graph rather than handing
+    over a merged diff and letting the reader work out which layer moved — the
+    same reason the table summary names the column that differs.
+    """
+    expected_graphs = graphs_by_name(spec.then.value)
+    actual_graphs = graphs_by_name(result)
+
+    differing = sorted(
+        name for name in set(expected_graphs) | set(actual_graphs)
+        if not isomorphic(expected_graphs.get(name, Graph()),
+                          actual_graphs.get(name, Graph()))
+    )
+    if not differing:
+        return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+
+    # One comparison covering every graph that moved, so the diff a reader sees
+    # is the whole story rather than the first graph to disagree.
+    in_expected_not_in_actual = Graph()
+    in_actual_not_in_expected = Graph()
+    in_both = Graph()
+    for name in differing:
+        comparison = graph_comparison(expected_graphs.get(name, Graph()),
+                                      actual_graphs.get(name, Graph()))
+        in_expected_not_in_actual += comparison.in_expected_not_in_actual
+        in_actual_not_in_expected += comparison.in_actual_not_in_expected
+        in_both += comparison.in_both
+
+    log.error(f"named graph(s) differ: {', '.join(shorten_iri(n) for n in differing)}")
+    graph_compare = GraphComparison(
+        in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+    if spec.when[0].queryType == MUST.ConstructSparql:
+        return ConstructSpecFailure(
+            spec.spec_uri, spec.triple_store["type"], graph_compare)
+    return UpdateSpecFailure(
+        spec.spec_uri, spec.triple_store["type"], graph_compare)
 
 
 def serialise_quietly(graph) -> str:

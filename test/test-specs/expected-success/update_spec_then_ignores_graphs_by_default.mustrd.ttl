@@ -1,0 +1,21 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# The default, and the counterpart to update_spec_then_matches_named_graphs: the
+# same update, compared against a `then` whose triples are in the WRONG graphs.
+#
+# It passes, because without must:matchNamedGraphs the comparison is a flat union
+# — you should not have to say which graph a triple is in just to assert that it
+# exists. Add the flag and this same pair fails, which is what
+# test_graph_aware_then.py pins.
+test-data:update_spec_then_ignores_graphs_by_default
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given-named-graphs.trig> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                   INSERT { GRAPH ?g { ?s test-data:copied ?o } }
+                                   WHERE  { GRAPH ?g { ?s ?p ?o } }""" ;
+                 must:queryType must:UpdateSparql ] ;
+    must:then  [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/expected-graphs-shuffled.trig> ] .

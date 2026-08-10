@@ -91,6 +91,35 @@ This will validate your SPARQL queries against the defined dataset and expected 
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
 
+#### Named graphs
+
+A quad `given` (TriG, NQuads, TriX) keeps its named graphs, so a `when` can read
+one with a `GRAPH` clause. A `when` with no `GRAPH` clause still sees everything.
+
+```turtle
+must:given [ a must:FileDataset ; must:file "data/two-graphs.trig" ] ;
+must:when  [ a must:TextSparqlSource ;
+             must:queryText "SELECT ?v WHERE { GRAPH ex:graph-a { ?s ex:value ?v } }" ;
+             must:queryType must:SelectSparql ] ;
+```
+
+A **`then` is compared as one flat union by default.** You should not have to say
+which graph a triple is in just to assert that it exists, so a quad `then` passes
+as long as the triples are all there, wherever they sit.
+
+When the graph a triple lands in *is* the thing under test — a pipeline writing
+each layer to its own graph — opt in:
+
+```turtle
+must:then [ a must:FileDataset ;
+            must:matchNamedGraphs true ;
+            must:file "data/expected.trig" ] .
+```
+
+Now the layout is part of the assertion: the right triples in the wrong graphs is
+a failure, and the failure names the graphs that differ rather than handing you a
+merged diff to work out which layer moved.
+
 #### When a spec fails
 
 A failing SELECT names the binding that differs and what it differs by, on the

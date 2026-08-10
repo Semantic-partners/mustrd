@@ -1,0 +1,20 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# Graph-aware WHEN and THEN together.
+#
+# The `when` reads each named graph and writes its copy back into the same graph.
+# The `then` opts in with must:matchNamedGraphs, so the comparison is
+# graph-by-graph and the layout is what is being asserted, not just the contents.
+test-data:update_spec_then_matches_named_graphs
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given-named-graphs.trig> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                   INSERT { GRAPH ?g { ?s test-data:copied ?o } }
+                                   WHERE  { GRAPH ?g { ?s ?p ?o } }""" ;
+                 must:queryType must:UpdateSparql ] ;
+    must:then  [ a must:FileDataset ;
+                 must:matchNamedGraphs true ;
+                 must:fileurl <file://./../../data/expected-named-graphs.trig> ] .

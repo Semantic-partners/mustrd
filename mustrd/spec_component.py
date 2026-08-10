@@ -100,6 +100,11 @@ class SpadeEdnGroupSourceWhenSpec(WhenSpec):
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
+    # Opt-in graph-awareness. A `then` is compared as one flat union by default —
+    # you should not have to say which graph a triple is in just to assert it
+    # exists. Set `must:matchNamedGraphs true` and the comparison becomes
+    # graph-by-graph, so a triple in the wrong graph is a failure.
+    match_named_graphs: bool = False
 
 
 @dataclass
@@ -368,6 +373,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 @get_spec_component.method((MUST.FileDataset, MUST.then))
 def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
+    spec_component.match_named_graphs = wants_named_graphs(spec_component_details)
     return load_spec_component(spec_component_details, spec_component)
 
 
@@ -436,11 +442,13 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         except ParserError as e:
             log.error(f"Problem parsing {path}, error of type {type(e)}")
             raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-        # A `then` is compared triple-by-triple against the query's result graph,
-        # which has no named graphs to compare against — so it keeps the flat
-        # Graph it has always been. Only `given` keeps its contexts, which is
-        # what lets a GRAPH clause in the `when` resolve.
-        spec_component.value = quads if isinstance(spec_component, GivenSpec) else flatten_to_graph(quads)
+        # A `given` always keeps its contexts — that is what lets a GRAPH clause
+        # in the `when` resolve. A `then` is levelled to a flat Graph unless it
+        # asked not to be: you should not have to say which graph a triple is in
+        # just to assert it exists.
+        keep_graphs = isinstance(spec_component, GivenSpec) or \
+            getattr(spec_component, "match_named_graphs", False)
+        spec_component.value = quads if keep_graphs else flatten_to_graph(quads)
         return spec_component
 
 
@@ -830,6 +838,19 @@ def get_when_bindings(subject: URIRef,
         for binding in when_bindings:
             bindings[Variable(binding.variable.value)] = binding.binding
         return bindings
+
+
+def wants_named_graphs(spec_component_details: SpecComponentDetails) -> bool:
+    """Whether this `then` asked to be compared graph-by-graph.
+
+    `must:matchNamedGraphs true` on the then node. Absent — the overwhelmingly
+    common case — the comparison stays a flat union, so a spec that does not care
+    about graphs never has to mention them.
+    """
+    value = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.matchNamedGraphs)
+    return bool(value) and str(value).lower() in ("true", "1")
 
 
 def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:
