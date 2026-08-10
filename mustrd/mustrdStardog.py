@@ -17,9 +17,10 @@ import urllib.parse
 import logging
 
 import requests
-from rdflib import Graph
+from rdflib import Dataset, Graph
 from requests import ConnectionError, Response
 
+from .spec_component import UpdatableDataset, parse_into_dataset
 from .utils import manage_http_response
 
 log = logging.getLogger(__name__)
@@ -121,8 +122,23 @@ def execute_select(triple_store: dict, when: str, bindings: dict = None) -> str:
     return post_query(triple_store, when, "application/sparql-results+json", bindings)
 
 
-def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Graph:
-    return Graph().parse(data=post_query(triple_store, when, "text/turtle", bindings), format="ttl")
+def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Dataset:
+    """A CONSTRUCT, keeping any named graphs it produced.
+
+    TriG, not Turtle, and a Dataset, not a Graph. Stardog extends CONSTRUCT with a
+    graph template — ``CONSTRUCT { graph ?g { ?s ?p ?o } }`` — which standard
+    SPARQL 1.1 does not have (Jena ARQ has the same extension). It is how you
+    dry-run an ``INSERT { GRAPH ?g … }``: same template, same WHERE, nothing
+    written. Asking for Turtle threw the graph names away, silently, on the one
+    engine mustrd supports that can produce them.
+
+    Costs nothing for an ordinary triples-only CONSTRUCT: TriG is a superset of
+    Turtle, so the response is the same statements, and a `then` without
+    ``must:matchNamedGraphs`` is levelled before comparison either way.
+    """
+    quads = UpdatableDataset(default_union=True)
+    parse_into_dataset(quads, post_query(triple_store, when, "application/trig", bindings), "trig")
+    return quads
 
 
 def execute_update(triple_store: dict, when: str, bindings: dict = None) -> Graph:

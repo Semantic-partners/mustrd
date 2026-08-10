@@ -243,6 +243,46 @@ Add `must:matchNamedGraphs true` and the layout becomes part of the assertion: t
 ----
 
 Worth using when the graph a triple lands in is the thing under test — a pipeline that writes each layer to its own graph, for instance. Leave it off otherwise.
+
+==== Which query forms can produce named graphs
+
+An UPDATE can always write to a named graph — `INSERT { GRAPH ?g { ... } }` is standard SPARQL.
+
+A CONSTRUCT is where it gets engine-specific, and this catches people out. **Standard SPARQL 1.1 cannot construct quads**: the `CONSTRUCT` template is a set of triple patterns, with no `GRAPH` allowed. Putting one there is a syntax error, not an empty result — so on RDFLib you get a parse failure:
+
+----
+Expected ConstructQuery, found 'GRAPH'
+----
+
+Some engines extend the grammar anyway:
+
+[cols="1,3"]
+|===
+| Engine | Quad CONSTRUCT
+
+| *RDFLib* (mustrd's default)
+| No. `GRAPH` in a construct template is a parse error.
+
+| *Jena / ARQ*
+| Yes, an explicit extension since Jena 3.0.1 — `CONSTRUCT { GRAPH :g { ?s :p ?o } } WHERE { ... }`.
+
+| *Stardog*
+| Yes, via a graph template — `CONSTRUCT { graph ?g { ?s ?p ?o } } WHERE { ... }`, so the graph can be bound per solution.
+
+| *Anzo / AnzoGraph*
+| Unverified. Not listed in the W3C inventory below; check against your own server before relying on it.
+|===
+
+The reason this is worth knowing is the *dry run*. To preview an `INSERT { GRAPH ?g { ... } } WHERE { ... }` without writing anything, swap `INSERT` for `CONSTRUCT` and keep the template and the `WHERE` exactly as they are. On an engine with the extension you get back the quads the update *would* have written — and with `must:matchNamedGraphs true` on the `then`, mustrd asserts they land in the right graphs.
+
+mustrd's Stardog backend asks the server for TriG rather than Turtle precisely so those graph names survive the response; Turtle cannot carry them.
+
+Sources:
+
+* https://www.w3.org/TR/sparql11-query/#construct[SPARQL 1.1 Query, §16.2 CONSTRUCT] — the template is `ConstructTriples`, no `GRAPH`
+* https://jena.apache.org/documentation/query/construct-quad.html[Apache Jena ARQ — Construct Quad] — "Jena ARQ extends the grammar of the CONSTRUCT query form"
+* https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1[W3C SPARQL CG — Inventory of existing extensions to SPARQL 1.1] — records both the Jena and Stardog forms
+* https://github.com/w3c/sparql-dev/issues/31[w3c/sparql-dev issue 31 — CONSTRUCT GRAPH] — the standardisation request
 ----
     must:then  [ a must:FileDataset ;
                  must:file "test/data/thenSuccess.xlsx" ] .

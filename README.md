@@ -120,6 +120,26 @@ Now the layout is part of the assertion: the right triples in the wrong graphs i
 a failure, and the failure names the graphs that differ rather than handing you a
 merged diff to work out which layer moved.
 
+**Which query forms can produce named graphs is engine-specific, and it catches
+people out.** An UPDATE always can — `INSERT { GRAPH ?g { … } }` is standard. A
+CONSTRUCT cannot, in standard SPARQL 1.1: the template is triple patterns only, so
+a `GRAPH` there is a *syntax error*, not an empty result. On RDFLib you get
+`Expected ConstructQuery, found 'GRAPH'`.
+
+Several engines extend it anyway. [Jena/ARQ](https://jena.apache.org/documentation/query/construct-quad.html)
+has done since 3.0.1 (`CONSTRUCT { GRAPH :g { ?s :p ?o } }`), and Stardog has a
+graph template (`CONSTRUCT { graph ?g { ?s ?p ?o } }`) — both recorded in the
+[W3C SPARQL CG inventory of extensions](https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1).
+Standardising it is [w3c/sparql-dev#31](https://github.com/w3c/sparql-dev/issues/31).
+
+That extension is what makes a **dry run** possible: swap `INSERT` for `CONSTRUCT`,
+keep the template and `WHERE` as they are, and you get back the quads the update
+*would* have written without writing them — then `must:matchNamedGraphs true`
+asserts they land in the right graphs. mustrd's Stardog backend asks for TriG
+rather than Turtle so those graph names survive the response.
+
+See `GETSTARTED.adoc` for the per-engine table.
+
 #### When a spec fails
 
 A failing SELECT names the binding that differs and what it differs by, on the

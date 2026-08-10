@@ -512,6 +512,17 @@
     <p>Now the layout is part of the assertion: the right triples in the wrong graphs is a
        failure, and the failure names the graphs that differ rather than handing you a
        merged diff to work out which layer moved.</p>
+    <p><strong>Which query forms can produce named graphs is engine-specific.</strong> An
+       UPDATE always can. A CONSTRUCT cannot in standard SPARQL 1.1 — the template is
+       triple patterns only, so a <code>GRAPH</code> there is a syntax error rather than an
+       empty result. <a href="https://jena.apache.org/documentation/query/construct-quad.html">Jena/ARQ</a>
+       and Stardog both extend it, as recorded in the
+       <a href="https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1">W3C SPARQL CG inventory</a>;
+       standardising it is <a href="https://github.com/w3c/sparql-dev/issues/31">sparql-dev#31</a>.</p>
+    <p>That extension is what makes a <em>dry run</em> possible: swap <code>INSERT</code>
+       for <code>CONSTRUCT</code>, keep the template and <code>WHERE</code>, and you get the
+       quads the update <em>would</em> have written without writing them — then
+       <code>must:matchNamedGraphs</code> asserts they land in the right graphs.</p>
   </section>
 
   <!-- Failure output -->

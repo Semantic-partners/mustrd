@@ -144,3 +144,55 @@ def test_auth_error_raises():
                       side_effect=lambda **kw: _FakeResponse(401, b"nope")):
         with pytest.raises(Exception):
             mustrdStardog.execute_select(ts, "SELECT * WHERE { ?s ?p ?o }")
+
+
+# ---------------------------------------------------------------------------
+# CONSTRUCT keeps named graphs.
+#
+# Stardog extends CONSTRUCT with a graph template — `CONSTRUCT { graph ?g {…} }`
+# — which standard SPARQL 1.1 does not have (Jena ARQ has the same extension).
+# It is how you dry-run an `INSERT { GRAPH ?g … }`: same template, same WHERE,
+# nothing written. mustrd used to ask for Turtle and parse into a plain Graph,
+# which threw the graph names away silently.
+# ---------------------------------------------------------------------------
+TRIG_RESULT = b"""
+@prefix ex: <https://example.org/> .
+ex:graph-a { ex:s1 ex:p ex:o1 . }
+ex:graph-b { ex:s2 ex:p ex:o2 . }
+"""
+
+
+def _construct_returning(body):
+    ts = {"url": "http://localhost", "port": "5820", "database": "mustrd", "token": "tok"}
+    captured = {}
+
+    def fake_post(url, data, params, auth, headers):
+        captured["headers"] = headers
+        return _FakeResponse(200, body)
+
+    with patch.object(mustrdStardog.requests, "post", side_effect=fake_post):
+        result = mustrdStardog.execute_construct(ts, "CONSTRUCT { graph ?g { ?s ?p ?o } } WHERE { ?s ?p ?o }")
+    return result, captured
+
+
+def test_construct_asks_for_trig_not_turtle():
+    _, captured = _construct_returning(TRIG_RESULT)
+
+    # Turtle cannot carry a graph name, so asking for it loses them before mustrd
+    # ever sees the response.
+    assert captured["headers"]["Accept"] == "application/trig"
+
+
+def test_construct_keeps_the_named_graphs_it_was_given():
+    result, _ = _construct_returning(TRIG_RESULT)
+
+    assert {str(g.identifier) for g in result.graphs()} >= {
+        "https://example.org/graph-a", "https://example.org/graph-b"}
+
+
+def test_construct_of_plain_triples_still_reads_as_the_union():
+    # TriG is a superset of Turtle, so a triples-only CONSTRUCT costs nothing.
+    result, _ = _construct_returning(
+        b"<https://example.org/s> <https://example.org/p> <https://example.org/o> .")
+
+    assert len(result) == 1

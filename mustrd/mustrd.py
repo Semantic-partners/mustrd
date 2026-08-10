@@ -494,8 +494,8 @@ def check_result(spec: Specification, result: Union[str, Graph]):
         log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
-        # A `then` is a flat graph — it has no named graphs to compare against —
-        # so the result is levelled to match before comparing. An UPDATE on the
+        # No opt-in, so the comparison is a flat union: the result is levelled to
+        # match a `then` that did not ask about graphs. An UPDATE on the
         # rdflib backend hands back the `given` itself, which is a Dataset, and
         # rdflib's graph_diff/isomorphic iterate what they are given: a Dataset
         # yields QUADS and they unpack triples. Levelling here rather than in the
