@@ -11,7 +11,7 @@ from pyparsing import ParseException
 from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
-from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib import Dataset, Graph, URIRef, RDF, XSD, SH, Literal
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -21,8 +21,9 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from .utils import is_json, get_mustrd_root
+from .spec_component import (TableThenSpec, parse_spec_component, WhenSpec, ThenSpec,
+                             flatten_to_graph)
+from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -492,6 +493,14 @@ def check_result(spec: Specification, result: Union[str, Graph]):
         log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
+        # A `then` is a flat graph — it has no named graphs to compare against —
+        # so the result is levelled to match before comparing. An UPDATE on the
+        # rdflib backend hands back the `given` itself, which is a Dataset, and
+        # rdflib's graph_diff/isomorphic iterate what they are given: a Dataset
+        # yields QUADS and they unpack triples. Levelling here rather than in the
+        # backend keeps the store's own state quad-aware for the next step.
+        if isinstance(result, Dataset):
+            result = flatten_to_graph(result)
         graph_compare = graph_comparison(spec.then.value, result)
         if isomorphic(result, spec.then.value):
             log.debug(f"isomorphic {spec}")
@@ -514,6 +523,38 @@ def check_result(spec: Specification, result: Union[str, Graph]):
                 )
 
 
+def serialise_quietly(graph) -> str:
+    """A graph or dataset as text, without rdflib's internal deprecations.
+
+    `Dataset.serialize` reaches its own `default_context` and `identifier`, both
+    of which rdflib 7.6 deprecates. The warnings name mustrd's line, so a user
+    sees a deprecation about code they cannot reach and cannot act on. Quads are
+    serialised as trig so named graphs survive the round trip.
+    """
+    quads = isinstance(graph, Dataset)
+    with rdflib_internals_quiet():
+        return graph.serialize(format="trig" if quads else "turtle")
+
+
+def log_spec_before_running(spec: Specification) -> None:
+    """What is about to run, at DEBUG.
+
+    Guarded, and not just for tidiness: an f-string is built whether or not
+    anything is listening, formatting a spec renders its `given`, and serialising
+    one is real work on a large fixture — so this was happening on every spec of
+    every run. It also reaches rdflib APIs that rdflib has since deprecated, so
+    an unguarded debug line printed warnings at users who never asked for debug
+    output.
+    """
+    if not log.isEnabledFor(logging.DEBUG):
+        return
+    log.debug(f"run_spec {spec=}")
+    log.debug(f"run_when spec_uri={spec.spec_uri}, triple_store={spec.triple_store}, "
+              f"when={spec.when}, then={spec.then}")
+    if spec.given is not None:
+        log.debug(serialise_quietly(spec.given))
+
+
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
@@ -523,17 +564,12 @@ def run_spec(spec: Specification) -> SpecResult:
         return spec
         # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
 
-    log.debug(f"run_spec {spec=}")
-    log.debug(
-        f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
-    )
+    log_spec_before_running(spec)
     # `is not None`, not truthiness: an empty graph is falsy, so a given that
     # parsed to nothing used to be reported as an inherited-state spec — a
     # feature the spec never mentioned. Inherited state is the absence of a
     # given, which is `None`.
     if spec.given is not None:
-        given_as_turtle = spec.given.serialize(format="turtle")
-        log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
     else:
         if triple_store["type"] == TRIPLESTORE.RdfLib:

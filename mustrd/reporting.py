@@ -17,7 +17,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rdflib import Graph, RDF
+from rdflib import Dataset, Graph, RDF
+
+from .spec_component import flatten_to_graph
 
 from mustrd.TestResult import (
     render_cq_table, render_term_coverage, render_ontologies,
@@ -152,10 +154,23 @@ def coverage_spec(spec, outcome, test_name):
         "name": getattr(spec, 'spec_file_name', test_name),
         "uri": str(uri) if uri is not None else None,
         "passed": outcome == "passed",
-        "given": getattr(spec, 'given', None),
+        # Flattened. A `given` is quad-aware so a GRAPH clause in the `when` can
+        # resolve against it, but coverage and the competency-question overlay
+        # read it as a bag of triples — which graph a statement sits in has no
+        # bearing on whether a term was exercised. This is the one boundary
+        # between the executing side and the reporting side, so it is the one
+        # place the conversion belongs.
+        "given": _as_triples(getattr(spec, 'given', None)),
         "queries": queries,
         "source_file": getattr(spec, 'spec_source_file', None),
     }
+
+
+def _as_triples(given):
+    """A `given` as a flat Graph, whatever it arrived as."""
+    if isinstance(given, Dataset):
+        return flatten_to_graph(given)
+    return given
 
 
 # ---------------------------------------------------------------------------

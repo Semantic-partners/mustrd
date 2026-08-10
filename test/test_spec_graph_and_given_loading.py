@@ -15,7 +15,7 @@ failed.
 from pathlib import Path
 
 import pytest
-from rdflib import ConjunctiveGraph, Graph, Namespace
+from rdflib import Dataset, Graph, Namespace
 
 from mustrd.mustrd import (
     Specification,
@@ -28,6 +28,7 @@ from mustrd.spec_component import (
     GivenSpec,
     TableThenSpec,
     ThenSpec,
+    flatten_to_graph,
     load_dataset_from_file,
     parse_spec_component,
 )
@@ -73,8 +74,8 @@ def trig_file(tmp_path: Path) -> Path:
 def test_a_trig_given_keeps_its_named_graphs(trig_file):
     given = load_dataset_from_file(trig_file, GivenSpec()).value
 
-    assert isinstance(given, ConjunctiveGraph)
-    contexts = {str(context.identifier) for context in given.contexts()}
+    assert isinstance(given, Dataset)
+    contexts = {str(graph.identifier) for graph in given.graphs()}
     assert str(TEST_DATA["graph-a"]) in contexts
     assert str(TEST_DATA["graph-b"]) in contexts
 
@@ -97,12 +98,22 @@ def test_a_trig_given_still_reads_as_the_union(trig_file):
     assert {str(row.s) for row in rows} == {str(TEST_DATA.sub), str(TEST_DATA.sub2)}
 
 
-def test_a_trig_given_iterates_as_triples(trig_file):
-    # Coverage, reporting and graph comparison all iterate a given expecting
-    # triples. A Dataset would hand them quads.
+def test_a_trig_given_iterates_as_quads(trig_file):
+    # A quad-aware given iterates as QUADS — which graph each statement sits in
+    # is the point of keeping it. Readers that want a bag of triples level it
+    # first; see the boundary in reporting.coverage_spec.
     given = load_dataset_from_file(trig_file, GivenSpec()).value
 
-    assert all(len(statement) == 3 for statement in given)
+    assert all(len(statement) == 4 for statement in given)
+
+
+def test_a_trig_given_levels_to_triples_on_demand(trig_file):
+    given = load_dataset_from_file(trig_file, GivenSpec()).value
+
+    levelled = flatten_to_graph(given)
+
+    assert all(len(statement) == 3 for statement in levelled)
+    assert len(levelled) == 2
 
 
 def test_a_trig_then_is_flattened(trig_file):
@@ -111,7 +122,7 @@ def test_a_trig_then_is_flattened(trig_file):
     then = load_dataset_from_file(trig_file, ThenSpec()).value
 
     assert isinstance(then, Graph)
-    assert not isinstance(then, ConjunctiveGraph)
+    assert not isinstance(then, Dataset)
     assert len(then) == 2
 
 
