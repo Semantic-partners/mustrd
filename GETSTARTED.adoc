@@ -270,10 +270,14 @@ Some engines extend the grammar anyway:
 | Yes, via a graph template — `CONSTRUCT { graph ?g { ?s ?p ?o } } WHERE { ... }`, so the graph can be bound per solution.
 
 | *Anzo / AnzoGraph*
-| Unverified. Not listed in the W3C inventory below; check against your own server before relying on it.
+| Yes. Its CONSTRUCT clause takes "a graph and triple template" — 5.3.6 added a *compact* form that lets you omit it — and the Query Builder's *Dry Run* is built on exactly this rewrite.
 |===
 
 The reason this is worth knowing is the *dry run*. To preview an `INSERT { GRAPH ?g { ... } } WHERE { ... }` without writing anything, swap `INSERT` for `CONSTRUCT` and keep the template and the `WHERE` exactly as they are. On an engine with the extension you get back the quads the update *would* have written — and with `must:matchNamedGraphs true` on the `then`, mustrd asserts they land in the right graphs.
+
+This is not a trick invented here. Anzo ships it as a button: for an INSERT or DELETE query the Query Builder offers *Dry Run*, which "runs a version of the query where INSERT or DELETE is replaced with CONSTRUCT, and the results report the number of statements that the query affects, i.e., the number of additions or removals **per graph**". Per graph is the tell — the rewritten CONSTRUCT has to be quad-aware to count that way.
+
+What Anzo's button gives you once, interactively, a spec gives you on every run, with the expected graphs written down.
 
 mustrd's Stardog backend asks the server for TriG rather than Turtle precisely so those graph names survive the response; Turtle cannot carry them.
 
@@ -283,6 +287,8 @@ Sources:
 * https://jena.apache.org/documentation/query/construct-quad.html[Apache Jena ARQ — Construct Quad] — "Jena ARQ extends the grammar of the CONSTRUCT query form"
 * https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1[W3C SPARQL CG — Inventory of existing extensions to SPARQL 1.1] — records both the Jena and Stardog forms
 * https://github.com/w3c/sparql-dev/issues/31[w3c/sparql-dev issue 31 — CONSTRUCT GRAPH] — the standardisation request
+* https://2024.help.altair.com/5.4/graphstudio/userdoc/query-builder-query.htm[Anzo / Graph Studio — Running SPARQL Queries in the Query Builder] — the *Dry Run* button, and "additions or removals per graph"
+* https://2025.help.altair.com/2025.1/graphstudio/userdoc/relnotes/anzo-v53-releases.htm[Anzo 5.3 release notes] — 5.3.6, "a compact version of a CONSTRUCT query that does not require you to provide a graph and triple template in the CONSTRUCT clause"
 ----
     must:then  [ a must:FileDataset ;
                  must:file "test/data/thenSuccess.xlsx" ] .

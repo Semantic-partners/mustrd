@@ -518,11 +518,18 @@
        empty result. <a href="https://jena.apache.org/documentation/query/construct-quad.html">Jena/ARQ</a>
        and Stardog both extend it, as recorded in the
        <a href="https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1">W3C SPARQL CG inventory</a>;
-       standardising it is <a href="https://github.com/w3c/sparql-dev/issues/31">sparql-dev#31</a>.</p>
+       standardising it is <a href="https://github.com/w3c/sparql-dev/issues/31">sparql-dev#31</a>.
+       Anzo does too — its CONSTRUCT clause takes "a graph and triple template".</p>
     <p>That extension is what makes a <em>dry run</em> possible: swap <code>INSERT</code>
        for <code>CONSTRUCT</code>, keep the template and <code>WHERE</code>, and you get the
        quads the update <em>would</em> have written without writing them — then
        <code>must:matchNamedGraphs</code> asserts they land in the right graphs.</p>
+    <p>Anzo ships that rewrite as a button: for an INSERT or DELETE the Query Builder's
+       <a href="https://2024.help.altair.com/5.4/graphstudio/userdoc/query-builder-query.htm">Dry Run</a>
+       "runs a version of the query where INSERT or DELETE is replaced with CONSTRUCT",
+       reporting additions or removals <em>per graph</em>. What that gives you once,
+       interactively, a spec gives you on every run — with the expected graphs written
+       down.</p>
   </section>
 
   <!-- Failure output -->

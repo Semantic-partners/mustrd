@@ -126,17 +126,23 @@ CONSTRUCT cannot, in standard SPARQL 1.1: the template is triple patterns only, 
 a `GRAPH` there is a *syntax error*, not an empty result. On RDFLib you get
 `Expected ConstructQuery, found 'GRAPH'`.
 
-Several engines extend it anyway. [Jena/ARQ](https://jena.apache.org/documentation/query/construct-quad.html)
-has done since 3.0.1 (`CONSTRUCT { GRAPH :g { ?s :p ?o } }`), and Stardog has a
-graph template (`CONSTRUCT { graph ?g { ?s ?p ?o } }`) — both recorded in the
-[W3C SPARQL CG inventory of extensions](https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1).
-Standardising it is [w3c/sparql-dev#31](https://github.com/w3c/sparql-dev/issues/31).
+Several engines extend it anyway — [Jena/ARQ](https://jena.apache.org/documentation/query/construct-quad.html)
+since 3.0.1, Stardog via a graph template, and Anzo, whose CONSTRUCT clause takes
+"a graph and triple template". The Jena and Stardog forms are recorded in the
+[W3C SPARQL CG inventory of extensions](https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1);
+standardising it is [w3c/sparql-dev#31](https://github.com/w3c/sparql-dev/issues/31).
 
 That extension is what makes a **dry run** possible: swap `INSERT` for `CONSTRUCT`,
 keep the template and `WHERE` as they are, and you get back the quads the update
 *would* have written without writing them — then `must:matchNamedGraphs true`
 asserts they land in the right graphs. mustrd's Stardog backend asks for TriG
 rather than Turtle so those graph names survive the response.
+
+Anzo already ships that rewrite as a button: for an INSERT or DELETE, the Query
+Builder's [Dry Run](https://2024.help.altair.com/5.4/graphstudio/userdoc/query-builder-query.htm)
+"runs a version of the query where INSERT or DELETE is replaced with CONSTRUCT",
+reporting "additions or removals **per graph**". What that gives you once,
+interactively, a spec gives you on every run with the expected graphs written down.
 
 See `GETSTARTED.adoc` for the per-engine table.
 
