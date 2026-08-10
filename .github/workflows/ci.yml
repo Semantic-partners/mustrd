@@ -63,6 +63,22 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: poetry run pytest test/test_viewer_browser.py -v
 
+      # mustrd as a user gets it: built into a wheel, installed non-editable into
+      # a clean venv, run from a directory outside this repo. Every step above
+      # runs against the source tree — the plugin step uses `pip install -e .` —
+      # so nothing here was checking what a consumer actually receives. 0.8.0rc1
+      # shipped fourteen deprecation warnings per run and the way we found out
+      # was somebody installing it. Verified to fail on that tag and pass on its
+      # fix. See scripts/consumer_smoke.sh.
+      # Both OSes, one Python: the platform axis is what matters here (the report
+      # that prompted this was from Windows, where paths and venv layout differ),
+      # and a wheel build plus a clean venv on every one of the six cells is not
+      # worth the minutes.
+      - name: Smoke-test the built wheel as a consumer
+        if: matrix.python-version == '3.11'
+        shell: bash
+        run: ./scripts/consumer_smoke.sh
+
       # The report for this run, for reviewers to open from the PR. Built from
       # mustrd's own suite (so it shows real failures when there are any) and from
       # the worked example (so it shows coverage and competency questions).

@@ -1,0 +1,10 @@
+@prefix : <https://mustrd.org/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+
+# The suite the consumer smoke test runs against an INSTALLED mustrd, from a
+# directory outside this repo. See scripts/consumer_smoke.sh.
+:consumer_smoke a :MustrdTest ;
+    :hasSpecPath "specs" ;
+    :hasDataPath "data" ;
+    :hasPytestPath "consumer-smoke" ;
+    :filterOnTripleStore triplestore:RdfLib .

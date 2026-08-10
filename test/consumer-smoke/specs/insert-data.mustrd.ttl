@@ -1,0 +1,18 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ex:   <https://example.org/> .
+
+# INSERT DATA specifically: it is broken on rdflib 7.6's Dataset, so this is the
+# spec that fails if the UpdatableDataset repair is ever dropped.
+ex:insertData a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "simple.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX ex: <https://example.org/>
+                                   INSERT DATA { ex:s2 ex:value "two" }""" ;
+                 must:queryType must:UpdateSparql ] ;
+    must:then  [ a must:StatementsDataset ;
+                 must:hasStatement
+                     [ a rdf:Statement ; rdf:subject ex:s1 ;
+                       rdf:predicate ex:value ; rdf:object "one" ] ,
+                     [ a rdf:Statement ; rdf:subject ex:s2 ;
+                       rdf:predicate ex:value ; rdf:object "two" ] ] .
