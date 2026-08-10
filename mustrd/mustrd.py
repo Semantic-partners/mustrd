@@ -1493,9 +1493,14 @@ def generate_row_diff(
 
 
 def create_empty_dataframe_with_columns(df: pandas.DataFrame) -> pandas.DataFrame:
-    empty_copy = pandas.DataFrame().reindex_like(df)
-    empty_copy.fillna("", inplace=True)
-    return empty_copy
+    # Cast before filling. `reindex_like` gives NaN columns typed float64, and
+    # `fillna("")` on those is the "incompatible dtype" FutureWarning pandas has
+    # been printing — it becomes an error in a future pandas, at which point
+    # every missing-row diff would raise instead of render. The frame exists only
+    # to be compared cell-by-cell against string values, so object is the type it
+    # always wanted.
+    empty_copy = pandas.DataFrame().reindex_like(df).astype(object)
+    return empty_copy.fillna("")
 
 
 def review_results(results: List[SpecResult], verbose: bool) -> None:
