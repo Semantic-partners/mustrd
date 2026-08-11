@@ -57,6 +57,24 @@ Additional mandatory properties depend on the triplestore:
 
 * Only `repository` is mandatory. If `inputGraph` is not defined, all graphs in the repository will be queried.
 
+==== For Fuseki:
+
+* `dataset` is required: it names the dataset the server serves, giving `{url}:{port}/{dataset}/sparql`, `/update` and `/data`.
+* Authentication is optional. A stock Fuseki serves its dataset endpoints unauthenticated, so `username`/`password` are sent only when configured (in the `_secrets` file).
+* `inputGraph` is optional, and affects *reads* only. An unqualified INSERT or DELETE writes to the dataset's default graph (SPARQL 1.1 Update §3.1.3) and Fuseki has no non-standard parameter to redirect it — unlike GraphDB's `insert-graph-uri`. So either leave `inputGraph` unset, and the `given` goes to the default graph where unqualified updates behave as written, or name the graph in the query with `GRAPH`/`WITH`.
+
+[source,turtle]
+----
+@prefix : <https://mustrd.org/triplestore/> .
+
+:fuseki_local a :Fuseki ;
+    :url "http://localhost" ;
+    :port "3033" ;
+    :dataset "ds" .
+----
+
+Fuseki is the backend mustrd exercises for real. `scripts/fuseki_integration.sh` starts one in Docker and runs the *same* `expected-success` specs the RDFLib suite runs, and CI does the same on every push. The other HTTP backends are mock-tested, because each needs a licence or a server; what Fuseki covers is everything they share — request building, Accept headers, dataset parameters, and the `given`-upload round trip.
+
 ==== For Stardog:
 
 * `database` is required to identify the Stardog database to run against.

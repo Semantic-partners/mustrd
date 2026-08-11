@@ -3,7 +3,7 @@ import requests
 from rdflib import Graph, Literal
 from requests import ConnectionError, Response
 
-from .utils import manage_http_response
+from .utils import manage_http_response, sparql_ask_answer
 
 
 # https://github.com/Semantic-partners/mustrd/issues/72
@@ -38,6 +38,11 @@ def parse_bindings(bindings: dict = None) -> dict:
 
 def execute_select(triple_store: dict, when: str, bindings: dict = None) -> str:
     return post_query(triple_store, when, "application/sparql-results+json", parse_bindings(bindings))
+
+
+def execute_ask(triple_store: dict, when: str, bindings: dict = None) -> bool:
+    return sparql_ask_answer(
+        post_query(triple_store, when, "application/sparql-results+json", parse_bindings(bindings)))
 
 
 def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Graph:

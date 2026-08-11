@@ -21,7 +21,7 @@ from rdflib import Dataset, Graph
 from requests import ConnectionError, Response
 
 from .spec_component import UpdatableDataset, parse_into_dataset
-from .utils import manage_http_response
+from .utils import manage_http_response, query_with_bindings, sparql_ask_answer
 
 log = logging.getLogger(__name__)
 
@@ -83,18 +83,6 @@ def dataset_graphs(triple_store: dict) -> list:
     return ordered
 
 
-def query_with_bindings(bindings: dict, when: str) -> str:
-    """Inline bindings as VALUES clauses, so any endpoint honours them."""
-    values = ""
-    for key, value in bindings.items():
-        values += f"VALUES ?{key} {{{value.n3()}}}\n"
-    where_index = when.lower().find("where {")
-    if where_index == -1:
-        raise ValueError("No WHERE clause found in the query to bind values to.")
-    split_query = [when[:where_index], when[where_index + 7:]]
-    return f"{split_query[0].strip()} WHERE {{\n{values}{split_query[1].strip()}"
-
-
 def upload_given(triple_store: dict, given: Graph):
     """Load the ``given`` data into the materialised inputGraph (PUT replaces it).
 
@@ -120,6 +108,10 @@ def upload_given(triple_store: dict, given: Graph):
 
 def execute_select(triple_store: dict, when: str, bindings: dict = None) -> str:
     return post_query(triple_store, when, "application/sparql-results+json", bindings)
+
+
+def execute_ask(triple_store: dict, when: str, bindings: dict = None) -> bool:
+    return sparql_ask_answer(post_query(triple_store, when, "application/sparql-results+json", bindings))
 
 
 def execute_construct(triple_store: dict, when: str, bindings: dict = None) -> Dataset:

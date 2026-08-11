@@ -86,6 +86,7 @@ class TRIPLESTORE(DefinedNamespace):
     GraphDb: URIRef
     Anzo: URIRef
     Stardog: URIRef
+    Fuseki: URIRef
     ExternalTripleStore: URIRef
     InternalTripleStore: URIRef
 
@@ -106,6 +107,9 @@ class TRIPLESTORE(DefinedNamespace):
     # and data-virtualisation (virtual) named graphs.
     materialisedGraph: URIRef
     virtualGraph: URIRef
+
+    # Fuseki config parameters
+    dataset: URIRef     # the dataset name a Fuseki server serves, e.g. "ds"
 
 
 # namespace for pytest_mustrd config

@@ -891,6 +891,32 @@ def get_graphDB_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.Fuseki)
+def get_fuseki_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["dataset"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.dataset
+    )
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    # Optional: a stock Fuseki serves its dataset endpoints unauthenticated, so
+    # username/password are only sent when they are configured.
+    apply_credentials(triple_store, triple_store_config, credentials)
+    try:
+        check_triple_store_params(triple_store, ["url", "dataset"])
+    except ValueError as e:
+        triple_store["error"] = e
+
+
 @get_triple_store_config.method(TRIPLESTORE.Stardog)
 def get_stardog_configuration(
     triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,

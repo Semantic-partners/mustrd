@@ -1,0 +1,16 @@
+# A throwaway Fuseki for the integration suite: scripts/fuseki_integration.sh.
+#
+# In-memory, so every run starts empty and nothing survives a restart. Port 3033
+# rather than Fuseki's usual 3030, which is commonly already taken by a real one.
+#
+# This image protects write operations with the admin password even though queries
+# are open, so the integration script writes the matching mustrd `_secrets` file.
+services:
+  fuseki:
+    image: stain/jena-fuseki:latest
+    container_name: mustrd-fuseki
+    ports:
+      - "3033:3030"
+    environment:
+      ADMIN_PASSWORD: admin
+      FUSEKI_DATASET_1: ds

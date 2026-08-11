@@ -28,6 +28,7 @@ Write a spec once, run it against any supported engine:
 | --- | --- | --- |
 | RDFLib | Embedded, in-memory | The default. No server, no configuration. |
 | GraphDB | HTTP SPARQL endpoint | Repository-based. Optional named graphs. |
+| Fuseki | HTTP SPARQL 1.1 protocols | Apache Jena. No vendor extensions, auth optional. The one backend CI runs the spec suite against for real. |
 | Stardog | HTTP SPARQL protocol | Bearer-token or basic auth. Runs one query over a chosen combination of materialised and virtual named graphs. |
 | Anzo | HTTP REST API | Graphmart layers, query builders, AnzoGraph. |
 

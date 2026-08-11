@@ -578,6 +578,7 @@ Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)
       <tr><th>Engine</th><th>Protocol</th><th>Notes</th></tr>
       <tr><td>RDFLib</td><td>Embedded (in-memory)</td><td>Default. No server needed. Zero config.</td></tr>
       <tr><td>GraphDB</td><td>HTTP SPARQL endpoint</td><td>Repository-based. Optional named graphs.</td></tr>
+      <tr><td>Fuseki</td><td>HTTP SPARQL 1.1</td><td>Apache Jena. No vendor extensions, auth optional. The one backend CI runs the spec suite against for real.</td></tr>
       <tr><td>Stardog</td><td>HTTP SPARQL protocol</td><td>Bearer-token or basic auth. One query over a chosen mix of materialised and virtual graphs.</td></tr>
       <tr><td>Anzo</td><td>HTTP REST API</td><td>Graphmart layers, query builders, AnzoGraph.</td></tr>
     </table>
@@ -722,6 +723,7 @@ mustrd report --config test\config.ttl \
       <li class="stable">Linux and Windows, Python 3.11&ndash;3.13, CI-tested: stable</li>
       <li class="stable">GraphDB integration: stable</li>
       <li class="stable">Anzo integration: stable</li>
+      <li class="stable">Fuseki integration: stable &mdash; CI runs the spec suite against a real one</li>
       <li class="impl">Stardog integration: implemented</li>
       <li class="impl">Markdown test reports: implemented</li>
       <li class="impl">GitHub Actions CI summary: implemented</li>
