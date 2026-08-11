@@ -22,8 +22,8 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import (TableThenSpec, parse_spec_component, WhenSpec, ThenSpec,
-                             flatten_to_graph)
+from .spec_component import (AskThenSpec, TableThenSpec, parse_spec_component, WhenSpec,
+                             ThenSpec, flatten_to_graph)
 from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -122,6 +122,12 @@ class SpecPassedWithWarning(SpecResult):
 class SelectSpecFailure(SpecResult):
     table_comparison: pandas.DataFrame
     message: str
+
+
+@dataclass
+class AskSpecFailure(SpecResult):
+    expected: bool
+    actual: bool
 
 
 @dataclass
@@ -490,6 +496,27 @@ def check_result(spec: Specification, result: Union[str, Graph]):
     log.debug(
         f"check_result {spec.spec_uri=}, {spec.triple_store=}, {result=} {type(spec.then)}"
     )
+    # Booleans first. An ASK answers one, and neither the table nor the graph path
+    # below can do anything with it — they assume a shape and fail deep inside
+    # rdflib if handed a bool. Dispatching on the RESULT rather than only on the
+    # `then` also catches the mismatched pairs, which SHACL rejects for a real
+    # spec but a directly-constructed Specification can still reach.
+    is_ask_then = isinstance(spec.then, AskThenSpec)
+    if isinstance(result, bool) or is_ask_then:
+        if not isinstance(result, bool):
+            return SpecInvalid(
+                spec.spec_uri, spec.triple_store["type"],
+                f"must:AskResult expects a boolean, but {spec.when[0].queryType} "
+                "returned something else. Only an ASK answers a boolean.")
+        if not is_ask_then:
+            return SpecInvalid(
+                spec.spec_uri, spec.triple_store["type"],
+                "An ASK answers a boolean, so its then must be a must:AskResult "
+                f"— got {type(spec.then).__name__}.")
+        if result == spec.then.value:
+            return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+        return AskSpecFailure(
+            spec.spec_uri, spec.triple_store["type"], spec.then.value, result)
     if isinstance(spec.then, TableThenSpec):
         log.debug("table_comparison")
         return table_comparison(result, spec)
@@ -860,6 +887,32 @@ def get_graphDB_configuration(
     )
     try:
         check_triple_store_params(triple_store, ["url", "repository"])
+    except ValueError as e:
+        triple_store["error"] = e
+
+
+@get_triple_store_config.method(TRIPLESTORE.Fuseki)
+def get_fuseki_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["dataset"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.dataset
+    )
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    # Optional: a stock Fuseki serves its dataset endpoints unauthenticated, so
+    # username/password are only sent when they are configured.
+    apply_credentials(triple_store, triple_store_config, credentials)
+    try:
+        check_triple_store_params(triple_store, ["url", "dataset"])
     except ValueError as e:
         triple_store["error"] = e
 
@@ -1420,6 +1473,12 @@ def render_result_diff_dispatch(res, info):
 # New result type -> register a method, don't add a conditional at the call sites.
 # See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 render_result_diff = MultiMethod("render_result_diff", render_result_diff_dispatch)
+
+
+@render_result_diff.method(AskSpecFailure)
+def _render_ask_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(f"ASK answered {res.actual}, expected {res.expected}")
 
 
 @render_result_diff.method(UpdateSpecFailure)

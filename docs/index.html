@@ -485,15 +485,18 @@
   <!-- Query types -->
   <section>
     <h2>Query <span>types</span></h2>
-    <p>mustrd validates across SPARQL's full query surface.</p>
+    <p>The query forms a transformation pipeline is built from.</p>
     <table class="sources">
       <tr><th>Type</th><th>What it does</th><th>Result compared as</th></tr>
       <tr><td>SELECT</td><td>Return variable bindings</td><td>Table (pandas DataFrame)</td></tr>
       <tr><td>CONSTRUCT</td><td>Build an RDF graph</td><td>Graph isomorphism</td></tr>
       <tr><td>UPDATE</td><td>INSERT/DELETE triples</td><td>Modified graph comparison</td></tr>
-      <tr><td>ASK</td><td>Boolean existence check</td><td>True/false</td></tr>
-      <tr><td>DESCRIBE</td><td>Describe a resource</td><td>Graph isomorphism</td></tr>
+      <tr><td>ASK</td><td>Boolean existence check</td><td><code>must:AskResult</code></td></tr>
     </table>
+    <p>DESCRIBE is <strong>not supported yet</strong>. A spec declaring
+       <code>must:DescribeSparql</code> is rejected by SHACL validation, naming the types
+       that are allowed — so it fails at collection with a clear message rather than at run
+       time.</p>
   </section>
 
   <!-- Named graphs -->
@@ -575,6 +578,7 @@ Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)
       <tr><th>Engine</th><th>Protocol</th><th>Notes</th></tr>
       <tr><td>RDFLib</td><td>Embedded (in-memory)</td><td>Default. No server needed. Zero config.</td></tr>
       <tr><td>GraphDB</td><td>HTTP SPARQL endpoint</td><td>Repository-based. Optional named graphs.</td></tr>
+      <tr><td>Fuseki</td><td>HTTP SPARQL 1.1</td><td>Apache Jena. No vendor extensions, auth optional. The one backend CI runs the spec suite against for real.</td></tr>
       <tr><td>Stardog</td><td>HTTP SPARQL protocol</td><td>Bearer-token or basic auth. One query over a chosen mix of materialised and virtual graphs.</td></tr>
       <tr><td>Anzo</td><td>HTTP REST API</td><td>Graphmart layers, query builders, AnzoGraph.</td></tr>
     </table>
@@ -719,11 +723,15 @@ mustrd report --config test\config.ttl \
       <li class="stable">Linux and Windows, Python 3.11&ndash;3.13, CI-tested: stable</li>
       <li class="stable">GraphDB integration: stable</li>
       <li class="stable">Anzo integration: stable</li>
+      <li class="stable">Fuseki integration: stable &mdash; CI runs the spec suite against a real one</li>
+      <li class="impl">Stardog integration: implemented</li>
       <li class="impl">Markdown test reports: implemented</li>
       <li class="impl">GitHub Actions CI summary: implemented</li>
       <li class="impl">RDF run output (coverage, CQs, per-test results): implemented</li>
       <li class="impl">Self-contained HTML report viewer: implemented</li>
       <li class="impl"><code>mustrd</code> CLI (run &amp; report without pytest): implemented</li>
+      <li class="impl">ASK specs: implemented</li>
+      <li class="planned">DESCRIBE specs: planned</li>
     </ul>
   </section>
 

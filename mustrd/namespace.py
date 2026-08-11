@@ -37,9 +37,12 @@ class MUST(DefinedNamespace):
     focus: URIRef
     # Opt-in: compare a graph `then` graph-by-graph rather than as one flat union.
     matchNamedGraphs: URIRef
+    # The boolean a must:AskResult expects an ASK to answer.
+    boolean: URIRef
 
     # Specification data sources
     TableDataset: URIRef
+    AskResult: URIRef
     StatementsDataset: URIRef
     FileDataset: URIRef
     HttpDataset: URIRef
@@ -83,6 +86,7 @@ class TRIPLESTORE(DefinedNamespace):
     GraphDb: URIRef
     Anzo: URIRef
     Stardog: URIRef
+    Fuseki: URIRef
     ExternalTripleStore: URIRef
     InternalTripleStore: URIRef
 
@@ -103,6 +107,9 @@ class TRIPLESTORE(DefinedNamespace):
     # and data-virtualisation (virtual) named graphs.
     materialisedGraph: URIRef
     virtualGraph: URIRef
+
+    # Fuseki config parameters
+    dataset: URIRef     # the dataset name a Fuseki server serves, e.g. "ds"
 
 
 # namespace for pytest_mustrd config

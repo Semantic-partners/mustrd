@@ -186,6 +186,23 @@ Graph where triples are inserted / deleted when no graph clause is given in an I
   rdfs:subClassOf :InternalTripleStore;
   rdfs:label "RdfLib" .
 
+:Fuseki a owl:Class;
+  rdfs:subClassOf :ExternalTripleStore;
+  rdfs:comment """Apache Jena Fuseki (https://jena.apache.org/documentation/fuseki2/) over the SPARQL 1.1 protocols.
+
+Endpoints are derived from `dataset`: {url}:{port}/{dataset}/sparql for queries, /update for updates, /data for the Graph Store Protocol. No vendor extensions are used, which makes this the backend that can be stood up in CI and driven for real.
+
+Authentication is optional — a stock Fuseki serves its dataset endpoints unauthenticated — so username/password are sent only when configured.
+
+inputGraph is optional and affects reads only. An unqualified INSERT or DELETE writes to the dataset's default graph (SPARQL 1.1 Update, 3.1.3) and Fuseki has no non-standard parameter to redirect it, so a spec that must write to a named graph says so in the query with GRAPH or WITH. Leave inputGraph unset and the given goes to the default graph, where unqualified updates behave as written.""";
+  rdfs:label "Fuseki" .
+
+:dataset a owl:DatatypeProperty;
+  rdfs:domain :Fuseki;
+  rdfs:range xsd:string;
+  rdfs:comment "Name of the Fuseki dataset to run against, e.g. \"ds\" for endpoints under /ds.";
+  rdfs:label "dataset" .
+
 :Stardog a owl:Class;
   rdfs:subClassOf :ExternalTripleStore;
   rdfs:comment """Stardog (https://www.stardog.com/) accessed over its HTTP SPARQL protocol.

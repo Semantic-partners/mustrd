@@ -10,7 +10,8 @@ test-data:a_complete_delete_insert_with_optional_scenario
                                                      rdf:predicate test-data:pred ;
                                                      rdf:object    test-data:obj ; ] ; ] ;
     must:when  [ a must:TextSparqlSource ;
-                                   must:queryText  "delete {?s ?p ?o} insert { ?o ?p ?s . ?o2 rdf:pred ?s } where {?s ?p ?o OPTIONAL { ?s rdf:pred ?o2}}" ;
+                                   must:queryText  """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                                    delete {?s ?p ?o} insert { ?o ?p ?s . ?o2 rdf:pred ?s } where {?s ?p ?o OPTIONAL { ?s rdf:pred ?o2}}""" ;
                  must:queryType must:UpdateSparql  ; ] ;
     must:then  [ a must:StatementsDataset ;
                  must:hasStatement [ a             rdf:Statement ;

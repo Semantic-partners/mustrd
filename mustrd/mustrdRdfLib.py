@@ -38,6 +38,16 @@ def execute_construct(triple_store: dict, given: Graph, when: str, bindings: dic
         raise RequestException(e)
 
 
+def execute_ask(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> bool:
+    try:
+        with rdflib_internals_quiet():
+            return bool(given.query(when, initBindings=bindings).askAnswer)
+    except ParseException:
+        raise
+    except Exception as e:
+        raise RequestException(e)
+
+
 def execute_update(triple_store: dict, given: Graph, when: str, bindings: dict = None) -> Graph:
     try:
         result = given

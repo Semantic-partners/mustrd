@@ -5,7 +5,7 @@ from rdflib import Graph, Literal
 from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace
 
-from mustrd.mustrd import Specification, run_spec
+from mustrd.mustrd import Specification, SpecInvalid, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import (parse_spec_component, GivenSpec, ThenSpec,
                                    flatten_to_graph)
@@ -309,7 +309,7 @@ class TestRunSpec:
         assert "Invalid combination of data source type" in str(error_message.value)
         assert "Valid combinations are:" in str(error_message.value)
 
-    def test_invalid_query_type_ask_error(self):
+    def test_ask_with_a_graph_then_is_reported_clearly(self):
         state = Graph()
         state.parse(data=self.given_sub_pred_obj, format="ttl")
 
@@ -348,8 +348,12 @@ class TestRunSpec:
 
         result = run_spec(specification)
         logging.info(f"Result: {result} {type(result)}")
-        # don't love the args[2] magic here. open to suggestions for improvement. looks like a weird mix of returning either a tuple or an exception
-        assert result.args[2] == "NotImplementedError: SPARQL ASK not implemented."
+        # ASK runs now, so the interesting case is the mismatch: it answers a
+        # boolean and this `then` is a graph. SHACL rejects that pairing for a real
+        # spec; a Specification built directly still reaches check_result, which
+        # has to say so rather than fail inside rdflib's graph comparison.
+        assert isinstance(result, SpecInvalid)
+        assert "must be a must:AskResult" in result.message
 
     def test_invalid_query_type_delete_error(self):
         state = Graph()

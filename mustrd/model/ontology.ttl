@@ -321,6 +321,23 @@ A then is compared as a flat union by default: a spec should not have to say whi
             rdfs:label "EmptyTable" .
 
 
+###  https://mustrd.org/model/AskResult
+:AskResult rdf:type owl:Class ;
+           rdfs:subClassOf :Dataset ;
+           rdfs:comment "The expected boolean answer of a SPARQL ASK. Carries a single :boolean." ;
+           rdfs:isDefinedBy : ;
+           rdfs:label "AskResult" .
+
+
+###  https://mustrd.org/model/boolean
+:boolean rdf:type owl:DatatypeProperty ;
+         rdfs:comment "The boolean an :AskResult expects the ASK to answer." ;
+         rdfs:label "boolean" ;
+         rdfs:domain :AskResult ;
+         rdfs:range xsd:boolean ;
+         .
+
+
 ###  https://mustrd.org/model/Expectation
 :Expectation rdf:type owl:Class ;
              rdfs:comment "The expected result of the action performed in When, on the DataSet constructed, or composed in the Given. Expectations may be complete static datasets, results of ASKs, or a CONSTRUCT or SELECT and expected DataSet" ;

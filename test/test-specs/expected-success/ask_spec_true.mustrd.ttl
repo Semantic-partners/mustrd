@@ -1,0 +1,14 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# A SPARQL ASK, answering true. The `then` is a must:AskResult carrying the
+# boolean — there is no table or graph to compare, just the answer.
+test-data:ask_spec_true
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given.ttl> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                   ASK { test-data:sub test-data:pred test-data:obj }""" ;
+                 must:queryType must:AskSparql ] ;
+    must:then  [ a must:AskResult ; must:boolean true ] .

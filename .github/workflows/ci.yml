@@ -8,6 +8,41 @@ on:
       - master
 
 jobs:
+  # A real HTTP backend. Every other backend here is mock-tested only, because
+  # GraphDb, Anzo and Stardog each need a licence or a server no CI has. Fuseki is
+  # Apache-licensed and dockerised, and speaks the SPARQL 1.1 protocols with no
+  # vendor extensions in the paths mustrd uses — so it exercises the request
+  # building, Accept headers, dataset parameters and given-upload round trip that
+  # those backends share.
+  #
+  # It runs the SAME expected-success specs as the RdfLib job. One set of specs,
+  # two engines, which is the whole claim mustrd makes about being engine-agnostic.
+  fuseki:
+    name: Spec suite against a real Fuseki
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Install dependencies
+        run: poetry install
+      - name: Run the spec suite against Fuseki
+        run: ./scripts/fuseki_integration.sh
+      - name: Fuseki logs on failure
+        if: failure()
+        run: docker compose -f docker/fuseki-compose.yml logs --no-color | tail -100
+
   test:
     name: Test (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}

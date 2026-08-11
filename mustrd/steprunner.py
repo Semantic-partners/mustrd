@@ -4,10 +4,11 @@ import os
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
 from rdflib import Dataset, Graph, URIRef
-from . import mustrdGraphDb, mustrdStardog
+from . import mustrdFuseki, mustrdGraphDb, mustrdStardog
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
 from .mustrdRdfLib import execute_update as execute_update_rdflib
+from .mustrdRdfLib import execute_ask as execute_ask_rdflib
 from .mustrdAnzo import get_query_from_step, upload_given as upload_given_anzo
 from .mustrdAnzo import execute_update as execute_update_anzo
 from .mustrdAnzo import execute_construct as execute_construct_anzo
@@ -73,10 +74,17 @@ def register_sparql_http_backend(triple_store_type: URIRef, backend):
     run_when_impl.method((triple_store_type, MUST.SelectSparql))(
         lambda spec_uri, triple_store, when:
             backend.execute_select(triple_store, when.value, when.bindings))
-
-
-register_sparql_http_backend(TRIPLESTORE.GraphDb, mustrdGraphDb)
-register_sparql_http_backend(TRIPLESTORE.Stardog, mustrdStardog)
+    # ASK is one shape for every store that speaks the protocol: the boolean lives
+    # under `boolean` in a SPARQL 1.1 Results JSON document. Registered here so a
+    # backend gets it by being standard, not by reimplementing it.
+    run_when_impl.method((triple_store_type, MUST.AskSparql))(
+        lambda spec_uri, triple_store, when:
+            backend.execute_ask(triple_store, when.value, when.bindings))
+    # A SPADE group is a list of steps, each dispatched back through run_when_impl.
+    # Nothing in that is store-specific, so a backend gets it once its own query
+    # types are registered — it was only ever wired to RdfLib by omission.
+    run_when_impl.method((triple_store_type, MUST.SpadeEdnGroupSource))(
+        _spade_edn_group_source_steps)
 
 
 @run_when_impl.method((TRIPLESTORE.Anzo, MUST.UpdateSparql))
@@ -111,6 +119,11 @@ def _rdflib_run_when_update(spec_uri: URIRef, triple_store: dict, when: WhenSpec
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.ConstructSparql))
 def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_construct_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
+
+
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.AskSparql))
+def _rdflib_run_when_ask(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    return execute_ask_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SelectSparql))
@@ -173,7 +186,13 @@ def _spade_edn_group_source_anzo(spec_uri: URIRef, triple_store: dict, when: Spa
 
 
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SpadeEdnGroupSource))
-def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+def _spade_edn_group_source_steps(spec_uri: URIRef, triple_store: dict, when: SpadeEdnGroupSourceWhenSpec):
+    """Each step dispatched back through run_when_impl, results merged.
+
+    Nothing here is store-specific — which is why the standard-protocol backends
+    register it too, in register_sparql_http_backend. It was wired to RdfLib alone
+    by omission rather than by design.
+    """
     log.debug(f"Running SpadeEdnGroupSource for {spec_uri} using {triple_store}")
 
     edn_file_dir = os.path.dirname(when.file)  # Get the directory of the EDN file
@@ -206,10 +225,7 @@ def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: S
 @run_when_impl.method(Default)
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     log.error(f"run_when not implemented for {spec_uri} {triple_store} {when}")
-    if when.queryType == MUST.AskSparql:
-        log.warning(f"Skipping {spec_uri}, SPARQL ASK not implemented.")
-        msg = "SPARQL ASK not implemented."
-    elif when.queryType == MUST.DescribeSparql:
+    if when.queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
         msg = "SPARQL DESCRIBE not implemented."
     elif triple_store['type'] not in {key[0] for key in run_when_impl.methods if isinstance(key, tuple)}:
@@ -221,3 +237,9 @@ def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec
 
 log.debug(f"run_when registry: {run_when_impl} {dir(run_when_impl)}")
 
+
+# After the methods above: register_sparql_http_backend references the SPADE
+# runner, so the three standard-protocol backends are wired once it exists.
+register_sparql_http_backend(TRIPLESTORE.GraphDb, mustrdGraphDb)
+register_sparql_http_backend(TRIPLESTORE.Stardog, mustrdStardog)
+register_sparql_http_backend(TRIPLESTORE.Fuseki, mustrdFuseki)

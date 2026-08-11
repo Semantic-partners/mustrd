@@ -73,3 +73,37 @@ def rdflib_internals_quiet():
         warnings.filterwarnings(
             "ignore", category=DeprecationWarning, module=r"rdflib\..*")
         yield
+
+
+def sparql_ask_answer(results: str) -> bool:
+    """The boolean from a SPARQL 1.1 Results JSON document.
+
+    ASK puts its answer under `boolean`
+    (https://www.w3.org/TR/sparql11-results-json/#ask-result-form), so one parse
+    serves every store that speaks the protocol rather than one per backend.
+    """
+    try:
+        return bool(json.loads(results)["boolean"])
+    except (ValueError, KeyError, TypeError) as e:
+        raise ValueError(
+            f"expected a SPARQL ASK result with a 'boolean' key, got: {results!r}") from e
+
+
+def query_with_bindings(bindings: dict, when: str) -> str:
+    """Inline bindings as VALUES clauses inside the WHERE, so any endpoint honours them.
+
+    Not a blind `?var` substitution: that also rewrites the SELECT projection, and
+    the endpoint then names the column for the expression instead of the variable
+    (Fuseki returns `.0`). VALUES binds the variable while leaving it a variable.
+
+    The protocol has no standard way to pass initial bindings on a query, which is
+    why this is done in the query text at all.
+    """
+    values = ""
+    for key, value in bindings.items():
+        values += f"VALUES ?{key} {{{value.n3()}}}\n"
+    where_index = when.lower().find("where {")
+    if where_index == -1:
+        raise ValueError("No WHERE clause found in the query to bind values to.")
+    split_query = [when[:where_index], when[where_index + 7:]]
+    return f"{split_query[0].strip()} WHERE {{\n{values}{split_query[1].strip()}"

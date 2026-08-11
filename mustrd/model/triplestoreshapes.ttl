@@ -38,6 +38,17 @@ triplestore:GraphDbShape
                      sh:minCount 1 ;
                      sh:maxCount 1 ] .
 
+# url and dataset are all a stock Fuseki needs. inputGraph is optional and affects
+# reads only — see :Fuseki in the ontology for why an unqualified update ignores it.
+triplestore:FusekiShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:Fuseki ;
+    sh:property    [ sh:path     triplestore:dataset ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ],
+                   [ sh:path     triplestore:inputGraph ;
+                     sh:maxCount 1 ] .
+
 triplestore:StardogShape
     a              sh:NodeShape ;
     sh:targetClass triplestore:Stardog ;

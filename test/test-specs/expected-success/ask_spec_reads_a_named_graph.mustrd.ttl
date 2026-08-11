@@ -1,0 +1,14 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# An ASK with a GRAPH clause, over a quad given. Cheap way to assert a layer
+# holds something without writing out its whole content.
+test-data:ask_spec_reads_a_named_graph
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given-named-graphs.trig> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                   ASK { GRAPH test-data:graph-b { ?s ?p ?o } }""" ;
+                 must:queryType must:AskSparql ] ;
+    must:then  [ a must:AskResult ; must:boolean true ] .

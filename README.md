@@ -28,6 +28,7 @@ Write a spec once, run it against any supported engine:
 | --- | --- | --- |
 | RDFLib | Embedded, in-memory | The default. No server, no configuration. |
 | GraphDB | HTTP SPARQL endpoint | Repository-based. Optional named graphs. |
+| Fuseki | HTTP SPARQL 1.1 protocols | Apache Jena. No vendor extensions, auth optional. The one backend CI runs the spec suite against for real. |
 | Stardog | HTTP SPARQL protocol | Bearer-token or basic auth. Runs one query over a chosen combination of materialised and virtual named graphs. |
 | Anzo | HTTP REST API | Graphmart layers, query builders, AnzoGraph. |
 
@@ -101,6 +102,24 @@ poetry run pytest --mustrd --config=test/mustrd_configuration.ttl --md=render/gi
 This will validate your SPARQL queries against the defined dataset and expected results, ensuring your transformations behave as intended.
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
+
+#### ASK specs
+
+A SPARQL ASK answers a boolean, so its `then` is a `must:AskResult`:
+
+```turtle
+must:when [ a must:TextSparqlSource ;
+            must:queryText "ASK { ex:sub ex:pred ex:obj }" ;
+            must:queryType must:AskSparql ] ;
+must:then [ a must:AskResult ; must:boolean true ] .
+```
+
+`must:boolean false` asserts the ASK answers **false** — which is a claim, not an
+absent expectation. That makes it the cheap way to assert something is *not*
+there: a filter removed what it should, or nothing leaked into a layer.
+
+DESCRIBE is not supported yet; a spec declaring it is rejected by SHACL validation
+with a message naming the query types that are.
 
 #### Named graphs
 

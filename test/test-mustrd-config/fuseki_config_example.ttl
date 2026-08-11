@@ -1,0 +1,14 @@
+@prefix : <https://mustrd.org/triplestore/> .
+
+# Apache Jena Fuseki. Standard SPARQL 1.1 protocols, so `dataset` is the only
+# thing beyond url/port: it names the dataset the server serves, giving
+# {url}:{port}/{dataset}/sparql, /update and /data.
+#
+# `inputGraph` is optional. Without it the `given` is PUT into the default graph.
+# username/password are optional too — a stock Fuseki serves its dataset
+# endpoints unauthenticated. Put them in the _secrets file if your server needs
+# them.
+:fuseki_local a :Fuseki ;
+    :url "http://localhost" ;
+    :port "3033" ;
+    :dataset "ds" .
