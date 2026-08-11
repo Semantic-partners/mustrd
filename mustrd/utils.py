@@ -55,12 +55,12 @@ def rdflib_internals_quiet():
     """Suppress deprecations rdflib raises about its OWN internals.
 
     rdflib 7.6 deprecated `ConjunctiveGraph`, `Dataset.default_context` and
-    `Dataset.identifier`, then kept calling them from inside `Dataset` — its TriG
+    `Dataset.identifier` while its own internals still reach them — the TriG
     parser builds a ConjunctiveGraph, `triples()` on a union dataset compares
-    against `default_context`, `Graph.__repr__` reads `identifier`. Every one of
-    those warnings names the mustrd line that called in, so a user saw
-    deprecations about code they could not reach and could not act on. In the
-    wild that was fourteen per run.
+    against `default_context`, `Graph.__repr__` reads `identifier`. Each of those
+    warnings names the mustrd line that called in, so a user saw deprecations
+    about code they could not reach and could not act on. In the wild that was
+    fourteen per run.
 
     Scoped by CALLER, which is what makes it safe rather than a blanket mute:
     rdflib raises these with `stacklevel=2`, so each is attributed to whoever

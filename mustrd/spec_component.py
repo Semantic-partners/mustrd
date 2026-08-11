@@ -22,23 +22,24 @@ log = logging.getLogger(__name__)
 
 
 class UpdatableDataset(Dataset):
-    """A Dataset that survives `INSERT DATA`, which rdflib 7.6's does not.
+    """A Dataset that accepts `INSERT DATA` on rdflib 7.6.
 
-    rdflib's `evalInsertData` does `g += u.triples` with the *dataset* as `g`
-    (sparql/update.py), and `Dataset.__iadd__` unpacks four-tuples — so every
+    On that version, `evalInsertData` does `g += u.triples` with the *dataset* as
+    `g` (sparql/update.py), while `Dataset.__iadd__` reads four-tuples — so an
     `INSERT DATA` raises `not enough values to unpack (expected 4, got 3)`.
-    `ConjunctiveGraph` has no such problem, which is why mustrd used one; but it
-    is deprecated and slated for removal, and it printed a deprecation warning
-    naming a mustrd line on every spec a user ran.
+    `ConjunctiveGraph` takes the same call happily, which is why mustrd was built
+    on one; but it is deprecated and slated for removal, and mustrd calling it
+    put a deprecation warning naming a mustrd line into every spec a user ran.
 
-    So: the modern class, with the one thing rdflib gets wrong about it repaired.
-    Triples go to the default graph, which is where an unqualified `INSERT DATA`
-    puts them (SPARQL 1.1 §3.1.3); quads keep rdflib's own behaviour, so
-    `INSERT DATA { GRAPH <g> { … } }` still lands in `<g>`.
+    So: the current class, with `__iadd__` widened to take triples as well as
+    quads. Triples go to the default graph, which is where an unqualified
+    `INSERT DATA` puts them (SPARQL 1.1 §3.1.3); quads keep rdflib's own
+    behaviour, so `INSERT DATA { GRAPH <g> { … } }` still lands in `<g>`.
 
-    TRIPWIRE: when rdflib fixes this, `UpdatableDataset` becomes a plain
-    `Dataset` and this class goes. `test_insert_data_is_broken_on_a_plain_dataset`
-    fails when that happens, which is the signal to delete it.
+    TRIPWIRE: once rdflib accepts this directly, `UpdatableDataset` becomes a
+    plain `Dataset` and this class goes.
+    `test_insert_data_is_broken_on_a_plain_dataset` fails at that point, which is
+    the signal to delete it.
     """
 
     def __iadd__(self, other):

@@ -2,8 +2,9 @@
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix ex:   <https://example.org/> .
 
-# INSERT DATA specifically: it is broken on rdflib 7.6's Dataset, so this is the
-# spec that fails if the UpdatableDataset repair is ever dropped.
+# INSERT DATA specifically: rdflib 7.6's Dataset does not accept it without the
+# adjustment in UpdatableDataset, so this is the spec that fails if that is
+# ever dropped.
 ex:insertData a must:TestSpec ;
     must:given [ a must:FileDataset ; must:file "simple.ttl" ] ;
     must:when  [ a must:TextSparqlSource ;
