@@ -240,12 +240,24 @@ sh:order rdf:type owl:DatatypeProperty ;
           rdfs:label "variable" .
 
 ###  https://mustrd.org/model/focus
-:variable rdf:type owl:DatatypeProperty ;
-          rdfs:comment "Shows whether a test specification is set to be the focus of a test run" ;
-          rdfs:label "focus" ;
-          rdfs:domain :TestSpec ;
-          rdfs:range xsd:boolean ;
-          .
+# Was declared as :variable — a copy/paste from the block above, which left
+# :focus undeclared and :variable declared twice with contradictory comments.
+:focus rdf:type owl:DatatypeProperty ;
+       rdfs:comment "Shows whether a test specification is set to be the focus of a test run" ;
+       rdfs:label "focus" ;
+       rdfs:domain :TestSpec ;
+       rdfs:range xsd:boolean ;
+       .
+
+###  https://mustrd.org/model/matchNamedGraphs
+:matchNamedGraphs rdf:type owl:DatatypeProperty ;
+                  rdfs:comment """Compare this then graph-by-graph rather than as one flat union.
+
+A then is compared as a flat union by default: a spec should not have to say which named graph a triple is in just to assert that it exists. Set this to true and the layout becomes part of the assertion, so the expected triples in the wrong graphs is a failure.""" ;
+                  rdfs:label "matchNamedGraphs" ;
+                  rdfs:domain :Dataset ;
+                  rdfs:range xsd:boolean ;
+                  .
 
 #################################################################
 #    Classes

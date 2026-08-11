@@ -1,0 +1,16 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix ex:   <https://example.org/> .
+
+# A quad given, read through a GRAPH clause. This is the path that broke in
+# 0.8.0rc1 and the one a consumer hit first.
+ex:selectFromANamedGraph a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "two-graphs.trig" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX ex: <https://example.org/>
+                                   SELECT ?value WHERE {
+                                       GRAPH ex:graph-a { ?s ex:value ?value }
+                                   }""" ;
+                 must:queryType must:SelectSparql ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "value" ;
+                                                 must:boundValue "in-a" ] ] ] .

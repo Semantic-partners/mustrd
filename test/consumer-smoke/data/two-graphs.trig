@@ -1,0 +1,4 @@
+@prefix ex: <https://example.org/> .
+
+ex:graph-a { ex:s1 ex:value "in-a" . }
+ex:graph-b { ex:s2 ex:value "in-b" . }

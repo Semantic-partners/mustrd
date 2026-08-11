@@ -6,20 +6,64 @@ from typing import Tuple, List, Type
 
 import pandas
 import requests
-from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util, ConjunctiveGraph
+from rdflib import RDF, Dataset, Graph, URIRef, Variable, Literal, XSD, util
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
-from rdflib.plugins.stores.memory import Memory
 import edn_format
 
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
 from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
-from .utils import get_mustrd_root
+from .utils import get_mustrd_root, rdflib_internals_quiet
 import logging
 
 log = logging.getLogger(__name__)
+
+
+class UpdatableDataset(Dataset):
+    """A Dataset that survives `INSERT DATA`, which rdflib 7.6's does not.
+
+    rdflib's `evalInsertData` does `g += u.triples` with the *dataset* as `g`
+    (sparql/update.py), and `Dataset.__iadd__` unpacks four-tuples — so every
+    `INSERT DATA` raises `not enough values to unpack (expected 4, got 3)`.
+    `ConjunctiveGraph` has no such problem, which is why mustrd used one; but it
+    is deprecated and slated for removal, and it printed a deprecation warning
+    naming a mustrd line on every spec a user ran.
+
+    So: the modern class, with the one thing rdflib gets wrong about it repaired.
+    Triples go to the default graph, which is where an unqualified `INSERT DATA`
+    puts them (SPARQL 1.1 §3.1.3); quads keep rdflib's own behaviour, so
+    `INSERT DATA { GRAPH <g> { … } }` still lands in `<g>`.
+
+    TRIPWIRE: when rdflib fixes this, `UpdatableDataset` becomes a plain
+    `Dataset` and this class goes. `test_insert_data_is_broken_on_a_plain_dataset`
+    fails when that happens, which is the signal to delete it.
+    """
+
+    def __iadd__(self, other):
+        statements = list(other)
+        if statements and len(statements[0]) == 3:
+            for triple in statements:
+                self.default_graph.add(triple)
+            return self
+        return super().__iadd__(statements)
+
+    def __repr__(self):
+        """Without reaching `Dataset.identifier`, which rdflib 7.6 deprecates.
+
+        This matters more than it looks. mustrd logs f-strings — `log.debug(f"…
+        {triple_store}")` — and an f-string is built whether or not anything is
+        listening, so a `given` sitting in that dict was repr'd on every spec of
+        every run. rdflib's `Graph.__repr__` reads `self.identifier`, so each one
+        printed a deprecation. Ten per run, from code the user cannot reach.
+
+        Says something useful while it is here: how much data, in how many graphs.
+        """
+        with rdflib_internals_quiet():
+            graph_count = sum(1 for _ in self.graphs())
+            size = len(self)
+        return f"<{type(self).__name__} {size} statements in {graph_count} graph(s)>"
 
 
 @dataclass
@@ -29,7 +73,7 @@ class SpecComponent:
 
 @dataclass
 class GivenSpec(SpecComponent):
-    value: ConjunctiveGraph = None
+    value: Dataset = None
 
 
 @dataclass
@@ -56,6 +100,11 @@ class SpadeEdnGroupSourceWhenSpec(WhenSpec):
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
+    # Opt-in graph-awareness. A `then` is compared as one flat union by default —
+    # you should not have to say which graph a triple is in just to assert it
+    # exists. Set `must:matchNamedGraphs true` and the comparison becomes
+    # graph-by-graph, so a triple in the wrong graph is a failure.
+    match_named_graphs: bool = False
 
 
 @dataclass
@@ -199,17 +248,18 @@ def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
         # Quad-aware: `graph += other` reads the union and drops which graph each
         # triple came from, so combining two givens used to flatten any named
         # graph a .trig had contributed.
-        combined = ConjunctiveGraph(store=Memory())
+        combined = UpdatableDataset(default_union=True)
         for spec_component in spec_components:
             value = spec_component.value
             if value is None:
                 continue
-            if isinstance(value, ConjunctiveGraph):
-                combined.addN((s, p, o, ctx)
-                              for ctx in value.contexts()
-                              for s, p, o in ctx)
+            if isinstance(value, Dataset):
+                with rdflib_internals_quiet():
+                    combined.addN((s, p, o, graph)
+                                  for graph in value.graphs()
+                                  for s, p, o in graph)
             else:
-                combined.default_context += value
+                combined.default_graph += value
         given_spec = GivenSpec()
         given_spec.value = combined
         return given_spec
@@ -323,6 +373,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 @get_spec_component.method((MUST.FileDataset, MUST.then))
 def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
+    spec_component.match_named_graphs = wants_named_graphs(spec_component_details)
     return load_spec_component(spec_component_details, spec_component)
 
 
@@ -383,31 +434,56 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         # EMPTY. An empty `given` then read as no given at all, and rdflib specs
         # were rejected with "Unable to run Inherited State tests on Rdflib" — a
         # message about a feature the spec never asked for.
-        # ConjunctiveGraph, not Dataset: both resolve a GRAPH clause and both
-        # read as the union, but iterating a Dataset yields QUADS, and plenty of
-        # mustrd (coverage, reporting, graph comparison) iterates a given
-        # expecting triples. Same reason StatementsDataset already uses one.
-        quads = ConjunctiveGraph(store=Memory())
+        # default_union so an unqualified query still reads every graph, which is
+        # what a given without a GRAPH clause has always done.
+        quads = UpdatableDataset(default_union=True)
         try:
-            quads.parse(data=get_spec_component_from_file(path), format=file_format)
+            parse_into_dataset(quads, get_spec_component_from_file(path), file_format)
         except ParserError as e:
             log.error(f"Problem parsing {path}, error of type {type(e)}")
             raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-        # A `then` is compared triple-by-triple against the query's result graph,
-        # which has no named graphs to compare against — so it keeps the flat
-        # Graph it has always been. Only `given` keeps its contexts, which is
-        # what lets a GRAPH clause in the `when` resolve.
-        spec_component.value = quads if isinstance(spec_component, GivenSpec) else _flatten(quads)
+        # A `given` always keeps its contexts — that is what lets a GRAPH clause
+        # in the `when` resolve. A `then` is levelled to a flat Graph unless it
+        # asked not to be: you should not have to say which graph a triple is in
+        # just to assert it exists.
+        keep_graphs = isinstance(spec_component, GivenSpec) or \
+            getattr(spec_component, "match_named_graphs", False)
+        spec_component.value = quads if keep_graphs else flatten_to_graph(quads)
         return spec_component
 
 
-def _flatten(quads: ConjunctiveGraph) -> Graph:
+QUAD_FORMATS = {"trig", "nquads", "trix", "json-ld", "hext"}
+
+
+def parse_into_dataset(dataset: Dataset, data: str, file_format: str) -> None:
+    """Parse into `dataset`, quietly, whatever the format carries.
+
+    Triples go straight into the default graph. `Dataset.parse` would reach it
+    via `default_context`, which rdflib 7.6 deprecates — and the warning it emits
+    names OUR line, so every mustrd user sees a deprecation they cannot act on.
+
+    Quads have to go through `Dataset.parse`, because only the quad parsers know
+    which graph each statement belongs to. rdflib's own TriG parser builds a
+    ConjunctiveGraph internally and warns about it (rdflib 7.6, trig.py), which
+    is likewise not ours to fix and nothing a mustrd user can do anything about,
+    so it is silenced here rather than printed fourteen times a run.
+    """
+    if file_format not in QUAD_FORMATS:
+        dataset.default_graph.parse(data=data, format=file_format)
+        return
+
+    with rdflib_internals_quiet():
+        dataset.parse(data=data, format=file_format)
+
+
+def flatten_to_graph(quads: Dataset) -> Graph:
     """The union of every graph in the dataset, as one plain Graph."""
     g = Graph()
-    for triple in quads.triples((None, None, None)):
-        g.add(triple)
-    for prefix, namespace in quads.namespaces():
-        g.bind(prefix, namespace)
+    with rdflib_internals_quiet():
+        for triple in quads.triples((None, None, None)):
+            g.add(triple)
+        for prefix, namespace in quads.namespaces():
+            g.bind(prefix, namespace)
     return g
 
 
@@ -504,17 +580,24 @@ def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentD
         spec_component = GivenSpec()
     else:
         spec_component = ThenSpec()
-    spec_component.value = ConjunctiveGraph(store=Memory())
 
     data = get_spec_from_statements(spec_component_details.subject, spec_component_details.predicate,
                                     spec_component_details.spec_graph)
+
+    quads = UpdatableDataset(default_union=True)
     # Into the DEFAULT graph, not a named one. An unqualified `DELETE ... WHERE`
     # operates on the dataset's default graph (SPARQL 1.1 §3.1.3), so given data
-    # sitting in a named graph is matched by the WHERE — a ConjunctiveGraph reads
-    # as the union — and then not deleted. rdflib <= 7.1.4 deleted it anyway;
+    # sitting in a named graph is matched by the WHERE — a default_union dataset
+    # reads as the union — and then not deleted. rdflib <= 7.1.4 deleted it anyway;
     # 7.6.0 is conformant, which is what broke every update spec. Reads are
     # unaffected either way, so the default graph is simply the correct home.
-    spec_component.value.default_context.parse(data=data)
+    quads.default_graph.parse(data=data)
+
+    # As with a file-sourced component: a `given` keeps its contexts so a GRAPH
+    # clause can resolve, a `then` is levelled, because it is compared against a
+    # result graph that has no named graphs in it.
+    spec_component.value = quads if isinstance(spec_component, GivenSpec) \
+        else flatten_to_graph(quads)
     return spec_component
 
 
@@ -755,6 +838,19 @@ def get_when_bindings(subject: URIRef,
         for binding in when_bindings:
             bindings[Variable(binding.variable.value)] = binding.binding
         return bindings
+
+
+def wants_named_graphs(spec_component_details: SpecComponentDetails) -> bool:
+    """Whether this `then` asked to be compared graph-by-graph.
+
+    `must:matchNamedGraphs true` on the then node. Absent — the overwhelmingly
+    common case — the comparison stays a flat union, so a spec that does not care
+    about graphs never has to mention them.
+    """
+    value = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.matchNamedGraphs)
+    return bool(value) and str(value).lower() in ("true", "1")
 
 
 def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:

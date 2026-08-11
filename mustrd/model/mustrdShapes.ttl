@@ -129,6 +129,16 @@ must:SelectTestSpecValidationShape
                                 [ sh:class must:FolderDataset ]
                                 [ sh:class must:FileDataset ] ) ] .
 
+# Optional, and boolean. A graph `then` carrying this is compared graph-by-graph
+# instead of as one flat union — see :matchNamedGraphs in the ontology.
+must:MatchNamedGraphsShape
+    a              sh:NodeShape ;
+    sh:targetClass must:Dataset ;
+    sh:property    [ sh:path     must:matchNamedGraphs ;
+                     sh:datatype xsd:boolean ;
+                     sh:maxCount 1 ;
+                     sh:message  "must:matchNamedGraphs takes a single boolean." ; ] .
+
 must:StatementsDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:StatementsDataset ;

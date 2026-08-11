@@ -1,6 +1,7 @@
 import logging
 import pytest
 import os
+from collections import Counter
 from pathlib import Path
 from rdflib.namespace import Namespace
 from rdflib import Graph, RDF
@@ -11,7 +12,7 @@ from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, produce_report, collect_cq_defs,
     coverage_spec,
 )
-from mustrd.runner import generate_specs, resolve_triple_stores
+from mustrd.runner import generate_specs, resolve_triple_stores, triple_store_name
 # TestConfig / parse_config moved to mustrd.config (no pytest dependency, so the
 # CLI shares them); re-exported here for callers that import them from the plugin.
 from mustrd.config import TestConfig, parse_config, get_config_param  # noqa: F401
@@ -252,6 +253,8 @@ class MustrdTestPlugin:
         self.term_links = term_links
         self.ontology_paths = []
         self.items = []
+        self.selected_tests = []
+        self.selected_nodeids = []
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
@@ -269,6 +272,10 @@ class MustrdTestPlugin:
                 mustrd_args
             )
         )
+        # The node IDs exactly as they were asked for, so a request for one test in
+        # a spec file doesn't run every test in it. selected_tests above only
+        # narrows collection to the *files*; this narrows it to the items.
+        self.selected_nodeids = list(mustrd_args)
         logger.info(f"selected_tests is: {self.selected_tests}")
 
         self.path_filter = session.config.getoption("pytest_path") or None
@@ -348,6 +355,34 @@ class MustrdTestPlugin:
         mustrd_file = MustrdFile.from_parent(parent, path=file_path, mustrd_plugin=self)
         mustrd_file.mustrd_plugin = self
         return mustrd_file
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_collection_modifyitems(self, session, config, items):
+        """Honour a request for specific mustrd tests.
+
+        We can't let pytest resolve a `<spec>.mustrd.ttl::<test>` argument itself —
+        the specs aren't collected from the file the node ID names, they're built
+        from the config file, which is what `pytest_collection` puts in `args`
+        instead. So the selection has to be reapplied here. Without it, asking for
+        one test in a spec file runs every test in that file (one per triple
+        store); before spec files were nodes at all it ran nothing.
+
+        Only mustrd items are touched: anything else in the run was selected by
+        pytest in the normal way and is left alone.
+        """
+        if not getattr(self, "selected_nodeids", None):
+            return
+        wanted = [_split_nodeid(nodeid) for nodeid in self.selected_nodeids]
+        kept, deselected = [], []
+        for item in items:
+            if not isinstance(item, MustrdItem) or _item_is_wanted(item, wanted):
+                kept.append(item)
+            else:
+                deselected.append(item)
+        if deselected:
+            logger.info(f"Deselecting {len(deselected)} mustrd item(s) not asked for")
+            config.hook.pytest_deselected(items=deselected)
+            items[:] = kept
 
     # Generate test for each triple store available
     def generate_tests_for_config(self, config, triple_stores, file_name):
@@ -523,8 +558,21 @@ class MustrdFile(pytest.File):
             #     return []
 
             test_configs = parse_config(self.path)
-            from collections import defaultdict
-            pytest_path_grouped = defaultdict(list)
+            # Grouped by the spec file each spec came from, not by pytest_path.
+            # An editor's test tree is built from the *file* a test node hangs
+            # off — VS Code takes the path of the item's nearest non-class parent
+            # and derives the folder nodes above it from that path. Hanging every
+            # spec off this config file therefore flattened the whole suite under
+            # the config, whatever the specs' own directories were, and no amount
+            # of naming the intermediate collectors after directories changed it.
+            # One collector per .mustrd.ttl, carrying that file's real path, is
+            # what makes the folder structure appear.
+            specs_by_source = {}
+            # Specs we can't file under a spec node — a spec whose source file has
+            # gone missing, or lives outside the rootdir (nothing can be nested
+            # relative to a root it isn't under). They stay directly under the
+            # config, which is where everything used to be.
+            unfiled = []
             for test_config in test_configs:
                 if (
                     self.mustrd_plugin.path_filter is not None
@@ -555,42 +603,71 @@ class MustrdFile(pytest.File):
                         )
                         for triple_store in (triple_stores or test_config.filter_on_tripleStore)
                     ]
-                pytest_path = getattr(test_config, "pytest_path", "unknown")
+                # The pytest_path rides along so it can name a test that would
+                # otherwise be ambiguous — two configs over the same specs differ
+                # by nothing else.
                 for spec in specs:
-                    pytest_path_grouped[pytest_path].append(spec)
+                    entry = (spec, getattr(test_config, "pytest_path", None))
+                    source = self._spec_node_path(spec)
+                    if source is None:
+                        unfiled.append(entry)
+                    else:
+                        specs_by_source.setdefault(source, []).append(entry)
 
-            for pytest_path, specs_for_path in pytest_path_grouped.items():
-                logger.info(f"pytest_path group: {pytest_path} ({len(specs_for_path)} specs)")
-
-                yield MustrdPytestPathCollector.from_parent(
+            for source in sorted(specs_by_source):
+                entries = specs_by_source[source]
+                logger.info(f"spec file group: {source} ({len(entries)} specs)")
+                yield MustrdSpecFile.from_parent(
                     self,
-                    name=str(pytest_path),
-                    pytest_path=pytest_path,
-                    specs=specs_for_path,
+                    path=source,
+                    entries=entries,
                     mustrd_plugin=self.mustrd_plugin,
                 )
+
+            if unfiled:
+                logger.info(f"{len(unfiled)} spec(s) with no usable source file, "
+                            f"collected under {self.path.name}")
+                yield from build_spec_items(self, unfiled, self.mustrd_plugin)
         except Exception as e:
             self.mustrd_plugin.collect_error = e
             logger.error(f"Error during collection {self.path}: {type(e)} {e} {traceback.format_exc()}")
             raise e
 
+    def _spec_node_path(self, spec):
+        """The path to give this spec's file node, or None to leave it under the
+        config. A file node only earns its keep if it exists and sits under the
+        rootdir: pytest derives its node ID from that relative path, and an editor
+        derives the folders above it the same way."""
+        source = getattr(spec, "spec_source_file", None)
+        if source is None:
+            return None
+        try:
+            path = Path(source).resolve()
+            if not path.is_file() or path == self.path.resolve():
+                return None
+            path.relative_to(Path(self.session.config.rootpath).resolve())
+        except (OSError, ValueError):
+            return None
+        return path
 
-class MustrdPytestPathCollector(pytest.Class):
-    def __init__(self, name, parent, pytest_path, specs, mustrd_plugin):
-        super().__init__(name, parent)
-        self.pytest_path = pytest_path
-        self.specs = specs
+
+class MustrdSpecFile(pytest.File):
+    """One .mustrd.ttl spec file, as a pytest file node.
+
+    Its `path` is the spec file's own path, which is the whole point: that is what
+    an editor's test tree hangs the folder structure off. It is *not* where the
+    specs are collected from — they were already built from the config file by the
+    parent MustrdFile, and are handed over here.
+    """
+    mustrd_plugin: MustrdTestPlugin
+
+    def __init__(self, *args, entries, mustrd_plugin, **kwargs):
+        self.entries = entries
         self.mustrd_plugin = mustrd_plugin
+        super().__init__(*args, **kwargs)
 
     def collect(self):
-        for spec in self.specs:
-            item = MustrdItem.from_parent(
-                self,
-                name=spec.spec_file_name,
-                spec=spec,
-            )
-            self.mustrd_plugin.items.append(item)
-            yield item
+        yield from build_spec_items(self, self.entries, self.mustrd_plugin)
 
 
 class MustrdItem(pytest.Item):
@@ -622,6 +699,85 @@ class MustrdItem(pytest.Item):
     def reportinfo(self):
         r = "", 0, f"mustrd test: {self.name}"
         return r
+
+
+def build_spec_items(parent, entries, mustrd_plugin):
+    """The MustrdItems for `(spec, pytest_path)` entries, named uniquely within the
+    parent. A duplicate node ID is a test neither pytest nor an editor can address,
+    so names that clash are qualified until they don't."""
+    for name, spec in _unique_names(entries):
+        item = MustrdItem.from_parent(parent, name=name, spec=spec)
+        mustrd_plugin.items.append(item)
+        yield item
+
+
+def _unique_names(entries):
+    """`(name, spec)` for each entry. Qualification is applied to every member of a
+    clashing group rather than to the later ones, so a name doesn't depend on
+    collection order — and so two tests that differ only by which config produced
+    them are both named for their config, not one of them arbitrarily."""
+    names = [spec_item_name(spec) for spec, _ in entries]
+    clashing = {n for n, count in Counter(names).items() if count > 1}
+    names = [f"{n}[{path}]" if n in clashing and path else n
+             for n, (_, path) in zip(names, entries)]
+    used = {}
+    out = []
+    for name, (spec, _) in zip(names, entries):
+        # Still not unique (two configs sharing a pytest_path, say) — fall back to
+        # an ordinal, which at least addresses the test.
+        seen = used.get(name, 0) + 1
+        used[name] = seen
+        out.append((name if seen == 1 else f"{name}#{seen}", spec))
+    return out
+
+
+def spec_item_name(spec):
+    """`<spec>@<triple store>` — what distinguishes the tests within one spec file.
+    The file name isn't it: it's already the node above, and repeating it there
+    reads as `select_spec.mustrd.ttl > select_spec.mustrd.ttl`. What actually
+    varies inside a file is which spec and which store it ran against."""
+    return f"{_local_name(getattr(spec, 'spec_uri', None))}@{triple_store_name(spec)}"
+
+
+def _local_name(uri):
+    """The readable tail of an IRI — after the last '#', '/' or ':'."""
+    text = str(uri) if uri is not None else ""
+    for sep in ("#", "/", ":"):
+        if sep in text:
+            tail = text.rsplit(sep, 1)[-1]
+            if tail:
+                return tail
+    return text or "spec"
+
+
+def _split_nodeid(nodeid):
+    """A node ID as (resolved file path, trailing name or None)."""
+    head, _, tail = nodeid.partition("::")
+    try:
+        path = Path(head).resolve()
+    except OSError:
+        path = Path(head)
+    return path, (tail.rsplit("::", 1)[-1] if tail else None)
+
+
+def _item_is_wanted(item, wanted):
+    """Whether an explicitly-requested node ID selects this item. A bare file path
+    selects everything in that file; a full node ID selects one item.
+
+    The spec's own source file counts as well as the node's path, because they only
+    coincide for a spec filed under its own file node — one that couldn't be is
+    still asked for by the file it came from."""
+    paths = set()
+    for candidate in (getattr(item, "path", None),
+                      getattr(item.spec, "spec_source_file", None)):
+        if candidate is None:
+            continue
+        try:
+            paths.add(Path(candidate).resolve())
+        except OSError:
+            continue
+    return any(path in paths and (name is None or name == item.name)
+               for path, name in wanted)
 
 
 # Function called in the test to actually run it

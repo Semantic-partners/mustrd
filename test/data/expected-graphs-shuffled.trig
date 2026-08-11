@@ -1,0 +1,13 @@
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# The same triples as expected-named-graphs.trig, in the WRONG graphs — a and b
+# swapped. A flat comparison cannot tell the two files apart; a graph-aware one
+# can. That difference is the whole feature.
+test-data:graph-b {
+    test-data:sub test-data:pred test-data:obj .
+    test-data:sub test-data:copied test-data:obj .
+}
+test-data:graph-a {
+    test-data:sub2 test-data:pred2 test-data:obj2 .
+    test-data:sub2 test-data:copied test-data:obj2 .
+}

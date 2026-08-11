@@ -7,7 +7,8 @@ from rdflib.namespace import Namespace
 
 from mustrd.mustrd import Specification, run_spec
 from mustrd.namespace import MUST, TRIPLESTORE
-from mustrd.spec_component import parse_spec_component, GivenSpec, ThenSpec
+from mustrd.spec_component import (parse_spec_component, GivenSpec, ThenSpec,
+                                   flatten_to_graph)
 
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph
 import logging
@@ -277,7 +278,8 @@ class TestRunSpec:
         assert isinstance(given_component, GivenSpec)
         expected = Graph()
         expected.parse(data=self.given_sub_pred_obj, format="ttl")
-        assert isomorphic(expected, given_component.value)
+        # Levelled: a `given` is quad-aware and rdflib's compare wants triples.
+        assert isomorphic(expected, flatten_to_graph(given_component.value))
 
     def test_only_foreign_data_source_types_still_errors(self):
         # The other half: ignoring foreign types must not swallow a genuinely

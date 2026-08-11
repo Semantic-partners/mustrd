@@ -11,7 +11,8 @@ from pyparsing import ParseException
 from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
-from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib import Dataset, Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -21,8 +22,9 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from .utils import is_json, get_mustrd_root
+from .spec_component import (TableThenSpec, parse_spec_component, WhenSpec, ThenSpec,
+                             flatten_to_graph)
+from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -492,6 +494,16 @@ def check_result(spec: Specification, result: Union[str, Graph]):
         log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
+        # No opt-in, so the comparison is a flat union: the result is levelled to
+        # match a `then` that did not ask about graphs. An UPDATE on the
+        # rdflib backend hands back the `given` itself, which is a Dataset, and
+        # rdflib's graph_diff/isomorphic iterate what they are given: a Dataset
+        # yields QUADS and they unpack triples. Levelling here rather than in the
+        # backend keeps the store's own state quad-aware for the next step.
+        if getattr(spec.then, "match_named_graphs", False):
+            return check_named_graph_result(spec, result)
+        if isinstance(result, Dataset):
+            result = flatten_to_graph(result)
         graph_compare = graph_comparison(spec.then.value, result)
         if isomorphic(result, spec.then.value):
             log.debug(f"isomorphic {spec}")
@@ -514,6 +526,93 @@ def check_result(spec: Specification, result: Union[str, Graph]):
                 )
 
 
+def graphs_by_name(value) -> dict:
+    """`{graph name: Graph}` for a dataset, or the default graph alone for a Graph.
+
+    A result that carries no contexts still has to be comparable against a
+    graph-aware `then`, so it reads as one graph named for rdflib's default.
+    """
+    if not isinstance(value, Dataset):
+        return {str(DATASET_DEFAULT_GRAPH_ID): value}
+    with rdflib_internals_quiet():
+        return {str(graph.identifier): graph for graph in value.graphs()
+                if len(graph) or str(graph.identifier) != str(DATASET_DEFAULT_GRAPH_ID)}
+
+
+def check_named_graph_result(spec: Specification, result) -> SpecResult:
+    """Compare a `then` graph-by-graph, for a spec that asked with
+    `must:matchNamedGraphs true`.
+
+    A triple in the right dataset but the wrong graph is a failure here, which is
+    the whole point of asking. The failure names the graph rather than handing
+    over a merged diff and letting the reader work out which layer moved — the
+    same reason the table summary names the column that differs.
+    """
+    expected_graphs = graphs_by_name(spec.then.value)
+    actual_graphs = graphs_by_name(result)
+
+    differing = sorted(
+        name for name in set(expected_graphs) | set(actual_graphs)
+        if not isomorphic(expected_graphs.get(name, Graph()),
+                          actual_graphs.get(name, Graph()))
+    )
+    if not differing:
+        return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+
+    # One comparison covering every graph that moved, so the diff a reader sees
+    # is the whole story rather than the first graph to disagree.
+    in_expected_not_in_actual = Graph()
+    in_actual_not_in_expected = Graph()
+    in_both = Graph()
+    for name in differing:
+        comparison = graph_comparison(expected_graphs.get(name, Graph()),
+                                      actual_graphs.get(name, Graph()))
+        in_expected_not_in_actual += comparison.in_expected_not_in_actual
+        in_actual_not_in_expected += comparison.in_actual_not_in_expected
+        in_both += comparison.in_both
+
+    log.error(f"named graph(s) differ: {', '.join(shorten_iri(n) for n in differing)}")
+    graph_compare = GraphComparison(
+        in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+    if spec.when[0].queryType == MUST.ConstructSparql:
+        return ConstructSpecFailure(
+            spec.spec_uri, spec.triple_store["type"], graph_compare)
+    return UpdateSpecFailure(
+        spec.spec_uri, spec.triple_store["type"], graph_compare)
+
+
+def serialise_quietly(graph) -> str:
+    """A graph or dataset as text, without rdflib's internal deprecations.
+
+    `Dataset.serialize` reaches its own `default_context` and `identifier`, both
+    of which rdflib 7.6 deprecates. The warnings name mustrd's line, so a user
+    sees a deprecation about code they cannot reach and cannot act on. Quads are
+    serialised as trig so named graphs survive the round trip.
+    """
+    quads = isinstance(graph, Dataset)
+    with rdflib_internals_quiet():
+        return graph.serialize(format="trig" if quads else "turtle")
+
+
+def log_spec_before_running(spec: Specification) -> None:
+    """What is about to run, at DEBUG.
+
+    Guarded, and not just for tidiness: an f-string is built whether or not
+    anything is listening, formatting a spec renders its `given`, and serialising
+    one is real work on a large fixture — so this was happening on every spec of
+    every run. It also reaches rdflib APIs that rdflib has since deprecated, so
+    an unguarded debug line printed warnings at users who never asked for debug
+    output.
+    """
+    if not log.isEnabledFor(logging.DEBUG):
+        return
+    log.debug(f"run_spec {spec=}")
+    log.debug(f"run_when spec_uri={spec.spec_uri}, triple_store={spec.triple_store}, "
+              f"when={spec.when}, then={spec.then}")
+    if spec.given is not None:
+        log.debug(serialise_quietly(spec.given))
+
+
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
@@ -523,17 +622,12 @@ def run_spec(spec: Specification) -> SpecResult:
         return spec
         # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
 
-    log.debug(f"run_spec {spec=}")
-    log.debug(
-        f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
-    )
+    log_spec_before_running(spec)
     # `is not None`, not truthiness: an empty graph is falsy, so a given that
     # parsed to nothing used to be reported as an inherited-state spec — a
     # feature the spec never mentioned. Inherited state is the absence of a
     # given, which is `None`.
     if spec.given is not None:
-        given_as_turtle = spec.given.serialize(format="turtle")
-        log.debug(f"{given_as_turtle}")
         upload_given(triple_store, spec.given)
     else:
         if triple_store["type"] == TRIPLESTORE.RdfLib:
@@ -1457,9 +1551,14 @@ def generate_row_diff(
 
 
 def create_empty_dataframe_with_columns(df: pandas.DataFrame) -> pandas.DataFrame:
-    empty_copy = pandas.DataFrame().reindex_like(df)
-    empty_copy.fillna("", inplace=True)
-    return empty_copy
+    # Cast before filling. `reindex_like` gives NaN columns typed float64, and
+    # `fillna("")` on those is the "incompatible dtype" FutureWarning pandas has
+    # been printing — it becomes an error in a future pandas, at which point
+    # every missing-row diff would raise instead of render. The frame exists only
+    # to be compared cell-by-cell against string values, so object is the type it
+    # always wanted.
+    empty_copy = pandas.DataFrame().reindex_like(df).astype(object)
+    return empty_copy.fillna("")
 
 
 def review_results(results: List[SpecResult], verbose: bool) -> None:

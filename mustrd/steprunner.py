@@ -3,7 +3,7 @@ import os
 
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
-from rdflib import Graph, URIRef
+from rdflib import Dataset, Graph, URIRef
 from . import mustrdGraphDb, mustrdStardog
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
@@ -12,7 +12,8 @@ from .mustrdAnzo import get_query_from_step, upload_given as upload_given_anzo
 from .mustrdAnzo import execute_update as execute_update_anzo
 from .mustrdAnzo import execute_construct as execute_construct_anzo
 from .mustrdAnzo import execute_select as execute_select_anzo
-from .spec_component import AnzoWhenSpec, WhenSpec, SpadeEdnGroupSourceWhenSpec
+from .spec_component import (AnzoWhenSpec, WhenSpec, SpadeEdnGroupSourceWhenSpec,
+                             flatten_to_graph)
 import logging
 
 log = logging.getLogger(__name__)
@@ -189,7 +190,10 @@ def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: S
                 log.debug(f"Dispatching run_when for UpdateSparql step: {step_when_spec}")
                 query_result = run_when_impl(spec_uri, triple_store, step_when_spec)
                 log.debug(f"Executed SPARQL query: {query_result}")
-                merged_graph += query_result  # Merge the resulting graph
+                # Levelled: an rdflib update hands back the `given`, which is
+                # quad-aware, and `Graph.__iadd__` unpacks triples.
+                merged_graph += flatten_to_graph(query_result) \
+                    if isinstance(query_result, Dataset) else query_result
             else:
                 log.warning(f"Unsupported queryType: {step_when_spec.queryType}")
         except Exception as e:

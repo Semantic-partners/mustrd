@@ -496,6 +496,42 @@
     </table>
   </section>
 
+  <!-- Named graphs -->
+  <section>
+    <h2>Named graphs, <span>when you want them</span></h2>
+    <p>A quad <code>given</code> keeps its graphs, so a <code>when</code> can read one
+       with a <code>GRAPH</code> clause — and a <code>when</code> without one still sees
+       everything.</p>
+    <p>A <code>then</code>, though, is compared as one flat union by default. You should
+       not have to say which graph a triple is in just to assert that it exists. When the
+       graph a triple lands in <em>is</em> the thing under test — a pipeline writing each
+       layer to its own graph — opt in:</p>
+    <pre><span class="sym">must:then</span> [ a <span class="kw">must:FileDataset</span> ;
+             <span class="sym">must:matchNamedGraphs</span> <span class="lit">true</span> ;
+             <span class="sym">must:file</span> <span class="str">"data/expected.trig"</span> ] .</pre>
+    <p>Now the layout is part of the assertion: the right triples in the wrong graphs is a
+       failure, and the failure names the graphs that differ rather than handing you a
+       merged diff to work out which layer moved.</p>
+    <p><strong>Which query forms can produce named graphs is engine-specific.</strong> An
+       UPDATE always can. A CONSTRUCT cannot in standard SPARQL 1.1 — the template is
+       triple patterns only, so a <code>GRAPH</code> there is a syntax error rather than an
+       empty result. <a href="https://jena.apache.org/documentation/query/construct-quad.html">Jena/ARQ</a>
+       and Stardog both extend it, as recorded in the
+       <a href="https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1">W3C SPARQL CG inventory</a>;
+       standardising it is <a href="https://github.com/w3c/sparql-dev/issues/31">sparql-dev#31</a>.
+       Anzo does too — its CONSTRUCT clause takes "a graph and triple template".</p>
+    <p>That extension is what makes a <em>dry run</em> possible: swap <code>INSERT</code>
+       for <code>CONSTRUCT</code>, keep the template and <code>WHERE</code>, and you get the
+       quads the update <em>would</em> have written without writing them — then
+       <code>must:matchNamedGraphs</code> asserts they land in the right graphs.</p>
+    <p>Anzo ships that rewrite as a button: for an INSERT or DELETE the Query Builder's
+       <a href="https://2024.help.altair.com/5.4/graphstudio/userdoc/query-builder-query.htm">Dry Run</a>
+       "runs a version of the query where INSERT or DELETE is replaced with CONSTRUCT",
+       reporting additions or removals <em>per graph</em>. What that gives you once,
+       interactively, a spec gives you on every run — with the expected graphs written
+       down.</p>
+  </section>
+
   <!-- Failure output -->
   <section>
     <h2>A failure that <span>tells you</span></h2>
@@ -555,6 +591,7 @@ Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s)
       <tr><td>OrderedTableDataset</td><td>Tabular data with row ordering (ORDER BY)</td></tr>
       <tr><td>FolderDataset</td><td>File path passed as a runtime argument</td></tr>
       <tr><td>EmptyTable / EmptyGraph</td><td>Expect no results</td></tr>
+      <tr><td>Quad file (.trig, .nq)</td><td>A <code>given</code> keeps its named graphs, so a <code>GRAPH</code> clause resolves</td></tr>
       <tr><td>InheritedDataset</td><td>Keep existing graph state (chain specs)</td></tr>
     </table>
   </section>
