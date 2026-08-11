@@ -1,0 +1,15 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# The counterpart: expecting false is an assertion in its own right, not an
+# absence. A spec that only ever expected true could not tell "answered false"
+# from "did not run".
+test-data:ask_spec_false
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given.ttl> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                   ASK { test-data:sub test-data:pred test-data:nothing }""" ;
+                 must:queryType must:AskSparql ] ;
+    must:then  [ a must:AskResult ; must:boolean false ] .

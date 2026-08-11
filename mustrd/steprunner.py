@@ -8,6 +8,7 @@ from . import mustrdGraphDb, mustrdStardog
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
 from .mustrdRdfLib import execute_update as execute_update_rdflib
+from .mustrdRdfLib import execute_ask as execute_ask_rdflib
 from .mustrdAnzo import get_query_from_step, upload_given as upload_given_anzo
 from .mustrdAnzo import execute_update as execute_update_anzo
 from .mustrdAnzo import execute_construct as execute_construct_anzo
@@ -113,6 +114,11 @@ def _rdflib_run_when_construct(spec_uri: URIRef, triple_store: dict, when: WhenS
     return execute_construct_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
 
 
+@run_when_impl.method((TRIPLESTORE.RdfLib, MUST.AskSparql))
+def _rdflib_run_when_ask(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
+    return execute_ask_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
+
+
 @run_when_impl.method((TRIPLESTORE.RdfLib, MUST.SelectSparql))
 def _rdflib_run_when_select(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     return execute_select_rdflib(triple_store, triple_store["given"], when.value, when.bindings)
@@ -206,10 +212,7 @@ def _spade_edn_group_source_rdflib(spec_uri: URIRef, triple_store: dict, when: S
 @run_when_impl.method(Default)
 def _multi_run_when_default(spec_uri: URIRef, triple_store: dict, when: WhenSpec):
     log.error(f"run_when not implemented for {spec_uri} {triple_store} {when}")
-    if when.queryType == MUST.AskSparql:
-        log.warning(f"Skipping {spec_uri}, SPARQL ASK not implemented.")
-        msg = "SPARQL ASK not implemented."
-    elif when.queryType == MUST.DescribeSparql:
+    if when.queryType == MUST.DescribeSparql:
         log.warning(f"Skipping {spec_uri}, SPARQL DESCRIBE not implemented.")
         msg = "SPARQL DESCRIBE not implemented."
     elif triple_store['type'] not in {key[0] for key in run_when_impl.methods if isinstance(key, tuple)}:

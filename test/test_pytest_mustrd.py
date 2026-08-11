@@ -52,6 +52,9 @@ def test_collection_full():
 
     expected_collected = {
         "construct_spec_from_folders.mustrd.ttl",
+        "ask_spec_false.mustrd.ttl",
+        "ask_spec_reads_a_named_graph.mustrd.ttl",
+        "ask_spec_true.mustrd.ttl",
         "construct_spec.mustrd.ttl",
         "construct_spec_mulitline_result.mustrd.ttl",
         "construct_spec_multiple_given_multile_then.mustrd.ttl",
@@ -165,6 +168,9 @@ def test_collection_path():
         "select_spec_empty_result.mustrd.ttl",
         "select_spec_variable_datatypes.mustrd.ttl",
         "select_spec_with_foreign_types.mustrd.ttl",
+        "ask_spec_false.mustrd.ttl",
+        "ask_spec_reads_a_named_graph.mustrd.ttl",
+        "ask_spec_true.mustrd.ttl",
         "construct_spec.mustrd.ttl",
         "construct_spec_mulitline_result.mustrd.ttl",
         "construct_spec_variable.mustrd.ttl",
@@ -188,6 +194,9 @@ def test_collection_pytest_path_is_a_startsWithCheck():
     item_names = sorted(spec_files(mustrd_plugin.items))
     logging.info(f"expected_item_names = {item_names}")
     expected_item_names = [
+        "ask_spec_false.mustrd.ttl",
+        "ask_spec_reads_a_named_graph.mustrd.ttl",
+        "ask_spec_true.mustrd.ttl",
         "construct_spec.mustrd.ttl",
         "construct_spec_from_folders.mustrd.ttl",
         "construct_spec_mulitline_result.mustrd.ttl",
@@ -250,6 +259,9 @@ def test_collection_pytest_path_is_a_startsWithCheck_across_multiple_mustrdsuite
     item_names = sorted(set(spec_files(mustrd_plugin.items)))
     logging.info(f"expected_item_names = {item_names}")
     expected_item_names = [
+        "ask_spec_false.mustrd.ttl",
+        "ask_spec_reads_a_named_graph.mustrd.ttl",
+        "ask_spec_true.mustrd.ttl",
         "construct_spec.mustrd.ttl",
         "construct_spec_from_folders.mustrd.ttl",
         "construct_spec_mulitline_result.mustrd.ttl",

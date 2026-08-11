@@ -192,7 +192,7 @@ must:SparqlSourceShape
     a              sh:NodeShape ;
     sh:targetClass must:SparqlSource ;
     sh:property    [ sh:path     must:queryType ;
-                     sh:in ( must:SelectSparql  must:ConstructSparql must:UpdateSparql must:AnzoQueryDrivenUpdateSparql) ;
+                     sh:in ( must:SelectSparql  must:ConstructSparql must:UpdateSparql must:AskSparql must:AnzoQueryDrivenUpdateSparql) ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ; ] .
 
@@ -203,6 +203,34 @@ must:UpdateSparqlShape
                      sh:targetClass must:UpdateSparql ;
                      sh:minCount    1 ;
                      sh:maxCount    1 ; ] .
+
+# An ASK answers a boolean, so its `then` is an :AskResult and nothing else —
+# there is no table or graph to compare. Stated both ways so a spec that gets it
+# wrong is told which half is wrong.
+must:AskTestSpecValidationShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec .
+				?this must:when/must:queryType must:AskSparql .
+			}
+			""" ; ] ;
+    sh:property [ sh:message  "Invalid then clause: a SPARQL ask test expects a must:AskResult." ;
+                  sh:path     must:then ;
+                  sh:class    must:AskResult ;
+                  sh:minCount 1 ; ] .
+
+must:AskResultShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AskResult ;
+    sh:property    [ sh:path     must:boolean ;
+                     sh:datatype xsd:boolean ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ;
+                     sh:message  "A must:AskResult needs exactly one must:boolean, true or false." ; ] .
 
 must:SelectSparqlShape
     a              sh:NodeShape ;

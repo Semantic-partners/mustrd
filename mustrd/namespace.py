@@ -37,9 +37,12 @@ class MUST(DefinedNamespace):
     focus: URIRef
     # Opt-in: compare a graph `then` graph-by-graph rather than as one flat union.
     matchNamedGraphs: URIRef
+    # The boolean a must:AskResult expects an ASK to answer.
+    boolean: URIRef
 
     # Specification data sources
     TableDataset: URIRef
+    AskResult: URIRef
     StatementsDataset: URIRef
     FileDataset: URIRef
     HttpDataset: URIRef

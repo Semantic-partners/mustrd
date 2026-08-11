@@ -102,6 +102,24 @@ This will validate your SPARQL queries against the defined dataset and expected 
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
 
+#### ASK specs
+
+A SPARQL ASK answers a boolean, so its `then` is a `must:AskResult`:
+
+```turtle
+must:when [ a must:TextSparqlSource ;
+            must:queryText "ASK { ex:sub ex:pred ex:obj }" ;
+            must:queryType must:AskSparql ] ;
+must:then [ a must:AskResult ; must:boolean true ] .
+```
+
+`must:boolean false` asserts the ASK answers **false** — which is a claim, not an
+absent expectation. That makes it the cheap way to assert something is *not*
+there: a filter removed what it should, or nothing leaked into a layer.
+
+DESCRIBE is not supported yet; a spec declaring it is rejected by SHACL validation
+with a message naming the query types that are.
+
 #### Named graphs
 
 A quad `given` (TriG, NQuads, TriX) keeps its named graphs, so a `when` can read

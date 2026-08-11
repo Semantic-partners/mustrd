@@ -114,6 +114,16 @@ class TableThenSpec(ThenSpec):
 
 
 @dataclass
+class AskThenSpec(ThenSpec):
+    """The boolean a SPARQL ASK is expected to answer.
+
+    A separate then type because there is nothing to compare structurally — no
+    table, no graph, just true or false.
+    """
+    value: bool = None
+
+
+@dataclass
 class SpecComponentDetails:
     subject: URIRef
     predicate: URIRef
@@ -282,6 +292,14 @@ def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
         then_spec = ThenSpec()
         then_spec.value = graph
         return then_spec
+
+
+@combine_specs.method(AskThenSpec)
+def _combine_ask_then_specs(spec_components: List[AskThenSpec]) -> AskThenSpec:
+    if len(spec_components) != 1:
+        raise ValueError(
+            f"A spec may declare at most one must:AskResult, found {len(spec_components)}")
+    return spec_components[0]
 
 
 @combine_specs.method(TableThenSpec)
@@ -558,6 +576,19 @@ def _get_spec_component_TableDataset(spec_component_details: SpecComponentDetail
     table_then.ordered = is_then_select_ordered(spec_component_details.subject, spec_component_details.predicate,
                                                 spec_component_details.spec_graph)
     return table_then
+
+
+@get_spec_component.method((MUST.AskResult, MUST.then))
+def _get_spec_component_AskResult(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    spec_component = AskThenSpec()
+    value = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.boolean)
+    if value is None:
+        raise ValueError("must:AskResult requires a must:boolean, true or false")
+    spec_component.value = bool(value.toPython()) if hasattr(value, "toPython") \
+        else str(value).lower() == "true"
+    return spec_component
 
 
 @get_spec_component.method((MUST.EmptyTable, MUST.then))
