@@ -37,3 +37,17 @@ triplestore:GraphDbShape
     sh:property    [ sh:path     triplestore:repository ;
                      sh:minCount 1 ;
                      sh:maxCount 1 ] .
+
+triplestore:StardogShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:Stardog ;
+    sh:property    [ sh:path     triplestore:database ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ],
+                   [ sh:path     triplestore:token ;
+                     sh:maxCount 1 ],
+# The given data is loaded into inputGraph, so a single materialised graph is
+# required. Additional materialised and virtual graphs are optional and repeatable.
+                   [ sh:path     triplestore:inputGraph ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ] .

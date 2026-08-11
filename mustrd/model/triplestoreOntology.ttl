@@ -92,6 +92,30 @@ For those triple stores, this property must be mandatory""";
   rdfs:range xsd:string;
   rdfs:label "repository" .
 
+:token a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment "Bearer token for Stardog authentication. Preferred over username/password; when absent, basic auth credentials are used instead.";
+  rdfs:label "token" .
+
+:database a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment "Name of the Stardog database to run against.";
+  rdfs:label "database" .
+
+:materialisedGraph a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment """A materialised (physically stored) named graph to include in the dataset a query runs over. Repeatable, and combinable with virtualGraph, so the same query can be tested against a chosen mix of materialised and virtual data.""";
+  rdfs:label "materialisedGraph" .
+
+:virtualGraph a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment """A virtual (data-virtualisation) named graph to include in the dataset a query runs over. Repeatable, and combinable with materialisedGraph.""";
+  rdfs:label "virtualGraph" .
+
 :url a owl:DatatypeProperty;
   rdfs:domain :ExternalTripleStore;
   rdfs:range xsd:string;
@@ -161,6 +185,20 @@ Graph where triples are inserted / deleted when no graph clause is given in an I
 :RdfLib a owl:Class;
   rdfs:subClassOf :InternalTripleStore;
   rdfs:label "RdfLib" .
+
+:Stardog a owl:Class;
+  rdfs:subClassOf :ExternalTripleStore;
+  rdfs:comment """Stardog (https://www.stardog.com/) accessed over its HTTP SPARQL protocol.
+
+Authentication prefers a bearer token; when none is given it falls back to basic auth.
+
+The dataset a query runs over is built explicitly from the combination of:
+- inputGraph: the materialised named graph the given data is loaded into
+- materialisedGraph (0..n): further physically-stored named graphs
+- virtualGraph (0..n): data-virtualisation named graphs
+
+This lets one query be tested against different mixes of materialised and virtual named graphs simply by pointing it at different triple store configs.""";
+  rdfs:label "Stardog" .
 
 :TripleStore a owl:Class;
   rdfs:label "TripleStore" .

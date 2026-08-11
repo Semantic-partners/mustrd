@@ -1,0 +1,14 @@
+@prefix must: <https://mustrd.org/model/> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ex:   <https://example.org/> .
+
+ex:construct a must:TestSpec ;
+    must:given [ a must:FileDataset ; must:file "simple.ttl" ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText """PREFIX ex: <https://example.org/>
+                                   CONSTRUCT { ?s ex:copied ?v }
+                                   WHERE { ?s ex:value ?v }""" ;
+                 must:queryType must:ConstructSparql ] ;
+    must:then  [ a must:StatementsDataset ;
+                 must:hasStatement [ a rdf:Statement ; rdf:subject ex:s1 ;
+                                     rdf:predicate ex:copied ; rdf:object "one" ] ] .

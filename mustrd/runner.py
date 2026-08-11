@@ -16,7 +16,7 @@ from rdflib import Graph
 from mustrd.mustrd import (
     validate_specs, get_specs, run_spec, review_results,
     SpecPassed, SpecPassedWithWarning,
-    get_triple_store_graph, get_triple_stores,
+    get_triple_store_graph, get_triple_stores, get_credentials,
 )
 from mustrd.config import parse_config
 from mustrd.namespace import TRIPLESTORE
@@ -39,7 +39,8 @@ def resolve_triple_stores(test_config, secrets=None):
     if test_config.triplestore_spec_path:
         try:
             triple_stores = get_triple_stores(
-                get_triple_store_graph(test_config.triplestore_spec_path, secrets)
+                get_triple_store_graph(test_config.triplestore_spec_path),
+                get_credentials(test_config.triplestore_spec_path, secrets),
             )
         except Exception as e:
             print(

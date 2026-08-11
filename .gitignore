@@ -215,3 +215,7 @@ docs/competencyQuestion.nt
 docs/competencyQuestion.html
 docs/competencyQuestion/
 .diagram-preview/
+
+# Wheel built by scripts/consumer_smoke.sh. Removed on a clean run; listed here
+# so an interrupted one does not leave the tree dirty.
+dist-smoke/

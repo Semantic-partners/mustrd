@@ -1,22 +1,17 @@
 import urllib.parse
 import requests
 from rdflib import Graph, Literal
-from requests import ConnectionError, HTTPError, RequestException, Response
+from requests import ConnectionError, Response
+
+from .utils import manage_http_response
 
 
 # https://github.com/Semantic-partners/mustrd/issues/72
 def manage_graphdb_response(response: Response) -> str:
-    content_string = response.content.decode("utf-8")
-    if response.status_code == 200:
-        return content_string
-    elif response.status_code == 204:
-        pass
-    elif response.status_code == 401:
-        raise HTTPError(f"GraphDB authentication error, status code: {response.status_code}, content: {content_string}")
-    elif response.status_code == 406:
-        raise HTTPError(f"GraphDB  error, status code: {response.status_code}, content: {content_string}")
-    else:
-        raise RequestException(f"GraphDb error, status code: {response.status_code}, content: {content_string}")
+    # 406 stays an HTTPError (not a generic RequestException) — see manage_http_response.
+    return manage_http_response(
+        response, "GraphDB",
+        success_codes=(200, 204), auth_codes=(401,), http_error_codes=(406,))
 
 
 def upload_given(triple_store: dict, given: Graph):

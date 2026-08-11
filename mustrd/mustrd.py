@@ -1,17 +1,18 @@
 import os
-from typing import Tuple, List, Union, Optional
+import re
+from typing import Tuple, List, Union
 
-import tomli
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from pyparsing import ParseException
 from pathlib import Path
 from requests import ConnectionError, ConnectTimeout, HTTPError, RequestException
 
-from rdflib import Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib import Dataset, Graph, URIRef, RDF, XSD, SH, Literal
+from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 
 from rdflib.compare import isomorphic, graph_diff
 import pandas
@@ -21,8 +22,9 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import TableThenSpec, parse_spec_component, WhenSpec, ThenSpec
-from .utils import is_json, get_mustrd_root
+from .spec_component import (TableThenSpec, parse_spec_component, WhenSpec, ThenSpec,
+                             flatten_to_graph)
+from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
 from tabulate import tabulate
 from collections import defaultdict
@@ -30,9 +32,8 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
-from multimethods import MultiMethod
+from multimethods import MultiMethod, Default
 import traceback
-from functools import wraps
 
 log = logging.getLogger(__name__)
 
@@ -305,6 +306,15 @@ def add_spec_validation(
     spec_graph: Graph,
 ):
 
+    # The file is merged into spec_graph ONCE, however many specs it declares.
+    # It used to be re-parsed inside the per-spec loop, so a file with N specs
+    # contributed N copies of itself — and because every parse mints fresh blank
+    # nodes, the copies did not merge. Each spec then appeared to have N `given`
+    # / `when` / `then` component nodes. Graph components survived it (combining
+    # N identical graphs is a no-op) but a table `then` did not: combine_specs
+    # saw more than one TableThenSpec and rejected the spec as unimplemented.
+    any_spec_collected = False
+
     for subject_uri in file_graph.subjects(RDF.type, MUST.TestSpec):
         # Always add file name and source file to the graph for error reporting
         file_graph.add([subject_uri, MUST.specSourceFile, Literal(str(file))])
@@ -319,15 +329,7 @@ def add_spec_validation(
             subject_uri = URIRef(str(subject_uri) + "_DUPLICATE")
         if len(error_messages) == 0:
             subject_uris.add(subject_uri)
-            this_spec_graph = Graph()
-            this_spec_graph.parse(file)
-            spec_uris_in_this_file = list(
-                this_spec_graph.subjects(RDF.type, MUST.TestSpec)
-            )
-            for spec in spec_uris_in_this_file:
-                this_spec_graph.add([spec, MUST.specSourceFile, Literal(file)])
-                this_spec_graph.add([spec, MUST.specFileName, Literal(file.name)])
-            spec_graph += this_spec_graph
+            any_spec_collected = True
         else:
             error_messages.sort()
             error_message = "\n".join(msg for msg in error_messages)
@@ -337,6 +339,12 @@ def add_spec_validation(
                 )
                 for triple_store in triple_stores
             ]
+
+    if any_spec_collected:
+        # file_graph already carries specSourceFile / specFileName for every spec
+        # in the file, so it is exactly what the re-parse produced — minus the
+        # duplication.
+        spec_graph += file_graph
 
 
 def get_specs(
@@ -486,6 +494,16 @@ def check_result(spec: Specification, result: Union[str, Graph]):
         log.debug("table_comparison")
         return table_comparison(result, spec)
     else:
+        # No opt-in, so the comparison is a flat union: the result is levelled to
+        # match a `then` that did not ask about graphs. An UPDATE on the
+        # rdflib backend hands back the `given` itself, which is a Dataset, and
+        # rdflib's graph_diff/isomorphic iterate what they are given: a Dataset
+        # yields QUADS and they unpack triples. Levelling here rather than in the
+        # backend keeps the store's own state quad-aware for the next step.
+        if getattr(spec.then, "match_named_graphs", False):
+            return check_named_graph_result(spec, result)
+        if isinstance(result, Dataset):
+            result = flatten_to_graph(result)
         graph_compare = graph_comparison(spec.then.value, result)
         if isomorphic(result, spec.then.value):
             log.debug(f"isomorphic {spec}")
@@ -508,6 +526,93 @@ def check_result(spec: Specification, result: Union[str, Graph]):
                 )
 
 
+def graphs_by_name(value) -> dict:
+    """`{graph name: Graph}` for a dataset, or the default graph alone for a Graph.
+
+    A result that carries no contexts still has to be comparable against a
+    graph-aware `then`, so it reads as one graph named for rdflib's default.
+    """
+    if not isinstance(value, Dataset):
+        return {str(DATASET_DEFAULT_GRAPH_ID): value}
+    with rdflib_internals_quiet():
+        return {str(graph.identifier): graph for graph in value.graphs()
+                if len(graph) or str(graph.identifier) != str(DATASET_DEFAULT_GRAPH_ID)}
+
+
+def check_named_graph_result(spec: Specification, result) -> SpecResult:
+    """Compare a `then` graph-by-graph, for a spec that asked with
+    `must:matchNamedGraphs true`.
+
+    A triple in the right dataset but the wrong graph is a failure here, which is
+    the whole point of asking. The failure names the graph rather than handing
+    over a merged diff and letting the reader work out which layer moved — the
+    same reason the table summary names the column that differs.
+    """
+    expected_graphs = graphs_by_name(spec.then.value)
+    actual_graphs = graphs_by_name(result)
+
+    differing = sorted(
+        name for name in set(expected_graphs) | set(actual_graphs)
+        if not isomorphic(expected_graphs.get(name, Graph()),
+                          actual_graphs.get(name, Graph()))
+    )
+    if not differing:
+        return SpecPassed(spec.spec_uri, spec.triple_store["type"])
+
+    # One comparison covering every graph that moved, so the diff a reader sees
+    # is the whole story rather than the first graph to disagree.
+    in_expected_not_in_actual = Graph()
+    in_actual_not_in_expected = Graph()
+    in_both = Graph()
+    for name in differing:
+        comparison = graph_comparison(expected_graphs.get(name, Graph()),
+                                      actual_graphs.get(name, Graph()))
+        in_expected_not_in_actual += comparison.in_expected_not_in_actual
+        in_actual_not_in_expected += comparison.in_actual_not_in_expected
+        in_both += comparison.in_both
+
+    log.error(f"named graph(s) differ: {', '.join(shorten_iri(n) for n in differing)}")
+    graph_compare = GraphComparison(
+        in_expected_not_in_actual, in_actual_not_in_expected, in_both)
+    if spec.when[0].queryType == MUST.ConstructSparql:
+        return ConstructSpecFailure(
+            spec.spec_uri, spec.triple_store["type"], graph_compare)
+    return UpdateSpecFailure(
+        spec.spec_uri, spec.triple_store["type"], graph_compare)
+
+
+def serialise_quietly(graph) -> str:
+    """A graph or dataset as text, without rdflib's internal deprecations.
+
+    `Dataset.serialize` reaches its own `default_context` and `identifier`, both
+    of which rdflib 7.6 deprecates. The warnings name mustrd's line, so a user
+    sees a deprecation about code they cannot reach and cannot act on. Quads are
+    serialised as trig so named graphs survive the round trip.
+    """
+    quads = isinstance(graph, Dataset)
+    with rdflib_internals_quiet():
+        return graph.serialize(format="trig" if quads else "turtle")
+
+
+def log_spec_before_running(spec: Specification) -> None:
+    """What is about to run, at DEBUG.
+
+    Guarded, and not just for tidiness: an f-string is built whether or not
+    anything is listening, formatting a spec renders its `given`, and serialising
+    one is real work on a large fixture — so this was happening on every spec of
+    every run. It also reaches rdflib APIs that rdflib has since deprecated, so
+    an unguarded debug line printed warnings at users who never asked for debug
+    output.
+    """
+    if not log.isEnabledFor(logging.DEBUG):
+        return
+    log.debug(f"run_spec {spec=}")
+    log.debug(f"run_when spec_uri={spec.spec_uri}, triple_store={spec.triple_store}, "
+              f"when={spec.when}, then={spec.then}")
+    if spec.given is not None:
+        log.debug(serialise_quietly(spec.given))
+
+
 def run_spec(spec: Specification) -> SpecResult:
     spec_uri = spec.spec_uri
     triple_store = spec.triple_store
@@ -517,13 +622,12 @@ def run_spec(spec: Specification) -> SpecResult:
         return spec
         # return SpecSkipped(getattr(spec, 'spec_uri', None), getattr(spec, 'triple_store', {}), "Spec is not a valid Specification instance")
 
-    log.debug(f"run_spec {spec=}")
-    log.debug(
-        f"run_when {spec_uri=}, {triple_store=}, {spec.given=}, {spec.when=}, {spec.then=}"
-    )
-    if spec.given:
-        given_as_turtle = spec.given.serialize(format="turtle")
-        log.debug(f"{given_as_turtle}")
+    log_spec_before_running(spec)
+    # `is not None`, not truthiness: an empty graph is falsy, so a given that
+    # parsed to nothing used to be reported as an inherited-state spec — a
+    # feature the spec never mentioned. Inherited state is the absence of a
+    # given, which is `None`.
+    if spec.given is not None:
         upload_given(triple_store, spec.given)
     else:
         if triple_store["type"] == TRIPLESTORE.RdfLib:
@@ -551,7 +655,6 @@ def run_spec(spec: Specification) -> SpecResult:
         return check_result(spec, result)
     except (ConnectionError, TimeoutError, HTTPError, ConnectTimeout, OSError) as e:
         # close_connection = False
-        stacktrace = traceback.format_exc()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(e).__name__, e.args)
         log.error(message, exc_info=True)
@@ -568,18 +671,38 @@ def run_spec(spec: Specification) -> SpecResult:
     #         mustrd_triple_store.clear_graph()
 
 
-def get_triple_store_graph(triple_store_graph_path: Path, secrets: str):
+def get_triple_store_graph(triple_store_graph_path: Path) -> Graph:
+    # Config only. Secrets are loaded separately into a map (see get_credentials),
+    # never merged in here, so this graph can be serialised, logged or dumped
+    # without exposing auth. Before merging the secrets source in here for
+    # convenience, read docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
+    return Graph().parse(triple_store_graph_path)
+
+
+def get_credentials(triple_store_graph_path: Path, secrets: str = None) -> dict:
+    """Build the credentials map from the secrets source, keeping it out of the
+    config graph entirely.
+
+    Secrets come from the inline `secrets` turtle (e.g. a CI-supplied string) or,
+    failing that, the sibling `<config>_secrets<ext>` file. They are parsed into a
+    throwaway graph purely to extract the map, then discarded — the secret triples
+    never join the config graph. See
+    docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
+    """
+    secrets_graph = Graph()
     if secrets:
-        return Graph().parse(triple_store_graph_path).parse(data=secrets)
+        secrets_graph.parse(data=secrets)
     else:
         secret_path = triple_store_graph_path.parent / Path(
             triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
         )
-        return Graph().parse(triple_store_graph_path).parse(secret_path)
+        if os.path.isfile(secret_path):
+            secrets_graph.parse(secret_path)
+    return extract_credentials(secrets_graph)
 
 
 # Parse and validate triple store configuration
-def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
+def get_triple_stores(triple_store_graph: Graph, credentials: dict = None) -> list[dict]:
     triple_stores = []
     shacl_graph = Graph().parse(
         Path(os.path.join(get_mustrd_root(), "model/triplestoreshapes.ttl"))
@@ -600,32 +723,98 @@ def get_triple_stores(triple_store_graph: Graph) -> list[dict]:
             f"Triple store configuration not conform to the shapes. SHACL report: {results_text}",
             results_graph,
         )
+    # Credentials come in as a map keyed by store URI, kept out of the config
+    # graph. For backward compatibility, if a caller passes none we fall back to
+    # reading any auth embedded in the graph itself.
+    if credentials is None:
+        credentials = extract_credentials(triple_store_graph)
     for triple_store_config, rdf_type, triple_store_type in triple_store_graph.triples(
         (None, RDF.type, None)
     ):
         triple_store = {}
         triple_store["type"] = triple_store_type
         triple_store["uri"] = triple_store_config
-        # Anzo graph via anzo
-        if triple_store_type == TRIPLESTORE.Anzo:
-            get_anzo_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-        # GraphDB
-        elif triple_store_type == TRIPLESTORE.GraphDb:
-            get_graphDB_configuration(
-                triple_store, triple_store_graph, triple_store_config
-            )
-
-        elif triple_store_type != TRIPLESTORE.RdfLib:
-            triple_store["error"] = f"Triple store not implemented: {triple_store_type}"
-
+        # Fill in the store-specific connection details. Dispatch on the store
+        # type so a new backend is a registered method, not another elif here.
+        get_triple_store_config(triple_store, triple_store_graph, triple_store_config, credentials)
         triple_stores.append(triple_store)
     return triple_stores
 
 
+# Names auth lives under in both the config graph and the credentials map.
+CREDENTIAL_PROPERTIES = {
+    TRIPLESTORE.token: "token",
+    TRIPLESTORE.username: "username",
+    TRIPLESTORE.password: "password",
+}
+
+
+def extract_credentials(triple_store_graph: Graph) -> dict:
+    """Auth for every store, as {store URI: {token/username/password: value}}.
+
+    Read from the graph — so the existing turtle `_secrets` file keeps working —
+    but pulled into a map here so it is handled apart from behaviour-affecting
+    config rather than intertwined with it.
+    """
+    credentials: dict = {}
+    for predicate, key in CREDENTIAL_PROPERTIES.items():
+        for store, _, value in triple_store_graph.triples((None, predicate, None)):
+            credentials.setdefault(str(store), {})[key] = str(value)
+    return credentials
+
+
+def apply_credentials(triple_store: dict, triple_store_config: URIRef, credentials: dict):
+    """Copy a store's auth from the credentials map onto its config dict.
+
+    Only sets what is present, so an absent credential stays absent (and is
+    caught by the store's required-parameter check) rather than becoming the
+    string "None".
+    """
+    creds = (credentials or {}).get(str(triple_store_config), {})
+    if creds.get("token"):
+        triple_store["token"] = creds["token"]
+    if creds.get("username") is not None:
+        triple_store["username"] = creds["username"]
+        triple_store["password"] = creds.get("password")
+
+
+def get_triple_store_config_dispatch(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+) -> URIRef:
+    return triple_store["type"]
+
+
+# Reads the connection details for one triple store out of the config graph and
+# into its dict, dispatched on the store type. Credentials come from the map, not
+# the graph. New store type -> register a method here, don't add a conditional.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
+get_triple_store_config = MultiMethod(
+    "get_triple_store_config", get_triple_store_config_dispatch
+)
+
+
+@get_triple_store_config.method(TRIPLESTORE.RdfLib)
+def _get_triple_store_config_rdflib(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    # In-memory store: nothing external to configure.
+    pass
+
+
+@get_triple_store_config.method(Default)
+def _get_triple_store_config_default(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["error"] = f"Triple store not implemented: {triple_store['type']}"
+
+
+@get_triple_store_config.method(TRIPLESTORE.Anzo)
 def get_anzo_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -633,19 +822,7 @@ def get_anzo_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["gqe_uri"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.gqeURI
     )
@@ -663,8 +840,10 @@ def get_anzo_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.GraphDb)
 def get_graphDB_configuration(
-    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
 ):
     triple_store["url"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.url
@@ -672,20 +851,7 @@ def get_graphDB_configuration(
     triple_store["port"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.port
     )
-    try:
-        triple_store["username"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.username
-            )
-        )
-        triple_store["password"] = str(
-            triple_store_graph.value(
-                subject=triple_store_config, predicate=TRIPLESTORE.password
-            )
-        )
-    except (FileNotFoundError, ValueError) as e:
-        log.error(f"Credential retrieval failed {e}")
-        triple_store["error"] = e
+    apply_credentials(triple_store, triple_store_config, credentials)
     triple_store["repository"] = triple_store_graph.value(
         subject=triple_store_config, predicate=TRIPLESTORE.repository
     )
@@ -698,6 +864,55 @@ def get_graphDB_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.Stardog)
+def get_stardog_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["database"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.database
+    )
+    # Auth comes from the credentials map. The backend prefers the bearer token
+    # and falls back to basic auth, so setting whichever is present is enough.
+    apply_credentials(triple_store, triple_store_config, credentials)
+    # The materialised graph the given data loads into, plus the extra graphs the
+    # query dataset is built from: any number of materialised and virtual graphs,
+    # so one query can be tested against a chosen combination of the two.
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    triple_store["output_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.outputGraph
+    )
+    triple_store["materialised_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.materialisedGraph
+        )
+    ]
+    triple_store["virtual_graphs"] = [
+        str(g)
+        for g in triple_store_graph.objects(
+            subject=triple_store_config, predicate=TRIPLESTORE.virtualGraph
+        )
+    ]
+    try:
+        check_triple_store_params(triple_store, ["url", "database"])
+    except ValueError as e:
+        triple_store["error"] = e
+    if triple_store.get("token") is None and triple_store.get("username") is None:
+        triple_store["error"] = ValueError(
+            f"Cannot establish connection to {triple_store['type']}. "
+            "Provide either a token or username/password."
+        )
+
+
 def check_triple_store_params(triple_store: dict, required_params: List[str]):
     missing_params = [
         param for param in required_params if triple_store.get(param) is None
@@ -707,32 +922,6 @@ def check_triple_store_params(triple_store: dict, required_params: List[str]):
             f"Cannot establish connection to {triple_store['type']}. "
             f"Missing required parameter(s): {', '.join(missing_params)}."
         )
-
-
-def get_credential_from_file(
-    triple_store_name: URIRef, credential: str, config_path: Literal
-) -> str:
-    log.debug(
-        f"get_credential_from_file {triple_store_name}, {credential}, {config_path}"
-    )
-    if not config_path:
-        raise ValueError(
-            f"Cannot establish connection defined in {triple_store_name}. "
-            f"Missing required parameter: {credential}."
-        )
-    path = Path(config_path)
-    log.debug(f"get_credential_from_file {path}")
-
-    if not os.path.isfile(path):
-        log.error(f"couldn't find {path}")
-        raise FileNotFoundError(f"Credentials config file not found: {path}")
-    try:
-        with open(path, "rb") as f:
-            config = tomli.load(f)
-    except tomli.TOMLDecodeError as e:
-        log.error(f"config error {path} {e}")
-        raise ValueError(f"Error reading credentials config file: {e}")
-    return config[str(triple_store_name)][credential]
 
 
 # Convert sparql json query results as defined in https://www.w3.org/TR/rdf-sparql-json-res/
@@ -870,6 +1059,11 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
         round(then.shape[1] / 2),
         resultDf.shape[0],
         round(resultDf.shape[1] / 2),
+        df_diff,
+        # The result's terms came out of the given, so its prefixes are the ones
+        # the spec author writes them with. Without this every IRI in the summary
+        # is a full one, which is what the summary exists to avoid.
+        getattr(spec.given, "namespace_manager", None),
     )
     return df_diff, message
 
@@ -905,11 +1099,282 @@ def _no_results(resultDf: DataFrame, spec: Specification):
     return df_diff, build_summary_message(0, 0, 0, 0)
 
 
-def build_summary_message(expected_rows, expected_columns, got_rows, got_columns):
-    return (
+def build_summary_message(
+    expected_rows, expected_columns, got_rows, got_columns, df_diff=None,
+    namespace_manager=None,
+):
+    message = (
         f"Expected {expected_rows} row(s) and {expected_columns} column(s), "
         f"got {got_rows} row(s) and {got_columns} column(s)"
     )
+    # Only when the two shapes are identical. Then this line, read alone, says
+    # nothing is wrong — and on a wide result the one column that differs can sit
+    # off the right-hand edge of the diff below, so the reader looks in the wrong
+    # place. When the shapes DO differ the line already carries the news, and
+    # listing every column would just be noise.
+    # https://github.com/Semantic-partners/mustrd/issues/240
+    if (expected_rows, expected_columns) == (got_rows, got_columns):
+        differing = describe_differing_columns(df_diff, namespace_manager)
+        if differing:
+            message += f" — differs in: {differing}"
+    return message
+
+
+# A cell longer than this is elided in the summary. The diff below has it whole;
+# the summary's job is to be readable at a glance.
+MAX_SUMMARY_CELL = 60
+
+# Past this the line has stopped being a summary, so it drops back to bare column
+# names. Reached by a wide result where many columns differ at once — exactly the
+# case where the diff table, not one line, is the right tool.
+MAX_SUMMARY_DETAIL = 240
+
+
+def describe_differing_columns(df_diff, namespace_manager=None) -> str:
+    """The columns present in a diff, with what each one differed by, as
+    `o (expected "one", actual "two"), month (datatype: expected xsd:string, ...)`.
+
+    `DataFrame.compare` gives a (column, expected|actual) MultiIndex, and mustrd
+    carries each binding as a value column plus a `<name>_datatype` column. A
+    binding whose value differs is named once — its datatype almost always
+    differs too, and saying so twice adds nothing. `(datatype: ...)` is therefore
+    reserved for the case the reader cannot otherwise see: same text, different
+    type.
+
+    Either way the pair IS the failure, so it goes on the line the reader looks
+    at first rather than being hunted for in the diff below. Falls back to bare
+    names when the detail would be too long to read.
+    """
+    if df_diff is None or getattr(df_diff, "empty", True):
+        return ""
+    try:
+        columns = list(dict.fromkeys(df_diff.columns.get_level_values(0)))
+    except (AttributeError, IndexError):
+        return ""
+
+    columns = [str(column) for column in columns]
+    # Not every column in the frame is a difference: when the two tables have
+    # different shapes or column names the diff is built side by side rather than
+    # by DataFrame.compare, and carries the matching columns too.
+    differing = [column for column in columns if column_differs(df_diff, column)]
+    columns = differing or columns
+
+    values = {column for column in columns if not column.endswith("_datatype")}
+
+    named, detailed = [], []
+    for column in columns:
+        if column.endswith("_datatype"):
+            binding = column[: -len("_datatype")]
+            if binding in values:
+                continue
+            named.append(f"{binding} (datatype)")
+            detail = describe_column_diff(
+                df_diff, column, "datatype", namespace_manager)
+            detailed.append(f"{binding} ({detail})" if detail else f"{binding} (datatype)")
+        else:
+            named.append(column)
+            detail = describe_column_diff(
+                df_diff, column, namespace_manager=namespace_manager)
+            detailed.append(f"{column} ({detail})" if detail else column)
+
+    detailed_message = ", ".join(dict.fromkeys(detailed))
+    if len(detailed_message) <= MAX_SUMMARY_DETAIL:
+        return detailed_message
+    return ", ".join(dict.fromkeys(named))
+
+
+def column_differs(df_diff, column: str) -> bool:
+    """Whether any row of this column has a different expected and actual."""
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return True
+
+    return any(
+        str(want) != str(got)
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) or pandas.notna(got)
+    )
+
+
+def describe_column_diff(df_diff, column: str, kind: str = "",
+                         namespace_manager=None) -> str:
+    """`expected "one", actual "two"` for one column, or "" if it cannot be said.
+
+    Empty when the rows do not agree on one pair — naming a pair that only some
+    rows have would be worse than naming none, and the diff below still has
+    every row.
+    """
+    try:
+        expected = df_diff[(column, "expected")]
+        actual = df_diff[(column, "actual")]
+    except KeyError:
+        return ""
+
+    pairs = {
+        (str(want), str(got))
+        for want, got in zip(expected, actual)
+        if pandas.notna(want) and pandas.notna(got)
+    }
+    if len(pairs) != 1:
+        return ""
+
+    want, got = pairs.pop()
+
+    # Two IRIs naming the same thing under a different scheme or host are the
+    # hardest difference to see and among the commonest to make: `http` against
+    # `https`, or a dev host against a prod one. Say which part disagrees rather
+    # than printing both and leaving the reader to diff them by eye — eliding
+    # only makes it worse, since the strings agree everywhere the eye lands.
+    origin = differing_origin(want, got)
+    if origin:
+        what, want_part, got_part = origin
+        label = f"{kind} {what}" if kind else what
+        return f"{label}: expected {want_part}, actual {got_part}"
+
+    shown_want, shown_got = render_cell_pair(want, got, namespace_manager)
+    return f"{kind}: expected {shown_want}, actual {shown_got}" if kind else \
+        f"expected {shown_want}, actual {shown_got}"
+
+
+# scheme://authority/rest, per RFC 3986. The authority runs to the first "/",
+# "?" or "#", so it carries a port when there is one.
+_IRI_ORIGIN = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://([^/?#]*)(.*)$", re.DOTALL)
+
+
+def differing_origin(want: str, got: str) -> Union[Tuple[str, str, str], None]:
+    """`(what, want_part, got_part)` when two IRIs differ only before the path.
+
+    `what` is `scheme`, `host`, or `origin` when both moved at once — so the
+    label names the part that actually disagrees rather than making the reader
+    work it out.
+
+    None if either is not an IRI, if they agree, or if anything after the
+    authority differs too. In that last case the origin is not the whole story
+    and naming it would send the reader after the wrong thing.
+    """
+    want_parts = _IRI_ORIGIN.match(want)
+    got_parts = _IRI_ORIGIN.match(got)
+    if not want_parts or not got_parts:
+        return None
+    if want_parts.group(3) != got_parts.group(3):
+        return None
+
+    scheme_differs = want_parts.group(1) != got_parts.group(1)
+    host_differs = want_parts.group(2) != got_parts.group(2)
+
+    if scheme_differs and not host_differs:
+        return "scheme", want_parts.group(1), got_parts.group(1)
+    if host_differs and not scheme_differs:
+        return "host", want_parts.group(2), got_parts.group(2)
+    if scheme_differs and host_differs:
+        return (
+            "origin",
+            f"{want_parts.group(1)}://{want_parts.group(2)}",
+            f"{got_parts.group(1)}://{got_parts.group(2)}",
+        )
+    return None
+
+
+# rdflib's own prefixes (xsd:, rdf:, rdfs:, owl:), so a term reads as the reader
+# writes it in a spec. Anything unknown stays a full IRI in angle brackets rather
+# than being truncated into ambiguity.
+_iri_shortener = Graph().namespace_manager
+
+
+def shorten_iri(iri: str, namespace_manager=None) -> str:
+    try:
+        return (namespace_manager or _iri_shortener).normalizeUri(iri)
+    except Exception:
+        return iri
+
+
+def render_cell_pair(want: str, got: str, namespace_manager=None) -> Tuple[str, str]:
+    """Both sides of a difference, as they would be written in a spec.
+
+    Two long cells are elided AROUND what differs, not from the start. Cutting
+    the tail off a pair of near-identical IRIs shows the reader the half they
+    already agree on and hides the half they don't, which is the opposite of the
+    job — the summary exists so nobody has to hunt for the difference.
+    """
+    want_text = cell_text(want, namespace_manager)
+    got_text = cell_text(got, namespace_manager)
+    if max(len(want_text), len(got_text)) > MAX_SUMMARY_CELL:
+        # An IRI with no prefix to hand comes back in angle brackets. Elide
+        # inside them, or the window eats the opening one and leaves a stray
+        # closing bracket.
+        bracketed = (want_text.startswith("<") and want_text.endswith(">")
+                     and got_text.startswith("<") and got_text.endswith(">"))
+        if bracketed:
+            inner_want, inner_got = elide_around_difference(
+                want_text[1:-1], got_text[1:-1])
+            want_text, got_text = f"<{inner_want}>", f"<{inner_got}>"
+        else:
+            want_text, got_text = elide_around_difference(want_text, got_text)
+    return quote_cell(want_text, want), quote_cell(got_text, got)
+
+
+def cell_text(cell: str, namespace_manager=None) -> str:
+    """The bare term in a cell: a shortened IRI, or a literal's lexical form.
+
+    The diff carries values as bare strings with no marker for which are IRIs, so
+    this goes on the shape of the text. Getting it wrong costs a pair of quotes,
+    not meaning.
+    """
+    if cell.startswith(("http://", "https://", "urn:")):
+        return shorten_iri(cell, namespace_manager)
+    return cell
+
+
+def quote_cell(text: str, original: str) -> str:
+    """`ex:sub`, `"one"`, `empty` — quotes only where a literal is being shown."""
+    if original == "":
+        return "empty"
+    if original.startswith(("http://", "https://", "urn:")):
+        return text
+    return f'"{text}"'
+
+
+# Shared characters kept either side of the difference, so it reads in context
+# rather than as a fragment.
+SUMMARY_CELL_CONTEXT = 12
+
+
+def elide_around_difference(left: str, right: str) -> Tuple[str, str]:
+    """Both strings narrowed to a window over what differs, `…` marking each cut.
+
+    Two IRIs that agree for 80 characters and then diverge come back as
+    `…rt/to/thing/alpha` and `…rt/to/thing/beta`: the difference is on screen,
+    with enough of the shared run either side to place it.
+    """
+    shortest = min(len(left), len(right))
+
+    prefix = 0
+    while prefix < shortest and left[prefix] == right[prefix]:
+        prefix += 1
+
+    suffix = 0
+    while suffix < shortest - prefix and left[-1 - suffix] == right[-1 - suffix]:
+        suffix += 1
+
+    start = max(0, prefix - SUMMARY_CELL_CONTEXT)
+
+    def window(text: str) -> str:
+        end = min(len(text), len(text) - suffix + SUMMARY_CELL_CONTEXT)
+        clipped = text[start:max(start, end)]
+        if len(clipped) > MAX_SUMMARY_CELL:
+            # The differing run is itself longer than a cell's budget. Keep both
+            # of its ends: where it starts diverging and where it stops.
+            half = MAX_SUMMARY_CELL // 2
+            clipped = f"{clipped[:half]}…{clipped[-half:]}"
+        return (
+            ("…" if start > 0 else "")
+            + clipped
+            + ("…" if end < len(text) else "")
+        )
+
+    return window(left), window(right)
 
 
 def graph_comparison(expected_graph: Graph, actual_graph: Graph) -> GraphComparison:
@@ -945,33 +1410,65 @@ def get_then_update(spec_uri: URIRef, spec_graph: Graph) -> Graph:
     return expected_results
 
 
-def write_result_diff_to_log(res, info):
-    if isinstance(res, UpdateSpecFailure) or isinstance(res, ConstructSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(f"{Fore.BLUE} In Expected Not In Actual:")
-        info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
-        info(f"{Fore.RED} in_actual_not_in_expected")
-        info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
-        info(f"{Fore.GREEN} in_both")
-        info(res.graph_comparison.in_both.serialize(format="ttl"))
+def render_result_diff_dispatch(res, info):
+    return type(res)
 
-    if isinstance(res, SelectSpecFailure):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.message)
-        info(res.table_comparison.to_markdown())
-    if isinstance(res, SpecPassedWithWarning):
-        info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
-        info(res.warning)
-    if (
-        isinstance(res, TripleStoreConnectionError)
-        or isinstance(res, SparqlExecutionError)
-        or isinstance(res, SparqlParseFailure)
-    ):
-        info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        info(res.exception)
-    if isinstance(res, SpecInvalid):
-        info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
-        info(res.message)
+
+# One dispatch table for rendering a result, keyed on the result class, so the
+# two call sites (write_result_diff_to_log and display_verbose) can't drift apart
+# again. `info` is the sink — a logger method, print, or a string collector.
+# New result type -> register a method, don't add a conditional at the call sites.
+# See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
+render_result_diff = MultiMethod("render_result_diff", render_result_diff_dispatch)
+
+
+@render_result_diff.method(UpdateSpecFailure)
+@render_result_diff.method(ConstructSpecFailure)
+def _render_graph_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(f"{Fore.BLUE} In Expected Not In Actual:")
+    info(res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl"))
+    info(f"{Fore.RED} in_actual_not_in_expected")
+    info(res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl"))
+    info(f"{Fore.GREEN} in_both")
+    info(res.graph_comparison.in_both.serialize(format="ttl"))
+
+
+@render_result_diff.method(SelectSpecFailure)
+def _render_select_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.message)
+    info(res.table_comparison.to_markdown())
+
+
+@render_result_diff.method(SpecPassedWithWarning)
+def _render_passed_with_warning(res, info):
+    info(f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}")
+    info(res.warning)
+
+
+@render_result_diff.method(TripleStoreConnectionError)
+@render_result_diff.method(SparqlExecutionError)
+@render_result_diff.method(SparqlParseFailure)
+def _render_error(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.exception)
+
+
+@render_result_diff.method(SpecInvalid)
+def _render_invalid(res, info):
+    info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
+    info(res.message)
+
+
+@render_result_diff.method(Default)
+def _render_nothing(res, info):
+    # SpecPassed and anything else with no diff to show.
+    pass
+
+
+def write_result_diff_to_log(res, info):
+    render_result_diff(res, info)
 
 
 def calculate_row_difference(
@@ -1054,9 +1551,14 @@ def generate_row_diff(
 
 
 def create_empty_dataframe_with_columns(df: pandas.DataFrame) -> pandas.DataFrame:
-    empty_copy = pandas.DataFrame().reindex_like(df)
-    empty_copy.fillna("", inplace=True)
-    return empty_copy
+    # Cast before filling. `reindex_like` gives NaN columns typed float64, and
+    # `fillna("")` on those is the "incompatible dtype" FutureWarning pandas has
+    # been printing — it becomes an error in a future pandas, at which point
+    # every missing-row diff would raise instead of render. The frame exists only
+    # to be compared cell-by-cell against string values, so object is the type it
+    # always wanted.
+    empty_copy = pandas.DataFrame().reindex_like(df).astype(object)
+    return empty_copy.fillna("")
 
 
 def review_results(results: List[SpecResult], verbose: bool) -> None:
@@ -1154,41 +1656,7 @@ def review_results(results: List[SpecResult], verbose: bool) -> None:
 
 def display_verbose(results: List[SpecResult]):
     for res in results:
-        if isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(f"{Fore.BLUE} In Expected Not In Actual:")
-            log.info(
-                res.graph_comparison.in_expected_not_in_actual.serialize(format="ttl")
-            )
-            log.info()
-            log.info(f"{Fore.RED} in_actual_not_in_expected")
-            log.info(
-                res.graph_comparison.in_actual_not_in_expected.serialize(format="ttl")
-            )
-            log.info(f"{Fore.GREEN} in_both")
-            log.info(res.graph_comparison.in_both.serialize(format="ttl"))
-
-        if isinstance(res, SelectSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
-            log.info(res.table_comparison.to_markdown())
-        if isinstance(res, ConstructSpecFailure) or isinstance(res, UpdateSpecFailure):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-        if isinstance(res, SpecPassedWithWarning):
-            log.info(
-                f"{Fore.YELLOW}Passed with warning {res.spec_uri} {res.triple_store}"
-            )
-            log.info(res.warning)
-        if (
-            isinstance(res, TripleStoreConnectionError)
-            or type(res, SparqlExecutionError)
-            or isinstance(res, SparqlParseFailure)
-        ):
-            log.info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
-            log.info(res.exception)
-        if isinstance(res, SpecInvalid):
-            log.info(f"{Fore.YELLOW}Invalid {res.spec_uri} {res.triple_store}")
-            log.info(res.message)
+        render_result_diff(res, log.info)
 
 
 # Preserve the original run_when_impl multimethod

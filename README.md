@@ -91,6 +91,119 @@ This will validate your SPARQL queries against the defined dataset and expected 
 
 You can refer to SPARQL inline, in files, or in Anzo Graphmarts, Steps, or Layers. See `GETSTARTED.adoc` for more details.
 
+#### Named graphs
+
+A quad `given` (TriG, NQuads, TriX) keeps its named graphs, so a `when` can read
+one with a `GRAPH` clause. A `when` with no `GRAPH` clause still sees everything.
+
+```turtle
+must:given [ a must:FileDataset ; must:file "data/two-graphs.trig" ] ;
+must:when  [ a must:TextSparqlSource ;
+             must:queryText "SELECT ?v WHERE { GRAPH ex:graph-a { ?s ex:value ?v } }" ;
+             must:queryType must:SelectSparql ] ;
+```
+
+A **`then` is compared as one flat union by default.** You should not have to say
+which graph a triple is in just to assert that it exists, so a quad `then` passes
+as long as the triples are all there, wherever they sit.
+
+When the graph a triple lands in *is* the thing under test — a pipeline writing
+each layer to its own graph — opt in:
+
+```turtle
+must:then [ a must:FileDataset ;
+            must:matchNamedGraphs true ;
+            must:file "data/expected.trig" ] .
+```
+
+Now the layout is part of the assertion: the right triples in the wrong graphs is
+a failure, and the failure names the graphs that differ rather than handing you a
+merged diff to work out which layer moved.
+
+**Which query forms can produce named graphs is engine-specific, and it catches
+people out.** An UPDATE always can — `INSERT { GRAPH ?g { … } }` is standard. A
+CONSTRUCT cannot, in standard SPARQL 1.1: the template is triple patterns only, so
+a `GRAPH` there is a *syntax error*, not an empty result. On RDFLib you get
+`Expected ConstructQuery, found 'GRAPH'`.
+
+Several engines extend it anyway — [Jena/ARQ](https://jena.apache.org/documentation/query/construct-quad.html)
+since 3.0.1, Stardog via a graph template, and Anzo, whose CONSTRUCT clause takes
+"a graph and triple template". The Jena and Stardog forms are recorded in the
+[W3C SPARQL CG inventory of extensions](https://github.com/w3c-cg/sparql-dev/wiki/Inventory-of-existing-extensions-to-SPARQL-1.1);
+standardising it is [w3c/sparql-dev#31](https://github.com/w3c/sparql-dev/issues/31).
+
+That extension is what makes a **dry run** possible: swap `INSERT` for `CONSTRUCT`,
+keep the template and `WHERE` as they are, and you get back the quads the update
+*would* have written without writing them — then `must:matchNamedGraphs true`
+asserts they land in the right graphs. mustrd's Stardog backend asks for TriG
+rather than Turtle so those graph names survive the response.
+
+Anzo already ships that rewrite as a button: for an INSERT or DELETE, the Query
+Builder's [Dry Run](https://2024.help.altair.com/5.4/graphstudio/userdoc/query-builder-query.htm)
+"runs a version of the query where INSERT or DELETE is replaced with CONSTRUCT",
+reporting "additions or removals **per graph**". What that gives you once,
+interactively, a spec gives you on every run with the expected graphs written down.
+
+See `GETSTARTED.adoc` for the per-engine table.
+
+#### When a spec fails
+
+A failing SELECT names the binding that differs and what it differs by, on the
+first line — before the table. The commonest failure of all, right shape and
+wrong value, otherwise reports two identical shapes and leaves you to find the
+one cell that matters:
+
+```
+Expected 1 row(s) and 1 column(s), got 1 row(s) and 1 column(s) — differs in: month (datatype: expected xsd:string, actual xsd:gYearMonth)
+
+|    | ('month_datatype', 'expected')          | ('month_datatype', 'actual')                |
+|---:|:----------------------------------------|:--------------------------------------------|
+|  0 | http://www.w3.org/2001/XMLSchema#string | http://www.w3.org/2001/XMLSchema#gYearMonth |
+```
+
+A wrong term rather than a wrong type reads the same way, using the prefixes
+your `given` declares:
+
+```
+Expected 2 row(s) and 3 column(s), got 2 row(s) and 3 column(s) — differs in: o (expected ex:object, actual ex:obj)
+```
+
+The ones that are hardest to see and easiest to make are two IRIs naming the
+same thing under a different scheme or host. Those are named rather than
+printed:
+
+```
+— differs in: s (scheme: expected http, actual https)
+— differs in: s (host: expected company.dev, actual company.com)
+— differs in: s (origin: expected http://company.dev, actual https://company.com)
+```
+
+The same ontology served from a dev host and a prod one, or over `http` on one
+side and `https` on the other, agrees everywhere the eye lands. Printing both
+IRIs makes it a spot-the-difference puzzle; eliding them makes it worse.
+
+Only claimed when the origin really is the whole difference. If anything after
+the host differs too you get both IRIs, because naming the host would send you
+after the wrong thing.
+
+Some details worth knowing, because they are what make it readable on real data:
+
+- **The pair is only named when the two shapes match.** A row- or column-count
+  mismatch already says what is wrong, and listing every column would be noise.
+- **A binding whose value differs is named once.** Its datatype nearly always
+  differs too; `(datatype: …)` is reserved for the case you cannot see otherwise
+  — same text, different type.
+- **A long value is elided around the difference, not from the start** — cutting
+  the tail off two near-identical IRIs would show you the half they agree on and
+  hide the half they don't:
+
+  ```
+  — differs in: s (expected <…o/the/thing/alpha>, actual <…o/the/thing/beta>)
+  ```
+
+- **A wide result falls back to bare column names.** Past a readable length the
+  line has stopped being a summary, and the table below is the right tool.
+
 #### What a run can produce
 
 Every flag below works identically on `pytest --mustrd` and on `mustrd report`:

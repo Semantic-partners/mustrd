@@ -1,7 +1,7 @@
 import os
 import pytest
 from rdflib import Graph, URIRef
-from mustrd.steprunner import _spade_edn_group_source
+from mustrd.steprunner import _spade_edn_group_source_rdflib
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import SpadeEdnGroupSourceWhenSpec, WhenSpec
 
@@ -46,7 +46,7 @@ def test_spade_edn_group_source():
     )
 
     # Run the method
-    result = _spade_edn_group_source(spec_uri, triple_store, when_spec)
+    result = _spade_edn_group_source_rdflib(spec_uri, triple_store, when_spec)
 
     # Verify that the file path was resolved correctly
     expected_filepath = os.path.join(os.path.dirname(edn_file_path), "insert.rq")

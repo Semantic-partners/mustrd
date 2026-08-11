@@ -1,0 +1,25 @@
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# A .trig given keeps its named graphs, so a GRAPH clause in the when resolves.
+# The quads used to be parsed into a plain Graph, which could not see them: the
+# given came back empty and the spec was rejected as an inherited-state spec.
+
+test-data:select_spec_given_trig_reads_named_graph
+    a          must:TestSpec ;
+    must:given [ a must:FileDataset ;
+                 must:fileurl <file://./../../data/given-named-graphs.trig> ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  """PREFIX test-data: <https://semanticpartners.com/data/test/>
+                                    SELECT ?s ?p ?o WHERE {
+                                        GRAPH test-data:graph-a { ?s ?p ?o }
+                                    }""" ;
+                 must:queryType must:SelectSparql ; ] ;
+    must:then  [ a must:TableDataset ;
+                 must:hasRow [ must:hasBinding [ must:variable "s" ;
+                                                 must:boundValue test-data:sub ; ] ,
+                                               [ must:variable "p" ;
+                                                 must:boundValue test-data:pred ; ] ,
+                                               [ must:variable "o" ;
+                                                 must:boundValue test-data:obj ; ] ;
+                             ] ; ] .

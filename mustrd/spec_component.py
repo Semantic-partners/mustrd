@@ -6,21 +6,64 @@ from typing import Tuple, List, Type
 
 import pandas
 import requests
-from rdflib import RDF, Graph, URIRef, Variable, Literal, XSD, util, ConjunctiveGraph
+from rdflib import RDF, Dataset, Graph, URIRef, Variable, Literal, XSD, util
 from rdflib.exceptions import ParserError
 from rdflib.term import Node
-from rdflib.plugins.stores.memory import Memory
 import edn_format
 
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
 from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
 from multimethods import MultiMethod, Default
-from .utils import get_mustrd_root
-from urllib.parse import urlparse
+from .utils import get_mustrd_root, rdflib_internals_quiet
 import logging
 
 log = logging.getLogger(__name__)
+
+
+class UpdatableDataset(Dataset):
+    """A Dataset that survives `INSERT DATA`, which rdflib 7.6's does not.
+
+    rdflib's `evalInsertData` does `g += u.triples` with the *dataset* as `g`
+    (sparql/update.py), and `Dataset.__iadd__` unpacks four-tuples — so every
+    `INSERT DATA` raises `not enough values to unpack (expected 4, got 3)`.
+    `ConjunctiveGraph` has no such problem, which is why mustrd used one; but it
+    is deprecated and slated for removal, and it printed a deprecation warning
+    naming a mustrd line on every spec a user ran.
+
+    So: the modern class, with the one thing rdflib gets wrong about it repaired.
+    Triples go to the default graph, which is where an unqualified `INSERT DATA`
+    puts them (SPARQL 1.1 §3.1.3); quads keep rdflib's own behaviour, so
+    `INSERT DATA { GRAPH <g> { … } }` still lands in `<g>`.
+
+    TRIPWIRE: when rdflib fixes this, `UpdatableDataset` becomes a plain
+    `Dataset` and this class goes. `test_insert_data_is_broken_on_a_plain_dataset`
+    fails when that happens, which is the signal to delete it.
+    """
+
+    def __iadd__(self, other):
+        statements = list(other)
+        if statements and len(statements[0]) == 3:
+            for triple in statements:
+                self.default_graph.add(triple)
+            return self
+        return super().__iadd__(statements)
+
+    def __repr__(self):
+        """Without reaching `Dataset.identifier`, which rdflib 7.6 deprecates.
+
+        This matters more than it looks. mustrd logs f-strings — `log.debug(f"…
+        {triple_store}")` — and an f-string is built whether or not anything is
+        listening, so a `given` sitting in that dict was repr'd on every spec of
+        every run. rdflib's `Graph.__repr__` reads `self.identifier`, so each one
+        printed a deprecation. Ten per run, from code the user cannot reach.
+
+        Says something useful while it is here: how much data, in how many graphs.
+        """
+        with rdflib_internals_quiet():
+            graph_count = sum(1 for _ in self.graphs())
+            size = len(self)
+        return f"<{type(self).__name__} {size} statements in {graph_count} graph(s)>"
 
 
 @dataclass
@@ -30,7 +73,7 @@ class SpecComponent:
 
 @dataclass
 class GivenSpec(SpecComponent):
-    value: ConjunctiveGraph = None
+    value: Dataset = None
 
 
 @dataclass
@@ -57,6 +100,11 @@ class SpadeEdnGroupSourceWhenSpec(WhenSpec):
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
+    # Opt-in graph-awareness. A `then` is compared as one flat union by default —
+    # you should not have to say which graph a triple is in just to assert it
+    # exists. Set `must:matchNamedGraphs true` and the comparison becomes
+    # graph-by-graph, so a triple in the wrong graph is a failure.
+    match_named_graphs: bool = False
 
 
 @dataclass
@@ -197,11 +245,23 @@ def _combine_given_specs(spec_components: List[GivenSpec]) -> GivenSpec:
     if len(spec_components) == 1:
         return spec_components[0]
     else:
-        graph = Graph()
+        # Quad-aware: `graph += other` reads the union and drops which graph each
+        # triple came from, so combining two givens used to flatten any named
+        # graph a .trig had contributed.
+        combined = UpdatableDataset(default_union=True)
         for spec_component in spec_components:
-            graph += spec_component.value
+            value = spec_component.value
+            if value is None:
+                continue
+            if isinstance(value, Dataset):
+                with rdflib_internals_quiet():
+                    combined.addN((s, p, o, graph)
+                                  for graph in value.graphs()
+                                  for s, p, o in graph)
+            else:
+                combined.default_graph += value
         given_spec = GivenSpec()
-        given_spec.value = graph
+        given_spec.value = combined
         return given_spec
 
 
@@ -226,7 +286,12 @@ def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
 @combine_specs.method(TableThenSpec)
 def _combine_table_then_specs(spec_components: List[TableThenSpec]) -> TableThenSpec:
     if len(spec_components) != 1:
-        raise ValueError("Parsing of multiple components of MUST.then for tables not implemented")
+        # Graph `then`s combine by union; two tables have no such meaning, so a
+        # spec gets one. Say which spec and what the rule is — the old wording
+        # ("multiple components of MUST.then") read as though a single table had
+        # several parts, and sent readers looking at the wrong thing.
+        raise ValueError(
+            f"A spec may declare at most one table must:then, found {len(spec_components)}")
     return spec_components[0]
 
 
@@ -250,6 +315,8 @@ def get_spec_component_dispatch(spec_component_details: SpecComponentDetails) ->
     return spec_component_details.data_source_type, spec_component_details.predicate
 
 
+# New (source type, predicate) combination -> register a method, don't add a
+# conditional. See docs/adrs/0006-type-axis-dispatch-uses-multimethods.md
 get_spec_component = MultiMethod("get_spec_component", get_spec_component_dispatch)
 
 
@@ -267,12 +334,9 @@ def _get_spec_component_folderdatasource_given(spec_component_details: SpecCompo
                                                         predicate=MUST.fileName)
 
     path = get_path('given_path', file_name, spec_component_details)
-    try:
-        spec_component.value = Graph().parse(data=get_spec_component_from_file(path))
-    except ParserError as e:
-        log.error(f"Problem parsing {path}, error of type {type(e)}")
-        raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-    return spec_component
+    # Same loader as MUST.FileDataset, so a folder-sourced given keeps its named
+    # graphs too rather than only the file-sourced one.
+    return load_dataset_from_file(path, spec_component)
 
 
 @get_spec_component.method((MUST.FolderSparqlSource, MUST.when))
@@ -302,13 +366,14 @@ def _get_spec_component_folderdatasource_then(spec_component_details: SpecCompon
 
 
 @get_spec_component.method((MUST.FileDataset, MUST.given))
-def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> GivenSpec:
+def _get_spec_component_filedatasource_given(spec_component_details: SpecComponentDetails) -> GivenSpec:
     spec_component = GivenSpec()
     return load_spec_component(spec_component_details, spec_component)
 
 @get_spec_component.method((MUST.FileDataset, MUST.then))
-def _get_spec_component_filedatasource(spec_component_details: SpecComponentDetails) -> ThenSpec:
+def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
+    spec_component.match_named_graphs = wants_named_graphs(spec_component_details)
     return load_spec_component(spec_component_details, spec_component)
 
 
@@ -357,15 +422,69 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         except AttributeError:
             raise ValueError(f"Unsupported file format: {path.suffix}")
 
-        if file_format is not None:
-            g = Graph()
-            try:
-                g.parse(data=get_spec_component_from_file(path), format=file_format)
-            except ParserError as e:
-                log.error(f"Problem parsing {path}, error of type {type(e)}")
-                raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
-            spec_component.value = g
-            return spec_component
+        if file_format is None:
+            # This used to fall off the end of the function and return None,
+            # which surfaced much later as an unrelated error about a spec
+            # component that was never built.
+            raise ValueError(f"Unsupported file format: {path.suffix}")
+
+        # Parse into a quad-aware graph, always — a quad format (.trig, .nq,
+        # .trix) parsed into a plain Graph puts its quads in the store's named
+        # contexts, which that Graph cannot see, so the component came back
+        # EMPTY. An empty `given` then read as no given at all, and rdflib specs
+        # were rejected with "Unable to run Inherited State tests on Rdflib" — a
+        # message about a feature the spec never asked for.
+        # default_union so an unqualified query still reads every graph, which is
+        # what a given without a GRAPH clause has always done.
+        quads = UpdatableDataset(default_union=True)
+        try:
+            parse_into_dataset(quads, get_spec_component_from_file(path), file_format)
+        except ParserError as e:
+            log.error(f"Problem parsing {path}, error of type {type(e)}")
+            raise ValueError(f"Problem parsing {path}, error of type {type(e)}")
+        # A `given` always keeps its contexts — that is what lets a GRAPH clause
+        # in the `when` resolve. A `then` is levelled to a flat Graph unless it
+        # asked not to be: you should not have to say which graph a triple is in
+        # just to assert it exists.
+        keep_graphs = isinstance(spec_component, GivenSpec) or \
+            getattr(spec_component, "match_named_graphs", False)
+        spec_component.value = quads if keep_graphs else flatten_to_graph(quads)
+        return spec_component
+
+
+QUAD_FORMATS = {"trig", "nquads", "trix", "json-ld", "hext"}
+
+
+def parse_into_dataset(dataset: Dataset, data: str, file_format: str) -> None:
+    """Parse into `dataset`, quietly, whatever the format carries.
+
+    Triples go straight into the default graph. `Dataset.parse` would reach it
+    via `default_context`, which rdflib 7.6 deprecates — and the warning it emits
+    names OUR line, so every mustrd user sees a deprecation they cannot act on.
+
+    Quads have to go through `Dataset.parse`, because only the quad parsers know
+    which graph each statement belongs to. rdflib's own TriG parser builds a
+    ConjunctiveGraph internally and warns about it (rdflib 7.6, trig.py), which
+    is likewise not ours to fix and nothing a mustrd user can do anything about,
+    so it is silenced here rather than printed fourteen times a run.
+    """
+    if file_format not in QUAD_FORMATS:
+        dataset.default_graph.parse(data=data, format=file_format)
+        return
+
+    with rdflib_internals_quiet():
+        dataset.parse(data=data, format=file_format)
+
+
+def flatten_to_graph(quads: Dataset) -> Graph:
+    """The union of every graph in the dataset, as one plain Graph."""
+    g = Graph()
+    with rdflib_internals_quiet():
+        for triple in quads.triples((None, None, None)):
+            g.add(triple)
+        for prefix, namespace in quads.namespaces():
+            g.bind(prefix, namespace)
+    return g
 
 
 @get_spec_component.method((MUST.FileSparqlSource, MUST.when))
@@ -461,55 +580,66 @@ def _get_spec_component_StatementsDataset(spec_component_details: SpecComponentD
         spec_component = GivenSpec()
     else:
         spec_component = ThenSpec()
-    spec_component.value = ConjunctiveGraph(store=Memory())
 
     data = get_spec_from_statements(spec_component_details.subject, spec_component_details.predicate,
                                     spec_component_details.spec_graph)
+
+    quads = UpdatableDataset(default_union=True)
     # Into the DEFAULT graph, not a named one. An unqualified `DELETE ... WHERE`
     # operates on the dataset's default graph (SPARQL 1.1 §3.1.3), so given data
-    # sitting in a named graph is matched by the WHERE — a ConjunctiveGraph reads
-    # as the union — and then not deleted. rdflib <= 7.1.4 deleted it anyway;
+    # sitting in a named graph is matched by the WHERE — a default_union dataset
+    # reads as the union — and then not deleted. rdflib <= 7.1.4 deleted it anyway;
     # 7.6.0 is conformant, which is what broke every update spec. Reads are
     # unaffected either way, so the default graph is simply the correct home.
-    spec_component.value.default_context.parse(data=data)
+    quads.default_graph.parse(data=data)
+
+    # As with a file-sourced component: a `given` keeps its contexts so a GRAPH
+    # clause can resolve, a `then` is levelled, because it is compared against a
+    # result graph that has no named graphs in it.
+    spec_component.value = quads if isinstance(spec_component, GivenSpec) \
+        else flatten_to_graph(quads)
     return spec_component
+
+
+def require_anzo(spec_component_details: SpecComponentDetails, source_type: URIRef):
+    """Guard: these sources only resolve against an Anzo triple store.
+
+    The get_spec_component multimethod dispatches on the spec's declared source,
+    but whether the *configured* triple store is Anzo is a runtime fact, not a
+    dispatch key — so each Anzo source checks it up front through here rather than
+    repeating the same if/else.
+    """
+    if spec_component_details.mustrd_triple_store["type"] != TRIPLESTORE.Anzo:
+        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {source_type}")
 
 
 @get_spec_component.method((MUST.AnzoGraphmartDataset, MUST.given))
 @get_spec_component.method((MUST.AnzoGraphmartDataset, MUST.then))
 def _get_spec_component_AnzoGraphmartDataset(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    require_anzo(spec_component_details, MUST.AnzoGraphmartDataset)
     # Choose GivenSpec or ThenSpec based on the predicate in spec_component_details
     if spec_component_details.predicate == MUST.given:
         spec_component = GivenSpec()
     else:
         spec_component = ThenSpec()
-
-    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        # Get GIVEN or THEN from anzo graphmart
-        spec_component.spec_component_details = spec_component_details
-    else:
-        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartDataset}")
-
+    # Get GIVEN or THEN from anzo graphmart
+    spec_component.spec_component_details = spec_component_details
     return spec_component
 
 
 @get_spec_component.method((MUST.AnzoQueryBuilderSparqlSource, MUST.when))
 def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    require_anzo(spec_component_details, MUST.AnzoQueryBuilderSparqlSource)
     spec_component = WhenSpec()
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        query_folder = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                               predicate=MUST.queryFolder)
-        query_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                             predicate=MUST.queryName)
-        spec_component.value = get_query_from_querybuilder(triple_store=spec_component_details.mustrd_triple_store,
-                                                           folder_name=query_folder,
-                                                           query_name=query_name)
-    # If anzo specific function is called but no anzo defined
-    else:
-        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoQueryBuilderSparqlSource}")
-
+    query_folder = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                           predicate=MUST.queryFolder)
+    query_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                         predicate=MUST.queryName)
+    spec_component.value = get_query_from_querybuilder(triple_store=spec_component_details.mustrd_triple_store,
+                                                       folder_name=query_folder,
+                                                       query_name=query_name)
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType)
@@ -518,20 +648,14 @@ def _get_spec_component_AnzoQueryBuilderSparqlSource(spec_component_details: Spe
 
 @get_spec_component.method((MUST.AnzoGraphmartStepSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    require_anzo(spec_component_details, MUST.AnzoGraphmartStepSparqlSource)
     spec_component = AnzoWhenSpec()
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.anzoQueryStep)
-        spec_component.spec_component_details = spec_component_details
-        spec_component.query_step_uri = query_step_uri
-        # spec_component.value = get_query_from_step(triple_store=spec_component_details.mustrd_triple_store,
-        #                                            query_step_uri=query_step_uri)
-    # If anzo specific function is called but no anzo defined
-    else:
-        raise ValueError(f"You must define {TRIPLESTORE.Anzo} to use {MUST.AnzoGraphmartStepSparqlSource}")
-
+    query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.anzoQueryStep)
+    spec_component.spec_component_details = spec_component_details
+    spec_component.query_step_uri = query_step_uri
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType)
@@ -540,22 +664,17 @@ def _get_spec_component_AnzoGraphmartStepSparqlSource(spec_component_details: Sp
 
 @get_spec_component.method((MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_component_details: SpecComponentDetails) -> SpecComponent: # noqa
+    require_anzo(spec_component_details, MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource)
     spec_component = WhenSpec(
         spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
 
     # Get WHEN specComponent from query builder
-    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
-                                                                 predicate=MUST.anzoQueryStep)
-        queries = get_queries_from_templated_step(triple_store=spec_component_details.mustrd_triple_store,
-                                                  query_step_uri=query_step_uri)
-        spec_component.paramQuery = queries["param_query"]
-        spec_component.queryTemplate = queries["query_template"]
-    # If anzo specific function is called but no anzo defined
-    else:
-        raise ValueError(f"""You must define {TRIPLESTORE.Anzo}
-                         to use {MUST.AnzoGraphmartQueryDrivenTemplatedStepSparqlSource}""")
-
+    query_step_uri = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
+                                                             predicate=MUST.anzoQueryStep)
+    queries = get_queries_from_templated_step(triple_store=spec_component_details.mustrd_triple_store,
+                                              query_step_uri=query_step_uri)
+    spec_component.paramQuery = queries["param_query"]
+    spec_component.queryTemplate = queries["query_template"]
     spec_component.queryType = spec_component_details.spec_graph.value(
         subject=spec_component_details.spec_component_node,
         predicate=MUST.queryType)
@@ -564,17 +683,14 @@ def _get_spec_component_AnzoGraphmartQueryDrivenTemplatedStepSparqlSource(spec_c
 
 @get_spec_component.method((MUST.AnzoGraphmartLayerSparqlSource, MUST.when))
 def _get_spec_component_AnzoGraphmartLayerSparqlSource(spec_component_details: SpecComponentDetails) -> list:
+    require_anzo(spec_component_details, MUST.AnzoGraphmartLayerSparqlSource)
     spec_components = []
     # Get the ordered  WHEN specComponents which is the transform and query driven template queries for the Layer
-    if spec_component_details.mustrd_triple_store["type"] == TRIPLESTORE.Anzo:
-        graphmart_layer_uri = spec_component_details.spec_graph.value(
-            subject=spec_component_details.spec_component_node,
-            predicate=MUST.anzoGraphmartLayer)
-        queries = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
-                                        graphmart_layer_uri=graphmart_layer_uri)
-    # If anzo specific function is called but no anzo defined
-    else:
-        raise ValueError("This test specification is specific to Anzo and can only be run against that platform.")
+    graphmart_layer_uri = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.anzoGraphmartLayer)
+    queries = get_queries_for_layer(triple_store=spec_component_details.mustrd_triple_store,
+                                    graphmart_layer_uri=graphmart_layer_uri)
     for query in queries:
         spec_component = WhenSpec(
             spec_component_details.predicate, spec_component_details.mustrd_triple_store["type"])
@@ -607,53 +723,10 @@ def _get_spec_component_default(spec_component_details: SpecComponentDetails) ->
         f"spec component ({spec_component_details.predicate})")
 
 
-@get_spec_component.method((MUST.SpadeEdnGroupSource, MUST.when))
-def _get_spec_component_spadeednsource_when(spec_component_details: SpecComponentDetails) -> SpadeEdnGroupSourceWhenSpec:
-    from edn_format import Keyword
-
-    spec_component = SpadeEdnGroupSourceWhenSpec()
-    spec_component.file = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.fileName
-    )
-    spec_component.groupId = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.groupId
-    )
-    spec_component.queryType = spec_component_details.spec_graph.value(
-        subject=spec_component_details.spec_component_node,
-        predicate=MUST.queryType
-    )
-
-    # Initialize `value` by parsing the `file` attribute if available
-    if spec_component.file:
-        try:
-            with open(spec_component.file, "r") as edn_file:
-                edn_content = edn_file.read()
-                parsed_edn = edn_format.loads(edn_content)
-
-                # Extract group data based on group ID
-                step_groups = parsed_edn.get(Keyword("step-groups"), [])
-                group_data = next((item for item in step_groups if item.get(Keyword("group-id")) == spec_component.groupId), None)
-
-                if not group_data:
-                    raise ValueError(f"Group ID {spec_component.groupId} not found in EDN file {spec_component.file}")
-
-                # Create a list of WhenSpec objects
-                when_specs = []
-                for step in group_data.get(Keyword("steps"), []):
-                    step_type = step.get(Keyword("type"))
-                    step_file = step.get(Keyword("filepath"))
-
-                    if step_type == Keyword("sparql-file"):
-                        when_specs.append(WhenSpec(value=step_file, queryType=MUST.InsertSparql))
-
-                spec_component.value = when_specs
-        except Exception as e:
-            log.error(f"Failed to parse EDN file {spec_component.file}: {e}")
-            spec_component.value = None
-
-    return spec_component
+# NOTE: the (SpadeEdnGroupSource, when) handler lives further down as
+# _get_spec_component_spade_edn_group_source_when. An earlier duplicate was
+# registered on this same key here and never dispatched (the later registration
+# won); it has been removed.
 
 
 def get_spec_component_nodes(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> List[Node]:
@@ -765,6 +838,19 @@ def get_when_bindings(subject: URIRef,
         for binding in when_bindings:
             bindings[Variable(binding.variable.value)] = binding.binding
         return bindings
+
+
+def wants_named_graphs(spec_component_details: SpecComponentDetails) -> bool:
+    """Whether this `then` asked to be compared graph-by-graph.
+
+    `must:matchNamedGraphs true` on the then node. Absent — the overwhelmingly
+    common case — the comparison stays a flat union, so a spec that does not care
+    about graphs never has to mention them.
+    """
+    value = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.matchNamedGraphs)
+    return bool(value) and str(value).lower() in ("true", "1")
 
 
 def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:

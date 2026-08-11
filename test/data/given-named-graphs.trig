@@ -1,0 +1,9 @@
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+test-data:graph-a {
+    test-data:sub test-data:pred test-data:obj .
+}
+
+test-data:graph-b {
+    test-data:sub2 test-data:pred2 test-data:obj2 .
+}

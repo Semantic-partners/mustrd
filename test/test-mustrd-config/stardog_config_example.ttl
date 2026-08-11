@@ -1,0 +1,37 @@
+# Example Stardog triple store configs.
+#
+# The point of these three is that the SAME spec/query can be run against each to
+# compare how it behaves over different combinations of materialised and virtual
+# named graphs. In every case the test's `given` data is loaded into `inputGraph`
+# (a materialised graph); the extra graphs are combined into the query's dataset.
+#
+# Bearer token auth is preferred. If you use basic auth instead, drop `token` and
+# put `username`/`password` in the matching `_secrets` file.
+@prefix : <https://mustrd.org/triplestore/> .
+
+# 1) given data only, materialised.
+:Stardog_materialised_only a :Stardog ;
+    :url "http://localhost" ;
+    :port "5820" ;
+    :database "mustrd" ;
+    :token "REPLACE_WITH_BEARER_TOKEN" ;
+    :inputGraph "http://mustrd.org/test_graph" .
+
+# 2) given data plus a virtual graph (e.g. data virtualised from a relational source).
+:Stardog_materialised_plus_virtual a :Stardog ;
+    :url "http://localhost" ;
+    :port "5820" ;
+    :database "mustrd" ;
+    :token "REPLACE_WITH_BEARER_TOKEN" ;
+    :inputGraph "http://mustrd.org/test_graph" ;
+    :virtualGraph "virtual://customers" .
+
+# 3) given data plus another materialised reference graph and a virtual graph.
+:Stardog_combined a :Stardog ;
+    :url "http://localhost" ;
+    :port "5820" ;
+    :database "mustrd" ;
+    :token "REPLACE_WITH_BEARER_TOKEN" ;
+    :inputGraph "http://mustrd.org/test_graph" ;
+    :materialisedGraph "http://example.org/reference-data" ;
+    :virtualGraph "virtual://customers" .

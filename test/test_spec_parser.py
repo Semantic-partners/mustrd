@@ -5,7 +5,8 @@ from rdflib.compare import isomorphic
 from rdflib.namespace import Namespace, XSD
 from graph_util import graph_comparison_message
 from mustrd.namespace import MUST, TRIPLESTORE
-from mustrd.spec_component import ThenSpec, GivenSpec, TableThenSpec, parse_spec_component
+from mustrd.spec_component import (ThenSpec, GivenSpec, TableThenSpec, parse_spec_component,
+                                   flatten_to_graph)
 
 TEST_DATA = Namespace("https://semanticpartners.com/data/test/")
 
@@ -83,7 +84,11 @@ class TestSpecParserTest:
         expected_initial_state.parse(data=expected_triples, format='ttl')
 
         assert isinstance(given_component, GivenSpec)
-        assert isomorphic(given, expected_initial_state), graph_comparison_message(expected_initial_state, given)
+        # A `given` is quad-aware, so it is levelled before an isomorphism check:
+        # rdflib's compare walks what it is handed, and a Dataset yields quads.
+        given_triples = flatten_to_graph(given)
+        assert isomorphic(given_triples, expected_initial_state), \
+            graph_comparison_message(expected_initial_state, given_triples)
 
     def test_when_select(self):
         spec_graph = Graph()

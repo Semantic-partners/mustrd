@@ -1,0 +1,2 @@
+@prefix ex: <https://example.org/> .
+ex:s1 ex:value "one" .
