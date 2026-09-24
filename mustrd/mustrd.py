@@ -891,6 +891,28 @@ def get_graphDB_configuration(
         triple_store["error"] = e
 
 
+@get_triple_store_config.method(TRIPLESTORE.Tentris)
+def get_tentris_configuration(
+    triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
+    credentials: dict,
+):
+    triple_store["url"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.url
+    )
+    triple_store["port"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.port
+    )
+    triple_store["input_graph"] = triple_store_graph.value(
+        subject=triple_store_config, predicate=TRIPLESTORE.inputGraph
+    )
+    # Optional, as for Fuseki: a server may serve its endpoints unauthenticated.
+    apply_credentials(triple_store, triple_store_config, credentials)
+    try:
+        check_triple_store_params(triple_store, ["url"])
+    except ValueError as e:
+        triple_store["error"] = e
+
+
 @get_triple_store_config.method(TRIPLESTORE.Fuseki)
 def get_fuseki_configuration(
     triple_store: dict, triple_store_graph: Graph, triple_store_config: URIRef,
