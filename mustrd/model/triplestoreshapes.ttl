@@ -49,6 +49,14 @@ triplestore:FusekiShape
                    [ sh:path     triplestore:inputGraph ;
                      sh:maxCount 1 ] .
 
+# url is all Tentris needs: the endpoints sit at the root, so there is no dataset
+# name. inputGraph is optional and affects reads only.
+triplestore:TentrisShape
+    a              sh:NodeShape ;
+    sh:targetClass triplestore:Tentris ;
+    sh:property    [ sh:path     triplestore:inputGraph ;
+                     sh:maxCount 1 ] .
+
 triplestore:StardogShape
     a              sh:NodeShape ;
     sh:targetClass triplestore:Stardog ;

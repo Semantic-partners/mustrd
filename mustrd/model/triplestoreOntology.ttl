@@ -203,6 +203,17 @@ inputGraph is optional and affects reads only. An unqualified INSERT or DELETE w
   rdfs:comment "Name of the Fuseki dataset to run against, e.g. \"ds\" for endpoints under /ds.";
   rdfs:label "dataset" .
 
+:Tentris a owl:Class;
+  rdfs:subClassOf :ExternalTripleStore;
+  rdfs:comment """Tentris (https://tentris.dice-research.org/) over the SPARQL 1.1 protocols.
+
+Endpoints sit at the root of the server — /sparql, /update and /graph-store — so there is no dataset name to configure: a server serves the one datastore it was started with.
+
+Authentication is optional, so username/password are sent only when configured.
+
+inputGraph is optional and affects reads only. An unqualified INSERT or DELETE writes to the default graph (SPARQL 1.1 Update, 3.1.3), so leave inputGraph unset or name the graph in the query with GRAPH or WITH.""";
+  rdfs:label "Tentris" .
+
 :Stardog a owl:Class;
   rdfs:subClassOf :ExternalTripleStore;
   rdfs:comment """Stardog (https://www.stardog.com/) accessed over its HTTP SPARQL protocol.

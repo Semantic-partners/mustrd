@@ -4,7 +4,7 @@ import os
 from multimethods import MultiMethod, Default
 from .namespace import MUST, TRIPLESTORE
 from rdflib import Dataset, Graph, URIRef
-from . import mustrdFuseki, mustrdGraphDb, mustrdStardog
+from . import mustrdFuseki, mustrdGraphDb, mustrdStardog, mustrdTentris
 from .mustrdRdfLib import execute_select as execute_select_rdflib
 from .mustrdRdfLib import execute_construct as execute_construct_rdflib
 from .mustrdRdfLib import execute_update as execute_update_rdflib
@@ -242,4 +242,5 @@ log.debug(f"run_when registry: {run_when_impl} {dir(run_when_impl)}")
 # runner, so the three standard-protocol backends are wired once it exists.
 register_sparql_http_backend(TRIPLESTORE.GraphDb, mustrdGraphDb)
 register_sparql_http_backend(TRIPLESTORE.Stardog, mustrdStardog)
-register_sparql_http_backend(TRIPLESTORE.Fuseki, mustrdFuseki)
+register_sparql_http_backend(TRIPLESTORE.Fuseki, mustrdFuseki.BACKEND)
+register_sparql_http_backend(TRIPLESTORE.Tentris, mustrdTentris.BACKEND)

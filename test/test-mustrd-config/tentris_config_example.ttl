@@ -1,0 +1,15 @@
+@prefix : <https://mustrd.org/triplestore/> .
+
+# Tentris. SPARQL 1.1 protocols at the root of the server — /sparql, /update and
+# /graph-store — so there is no dataset name to configure: a server serves the one
+# datastore it was started with (`tentris -s <path> serve <address>`).
+#
+# `inputGraph` is optional and affects reads only, as with any store that keeps to
+# the specs: an unqualified INSERT or DELETE writes to the default graph
+# (SPARQL 1.1 Update 3.1.3). Leave it unset, or name the graph in the query.
+#
+# username/password are optional; add them to the _secrets file if your server
+# requires them.
+:tentris_local a :Tentris ;
+    :url "http://127.0.0.1" ;
+    :port "9080" .

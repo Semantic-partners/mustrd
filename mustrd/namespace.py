@@ -87,6 +87,7 @@ class TRIPLESTORE(DefinedNamespace):
     Anzo: URIRef
     Stardog: URIRef
     Fuseki: URIRef
+    Tentris: URIRef
     ExternalTripleStore: URIRef
     InternalTripleStore: URIRef
 
@@ -110,6 +111,8 @@ class TRIPLESTORE(DefinedNamespace):
 
     # Fuseki config parameters
     dataset: URIRef     # the dataset name a Fuseki server serves, e.g. "ds"
+    # Tentris needs no dataset name: a server serves one datastore, chosen with
+    # `tentris -s <path> serve`. url and port are all it takes.
 
 
 # namespace for pytest_mustrd config

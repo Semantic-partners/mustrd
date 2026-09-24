@@ -1,0 +1,9 @@
+@prefix : <https://mustrd.org/mustrdTest/> .
+@prefix triplestore: <https://mustrd.org/triplestore/> .
+
+:tentris_live a :MustrdTest ;
+    :hasSpecPath "../test-specs/expected-success" ;
+    :hasDataPath "../data" ;
+    :triplestoreSpecPath "tentris_config_example.ttl" ;
+    :hasPytestPath "tentris" ;
+    :filterOnTripleStore triplestore:tentris_local .

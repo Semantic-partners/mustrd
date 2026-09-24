@@ -73,7 +73,24 @@ Additional mandatory properties depend on the triplestore:
     :dataset "ds" .
 ----
 
-Fuseki is the backend mustrd exercises for real. `scripts/fuseki_integration.sh` starts one in Docker and runs the *same* `expected-success` specs the RDFLib suite runs, and CI does the same on every push. The other HTTP backends are mock-tested, because each needs a licence or a server; what Fuseki covers is everything they share — request building, Accept headers, dataset parameters, and the `given`-upload round trip.
+Fuseki and Tentris are the two backends mustrd exercises for real, and the pair is the point: Fuseki extends SPARQL where Tentris keeps to it, so between them they catch a spec that only passes because one engine was lenient. `scripts/fuseki_integration.sh` starts one in Docker and runs the *same* `expected-success` specs the RDFLib suite runs, and CI does the same on every push. The other HTTP backends are mock-tested, because each needs a licence or a server; what Fuseki covers is everything they share — request building, Accept headers, dataset parameters, and the `given`-upload round trip.
+
+==== For Tentris:
+
+* Only `url` (and `port`) are needed. The endpoints sit at the root of the server — `/sparql`, `/update`, `/graph-store` — so there is no dataset name: a server serves the one datastore it was started with (`tentris -s <path> serve <address>`).
+* Authentication is optional; add `username`/`password` to the `_secrets` file if your server requires them.
+* `inputGraph` is optional and affects reads only, for the same reason as Fuseki: an unqualified INSERT or DELETE writes to the default graph.
+
+[source,turtle]
+----
+@prefix : <https://mustrd.org/triplestore/> .
+
+:tentris_local a :Tentris ;
+    :url "http://127.0.0.1" ;
+    :port "9080" .
+----
+
+`scripts/tentris_integration.sh` runs the same `expected-success` specs against a local Tentris. It is not in CI — Tentris is not a public image and needs a licence — so it runs where the binary is installed and says so when it is not.
 
 ==== For Stardog:
 
