@@ -1919,3 +1919,92 @@ class TestRunSelectSpec:
 |  0 | https://semanticpartners.com/data/test/obj2 | https://semanticpartners.com/data/test/obj |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
+
+    # A CSV `then` and an ORDER BY query used to be mutually exclusive: `ordered`
+    # was only ever set from sh:order on an inline must:TableDataset, so a table
+    # read from a file was always "unordered" and every ordered query against one
+    # failed with "must:then must contain sh:order on every row" — advice the
+    # author could not act on, because a CSV has nowhere to put sh:order.
+    ordered_csv_given = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:sub1 test-data:pred1 test-data:obj1 .
+        test-data:sub2 test-data:pred2 test-data:obj2 .
+        """
+
+    def run_then_file_spec(self, given_ttl: str, query: str, then_ttl: str):
+        run_config = {'spec_path': ""}
+        given = Graph().parse(data=given_ttl, format="ttl")
+        spec = f"""
+            @prefix must: <https://mustrd.org/model/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+            test-data:my_first_spec
+                a must:TestSpec ;
+                must:when  [ a must:TextSparqlSource ;
+                        must:queryText  "{query}" ;
+                        must:queryType must:SelectSparql ] ;
+                must:then  {then_ttl} .
+            """
+        spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec, spec_uri, __name__)
+
+        when_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.when,
+                                              spec_graph=spec_graph,
+                                              run_config=run_config,
+                                              mustrd_triple_store=self.triple_store)
+        then_component = parse_spec_component(subject=spec_uri,
+                                              predicate=MUST.then,
+                                              spec_graph=spec_graph,
+                                              run_config=run_config,
+                                              mustrd_triple_store=self.triple_store)
+
+        self.triple_store["given"] = given
+        spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
+        when_result = run_when(spec_uri, self.triple_store, when_component[0])
+        return then_component, check_result(spec, when_result)
+
+    def test_select_spec_ordered_then_csv_in_query_order_passes(self):
+        then_component, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p",
+            '[ a must:FileDataset ; must:file "test/data/thenOrderedSuccess.csv" ]')
+
+        assert isinstance(then_component, TableThenSpec)
+        assert then_component.rows_in_source_order is True
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_ordered_then_csv_in_wrong_order_fails(self):
+        # The file's row order is what the CSV has instead of sh:order, so it is
+        # held to it: same rows, wrong sequence, still a failure.
+        then_component, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p",
+            '[ a must:FileDataset ; must:file "test/data/thenOrderedWrongOrder.csv" ]')
+
+        assert isinstance(then_result, SelectSpecFailure)
+        assert then_result.message != \
+            "Actual result is ordered, must:then must contain sh:order on every row."
+        assert then_result.table_comparison is not None
+        assert not then_result.table_comparison.empty
+
+    def test_select_spec_unordered_query_then_csv_does_not_warn_about_sh_order(self):
+        # No ORDER BY, so both sides are sorted before comparing and the file's
+        # row order is beside the point. The CSV never mentioned sh:order, so
+        # there is nothing to warn about being ignored.
+        _, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o }",
+            '[ a must:FileDataset ; must:file "test/data/thenOrderedWrongOrder.csv" ]')
+
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_ordered_then_empty_table_passes(self):
+        # Same root cause: an empty result cannot come out in the wrong order,
+        # and must:EmptyTable has no rows to hang sh:order on.
+        _, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s <https://example.com/absent> ?o } ORDER BY ?p",
+            '[ a must:EmptyTable ]')
+
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])

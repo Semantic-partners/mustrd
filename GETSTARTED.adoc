@@ -358,3 +358,15 @@ E.g. A table dataset consisting of two ordered rows and three columns.
                 must:layer "http://cambridgesemantics.com/Layer/33b97531d7e148748b75e4e3c6bbf164";
         ] .
 ----
+
+==== Row order in a tabular then
+
+If the `when` has an `ORDER BY`, the `then` has to say what order it expects, and how it says so depends on where its rows come from.
+
+Rows written inline in the specification need `sh:order` on *every* row, because RDF is unordered — that is what `must:OrderedTableDataset` above is for. Leave `sh:order` off some or all of the rows and the spec is rejected as inconsistent rather than run.
+
+Rows read from a file — a `must:FileDataset` pointing at a `.csv`, `.xls` or `.xlsx` — already have an order: the order they appear in the file. There is no `sh:order` to add, and none is asked for. The rows are compared to the result one position at a time, so the same rows in a different sequence is a failure.
+
+A `must:EmptyTable` needs nothing either way: an empty result cannot come out in the wrong order.
+
+Without an `ORDER BY`, the result's order is arbitrary, so both sides are sorted before they are compared and row order is ignored everywhere. An inline `then` that carries `sh:order` anyway passes with a warning that the order was ignored.

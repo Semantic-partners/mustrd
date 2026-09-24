@@ -955,12 +955,27 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
+ORDER_BY_PATTERNS = ["order by ?", "order by desc", "order by asc"]
+
+
+def query_is_ordered(query: str) -> bool:
+    """Whether the `when` asked for a particular row order."""
+    return any(pattern in query.lower() for pattern in ORDER_BY_PATTERNS)
+
+
+def then_carries_order(then: TableThenSpec) -> bool:
+    """Whether a tabular `then` says anything about what order its rows go in.
+    Returns True when any of these three cases:
+        Inline rows have a sh:order
+        The table is a csv or spreadsheet
+        Empty result set (trivially ordered)
+    """
+    return then.ordered or then.rows_in_source_order or then.value.empty
+
+
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
-    order_list = ["order by ?", "order by desc", "order by asc"]
-    ordered_result = any(
-        pattern in spec.when[0].value.lower() for pattern in order_list
-    )
+    ordered_result = query_is_ordered(spec.when[0].value)
 
     # If sparql query doesn't contain order by clause, but order is define in then spec:
     # Then ignore order in then spec and print a warning
@@ -970,7 +985,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
 
     # If sparql query contains an order by clause and then spec is not order:
     # Spec is inconsistent
-    if ordered_result and not spec.then.ordered:
+    if ordered_result and not then_carries_order(spec.then):
         message = (
             "Actual result is ordered, must:then must contain sh:order on every row."
         )
@@ -1023,10 +1038,7 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
     sorted_columns = sorted(columns)
     then = spec.then.value
     sorted_then_cols = sorted(list(then))
-    order_list = ["order by ?", "order by desc", "order by asc"]
-    ordered_result = any(
-        pattern in spec.when[0].value.lower() for pattern in order_list
-    )
+    ordered_result = query_is_ordered(spec.when[0].value)
 
     if not ordered_result:
         resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)

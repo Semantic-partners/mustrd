@@ -111,6 +111,11 @@ class ThenSpec(SpecComponent):
 @dataclass
 class TableThenSpec(ThenSpec):
     value: pandas.DataFrame = field(default_factory=pandas.DataFrame)
+    # Rows that arrived already in an order: a CSV or spreadsheet, where the
+    # file's row sequence IS the expected order. `ordered` is specifically about
+    # sh:order, which such a table has nowhere to put and no need for — sh:order
+    # exists because rows written inline in Turtle are RDF, and RDF is unordered.
+    rows_in_source_order: bool = False
 
 
 @dataclass
@@ -416,6 +421,11 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         df = pandas.read_csv(path) if path.suffix == ".csv" else pandas.read_excel(path)
         then_spec = TableThenSpec()
         then_spec.value = df
+        # The file's row order is the expected order, so an ORDER BY query has a
+        # `then` to compare against row by row. Without this a CSV `then` was
+        # rejected out of hand for any ordered query, with a message telling the
+        # author to add sh:order to a file that cannot carry it.
+        then_spec.rows_in_source_order = True
         return then_spec
     else:
         try:

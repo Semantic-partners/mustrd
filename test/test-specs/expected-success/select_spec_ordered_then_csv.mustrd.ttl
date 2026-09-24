@@ -1,0 +1,23 @@
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix must:      <https://mustrd.org/model/> .
+@prefix test-data: <https://semanticpartners.com/data/test/> .
+
+# An ORDER BY query against a `then` read from a CSV. The file's row order is
+# the expected order — a CSV has nowhere to put sh:order, and is not asked for
+# one. The companion inline spec is select_spec_ordered.mustrd.ttl.
+test-data:a_complete_select_scenario_ordered_then_csv
+    a          must:TestSpec ;
+    must:given [ a must:StatementsDataset ;
+                 must:hasStatement [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub1 ;
+                                     rdf:predicate test-data:pred1 ;
+                                     rdf:object    test-data:obj1 ; ] ,
+                                   [ a             rdf:Statement ;
+                                     rdf:subject   test-data:sub2 ;
+                                     rdf:predicate test-data:pred2 ;
+                                     rdf:object    test-data:obj2 ; ] ; ] ;
+    must:when  [ a must:TextSparqlSource ;
+                 must:queryText  "select ?s ?p ?o where { ?s ?p ?o } ORDER BY ?p" ;
+                 must:queryType must:SelectSparql ; ] ;
+    must:then  [ a must:FileDataset ;
+                 must:file "thenOrderedSuccess.csv" ] .

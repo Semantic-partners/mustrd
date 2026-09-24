@@ -1,0 +1,3 @@
+s,s_datatype,p,p_datatype,o,o_datatype
+https://semanticpartners.com/data/test/sub1,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred1,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/obj1,http://www.w3.org/2001/XMLSchema#anyURI
+https://semanticpartners.com/data/test/sub2,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/pred2,http://www.w3.org/2001/XMLSchema#anyURI,https://semanticpartners.com/data/test/obj2,http://www.w3.org/2001/XMLSchema#anyURI
