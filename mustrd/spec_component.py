@@ -420,7 +420,20 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
 
     # https://github.com/Semantic-partners/mustrd/issues/94
     if path.suffix in {".csv", ".xlsx", ".xls"}:
-        df = pandas.read_csv(path) if path.suffix == ".csv" else pandas.read_excel(path)
+        # Read as text, never inferred. The other side of the comparison is built
+        # by json_results_to_panda_dataframe, and SPARQL JSON results encode
+        # every literal's value as a string with the type carried separately, so
+        # that frame is all strings. Left to itself pandas turned a column of
+        # numbers into int64, and "5" != numpy.int64(5) — a failure that rendered
+        # as `expected 5, actual 5`. The types are not lost: they are in the
+        # parallel <name>_datatype columns, which is what mustrd compares them by.
+        #
+        # keep_default_na matters as much as dtype: without it an empty cell, and
+        # the literal strings NA, NULL and NaN, all become NaN, where the actual
+        # frame has "" (it ends with fillna("")).
+        df = (pandas.read_csv(path, dtype=str, keep_default_na=False)
+              if path.suffix == ".csv"
+              else pandas.read_excel(path, dtype=str, keep_default_na=False))
         then_spec = TableThenSpec()
         then_spec.value = df
         # A file `then` always has an answer here, never None: saying nothing
