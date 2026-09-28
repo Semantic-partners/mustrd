@@ -2,6 +2,9 @@ import unittest
 import os
 from pathlib import Path
 
+import pytest
+from pyshacl import validate
+
 from mustrd.mustrd import run_specs, get_triple_stores, validate_specs, get_specs
 from rdflib import Graph
 from mustrd.namespace import TRIPLESTORE
@@ -74,6 +77,66 @@ test-data:a_complete_construct_scenario
         # Perform assertions or checks on the results if needed
         self.assertIsInstance(final_results, list)
         self.assertEqual(len(final_results), 0)  # Assert that no results were returned
+
+
+ROWS = '[ sh:order 1 ; must:hasBinding [ must:variable "s" ; must:boundValue test-data:a ] ]'
+
+
+def validate_then(then_ttl: str):
+    """SHACL-validate a one-spec graph with the settings mustrd itself uses."""
+    shacl_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/mustrdShapes.ttl")))
+    ont_graph = Graph().parse(Path(os.path.join(get_mustrd_root(), "model/ontology.ttl")))
+    data = Graph().parse(data=f"""
+    @prefix sh: <http://www.w3.org/ns/shacl#> .
+    @prefix must: <https://mustrd.org/model/> .
+    @prefix test-data: <https://semanticpartners.com/data/test/> .
+    test-data:s a must:TestSpec ;
+      must:given [ a must:FileDataset ; must:file "g.ttl" ] ;
+      must:when [ a must:TextSparqlSource ;
+                  must:queryText "select ?s {{?s ?p ?o}} ORDER BY ?s" ;
+                  must:queryType must:SelectSparql ] ;
+      must:then {then_ttl} .
+    """, format="ttl")
+    return validate(data, shacl_graph=shacl_graph, ont_graph=ont_graph,
+                    inference="none", advanced=True,
+                    allow_infos=False, allow_warnings=False)
+
+
+class TestOrderedOnlyOnFileDataset:
+    """`must:ordered` is rejected anywhere it would be silently ignored.
+
+    Only the FileDataset and FolderDataset `then` handlers read it. On an inline
+    table it was not read at all, so `must:ordered false` beside sh:order rows
+    read as "do not check the order" and the order was checked anyway. Rejecting
+    it means that contradiction cannot be written.
+    """
+
+    @pytest.mark.parametrize("then_ttl", [
+        f'[ a must:TableDataset ; must:ordered true ; must:hasRow {ROWS} ]',
+        f'[ a must:TableDataset ; must:ordered false ; must:hasRow {ROWS} ]',
+        '[ a must:EmptyTable ; must:ordered true ]',
+    ])
+    def test_rejected_on_an_inline_then(self, then_ttl):
+        conforms, _, text = validate_then(then_ttl)
+        assert conforms is False
+        assert "must:ordered applies to a then read from a file" in text
+
+    @pytest.mark.parametrize("then_ttl", [
+        '[ a must:FileDataset ; must:ordered true ; must:file "e.csv" ]',
+        '[ a must:FileDataset ; must:ordered false ; must:file "e.csv" ]',
+        '[ a must:FolderDataset ; must:ordered true ; must:fileName "e.csv" ]',
+    ])
+    def test_accepted_on_a_file_then(self, then_ttl):
+        conforms, _, text = validate_then(then_ttl)
+        assert conforms is True, text
+
+    @pytest.mark.parametrize("then_ttl", [
+        f'[ a must:TableDataset ; must:hasRow {ROWS} ]',
+        '[ a must:FileDataset ; must:file "e.csv" ]',
+    ])
+    def test_saying_nothing_is_always_fine(self, then_ttl):
+        conforms, _, text = validate_then(then_ttl)
+        assert conforms is True, text
 
 
 if __name__ == '__main__':

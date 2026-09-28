@@ -2,7 +2,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, List, Type
+from typing import Tuple, List, Type, Optional
 
 import pandas
 import requests
@@ -101,6 +101,11 @@ class SpadeEdnGroupSourceWhenSpec(WhenSpec):
 class ThenSpec(SpecComponent):
     value: Graph = Graph()
     ordered: bool = False
+    # What `must:ordered` said, or None where the `then` said nothing. A tabular
+    # `then` read from a file always ends up True or False here, because absent
+    # means False for it; an inline table leaves it None and keeps the older
+    # query-driven behaviour. See `declared_row_order`.
+    declared_order: Optional[bool] = None
     # Opt-in graph-awareness. A `then` is compared as one flat union by default —
     # you should not have to say which graph a triple is in just to assert it
     # exists. Set `must:matchNamedGraphs true` and the comparison becomes
@@ -358,6 +363,7 @@ def _get_spec_component_foldersparqlsource_when(spec_component_details: SpecComp
 @get_spec_component.method((MUST.FolderDataset, MUST.then))
 def _get_spec_component_folderdatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
+    spec_component.declared_order = declared_row_order(spec_component_details)
 
     file_name = spec_component_details.spec_graph.value(subject=spec_component_details.spec_component_node,
                                                         predicate=MUST.fileName)
@@ -375,6 +381,7 @@ def _get_spec_component_filedatasource_given(spec_component_details: SpecCompone
 def _get_spec_component_filedatasource_then(spec_component_details: SpecComponentDetails) -> ThenSpec:
     spec_component = ThenSpec()
     spec_component.match_named_graphs = wants_named_graphs(spec_component_details)
+    spec_component.declared_order = declared_row_order(spec_component_details)
     return load_spec_component(spec_component_details, spec_component)
 
 
@@ -416,6 +423,12 @@ def load_dataset_from_file(path: Path, spec_component: ThenSpec) -> ThenSpec:
         df = pandas.read_csv(path) if path.suffix == ".csv" else pandas.read_excel(path)
         then_spec = TableThenSpec()
         then_spec.value = df
+        # A file `then` always has an answer here, never None: saying nothing
+        # means unordered.
+        # Being definite is what keeps the query out of the decision later.
+        # getattr because a `given` reaches here too, and GivenSpec has no such
+        # field — only a `then` can declare how it wants to be compared.
+        then_spec.declared_order = bool(getattr(spec_component, "declared_order", None))
         return then_spec
     else:
         try:
@@ -852,6 +865,22 @@ def wants_named_graphs(spec_component_details: SpecComponentDetails) -> bool:
         subject=spec_component_details.spec_component_node,
         predicate=MUST.matchNamedGraphs)
     return bool(value) and str(value).lower() in ("true", "1")
+
+
+def declared_row_order(spec_component_details: SpecComponentDetails) -> Optional[bool]:
+    """What `must:ordered` on this `then` says, or None if it says nothing.
+
+    Only a tabular `then` read from a file acts on this; for it, saying nothing
+    means False rather than None, because unordered is what a file `then` meant
+    before the predicate existed. Keeping "said nothing" distinguishable matters
+    for everything else, which still falls back to reading the query.
+    """
+    value = spec_component_details.spec_graph.value(
+        subject=spec_component_details.spec_component_node,
+        predicate=MUST.ordered)
+    if value is None:
+        return None
+    return str(value).lower() in ("true", "1")
 
 
 def is_then_select_ordered(subject: URIRef, predicate: URIRef, spec_graph: Graph) -> bool:

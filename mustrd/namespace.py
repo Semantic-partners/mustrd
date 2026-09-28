@@ -37,6 +37,9 @@ class MUST(DefinedNamespace):
     focus: URIRef
     # Opt-in: compare a graph `then` graph-by-graph rather than as one flat union.
     matchNamedGraphs: URIRef
+    # Opt-in: compare a tabular `then` read from a file row by row, in file order,
+    # rather than sorting both sides and comparing as sets.
+    ordered: URIRef
 
     # Specification data sources
     TableDataset: URIRef

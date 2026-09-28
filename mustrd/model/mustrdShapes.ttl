@@ -139,6 +139,37 @@ must:MatchNamedGraphsShape
                      sh:maxCount 1 ;
                      sh:message  "must:matchNamedGraphs takes a single boolean." ; ] .
 
+# Optional, and boolean. A tabular `then` carrying this is compared row by row in
+# file order instead of as a set — see :ordered in the ontology.
+must:OrderedShape
+    a              sh:NodeShape ;
+    sh:targetClass must:Dataset ;
+    sh:property    [ sh:path     must:ordered ;
+                     sh:datatype xsd:boolean ;
+                     sh:maxCount 1 ;
+                     sh:message  "must:ordered takes a single boolean." ; ] .
+
+# must:ordered only means something for a then whose rows come from a file.
+# Inline rows say what order they are in with sh:order on each row, and a
+# must:ordered sitting beside them was simply not read: `must:ordered false`
+# next to sh:order rows looked like an instruction to ignore the order, and
+# mustrd checked it anyway. Rejected here rather than ignored, so the
+# contradiction cannot be written in the first place.
+must:OrderedOnlyOnFileDatasetShape
+    a                   sh:NodeShape ;
+    sh:target           [ a sh:SPARQLTarget ;
+                          sh:prefixes must: ;
+                          sh:select   """
+                              SELECT ?this
+                              WHERE {
+                                  ?spec must:then ?this .
+                                  ?this must:ordered ?ordered .
+                              }
+                              """ ; ] ;
+    sh:or               ( [ sh:class must:FileDataset ]
+                          [ sh:class must:FolderDataset ] ) ;
+    sh:message          "must:ordered applies to a then read from a file (must:FileDataset or must:FolderDataset). For inline rows, put sh:order on every row instead." .
+
 must:StatementsDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:StatementsDataset ;
@@ -153,6 +184,10 @@ must:TableDatasetShape
                      sh:node     must:RowShape ;
                      sh:minCount 1 ; ] .
 
+# Deprecated along with the class it targets — see :OrderedTableDataset in the
+# ontology. Nothing can satisfy this shape in practice: a then typed only as an
+# OrderedTableDataset is rejected before SHACL gets to it. Kept so an existing
+# spec that pairs the two types keeps validating as it did.
 must:OrderedTableDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:OrderedTableDataset ;
