@@ -323,10 +323,13 @@ E.g. a table dataset consisting of a single row and three columns.
                         must:boundValue  test-data:obj ; ] ;
                ] ; ] .
 ----
-* *OrderedTableDataset* -  This is an extension of the TableDataset which allows the row order of the dataset to be specified using the SHACL order property to support the ORDER BY clause in SPARQL SELECT queries
+* *OrderedTableDataset* - *Deprecated, and never functional. Do not use.* No handler was ever registered for this class, so a `then` typed only as an `OrderedTableDataset` is rejected at parse time with `Invalid combination of data source type`. Typing a `then` as both a `TableDataset` and an `OrderedTableDataset` does work, but only because the `TableDataset` handler runs and this class is ignored as an unrecognised extra type.
++
+To assert on row order, keep the `then` a plain `must:TableDataset` and put `sh:order` on every row — that is what mustrd actually reads. For a `then` read from a file, use `must:ordered` instead; see <<Row order in a tabular then>>.
++
 E.g. A table dataset consisting of two ordered rows and three columns.
 ----
-    must:then  [ a must:OrderedTableDataset ;
+    must:then  [ a must:TableDataset ;
                  must:hasRow [ sh:order 1 ;
                              must:hasBinding[ must:variable "s" ;
                                         must:boundValue  test-data:sub1 ; ],
@@ -361,12 +364,33 @@ E.g. A table dataset consisting of two ordered rows and three columns.
 
 ==== Row order in a tabular then
 
-If the `when` has an `ORDER BY`, the `then` has to say what order it expects, and how it says so depends on where its rows come from.
+A tabular `then` is compared as a set by default: both sides are sorted first, so the order rows happen to come back in does not matter. Asking for the order to be checked works differently depending on where the rows come from.
 
-Rows written inline in the specification need `sh:order` on *every* row, because RDF is unordered — that is what `must:OrderedTableDataset` above is for. Leave `sh:order` off some or all of the rows and the spec is rejected as inconsistent rather than run.
+===== Rows read from a file
 
-Rows read from a file — a `must:FileDataset` pointing at a `.csv`, `.xls` or `.xlsx` — already have an order: the order they appear in the file. There is no `sh:order` to add, and none is asked for. The rows are compared to the result one position at a time, so the same rows in a different sequence is a failure.
+A `must:FileDataset` (or `must:FolderDataset`) pointing at a `.csv`, `.xls` or `.xlsx` says so with `must:ordered`:
+
+----
+    must:then  [ a must:FileDataset ;
+                 must:ordered true ;
+                 must:file "expected.csv" ] .
+----
+
+`must:ordered true` makes the file's row sequence part of the assertion: the rows are compared to the result one position at a time, so the same rows in a different sequence is a failure. `must:ordered false`, or leaving it out altogether, compares them as a set.
+
+`must:ordered` is only for a `then` read from a file — a `must:FileDataset` or a `must:FolderDataset`. It does *not* apply to an inline `must:TableDataset`, and putting it on one is a SHACL validation error rather than something quietly ignored. Inline rows use `sh:order`; see below.
+
+The `when` is never consulted for this. A file `then` means the same thing whichever query it is paired with, and an `ORDER BY` cannot quietly change what it asserts. Two combinations are worth knowing about, and both pass with a warning rather than failing:
+
+* The query has an `ORDER BY` but the `then` does not set `must:ordered true`. The rows are checked, the order is not. The warning says so, because the `ORDER BY` is going unverified.
+* The `then` sets `must:ordered true` but the query has no `ORDER BY`. The declaration is still honoured, but an unordered query returns rows in whatever order the store likes, so the spec will pass or fail on the store's whim. Add an `ORDER BY` to the query.
+
+===== Rows written inline
+
+Inline rows have no file sequence to appeal to — RDF is unordered — so they need `sh:order` on *every* row of a plain `must:TableDataset`.
+
+Two things that look like they belong here and do not. `must:ordered` is for file `then` clauses only, and is a validation error on an inline table — it would otherwise be read as an instruction and silently ignored, so `must:ordered false` beside `sh:order` rows would look like it turned order checking off when it had not. And `must:OrderedTableDataset` looks like it is for this and is not: it is deprecated and was never wired up. See the dataset list above.
+
+Inline rows are still driven by the query: if the `when` has an `ORDER BY` and the rows have no `sh:order`, the spec is rejected as inconsistent rather than run, and if it has `sh:order` but the query has no `ORDER BY`, the order is ignored and the spec passes with a warning.
 
 A `must:EmptyTable` needs nothing either way: an empty result cannot come out in the wrong order.
-
-Without an `ORDER BY`, the result's order is arbitrary, so both sides are sorted before they are compared and row order is ignored everywhere. An inline `then` that carries `sh:order` anyway passes with a warning that the order was ignored.

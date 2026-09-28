@@ -249,6 +249,15 @@ sh:order rdf:type owl:DatatypeProperty ;
        rdfs:range xsd:boolean ;
        .
 
+###  https://mustrd.org/model/ordered
+:ordered rdf:type owl:DatatypeProperty ;
+         rdfs:comment "Flags whether a must:then file dataset should be treated as having an ordering. Only applies to a File Dataset or a Folder Dataset, and cannot be used on an inline TableDataset, because the latter is known to be ordered when it contains a sh:order" ;
+         rdfs:label "ordered" ;
+         rdfs:domain :Dataset ;
+         rdfs:range xsd:boolean ;
+         .
+
+
 ###  https://mustrd.org/model/matchNamedGraphs
 :matchNamedGraphs rdf:type owl:DatatypeProperty ;
                   rdfs:comment """Compare this then graph-by-graph rather than as one flat union.
@@ -385,8 +394,11 @@ A then is compared as a flat union by default: a spec should not have to say whi
 ###  https://mustrd.org/model/OrderedTableDataset
 :OrderedTableDataset rdf:type owl:Class ;
                      rdfs:subClassOf :TableDataset ;
-                     rdfs:comment "" ;
-                     rdfs:label "OrderedTableDataset" .
+                     owl:deprecated true ;
+                     rdfs:comment """Deprecated. Do not use.
+For an inline then, use :TableDataset and put sh:order on every row. For a then read from a file, use :ordered instead.""" ;
+                     rdfs:seeAlso :TableDataset , :ordered ;
+                     rdfs:label "OrderedTableDataset (deprecated)" .
 
 
 ###  https://mustrd.org/model/Row

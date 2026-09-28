@@ -1,11 +1,13 @@
+import pytest
 from pyparsing import ParseException
+from rdflib.plugins.sparql import prepareQuery
 from rdflib import Graph
 from rdflib.namespace import Namespace
 
 from pathlib import Path
 
 from mustrd.mustrd import  run_when, SpecPassed, SelectSpecFailure, SparqlParseFailure, \
-    SpecPassedWithWarning, check_result, Specification
+    SpecPassedWithWarning, check_result, Specification, compare_rows_positionally, query_is_ordered
 from mustrd.namespace import MUST, TRIPLESTORE
 from mustrd.spec_component import get_spec_component_from_file, TableThenSpec, parse_spec_component
 from test.addspec_source_file_to_spec_graph import addspec_source_file_to_spec_graph, parse_spec
@@ -1931,7 +1933,7 @@ class TestRunSelectSpec:
         test-data:sub2 test-data:pred2 test-data:obj2 .
         """
 
-    def run_then_file_spec(self, given_ttl: str, query: str, then_ttl: str):
+    def build_then_file_spec(self, given_ttl: str, query: str, then_ttl: str):
         run_config = {'spec_path': ""}
         given = Graph().parse(data=given_ttl, format="ttl")
         spec = f"""
@@ -1960,27 +1962,32 @@ class TestRunSelectSpec:
                                               mustrd_triple_store=self.triple_store)
 
         self.triple_store["given"] = given
-        spec = Specification(spec_uri, self.triple_store, given, when_component, then_component)
-        when_result = run_when(spec_uri, self.triple_store, when_component[0])
-        return then_component, check_result(spec, when_result)
+        return Specification(spec_uri, self.triple_store, given, when_component, then_component)
 
-    def test_select_spec_ordered_then_csv_in_query_order_passes(self):
+    def run_then_file_spec(self, given_ttl: str, query: str, then_ttl: str):
+        spec = self.build_then_file_spec(given_ttl, query, then_ttl)
+        when_result = run_when(spec.spec_uri, self.triple_store, spec.when[0])
+        return spec.then, check_result(spec, when_result)
+
+    def test_select_spec_csv_declared_ordered_in_query_order_passes(self):
         then_component, then_result = self.run_then_file_spec(
             self.ordered_csv_given,
             "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p",
-            '[ a must:FileDataset ; must:file "test/data/thenOrderedSuccess.csv" ]')
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenOrderedSuccess.csv" ]')
 
         assert isinstance(then_component, TableThenSpec)
-        assert then_component.rows_in_source_order is True
+        assert then_component.declared_order is True
         assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
 
-    def test_select_spec_ordered_then_csv_in_wrong_order_fails(self):
-        # The file's row order is what the CSV has instead of sh:order, so it is
-        # held to it: same rows, wrong sequence, still a failure.
-        then_component, then_result = self.run_then_file_spec(
+    def test_select_spec_csv_declared_ordered_in_wrong_order_fails(self):
+        # Having asked for its order to be checked, the file is held to it: same
+        # rows, wrong sequence, failure.
+        _, then_result = self.run_then_file_spec(
             self.ordered_csv_given,
             "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p",
-            '[ a must:FileDataset ; must:file "test/data/thenOrderedWrongOrder.csv" ]')
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenOrderedWrongOrder.csv" ]')
 
         assert isinstance(then_result, SelectSpecFailure)
         assert then_result.message != \
@@ -1988,23 +1995,131 @@ class TestRunSelectSpec:
         assert then_result.table_comparison is not None
         assert not then_result.table_comparison.empty
 
-    def test_select_spec_unordered_query_then_csv_does_not_warn_about_sh_order(self):
-        # No ORDER BY, so both sides are sorted before comparing and the file's
-        # row order is beside the point. The CSV never mentioned sh:order, so
-        # there is nothing to warn about being ignored.
+    def test_select_spec_csv_declared_ordered_is_honoured_without_an_order_by(self):
+        # The declaration stands on its own: `must:ordered true` means compare row
+        # by row, whether or not the query says ORDER BY. That is the decoupling —
+        # a then reads the same whichever when it is paired with.
+        #
+        # Asserted on the decision rather than on a pass or fail, because an
+        # unordered query hands back rows in whatever order the store likes, so
+        # the outcome of such a spec is genuinely not deterministic. That is what
+        # the warning in the next test is for.
+        spec = self.build_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o }",
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenOrderedSuccess.csv" ]')
+
+        assert spec.then.declared_order is True
+        assert compare_rows_positionally(spec) is True
+
+    def test_select_spec_declared_ordered_without_order_by_warns(self):
+        # A single-row CSV, so positional and sorted comparison cannot disagree
+        # and the outcome is deterministic — leaving the warning as the thing
+        # under test.
         _, then_result = self.run_then_file_spec(
+            self.given_sub_pred_obj,
+            "select ?s ?p ?o { ?s ?p ?o }",
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenSuccess.csv" ]')
+
+        assert isinstance(then_result, SpecPassedWithWarning)
+        assert then_result.warning == (
+            f"{TEST_DATA.my_first_spec} sets must:ordered true but its query has no "
+            "ORDER BY, so the rows are being compared against an arbitrary order")
+
+    def test_select_spec_csv_without_must_ordered_ignores_row_order(self):
+        # Saying nothing means unordered, so both sides are sorted and the file's
+        # row sequence is beside the point — the behaviour a CSV then has always
+        # had. No ORDER BY here, so nothing to warn about either.
+        then_component, then_result = self.run_then_file_spec(
             self.ordered_csv_given,
             "select ?s ?p ?o { ?s ?p ?o }",
             '[ a must:FileDataset ; must:file "test/data/thenOrderedWrongOrder.csv" ]')
 
+        assert then_component.declared_order is False
         assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
 
+    def test_select_spec_csv_declared_unordered_passes_and_ignores_row_order(self):
+        # Saying so explicitly reads the same as saying nothing, but documents
+        # for the next reader that the order was considered and waived.
+        then_component, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o }",
+            '[ a must:FileDataset ; must:ordered false ; '
+            'must:file "test/data/thenOrderedWrongOrder.csv" ]')
+
+        assert then_component.declared_order is False
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_order_by_against_undeclared_csv_passes_with_warning(self):
+        # The query specified an order nobody asserted on. Not an error — the
+        # then is allowed to care only about the rows — but the ORDER BY is going
+        # unverified, so it passes with a warning rather than silently.
+        _, then_result = self.run_then_file_spec(
+            self.ordered_csv_given,
+            "select ?s ?p ?o { ?s ?p ?o } ORDER BY ?p",
+            '[ a must:FileDataset ; must:file "test/data/thenOrderedWrongOrder.csv" ]')
+
+        assert isinstance(then_result, SpecPassedWithWarning)
+        assert then_result.warning == (
+            f"{TEST_DATA.my_first_spec} has ORDER BY in its query but its must:then "
+            "does not set must:ordered true, so row order was not checked")
+
     def test_select_spec_ordered_then_empty_table_passes(self):
-        # Same root cause: an empty result cannot come out in the wrong order,
-        # and must:EmptyTable has no rows to hang sh:order on.
+        # An empty result cannot come out in the wrong order, and must:EmptyTable
+        # has no rows to hang sh:order on.
         _, then_result = self.run_then_file_spec(
             self.ordered_csv_given,
             "select ?s ?p ?o { ?s <https://example.com/absent> ?o } ORDER BY ?p",
             '[ a must:EmptyTable ]')
 
         assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+
+class TestQueryIsOrdered:
+    """`query_is_ordered` reads the parsed algebra, not the query text.
+
+    Every case here except the last two was answered wrongly by the text scan
+    that came before it.
+    """
+
+    @pytest.mark.parametrize("query", [
+        "SELECT ?s {?s ?p ?o} ORDER BY ?s",
+        "SELECT ?s {?s ?p ?o} ORDER BY DESC(?s)",
+        "SELECT ?s {?s ?p ?o} ORDER BY ASC(?s)",
+        # An expression rather than a bare variable: no "order by ?" to find.
+        "SELECT ?s {?s ?p ?o} ORDER BY STR(?s)",
+        "SELECT ?s {?s ?p ?o} ORDER BY (?s + 1)",
+        # Whitespace a text scan is not expecting.
+        "SELECT ?s {?s ?p ?o} ORDER  BY ?s",
+        "SELECT ?s {?s ?p ?o} ORDER\n  BY ?s",
+        "SELECT DISTINCT ?s {?s ?p ?o} ORDER BY ?s LIMIT 5",
+        # The outer query orders, whatever the subquery does.
+        "SELECT ?s { { SELECT ?s {?s ?p ?o} ORDER BY ?s } } ORDER BY ?s",
+    ])
+    def test_ordered_queries(self, query):
+        assert query_is_ordered(query) is True
+
+    @pytest.mark.parametrize("query", [
+        "SELECT ?s {?s ?p ?o}",
+        "SELECT ?s (COUNT(*) AS ?n) {?s ?p ?o} GROUP BY ?s",
+        # The words appear, but in data, not in a modifier.
+        'SELECT ?s {?s ?p "order by ?x"}',
+        # Orders the subquery, not the rows handed back.
+        "SELECT ?s { { SELECT ?s {?s ?p ?o} ORDER BY ?s } }",
+    ])
+    def test_unordered_queries(self, query):
+        assert query_is_ordered(query) is False
+
+    def test_unparseable_query_falls_back_to_scanning_the_text(self):
+        # Stores have their own SPARQL extensions. Not being able to parse one is
+        # not a reason to refuse to compare the rows it returned, so the old text
+        # scan takes over — imprecise, but better than raising.
+        vendor = "SELECT ?s {?s ?p ?o} ORDER BY ?s NULLS LAST"
+        with pytest.raises(Exception):
+            prepareQuery(vendor)
+        assert query_is_ordered(vendor) is True
+
+    def test_unparseable_and_unordered_is_still_unordered(self):
+        assert query_is_ordered("SELECT ?s {?s ?p ?o} NULLS LAST") is False

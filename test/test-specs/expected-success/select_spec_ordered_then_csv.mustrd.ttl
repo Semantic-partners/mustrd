@@ -2,9 +2,10 @@
 @prefix must:      <https://mustrd.org/model/> .
 @prefix test-data: <https://semanticpartners.com/data/test/> .
 
-# An ORDER BY query against a `then` read from a CSV. The file's row order is
-# the expected order — a CSV has nowhere to put sh:order, and is not asked for
-# one. The companion inline spec is select_spec_ordered.mustrd.ttl.
+# An ORDER BY query against a `then` read from a CSV. The then declares
+# must:ordered true, so the file's row order is part of the assertion. Without
+# that declaration the rows would be compared as a set and the ORDER BY would go
+# unchecked. The companion inline spec is select_spec_ordered.mustrd.ttl.
 test-data:a_complete_select_scenario_ordered_then_csv
     a          must:TestSpec ;
     must:given [ a must:StatementsDataset ;
@@ -20,4 +21,5 @@ test-data:a_complete_select_scenario_ordered_then_csv
                  must:queryText  "select ?s ?p ?o where { ?s ?p ?o } ORDER BY ?p" ;
                  must:queryType must:SelectSparql ; ] ;
     must:then  [ a must:FileDataset ;
+                 must:ordered true ;
                  must:file "thenOrderedSuccess.csv" ] .

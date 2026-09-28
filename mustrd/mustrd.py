@@ -15,6 +15,8 @@ from rdflib import Dataset, Graph, URIRef, RDF, XSD, SH, Literal
 from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 
 from rdflib.compare import isomorphic, graph_diff
+from rdflib.plugins.sparql import prepareQuery
+from functools import lru_cache
 import pandas
 
 from .namespace import MUST, TRIPLESTORE
@@ -955,43 +957,120 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
     return frames
 
 
+# What may sit between the query root and its ORDER BY. Anything else ends the
+# walk — ToMultiSet in particular, which is how a subquery appears: an ORDER BY
+# inside one orders that subquery, not the rows the query hands back.
+TOP_LEVEL_MODIFIERS = ("SelectQuery", "Project", "Distinct", "Reduced", "Slice")
+
+# Only for a query rdflib cannot parse. Deliberately loose, and wrong in both
+# directions: it misses ORDER BY STR(?s) and fires on a literal that merely
+# contains the words. That is the price of not being able to read the query.
 ORDER_BY_PATTERNS = ["order by ?", "order by desc", "order by asc"]
 
 
+@lru_cache(maxsize=256)
 def query_is_ordered(query: str) -> bool:
-    """Whether the `when` asked for a particular row order."""
-    return any(pattern in query.lower() for pattern in ORDER_BY_PATTERNS)
+    """Whether the `when` orders the rows it hands back.
+
+    Read off the parsed algebra rather than the query text. Scanning the text
+    misses `ORDER BY STR(?s)`, a second space, or a line break between ORDER and
+    BY, and it fires on a literal that merely contains the words — so a spec
+    could be told its query was ordered when it was not, and the other way round.
+
+    Only the top-level modifier chain counts, so an ORDER BY that belongs to a
+    subquery is not mistaken for one that orders the result.
+
+    A query rdflib cannot parse — a store's own SPARQL extensions, say — falls
+    back to scanning the text. Being unable to read the query is not a reason to
+    refuse to compare the rows it returned.
+    """
+    try:
+        node = prepareQuery(query).algebra
+    except Exception as e:
+        log.debug("query_is_ordered: could not parse (%s), scanning text of: %s",
+                  e, query)
+        return any(pattern in query.lower() for pattern in ORDER_BY_PATTERNS)
+
+    while node is not None and hasattr(node, "name"):
+        if node.name == "OrderBy":
+            return True
+        if node.name not in TOP_LEVEL_MODIFIERS:
+            return False
+        node = node.get("p")
+    return False
 
 
-def then_carries_order(then: TableThenSpec) -> bool:
-    """Whether a tabular `then` says anything about what order its rows go in.
-    Returns True when any of these three cases:
+def compare_rows_positionally(spec: Specification) -> bool:
+    """Whether the two tables are lined up row by row, or sorted first and
+    compared as sets.
+
+    A `then` read from a file answers this itself, with `must:ordered`. The query
+    is not consulted for one, so an ORDER BY cannot quietly change what a `then`
+    means, and a `then` reads the same whichever `when` it is paired with.
+
+    An inline table makes no such declaration and keeps the older behaviour: the
+    query's ORDER BY decides whether order is checked, and sh:order on each row
+    says what that order is.
+    """
+    if spec.then.declared_order is not None:
+        return spec.then.declared_order
+    return query_is_ordered(spec.when[0].value)
+
+
+def inline_then_carries_order(then: TableThenSpec) -> bool:
+    """Whether an inline tabular `then` says what order its rows go in.
+    Returns True when either of these two cases:
         Inline rows have a sh:order
-        The table is a csv or spreadsheet
         Empty result set (trivially ordered)
     """
-    return then.ordered or then.rows_in_source_order or then.value.empty
+    return then.ordered or then.value.empty
 
 
 def table_comparison(result: str, spec: Specification) -> SpecResult:
     warning = None
-    ordered_result = query_is_ordered(spec.when[0].value)
+    ordered_query = query_is_ordered(spec.when[0].value)
 
-    # If sparql query doesn't contain order by clause, but order is define in then spec:
-    # Then ignore order in then spec and print a warning
-    if not ordered_result and spec.then.ordered:
-        warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
+    if spec.then.declared_order is None:
+        # An inline table. The query decides whether order is checked at all, so
+        # the query and the then have to agree.
+
+        # If sparql query doesn't contain order by clause, but order is define in then spec:
+        # Then ignore order in then spec and print a warning
+        if not ordered_query and spec.then.ordered:
+            warning = f"sh:order in {spec.spec_uri} is ignored, no ORDER BY in query"
+            log.warning(warning)
+
+        # If sparql query contains an order by clause and then spec is not order:
+        # Spec is inconsistent
+        if ordered_query and not inline_then_carries_order(spec.then):
+            message = (
+                "Actual result is ordered, must:then must contain sh:order on every row."
+            )
+            return SelectSpecFailure(
+                spec.spec_uri, spec.triple_store["type"], None, message
+            )
+    elif ordered_query and not spec.then.declared_order:
+        # A file then that did not ask for its order to be checked, against a
+        # query that went to the trouble of specifying one. Not an error — the
+        # then is entitled to assert on the rows alone — but the ORDER BY is
+        # going unverified, and that is worth saying out loud.
+        warning = (
+            f"{spec.spec_uri} has ORDER BY in its query but its must:then does not "
+            "set must:ordered true, so row order was not checked"
+        )
         log.warning(warning)
-
-    # If sparql query contains an order by clause and then spec is not order:
-    # Spec is inconsistent
-    if ordered_result and not then_carries_order(spec.then):
-        message = (
-            "Actual result is ordered, must:then must contain sh:order on every row."
+    elif spec.then.declared_order and not ordered_query:
+        # Query is unordered, but the must:then has a delcared order.
+        # The declaration is still honoured — the query never
+        # gets a say for a file then — but an unordered query hands back rows in
+        # whatever order the store likes, so this spec will pass or fail on the
+        # store's whim. Say so, because the failure it eventually produces looks
+        # like a data problem rather than a missing ORDER BY.
+        warning = (
+            f"{spec.spec_uri} sets must:ordered true but its query has no ORDER BY, "
+            "so the rows are being compared against an arbitrary order"
         )
-        return SelectSpecFailure(
-            spec.spec_uri, spec.triple_store["type"], None, message
-        )
+        log.warning(warning)
 
     # Convert results to dataframe
     if is_json(result):
@@ -1038,7 +1117,7 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
     sorted_columns = sorted(columns)
     then = spec.then.value
     sorted_then_cols = sorted(list(then))
-    ordered_result = query_is_ordered(spec.when[0].value)
+    ordered_result = compare_rows_positionally(spec)
 
     if not ordered_result:
         resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)
