@@ -1060,7 +1060,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         )
         log.warning(warning)
     elif spec.then.declared_order and not ordered_query:
-        # Query is unordered, but the must:then has a delcared order.
+# Query is unordered, but the must:then has a declared order.
         # The declaration is still honoured — the query never
         # gets a say for a file then — but an unordered query hands back rows in
         # whatever order the store likes, so this spec will pass or fail on the
