@@ -157,7 +157,15 @@ must:OrderedShape
 # contradiction cannot be written in the first place.
 must:OrderedOnlyOnFileDatasetShape
     a                   sh:NodeShape ;
-    sh:targetSubjectsOf must:ordered ;
+    sh:target           [ a sh:SPARQLTarget ;
+                          sh:prefixes must: ;
+                          sh:select   """
+                              SELECT ?this
+                              WHERE {
+                                  ?spec must:then ?this .
+                                  ?this must:ordered ?ordered .
+                              }
+                              """ ; ] ;
     sh:or               ( [ sh:class must:FileDataset ]
                           [ sh:class must:FolderDataset ] ) ;
     sh:message          "must:ordered applies to a then read from a file (must:FileDataset or must:FolderDataset). For inline rows, put sh:order on every row instead." .
