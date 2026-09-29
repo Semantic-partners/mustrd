@@ -2076,6 +2076,80 @@ class TestRunSelectSpec:
 
         assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
 
+    # A CSV is read as text, because that is what the other side of the
+    # comparison is. SPARQL JSON results encode every literal's value as a
+    # string and carry the type separately, so mustrd's actual-result frame is
+    # all strings; pandas' default type inference turned the expected frame's
+    # numbers into int64, and "5" != numpy.int64(5). The diff rendered as
+    # `expected 5, actual 5`, which is as good as no message at all.
+    typed_values_given = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:a test-data:count 5 ; test-data:note "NA" ; test-data:blank "" .
+        test-data:b test-data:count 10 ; test-data:note "ok" ; test-data:blank "x" .
+        """
+    typed_values_query = (
+        "select ?count ?note ?blank { "
+        "?s <https://semanticpartners.com/data/test/count> ?count ; "
+        "<https://semanticpartners.com/data/test/note> ?note ; "
+        "<https://semanticpartners.com/data/test/blank> ?blank } ORDER BY ?count")
+
+    def test_select_spec_csv_values_are_not_retyped_by_pandas(self):
+        # count is integers, blank is an empty cell, and note contains the
+        # literal string "NA" — which pandas reads as missing data unless told
+        # otherwise. All three used to come back as a failure.
+        _, then_result = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.csv" ]')
+
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_csv_integer_column_is_read_as_text(self):
+        # The mechanism, asserted directly: every column of a CSV then is object
+        # dtype holding str, matching what json_results_to_panda_dataframe builds.
+        then_component, _ = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.csv" ]')
+
+        assert set(then_component.value.dtypes.astype(str)) == {"object"}
+        assert then_component.value["count"].tolist() == ["5", "10"]
+        # Not NaN, and not the float nan that a bare read_csv would give.
+        assert then_component.value["blank"].tolist() == ["", "x"]
+        assert then_component.value["note"].tolist() == ["NA", "ok"]
+
+    # The same hazard in a spreadsheet, and worse there. A CSV is text on disk
+    # and only pandas' sniffing makes it numeric; an .xlsx stores 5 as a genuine
+    # integer, so read_excel has a real type to preserve and will. The fixture is
+    # written with openpyxl using real numeric cells and one genuinely empty
+    # cell, so it exercises what a spreadsheet actually holds rather than text
+    # that happens to look numeric.
+    def test_select_spec_xlsx_values_are_not_retyped_by_pandas(self):
+        _, then_result = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.xlsx" ]')
+
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_xlsx_typed_cells_are_read_as_text(self):
+        then_component, _ = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.xlsx" ]')
+
+        assert set(then_component.value.dtypes.astype(str)) == {"object"}
+        # Stored as integers in the sheet; int64 without dtype=str.
+        assert then_component.value["count"].tolist() == ["5", "10"]
+        # An empty cell, and the literal string "NA" — both nan without
+        # keep_default_na=False, where the actual-result frame has "" and "NA".
+        assert then_component.value["blank"].tolist() == ["", "x"]
+        assert then_component.value["note"].tolist() == ["NA", "ok"]
+
 
 class TestQueryIsOrdered:
     """`query_is_ordered` reads the parsed algebra, not the query text.

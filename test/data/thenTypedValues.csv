@@ -1,0 +1,3 @@
+blank,blank_datatype,count,count_datatype,note,note_datatype
+,http://www.w3.org/2001/XMLSchema#string,5,http://www.w3.org/2001/XMLSchema#integer,NA,http://www.w3.org/2001/XMLSchema#string
+x,http://www.w3.org/2001/XMLSchema#string,10,http://www.w3.org/2001/XMLSchema#integer,ok,http://www.w3.org/2001/XMLSchema#string
