@@ -2120,6 +2120,37 @@ class TestRunSelectSpec:
         assert then_component.value["blank"].tolist() == ["", "x"]
         assert then_component.value["note"].tolist() == ["NA", "ok"]
 
+    # The same hazard in a spreadsheet, and worse there. A CSV is text on disk
+    # and only pandas' sniffing makes it numeric; an .xlsx stores 5 as a genuine
+    # integer, so read_excel has a real type to preserve and will. The fixture is
+    # written with openpyxl using real numeric cells and one genuinely empty
+    # cell, so it exercises what a spreadsheet actually holds rather than text
+    # that happens to look numeric.
+    def test_select_spec_xlsx_values_are_not_retyped_by_pandas(self):
+        _, then_result = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.xlsx" ]')
+
+        assert then_result == SpecPassed(TEST_DATA.my_first_spec, self.triple_store["type"])
+
+    def test_select_spec_xlsx_typed_cells_are_read_as_text(self):
+        then_component, _ = self.run_then_file_spec(
+            self.typed_values_given,
+            self.typed_values_query,
+            '[ a must:FileDataset ; must:ordered true ; '
+            'must:file "test/data/thenTypedValues.xlsx" ]')
+
+        assert set(then_component.value.dtypes.astype(str)) == {"object"}
+        # Stored as integers in the sheet; int64 without dtype=str.
+        assert then_component.value["count"].tolist() == ["5", "10"]
+        # An empty cell, and the literal string "NA" — both nan without
+        # keep_default_na=False, where the actual-result frame has "" and "NA".
+        assert then_component.value["blank"].tolist() == ["", "x"]
+        assert then_component.value["note"].tolist() == ["NA", "ok"]
+
+
 class TestQueryIsOrdered:
     """`query_is_ordered` reads the parsed algebra, not the query text.
 
