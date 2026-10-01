@@ -47,8 +47,6 @@ openpyxl = "^3.1.2"
 toml = "^0.10.2"
 pyshacl="^0.30.0"
 tomli = "^2.0.1"
-flake8 = "7.0.0"
-coverage = "7.4.3"
 colorama = "0.4.6"
 # urllib3 is deliberately NOT listed here. It arrives via requests, and mustrd
 # reaches it as requests.packages.urllib3 — see the cipher note in mustrd.py, which
@@ -66,6 +64,11 @@ edn-format = "^0.7.5"
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^2.0.2"
+# CI tools only (build.yml and ci.yml call `poetry run flake8` / `poetry run coverage`);
+# no mustrd module imports them. As runtime dependencies, their exact pins were forced
+# on every consumer, downgrading coverage and, through it, pytest-cov.
+flake8 = "7.0.0"
+coverage = "7.4.3"
 playwright = "^1.61.0"
 
 [build-system]
