@@ -68,7 +68,7 @@ autopep8 = "^2.0.2"
 # no mustrd module imports them. As runtime dependencies, their exact pins were forced
 # on every consumer, downgrading coverage and, through it, pytest-cov.
 flake8 = "7.0.0"
-coverage = "7.4.3"
+coverage = "^7.13"
 playwright = "^1.61.0"
 
 [build-system]
