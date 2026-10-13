@@ -2239,3 +2239,16 @@ class TestRunSelectSpecCsvWithoutDatatypes:
         assert isinstance(result, SelectSpecFailure)
         assert result.message == ('Expected 2 row(s) and 2 column(s), got 2 row(s) and 2 column(s)'
                                   ' — differs in: o (expected "6", actual "5")')
+
+
+def test_rendered_diff_keeps_numeric_text():
+    import pandas
+    from mustrd.mustrd import write_result_diff_to_log
+    expected = pandas.DataFrame({"absoluteIncrease": ["2000", "0.04999720123"]})
+    actual = pandas.DataFrame({"absoluteIncrease": ["2000.00", "4.99972012E-2"]})
+    diff = expected.compare(actual, result_names=("expected", "actual"))
+    lines = []
+    write_result_diff_to_log(SelectSpecFailure(TEST_DATA.s, TRIPLESTORE.RdfLib, diff, "msg"), lines.append)
+    rendered = "\n".join(str(line) for line in lines)
+    for text in ("2000.00", "4.99972012E-2", "0.04999720123"):
+        assert text in rendered

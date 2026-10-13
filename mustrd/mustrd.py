@@ -1097,10 +1097,18 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         else:
             return SpecPassed(spec.spec_uri, spec.triple_store["type"])
     else:
-        log.debug(f"{spec.spec_uri} {message}\n{df_diff.to_markdown()}")
+        log.debug(f"{spec.spec_uri} {message}\n{table_diff_to_markdown(df_diff)}")
         return SelectSpecFailure(
             spec.spec_uri, spec.triple_store["type"], df_diff, message
         )
+
+
+def table_diff_to_markdown(df_diff: DataFrame) -> str:
+    # Print cells as the text that was compared. By default tabulate parses
+    # number-like strings and reformats them, so "2000.00" against "2000", or
+    # "4.99972012E-2" against "0.04999720123", render identically and the diff
+    # shows a failure with no visible difference.
+    return df_diff.to_markdown(disable_numparse=True)
 
 
 def value_columns(df: DataFrame) -> List[str]:
@@ -1540,7 +1548,7 @@ def _render_select_failure(res, info):
     info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
     info(res.message)
     if res.table_comparison is not None:
-        info(res.table_comparison.to_markdown())
+        info(table_diff_to_markdown(res.table_comparison))
 
 
 @render_result_diff.method(SpecPassedWithWarning)
