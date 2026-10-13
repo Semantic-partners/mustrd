@@ -46,8 +46,15 @@ triplestore:StardogShape
                      sh:maxCount 1 ],
                    [ sh:path     triplestore:token ;
                      sh:maxCount 1 ],
-# The given data is loaded into inputGraph, so a single materialised graph is
-# required. Additional materialised and virtual graphs are optional and repeatable.
+# inputGraph is where a must:given is loaded, so it is only meaningful for a
+# spec that has one. It is optional because Stardog will not resolve a virtual
+# graph when the protocol dataset names more than one graph: sending
+# default-graph-uri for inputGraph alongside virtual://... returns zero rows,
+# HTTP 200, silently. A given-free spec (must:InheritedDataset) querying a
+# virtual graph therefore has to be able to declare that graph and nothing else.
+# dataset_graphs() skips falsy entries, so omitting every graph sends no dataset
+# parameters at all and the query's own FROM clause governs.
                    [ sh:path     triplestore:inputGraph ;
-                     sh:minCount 1 ;
+
+                   
                      sh:maxCount 1 ] .
