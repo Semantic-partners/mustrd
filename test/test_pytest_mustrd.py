@@ -493,3 +493,12 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
 
 def has_item(node_ids: list, ttl_file: str, path: str):
     return f"{path}/{ttl_file}" in node_ids
+
+
+def test_failure_headline_is_the_summary_line():
+    from mustrd.mustrdTestPlugin import failure_headline
+    error = AssertionError("Test failed: Failed <spec> <store>\nExpected 1 row(s) and 2 column(s), got 1 row(s) "
+                           "and 2 column(s) — differs in: o\n| table |")
+    assert failure_headline(error) == ("Expected 1 row(s) and 2 column(s), got 1 row(s) and 2 column(s) "
+                                       "— differs in: o")
+    assert failure_headline(ValueError("boom\nmore")) == "boom"
