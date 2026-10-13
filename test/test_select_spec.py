@@ -2197,3 +2197,45 @@ class TestQueryIsOrdered:
 
     def test_unparseable_and_unordered_is_still_unordered(self):
         assert query_is_ordered("SELECT ?s {?s ?p ?o} NULLS LAST") is False
+
+class TestRunSelectSpecCsvWithoutDatatypes:
+    given = """
+        @prefix test-data: <https://semanticpartners.com/data/test/> .
+        test-data:a test-data:pred "x" .
+        test-data:b test-data:pred 5 .
+        """
+
+    def check(self, csv_file):
+        triple_store = {"type": TRIPLESTORE.RdfLib}
+        given = Graph().parse(data=self.given, format="ttl")
+        spec = f"""
+            @prefix must: <https://mustrd.org/model/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+
+            test-data:my_first_spec
+                a must:TestSpec ;
+                must:when  [ a must:TextSparqlSource ;
+                        must:queryText  "select ?s ?o {{ ?s <https://semanticpartners.com/data/test/pred> ?o }}" ;
+                        must:queryType must:SelectSparql ] ;
+                must:then  [ a must:FileDataset ;
+                        must:file "{csv_file}" ] .
+            """
+        spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec, spec_uri, __name__)
+        run_config = {'spec_path': ""}
+        when_component = parse_spec_component(subject=spec_uri, predicate=MUST.when, spec_graph=spec_graph,
+                                              run_config=run_config, mustrd_triple_store=triple_store)
+        then_component = parse_spec_component(subject=spec_uri, predicate=MUST.then, spec_graph=spec_graph,
+                                              run_config=run_config, mustrd_triple_store=triple_store)
+        triple_store["given"] = given
+        spec = Specification(spec_uri, triple_store, given, when_component, then_component)
+        return check_result(spec, run_when(spec_uri, triple_store, when_component[0]))
+
+    def test_values_match_without_datatype_columns(self):
+        assert isinstance(self.check("test/data/thenNoDatatypes.csv"), SpecPassed)
+
+    def test_mismatch_reports_variable_count(self):
+        result = self.check("test/data/thenNoDatatypesFail.csv")
+        assert isinstance(result, SelectSpecFailure)
+        assert result.message == ('Expected 2 row(s) and 2 column(s), got 2 row(s) and 2 column(s)'
+                                  ' — differs in: o (expected "6", actual "5")')

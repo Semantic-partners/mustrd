@@ -796,7 +796,6 @@ def run_test_spec(test_spec):
         logger.error(f"Invalid test specification: {test_spec.message} {test_spec}")
         pytest.fail(f"Invalid test specification: {test_spec.message} {test_spec}")
     if not isinstance(result, SpecPassed):
-        write_result_diff_to_log(result, logger.info)
         log_lines = []
 
         def log_to_string(message):
@@ -806,8 +805,8 @@ def run_test_spec(test_spec):
         except Exception as e:
             logger.error(f"Exception in write_result_diff_to_log: {e}")
             logger.error(traceback.format_exc())
-        logger.error(f"Test failed: {log_lines}")
-        raise AssertionError("Test failed: " + "\n".join(log_lines))
+        logger.error(f"Test failed: {getattr(test_spec, 'spec_uri', test_spec)}")
+        raise AssertionError("Test failed: " + "\n".join(str(line) for line in log_lines))
 
     logger.info(f"Test PASSED: {getattr(test_spec, 'spec_uri', test_spec)}")
     return isinstance(result, SpecPassed)

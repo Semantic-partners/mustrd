@@ -1075,6 +1075,9 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
     # Convert results to dataframe
     if is_json(result):
         df = json_results_to_panda_dataframe(result)
+        # A then table without datatype columns (e.g. a hand-written CSV) compares values only
+        if len(spec.then.value.columns) and not has_datatype_columns(spec.then.value):
+            df = df[value_columns(df)]
     else:
         return SelectSpecFailure(
             spec.spec_uri,
@@ -1094,11 +1097,18 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         else:
             return SpecPassed(spec.spec_uri, spec.triple_store["type"])
     else:
-        log.error("\n" + df_diff.to_markdown())
-        log.error(message)
+        log.debug(f"{spec.spec_uri} {message}\n{df_diff.to_markdown()}")
         return SelectSpecFailure(
             spec.spec_uri, spec.triple_store["type"], df_diff, message
         )
+
+
+def value_columns(df: DataFrame) -> List[str]:
+    return [c for c in df.columns if not str(c).endswith("_datatype")]
+
+
+def has_datatype_columns(df: DataFrame) -> bool:
+    return len(value_columns(df)) < len(df.columns)
 
 
 def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
@@ -1120,14 +1130,14 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
     ordered_result = compare_rows_positionally(spec)
 
     if not ordered_result:
-        resultDf.sort_values(by=list(resultDf.columns)[::2], inplace=True)
+        resultDf.sort_values(by=value_columns(resultDf), inplace=True)
         resultDf.reset_index(inplace=True, drop=True)
 
     if len(columns) == len(then.columns):
         if sorted_columns == sorted_then_cols:
             then = then[columns]
             if not ordered_result:
-                then.sort_values(by=columns[::2], inplace=True)
+                then.sort_values(by=value_columns(then), inplace=True)
                 then.reset_index(drop=True, inplace=True)
             if (
                 resultDf.shape == then.shape
@@ -1147,9 +1157,9 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
 
     message = build_summary_message(
         then.shape[0],
-        round(then.shape[1] / 2),
+        len(value_columns(then)),
         resultDf.shape[0],
-        round(resultDf.shape[1] / 2),
+        len(value_columns(resultDf)),
         df_diff,
         # The result's terms came out of the given, so its prefixes are the ones
         # the spec author writes them with. Without this every IRI in the summary
@@ -1166,7 +1176,7 @@ def _unexpected_results(resultDf: DataFrame, spec: Specification):
     df_diff = empty_then.compare(resultDf, result_names=("expected", "actual"))
 
     return df_diff, build_summary_message(
-        0, 0, resultDf.shape[0], round(resultDf.shape[1] / 2)
+        0, 0, resultDf.shape[0], len(value_columns(resultDf))
     )
 
 
@@ -1178,7 +1188,7 @@ def _missing_results(resultDf: DataFrame, spec: Specification):
     df = create_empty_dataframe_with_columns(then)
     df_diff = then.compare(df, result_names=("expected", "actual"))
 
-    return df_diff, build_summary_message(then.shape[0], round(then.shape[1] / 2), 0, 0)
+    return df_diff, build_summary_message(then.shape[0], len(value_columns(then)), 0, 0)
 
 
 # Scenario 4: expected no result, got no result
@@ -1529,7 +1539,8 @@ def _render_graph_failure(res, info):
 def _render_select_failure(res, info):
     info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
     info(res.message)
-    info(res.table_comparison.to_markdown())
+    if res.table_comparison is not None:
+        info(res.table_comparison.to_markdown())
 
 
 @render_result_diff.method(SpecPassedWithWarning)
@@ -1550,6 +1561,12 @@ def _render_error(res, info):
 def _render_invalid(res, info):
     info(f"{Fore.RED} Invalid {res.spec_uri} {res.triple_store}")
     info(res.message)
+
+
+@render_result_diff.method(RuntimeError)
+def _render_unexpected_error(res, info):
+    # run_spec returns RuntimeError(spec_uri, triple_store, message) for unexpected errors
+    info(f"{Fore.RED}Failed {' '.join(str(a) for a in res.args)}")
 
 
 @render_result_diff.method(Default)
