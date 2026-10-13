@@ -954,6 +954,14 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 
         if frames.size == 0:
             frames = pandas.DataFrame()
+    # A variable bound in no row is absent from every binding, but still listed
+    # in head.vars. Keep it as an empty column so the diff names it, rather than
+    # the result coming back a column short.
+    if not frames.empty:
+        for var in json_result.get("head", {}).get("vars", []):
+            if var not in frames.columns:
+                frames[var] = ""
+                frames[var + "_datatype"] = ""
     return frames
 
 

@@ -2252,3 +2252,15 @@ def test_rendered_diff_keeps_numeric_text():
     rendered = "\n".join(str(line) for line in lines)
     for text in ("2000.00", "4.99972012E-2", "0.04999720123"):
         assert text in rendered
+
+
+def test_variable_unbound_in_every_row_is_kept_as_empty_column():
+    import json
+    from mustrd.mustrd import json_results_to_panda_dataframe
+    result = json.dumps({
+        "head": {"vars": ["s", "change"]},
+        "results": {"bindings": [{"s": {"type": "uri", "value": "https://example.org/a"}}]},
+    })
+    df = json_results_to_panda_dataframe(result)
+    assert list(df.columns) == ["s", "s_datatype", "change", "change_datatype"]
+    assert df.loc[0, "change"] == ""
