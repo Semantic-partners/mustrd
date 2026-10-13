@@ -189,9 +189,9 @@ class TestRunSelectSpec:
             table_diff = then_result.table_comparison.to_markdown()
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
-|---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
-|  0 |                   1 |                 1 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
+            assert table_diff == """|    | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
+|---:|:-----------------------------------------|:-----------------------------------------|
+|  0 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -706,9 +706,9 @@ class TestRunSelectSpec:
             table_diff = then_result.table_comparison.to_markdown()
             assert isinstance(then_component, TableThenSpec)
             assert then_result.spec_uri == spec_uri
-            assert table_diff == """|    |   ('o', 'expected') |   ('o', 'actual') | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
-|---:|--------------------:|------------------:|:-----------------------------------------|:-----------------------------------------|
-|  0 |                  25 |                25 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
+            assert table_diff == """|    | ('o_datatype', 'expected')               | ('o_datatype', 'actual')                 |
+|---:|:-----------------------------------------|:-----------------------------------------|
+|  0 | http://www.w3.org/2001/XMLSchema#decimal | http://www.w3.org/2001/XMLSchema#integer |""" # noqa
         else:
             raise Exception(f"wrong spec result type {then_result}")
 
@@ -2264,3 +2264,48 @@ def test_variable_unbound_in_every_row_is_kept_as_empty_column():
     df = json_results_to_panda_dataframe(result)
     assert list(df.columns) == ["s", "s_datatype", "change", "change_datatype"]
     assert df.loc[0, "change"] == ""
+
+
+def test_numeric_literals_compare_by_value_within_a_datatype():
+    from mustrd.mustrd import canonical_numeric
+    X = "http://www.w3.org/2001/XMLSchema#"
+    assert canonical_numeric("33457966.90", X + "decimal") == canonical_numeric("33457966.9", X + "decimal")
+    assert canonical_numeric("82657900.00", X + "decimal") == canonical_numeric("82657900", X + "decimal")
+    assert canonical_numeric("05", X + "integer") == canonical_numeric("5", X + "integer")
+    assert canonical_numeric("1.0E0", X + "double") == canonical_numeric("1", X + "double")
+    # Real differences and non-numerics stay as written.
+    assert canonical_numeric("0.0499971966752638", X + "decimal") != \
+        canonical_numeric("0.049997196675263826342760", X + "decimal")
+    assert canonical_numeric("33457966.90", X + "string") == "33457966.90"
+    assert canonical_numeric("n/a", X + "decimal") == "n/a"
+
+
+class TestRunSelectSpecDecimalLexicalForms:
+    def test_trailing_zeros_in_csv_match_canonical_result(self, tmp_path):
+        X = "http://www.w3.org/2001/XMLSchema#"
+        given = Graph().parse(data='''@prefix t: <https://semanticpartners.com/data/test/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            t:a t:pred "33457966.9"^^xsd:decimal .''', format="ttl")
+        csv = tmp_path / "then.csv"
+        csv.write_text(f"s,s_datatype,o,o_datatype\nhttps://semanticpartners.com/data/test/a,{X}anyURI,"
+                       f"33457966.90,{X}decimal\n")
+        spec = f"""
+            @prefix must: <https://mustrd.org/model/> .
+            @prefix test-data: <https://semanticpartners.com/data/test/> .
+            test-data:my_first_spec a must:TestSpec ;
+                must:when [ a must:TextSparqlSource ;
+                    must:queryText "select ?s ?o {{ ?s <https://semanticpartners.com/data/test/pred> ?o }}" ;
+                    must:queryType must:SelectSparql ] ;
+                must:then [ a must:FileDataset ; must:file "{csv}" ] .
+            """
+        triple_store = {"type": TRIPLESTORE.RdfLib, "given": given}
+        spec_uri = TEST_DATA.my_first_spec
+        spec_graph = parse_spec(spec, spec_uri, __name__)
+        run_config = {'spec_path': ""}
+        when = parse_spec_component(subject=spec_uri, predicate=MUST.when, spec_graph=spec_graph,
+                                    run_config=run_config, mustrd_triple_store=triple_store)
+        then = parse_spec_component(subject=spec_uri, predicate=MUST.then, spec_graph=spec_graph,
+                                    run_config=run_config, mustrd_triple_store=triple_store)
+        result = check_result(Specification(spec_uri, triple_store, given, when, then),
+                              run_when(spec_uri, triple_store, when[0]))
+        assert isinstance(result, SpecPassed), getattr(result, "message", result)
