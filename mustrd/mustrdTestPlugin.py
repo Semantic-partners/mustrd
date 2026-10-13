@@ -836,6 +836,8 @@ def run_test_spec(test_spec):
         except Exception as e:
             logger.error(f"Exception in write_result_diff_to_log: {e}")
             logger.error(traceback.format_exc())
+            # The failure text is the only place the diff lands, so say it is cut short.
+            log_lines.append(f"(could not render the rest of this failure: {type(e).__name__}: {e})")
         logger.error(f"Test failed: {getattr(test_spec, 'spec_uri', test_spec)}")
         raise AssertionError("Test failed: " + "\n".join(str(line) for line in log_lines))
 
