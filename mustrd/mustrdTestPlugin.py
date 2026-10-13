@@ -686,15 +686,19 @@ class MustrdItem(pytest.Item):
     def repr_failure(self, excinfo):
         # excinfo.value is the exception instance
         # You can add more context here
-        tb_lines = traceback.format_exception(excinfo.type, excinfo.value, excinfo.tb)
-        tb_str = "".join(tb_lines)
-        return (
+        report = (
             f"{self.name} failed:\n"
             f"Spec: {self.spec.spec_uri}\n"
             f"File: {self.spec.spec_source_file}\n"
             f"Error: \n{excinfo.value}\n"
-            f"Traceback:\n{tb_str}"
         )
+        # A failing spec raises AssertionError with the diff, and the traceback
+        # behind it is mustrd's plumbing. Keep the traceback for anything else,
+        # where it is the only lead.
+        if excinfo.errisinstance(AssertionError):
+            return report
+        tb_lines = traceback.format_exception(excinfo.type, excinfo.value, excinfo.tb)
+        return report + f"Traceback:\n{''.join(tb_lines)}"
 
     def reportinfo(self):
         r = "", 0, f"mustrd test: {self.name}"
