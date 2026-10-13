@@ -5,7 +5,9 @@ from typing import Tuple, List, Union
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from . import logger_setup
+import dataclasses
 from dataclasses import dataclass
+from decimal import Decimal
 
 from pyparsing import ParseException
 from pathlib import Path
@@ -954,6 +956,14 @@ def json_results_to_panda_dataframe(result: str) -> pandas.DataFrame:
 
         if frames.size == 0:
             frames = pandas.DataFrame()
+    # A variable bound in no row is absent from every binding, but still listed
+    # in head.vars. Keep it as an empty column so the diff names it, rather than
+    # the result coming back a column short.
+    if not frames.empty:
+        for var in json_result.get("head", {}).get("vars", []):
+            if var not in frames.columns:
+                frames[var] = ""
+                frames[var + "_datatype"] = ""
     return frames
 
 
@@ -1086,6 +1096,12 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
             "Sparql result is not in JSON",
         )
 
+    # Numeric literals compare by value: "33457966.90"^^xsd:decimal is the same
+    # value as the "33457966.9" a store returns in canonical form.
+    df = canonicalise_numeric_cells(df)
+    spec = dataclasses.replace(
+        spec, then=dataclasses.replace(spec.then, value=canonicalise_numeric_cells(spec.then.value)))
+
     # Compare result with expected
     df_diff, message = compare_table_results(df, spec)
 
@@ -1109,6 +1125,43 @@ def table_diff_to_markdown(df_diff: DataFrame) -> str:
     # "4.99972012E-2" against "0.04999720123", render identically and the diff
     # shows a failure with no visible difference.
     return df_diff.to_markdown(disable_numparse=True)
+
+
+XSD_INTEGER_TYPES = {str(XSD[t]) for t in (
+    "integer", "int", "long", "short", "byte", "nonNegativeInteger", "positiveInteger",
+    "nonPositiveInteger", "negativeInteger", "unsignedLong", "unsignedInt",
+    "unsignedShort", "unsignedByte")}
+XSD_FLOAT_TYPES = {str(XSD.double), str(XSD.float)}
+
+
+def canonical_numeric(value, datatype):
+    """`value` in the canonical form of its numeric datatype, or unchanged.
+
+    Same datatype, same value, same text: "82657900.00" and "82657900" are one
+    xsd:decimal, "05" and "5" one xsd:integer, "1.0E0" and "1" one xsd:double.
+    The datatype is still compared on its own, so decimal against double fails."""
+    try:
+        if datatype == str(XSD.decimal):
+            return format(Decimal(value).normalize(), "f")
+        if datatype in XSD_INTEGER_TYPES:
+            return str(int(value))
+        if datatype in XSD_FLOAT_TYPES:
+            return repr(float(value))
+    except (ValueError, ArithmeticError, TypeError):
+        pass
+    return value
+
+
+def canonicalise_numeric_cells(df: DataFrame) -> DataFrame:
+    """A copy of `df` with each value cell canonicalised by its own row's datatype.
+    Columns without a datatype column (a CSV that omits them) are left as written."""
+    df = df.copy()
+    for column in value_columns(df):
+        datatype_column = f"{column}_datatype"
+        if datatype_column in df.columns:
+            df[column] = [canonical_numeric(v, str(t))
+                          for v, t in zip(df[column], df[datatype_column])]
+    return df
 
 
 def value_columns(df: DataFrame) -> List[str]:

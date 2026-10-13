@@ -493,3 +493,31 @@ def found_error_in_shacl_report(shacl_report_graph, node, path, constraint_type)
 
 def has_item(node_ids: list, ttl_file: str, path: str):
     return f"{path}/{ttl_file}" in node_ids
+
+
+def test_failure_headline_is_the_summary_line():
+    from mustrd.mustrdTestPlugin import failure_headline
+    error = AssertionError("Test failed: Failed <spec> <store>\nExpected 1 row(s) and 2 column(s), got 1 row(s) "
+                           "and 2 column(s) — differs in: o\n| table |")
+    assert failure_headline(error) == ("Expected 1 row(s) and 2 column(s), got 1 row(s) and 2 column(s) "
+                                       "— differs in: o")
+    assert failure_headline(ValueError("boom\nmore")) == "boom"
+
+
+def test_render_error_is_in_the_failure_text(monkeypatch):
+    import pytest
+    from mustrd import mustrdTestPlugin
+
+    class Spec:
+        spec_uri = "https://example.org/spec"
+
+    def broken_render(result, info):
+        info("first line")
+        raise ValueError("boom")
+
+    monkeypatch.setattr(mustrdTestPlugin, "run_spec", lambda spec: object())
+    monkeypatch.setattr(mustrdTestPlugin, "write_result_diff_to_log", broken_render)
+    with pytest.raises(AssertionError) as excinfo:
+        mustrdTestPlugin.run_test_spec(Spec())
+    assert "first line" in str(excinfo.value)
+    assert "ValueError: boom" in str(excinfo.value)

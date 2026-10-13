@@ -30,6 +30,8 @@ from mustrd.mustrd import (
 from mustrd.namespace import MUST, MUSTRDTEST
 
 import traceback
+from types import SimpleNamespace
+from _pytest._code.code import TerminalRepr
 
 spnamespace = Namespace("https://semanticpartners.com/data/test/")
 
@@ -686,19 +688,48 @@ class MustrdItem(pytest.Item):
     def repr_failure(self, excinfo):
         # excinfo.value is the exception instance
         # You can add more context here
-        tb_lines = traceback.format_exception(excinfo.type, excinfo.value, excinfo.tb)
-        tb_str = "".join(tb_lines)
-        return (
+        report = (
             f"{self.name} failed:\n"
             f"Spec: {self.spec.spec_uri}\n"
             f"File: {self.spec.spec_source_file}\n"
             f"Error: \n{excinfo.value}\n"
-            f"Traceback:\n{tb_str}"
         )
+        # A failing spec raises AssertionError with the diff, and the traceback
+        # behind it is mustrd's plumbing. Keep the traceback for anything else,
+        # where it is the only lead.
+        if not excinfo.errisinstance(AssertionError):
+            tb_lines = traceback.format_exception(excinfo.type, excinfo.value, excinfo.tb)
+            report += f"Traceback:\n{''.join(tb_lines)}"
+        return MustrdFailureRepr(report, failure_headline(excinfo.value))
 
     def reportinfo(self):
         r = "", 0, f"mustrd test: {self.name}"
         return r
+
+
+class MustrdFailureRepr(TerminalRepr):
+    """The full report under FAILURES, one line in the short summary.
+
+    A plain string from repr_failure becomes the summary message too, and on CI
+    pytest prints that message untrimmed, so the whole diff appeared twice."""
+
+    def __init__(self, text: str, headline: str):
+        self.text = text
+        self.reprcrash = SimpleNamespace(message=headline)
+
+    def toterminal(self, tw) -> None:
+        for line in self.text.splitlines():
+            tw.line(line)
+
+
+def failure_headline(error) -> str:
+    """The summary line ("Expected 10 row(s) ... differs in: ...") if there is one,
+    else the error's first line."""
+    lines = [line for line in str(error).splitlines() if line.strip()]
+    for line in lines:
+        if line.startswith("Expected "):
+            return line
+    return lines[0] if lines else type(error).__name__
 
 
 def build_spec_items(parent, entries, mustrd_plugin):
@@ -805,6 +836,8 @@ def run_test_spec(test_spec):
         except Exception as e:
             logger.error(f"Exception in write_result_diff_to_log: {e}")
             logger.error(traceback.format_exc())
+            # The failure text is the only place the diff lands, so say it is cut short.
+            log_lines.append(f"(could not render the rest of this failure: {type(e).__name__}: {e})")
         logger.error(f"Test failed: {getattr(test_spec, 'spec_uri', test_spec)}")
         raise AssertionError("Test failed: " + "\n".join(str(line) for line in log_lines))
 
