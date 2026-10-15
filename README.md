@@ -215,6 +215,34 @@ Some details worth knowing, because they are what make it readable on real data:
 - **A wide result falls back to bare column names.** Past a readable length the
   line has stopped being a summary, and the table below is the right tool.
 
+#### Several configs in one run
+
+`--config` takes a list: config files, directories, or glob patterns, any mix of
+them, after one flag or several. For a suite split by domain:
+
+```
+ontology/claims/tests/mustrdconfig.ttl   :hasSpecPath "../specs" ; :hasPytestPath "claims"
+ontology/claims/specs/…
+ontology/policy/tests/mustrdconfig.ttl   :hasSpecPath "../specs" ; :hasPytestPath "policy"
+ontology/policy/specs/…
+```
+
+```bash
+pytest --mustrd --config ontology/*/tests/mustrdconfig.ttl     # the shell expands it
+pytest --mustrd --config 'ontology/*/tests/mustrdconfig.ttl'   # so does mustrd, for pytest.ini
+pytest --mustrd --config ontology                              # every config under ontology/
+mustrd run --config ontology/claims/tests/mustrdconfig.ttl ontology/policy/tests/mustrdconfig.ttl
+```
+
+A directory is searched recursively for `.ttl` files that declare a
+`:MustrdTest`. Because `--config` takes a list, a test path straight after it is
+read as a config too: write `--config=FILE` to follow it with test paths.
+
+Each config file needs its own `:hasPytestPath`; two files sharing one is an
+error, since `--pytest-path` could no longer pick one domain out. Paths inside a
+config stay relative to that config file, so domains that overlap can point their
+`:hasDataPath` at the same directory and share query files.
+
 #### What a run can produce
 
 Every flag below works identically on `pytest --mustrd` and on `mustrd report`:

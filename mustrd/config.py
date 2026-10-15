@@ -5,7 +5,9 @@ the pytest plugin read the same configuration the same way. It was extracted fro
 mustrdTestPlugin.py, which re-exports `TestConfig`/`parse_config` for callers that
 still import them from there.
 """
+import glob
 import os
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -112,3 +114,79 @@ def parse_config(config_path):
             )
         )
     return test_configs
+
+
+def has_glob(path) -> bool:
+    return glob.has_magic(str(path))
+
+
+def _declares_mustrd_test(path: Path) -> bool:
+    # Cheap text check first, so a data directory full of large .ttl files is not
+    # parsed only to be thrown away; the parse then confirms it.
+    try:
+        if "MustrdTest" not in path.read_text(encoding="utf-8", errors="ignore"):
+            return False
+        graph = Graph().parse(path)
+    except Exception:
+        return False
+    return (None, RDF.type, MUSTRDTEST.MustrdTest) in graph
+
+
+def find_config_files(paths) -> list:
+    """The config files named by `paths`: config files, directories, or glob
+    patterns (`**` included).
+
+    A directory is searched recursively for .ttl files that declare a
+    mustrdTest:MustrdTest, so a suite split into one directory per domain can be
+    run as a whole. Spec files (*.mustrd.ttl) are never configs. A pattern is
+    expanded here as well as by the shell, so it works quoted and in pytest.ini.
+    Raises ValueError for a path that does not exist, a pattern that matches
+    nothing, or a directory holding no config.
+    """
+    expanded = []
+    for path in map(str, paths):
+        if has_glob(path) and not Path(path).exists():
+            matches = sorted(glob.glob(path, recursive=True))
+            if not matches:
+                raise ValueError(f"No config file matches {path}")
+            expanded.extend(matches)
+        else:
+            expanded.append(path)
+    found = []
+    for path in map(Path, expanded):
+        if path.is_file():
+            found.append(path)
+        elif path.is_dir():
+            configs = [f for f in sorted(path.rglob("*.ttl"))
+                       if not f.name.endswith(".mustrd.ttl") and _declares_mustrd_test(f)]
+            if not configs:
+                raise ValueError(f"No mustrdTest:MustrdTest config found under {path}")
+            found.extend(configs)
+        else:
+            raise ValueError(f"No such config file or directory: {path}")
+    unique = []
+    seen = set()
+    for f in found:
+        if f.resolve() not in seen:
+            seen.add(f.resolve())
+            unique.append(f)
+    return unique
+
+
+def check_pytest_paths_unique(config_files):
+    """Raise ValueError if two config files give a MustrdTest the same pytest path.
+
+    Within one file a shared pytest path is tolerated, as it always has been.
+    Across files it is a mistake: --pytest-path could not pick one domain out, and
+    the test IDs would differ only by a fallback suffix.
+    """
+    files_by_path = defaultdict(set)
+    for config_file in config_files:
+        for test_config in parse_config(config_file):
+            files_by_path[test_config.pytest_path].add(str(config_file))
+    clashes = {p: sorted(f) for p, f in files_by_path.items() if len(f) > 1}
+    if clashes:
+        lines = [f"  {p!r}: {', '.join(f)}" for p, f in sorted(clashes.items(), key=str)]
+        raise ValueError(
+            "Each config file needs its own mustrdTest:hasPytestPath, but these "
+            "are shared:\n" + "\n".join(lines))
