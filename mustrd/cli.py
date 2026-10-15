@@ -26,6 +26,7 @@ from mustrd.reporting import (
 )
 from mustrd.runner import run_config, ontology_paths_from_config
 from mustrd.config import find_config_files, check_pytest_paths_unique, has_glob
+from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 
 log = logging.getLogger(__name__)
 
@@ -177,6 +178,10 @@ def build_parser():
         p.add_argument("-c", "--config", required=True, action="extend", nargs="+",
                        help="One or more MustrdTest configuration TTLs, directories "
                             "(searched recursively) or glob patterns. Repeatable.")
+        p.add_argument("--ask-rewriter", default=DEFAULT_REWRITER, metavar="name",
+                       help="How a must:AskConditions then turns its SELECT into ASK "
+                            f"queries: '{DEFAULT_REWRITER}' (the default), or a rewriter "
+                            f"installed under the '{ENTRY_POINT_GROUP}' entry-point group.")
         p.add_argument("--secrets", default=None,
                        help="Secrets for triple-store connections (CI).")
         p.add_argument("--ignore-focus", dest="ignore_focus", action="store_true",
@@ -240,6 +245,10 @@ def main(argv=None):
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     _writable_utf8_output()
     args.config = _check_config(args.config)
+    try:
+        set_rewriter(args.ask_rewriter)
+    except ValueError as e:
+        raise SystemExit(f"mustrd: {e}")
     # The CLI is the application here, so this is where logging gets configured —
     # nothing in the library touches it (see logger_setup).
     logger_setup.configure(verbose=args.verbose)

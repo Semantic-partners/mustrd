@@ -286,6 +286,13 @@ Expected at least 1 row; every row: BOUND(?dob) && ?dob < NOW() (2 of 3 checks f
 The same query file can serve a local spec with an exact `then` and a spec
 against a deployed store that uses `must:AskConditions`.
 
+The rewrite is replaceable. A package that registers a function under the
+`mustrd.ask_rewriters` entry-point group is chosen with `--ask-rewriter <name>`
+on either `pytest --mustrd` or the `mustrd` CLI. It takes the same arguments as
+`mustrd.ask_rewrite.subquery_rewriter` and returns a list of
+`AskCheck(description, query)`. The description is what a failure shows, so it
+must describe the check, never the data.
+
 #### What a run can produce
 
 Every flag below works identically on `pytest --mustrd` and on `mustrd report`:

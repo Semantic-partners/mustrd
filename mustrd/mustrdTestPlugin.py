@@ -17,6 +17,7 @@ from mustrd.runner import generate_specs, resolve_triple_stores, triple_store_na
 # CLI shares them); re-exported here for callers that import them from the plugin.
 from mustrd.config import TestConfig, parse_config, get_config_param  # noqa: F401
 from mustrd.config import find_config_files, check_pytest_paths_unique
+from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 from mustrd.results_rdf import RunResult
 # re-exported so `from mustrd.mustrdTestPlugin import _link_href, ...` keeps
 # working for existing callers/tests after the extraction into reporting.py
@@ -67,6 +68,16 @@ def pytest_addoption(parser):
         help="One or more config files, directories (searched recursively) or "
              "glob patterns. Repeatable. Write --config=FILE to put test paths "
              "straight after it.",
+    )
+    group.addoption(
+        "--ask-rewriter",
+        action="store",
+        dest="ask_rewriter",
+        metavar="name",
+        default=DEFAULT_REWRITER,
+        help="How a must:AskConditions then turns its SELECT into ASK queries: "
+             f"'{DEFAULT_REWRITER}' (the default), or a rewriter installed under "
+             f"the '{ENTRY_POINT_GROUP}' entry-point group.",
     )
     group.addoption(
         "--secrets",
@@ -204,6 +215,7 @@ def pytest_configure(config) -> None:
         try:
             config_files = find_config_files(config.getoption("configpath"))
             check_pytest_paths_unique(config_files)
+            set_rewriter(config.getoption("ask_rewriter"))
         except ValueError as e:
             raise pytest.UsageError(str(e))
         config.pluginmanager.register(

@@ -36,7 +36,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
-from .ask_rewrite import subquery_rewriter, inline_bindings
+from .ask_rewrite import get_rewriter, inline_bindings
 from multimethods import MultiMethod, Default
 import traceback
 
@@ -701,7 +701,7 @@ def check_ask_conditions(spec: Specification, when: WhenSpec) -> SpecResult:
     """
     then = spec.then
     select = inline_bindings(when.value, when.bindings)
-    checks = subquery_rewriter(select, then.conditions, then.min_rows, then.max_rows)
+    checks = get_rewriter()(select, then.conditions, then.min_rows, then.max_rows)
     failed = []
     for check in checks:
         answer = run_when_impl(spec.spec_uri, spec.triple_store,

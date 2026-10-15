@@ -2,13 +2,15 @@
 the store, so no row of the result reaches mustrd or its reports."""
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 from rdflib import Dataset, URIRef
 
+from mustrd import ask_rewrite
 from mustrd.ask_rewrite import (
-    Condition, ask_for_condition, ask_for_row_count, inline_bindings,
-    split_select, subquery_rewriter,
+    AskCheck, Condition, ask_for_condition, ask_for_row_count, inline_bindings,
+    set_rewriter, split_select, subquery_rewriter,
 )
 from mustrd.cli import main
 from mustrd.utils import rdflib_internals_quiet
@@ -115,6 +117,34 @@ def test_a_binding_reaches_a_variable_the_select_does_not_project(dataset):
 def test_the_default_rewriter_describes_each_check_without_data():
     checks = subquery_rewriter(PEOPLE, [Condition("isIRI(?p)")], 1, None)
     assert [c.description for c in checks] == ["at least 1 row", "every row: isIRI(?p)"]
+
+
+# --- choosing a rewriter --------------------------------------------------------
+
+def test_an_unknown_rewriter_is_refused():
+    with pytest.raises(ValueError, match="No ask rewriter named 'nope'"):
+        set_rewriter("nope")
+
+
+def test_an_installed_rewriter_is_used(monkeypatch, spec_dir, capsys):
+    calls = []
+
+    def rewriter(select, conditions, min_rows, max_rows):
+        calls.append(select)
+        # Not FILTER(false): rdflib 7.6 answers `ASK { FILTER(false) }` with true.
+        return [AskCheck("from the installed rewriter", "ASK { FILTER(1 = 2) }")]
+
+    entry_point = SimpleNamespace(load=lambda: rewriter)
+    monkeypatch.setattr(ask_rewrite, "available_rewriters",
+                        lambda: {"subquery": None, "custom": entry_point})
+    try:
+        assert main(["run", "--config", str(spec_dir / "config.ttl"), "-v",
+                     "--ask-rewriter", "custom"]) == 1
+    finally:
+        set_rewriter(None)
+    assert calls == [PEOPLE]
+    captured = capsys.readouterr()
+    assert "Expected from the installed rewriter" in captured.out + captured.err
 
 
 # --- end to end -----------------------------------------------------------------

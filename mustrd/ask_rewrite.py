@@ -12,10 +12,15 @@ subquery, so they move to the outer ASK:
 Finding those needs to know where strings, IRIs and comments are, so a keyword
 inside one is not mistaken for the real thing. `split_select` does that with a
 small scanner rather than a regular expression over the whole text.
+
+The rewrite can be replaced. A package that registers a function under the
+`mustrd.ask_rewriters` entry-point group, with the signature of
+`subquery_rewriter`, is chosen by name with `--ask-rewriter`.
 """
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from importlib.metadata import entry_points
+from typing import Callable, List, Optional, Sequence
 
 # SPARQL's own IRIREF rule: no spaces, so `?a < ?b` is never read as an IRI.
 _IRIREF = re.compile(r'<[^<>"{}|^`\\\x00-\x20]*>')
@@ -193,8 +198,38 @@ def describe_condition(condition: Condition) -> str:
 
 def subquery_rewriter(select: str, conditions: Sequence[Condition], min_rows: int = 1,
                       max_rows: Optional[int] = None) -> List[AskCheck]:
-    """The row-count ASK followed by one ASK per condition."""
+    """The row-count ASK followed by one ASK per condition. The default rewriter."""
     return ([AskCheck(describe_row_count(min_rows, max_rows),
                       ask_for_row_count(select, min_rows, max_rows))]
             + [AskCheck(describe_condition(c), ask_for_condition(select, c))
                for c in conditions])
+
+
+DEFAULT_REWRITER = "subquery"
+ENTRY_POINT_GROUP = "mustrd.ask_rewriters"
+Rewriter = Callable[[str, Sequence[Condition], int, Optional[int]], List[AskCheck]]
+
+_rewriter_name = DEFAULT_REWRITER
+
+
+def available_rewriters() -> dict:
+    """{name: entry point} for the built-in rewriter and every installed one."""
+    found = {ep.name: ep for ep in entry_points(group=ENTRY_POINT_GROUP)}
+    found[DEFAULT_REWRITER] = None  # the built-in name is reserved
+    return found
+
+
+def set_rewriter(name: Optional[str]) -> None:
+    """Choose the rewriter for this process. Raises ValueError for an unknown name."""
+    global _rewriter_name
+    name = name or DEFAULT_REWRITER
+    known = available_rewriters()
+    if name not in known:
+        raise ValueError(f"No ask rewriter named {name!r}. Installed: {', '.join(sorted(known))}")
+    _rewriter_name = name
+
+
+def get_rewriter() -> Rewriter:
+    if _rewriter_name == DEFAULT_REWRITER:
+        return subquery_rewriter
+    return available_rewriters()[_rewriter_name].load()
