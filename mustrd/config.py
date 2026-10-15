@@ -132,6 +132,18 @@ def _declares_mustrd_test(path: Path) -> bool:
     return (None, RDF.type, MUSTRDTEST.MustrdTest) in graph
 
 
+def _why_not_a_config(path: Path):
+    """None if `path` is a config file, else what is wrong with it."""
+    try:
+        graph = Graph().parse(path)
+    except Exception as e:
+        first_line = next((line for line in str(e).splitlines() if line.strip()), type(e).__name__)
+        return f"it could not be read as RDF ({first_line})"
+    if (None, RDF.type, MUSTRDTEST.MustrdTest) not in graph:
+        return "it declares no mustrdTest:MustrdTest"
+    return None
+
+
 def find_config_files(paths) -> list:
     """The config files named by `paths`: config files, directories, or glob
     patterns (`**` included).
@@ -140,8 +152,8 @@ def find_config_files(paths) -> list:
     mustrdTest:MustrdTest, so a suite split into one directory per domain can be
     run as a whole. Spec files (*.mustrd.ttl) are never configs. A pattern is
     expanded here as well as by the shell, so it works quoted and in pytest.ini.
-    Raises ValueError for a path that does not exist, a pattern that matches
-    nothing, or a directory holding no config.
+    Raises ValueError for a path that does not exist, a file that is not a
+    config, a pattern that matches nothing, or a directory holding no config.
     """
     expanded = []
     for path in map(str, paths):
@@ -155,6 +167,9 @@ def find_config_files(paths) -> list:
     found = []
     for path in map(Path, expanded):
         if path.is_file():
+            problem = _why_not_a_config(path)
+            if problem:
+                raise ValueError(f"{path} is not a mustrd config: {problem}")
             found.append(path)
         elif path.is_dir():
             configs = [f for f in sorted(path.rglob("*.ttl"))

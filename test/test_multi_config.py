@@ -95,6 +95,17 @@ def test_a_glob_that_matches_nothing_is_an_error(tmp_path, monkeypatch):
         find_config_files(["ontology/*/tests/mustrdconfig.ttl"])
 
 
+def test_a_file_that_is_not_a_config_is_an_error(tmp_path):
+    ini = tmp_path / "pytest.ini"
+    ini.write_text("[pytest]\naddopts = -v --mustrd\n")
+    with pytest.raises(ValueError, match="pytest.ini is not a mustrd config: it could not be read as RDF"):
+        find_config_files([ini])
+    data = tmp_path / "data.ttl"
+    data.write_text("<https://e.org/s> <https://e.org/p> <https://e.org/o> .\n")
+    with pytest.raises(ValueError, match="data.ttl is not a mustrd config: it declares no mustrdTest:MustrdTest"):
+        find_config_files([data])
+
+
 def test_a_missing_path_is_an_error(tmp_path):
     with pytest.raises(ValueError, match="No such config"):
         find_config_files([tmp_path / "nope.ttl"])
@@ -202,3 +213,13 @@ def test_pytest_keeps_test_paths_after_config_equals(suite):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "finance.mustrd.ttl" in result.stdout
     assert "claims.mustrd.ttl" not in result.stdout
+
+
+def test_pytest_reports_a_file_that_is_not_a_config(suite):
+    # What CI used to pass, meaning pytest's own -c. A usage error, not a crash.
+    root, _ = suite
+    (root / "pytest.ini").write_text("[pytest]\n")
+    result = pytest_in(root, "--config=pytest.ini")
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "pytest.ini is not a mustrd config" in result.stderr
+    assert "INTERNALERROR" not in result.stdout + result.stderr

@@ -46,7 +46,7 @@ jobs:
       - name: Create coverage config file
         run: echo -e "[run]\nrelative_files = True" >> .coveragerc
       - name: Test with pytest
-        run: poetry run coverage run -m pytest test/ --doctest-modules --config=pytest.ini
+        run: poetry run coverage run -m pytest test/ --doctest-modules
       - name: Test mustrd.ttl with the mustrd plugin
         run: |
           # install our working copy of mustrd as a local package, and run the tests as a mustrdPlugin
