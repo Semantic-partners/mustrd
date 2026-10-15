@@ -127,7 +127,52 @@ must:SelectTestSpecValidationShape
                   sh:or       ( [ sh:class must:TableDataset ]
                                 [ sh:class must:EmptyTable ]
                                 [ sh:class must:FolderDataset ]
-                                [ sh:class must:FileDataset ] ) ] .
+                                [ sh:class must:FileDataset ]
+                                [ sh:class must:AskConditions ] ) ] .
+
+# An AskConditions then puts the query inside ASKs as a subquery, and only a
+# SELECT can be a subquery.
+must:AskConditionsOnlyOnSelectShape
+    a           sh:NodeShape ;
+    sh:target   [ a           sh:SPARQLTarget ;
+                  sh:prefixes must: ;
+                  sh:select   """
+			SELECT ?this
+			WHERE {
+				?this a must:TestSpec ; must:then/a must:AskConditions .
+			}
+			""" ; ] ;
+    sh:property [ sh:path     ( must:when must:queryType ) ;
+                  sh:in       ( must:SelectSparql ) ;
+                  sh:message  "must:AskConditions applies to a SELECT only." ] .
+
+must:AskConditionsShape
+    a              sh:NodeShape ;
+    sh:targetClass must:AskConditions ;
+    sh:property    [ sh:path     must:minRows ;
+                     sh:datatype xsd:integer ;
+                     sh:minInclusive 0 ;
+                     sh:maxCount 1 ;
+                     sh:message  "must:minRows takes a single integer of 0 or more." ] ,
+                   [ sh:path     must:maxRows ;
+                     sh:datatype xsd:integer ;
+                     sh:minInclusive 0 ;
+                     sh:maxCount 1 ;
+                     sh:message  "must:maxRows takes a single integer of 0 or more." ] ,
+                   [ sh:path     must:condition ;
+                     sh:node     must:ConditionShape ] .
+
+must:ConditionShape
+    a              sh:NodeShape ;
+    sh:property    [ sh:path     must:filter ;
+                     sh:datatype xsd:string ;
+                     sh:minCount 1 ;
+                     sh:maxCount 1 ;
+                     sh:message  "A must:condition needs exactly one must:filter expression." ] ,
+                   [ sh:path     must:holdsFor ;
+                     sh:in       ( must:EveryRow must:SomeRow ) ;
+                     sh:maxCount 1 ;
+                     sh:message  "must:holdsFor is must:EveryRow or must:SomeRow." ] .
 
 # Optional, and boolean. A graph `then` carrying this is compared graph-by-graph
 # instead of as one flat union — see :matchNamedGraphs in the ontology.

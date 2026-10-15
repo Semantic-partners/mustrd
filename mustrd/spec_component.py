@@ -14,6 +14,7 @@ import edn_format
 from .mustrdAnzo import get_queries_for_layer, get_queries_from_templated_step
 from .mustrdAnzo import get_query_from_querybuilder
 from .namespace import MUST, TRIPLESTORE
+from .ask_rewrite import Condition
 from multimethods import MultiMethod, Default
 from .utils import get_mustrd_root, rdflib_internals_quiet
 import logging
@@ -116,6 +117,17 @@ class ThenSpec(SpecComponent):
 @dataclass
 class TableThenSpec(ThenSpec):
     value: pandas.DataFrame = field(default_factory=pandas.DataFrame)
+
+
+@dataclass
+class AskThenSpec(ThenSpec):
+    """Conditions on a SELECT's result, checked by ASK queries in the store.
+
+    No result row comes back to mustrd, so there is nothing here to compare
+    against and nothing a failure can print. See mustrd.ask_rewrite."""
+    conditions: tuple = ()
+    min_rows: int = 1
+    max_rows: Optional[int] = None
 
 
 @dataclass
@@ -287,6 +299,14 @@ def _combine_then_specs(spec_components: List[ThenSpec]) -> ThenSpec:
         then_spec = ThenSpec()
         then_spec.value = graph
         return then_spec
+
+
+@combine_specs.method(AskThenSpec)
+def _combine_ask_then_specs(spec_components: List[AskThenSpec]) -> AskThenSpec:
+    if len(spec_components) != 1:
+        raise ValueError(
+            f"A spec may declare at most one must:AskConditions then, found {len(spec_components)}")
+    return spec_components[0]
 
 
 @combine_specs.method(TableThenSpec)
@@ -584,6 +604,24 @@ def _get_spec_component_TableDataset(spec_component_details: SpecComponentDetail
     table_then.ordered = is_then_select_ordered(spec_component_details.subject, spec_component_details.predicate,
                                                 spec_component_details.spec_graph)
     return table_then
+
+
+@get_spec_component.method((MUST.AskConditions, MUST.then))
+def _get_spec_component_AskConditions(spec_component_details: SpecComponentDetails) -> SpecComponent:
+    graph = spec_component_details.spec_graph
+    node = spec_component_details.spec_component_node
+    min_rows = graph.value(node, MUST.minRows)
+    max_rows = graph.value(node, MUST.maxRows)
+    conditions = []
+    for condition in graph.objects(node, MUST.condition):
+        conditions.append(Condition(
+            expression=str(graph.value(condition, MUST.filter)),
+            every_row=graph.value(condition, MUST.holdsFor, default=MUST.EveryRow) == MUST.EveryRow))
+    # Sorted so the order of the checks, and of their report, does not depend on
+    # how the graph happens to iterate.
+    return AskThenSpec(conditions=tuple(sorted(conditions, key=lambda c: (c.expression, c.every_row))),
+                       min_rows=int(min_rows) if min_rows is not None else 1,
+                       max_rows=int(max_rows) if max_rows is not None else None)
 
 
 @get_spec_component.method((MUST.EmptyTable, MUST.then))

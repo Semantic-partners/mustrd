@@ -26,7 +26,7 @@ import requests
 import json
 from pandas import DataFrame
 
-from .spec_component import (TableThenSpec, parse_spec_component, WhenSpec, ThenSpec,
+from .spec_component import (TableThenSpec, AskThenSpec, parse_spec_component, WhenSpec, ThenSpec,
                              flatten_to_graph)
 from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
@@ -36,6 +36,7 @@ from pyshacl import validate
 import logging
 from http.client import HTTPConnection
 from .steprunner import upload_given, run_when_impl
+from .ask_rewrite import subquery_rewriter, inline_bindings
 from multimethods import MultiMethod, Default
 import traceback
 
@@ -126,6 +127,21 @@ class SpecPassedWithWarning(SpecResult):
 class SelectSpecFailure(SpecResult):
     table_comparison: pandas.DataFrame
     message: str
+
+
+@dataclass
+class AskSpecFailure(SpecResult):
+    """Which ASK checks came back false. Descriptions only: no result data ever
+    reached mustrd, so there is none to show."""
+    failed_checks: List[str]
+    check_count: int
+
+    @property
+    def message(self) -> str:
+        # Starts with "Expected " so pytest's summary line is this, as it is for
+        # a table diff.
+        return (f"Expected {'; '.join(self.failed_checks)} "
+                f"({len(self.failed_checks)} of {self.check_count} checks failed)")
 
 
 @dataclass
@@ -641,11 +657,13 @@ def run_spec(spec: Specification) -> SpecResult:
                 "Unable to run Inherited State tests on Rdflib",
             )
     try:
-        for when in spec.when:
+        for i, when in enumerate(spec.when):
             log.debug(
                 f"Running {when.queryType} spec {spec_uri} on {triple_store['type']}"
             )
             try:
+                if isinstance(spec.then, AskThenSpec) and i == len(spec.when) - 1:
+                    return check_ask_conditions(spec, when)
                 result = run_when_impl(spec_uri, triple_store, when)
                 log.debug(
                     f"run {when.queryType} spec {spec_uri} on {triple_store['type']} {result=}"
@@ -673,6 +691,26 @@ def run_spec(spec: Specification) -> SpecResult:
     # finally:
     #     if type(mustrd_triple_store) == MustrdAnzo and close_connection:
     #         mustrd_triple_store.clear_graph()
+
+
+def check_ask_conditions(spec: Specification, when: WhenSpec) -> SpecResult:
+    """Run the SELECT's ASK checks in the store and say which came back false.
+
+    Each ASK goes through the store's ordinary SELECT path: a store answers an
+    ASK sent with Accept: application/sparql-results+json with {"boolean": ...}.
+    """
+    then = spec.then
+    select = inline_bindings(when.value, when.bindings)
+    checks = subquery_rewriter(select, then.conditions, then.min_rows, then.max_rows)
+    failed = []
+    for check in checks:
+        answer = run_when_impl(spec.spec_uri, spec.triple_store,
+                               dataclasses.replace(when, value=check.query, bindings=None))
+        if not json.loads(answer).get("boolean"):
+            failed.append(check.description)
+    if failed:
+        return AskSpecFailure(spec.spec_uri, spec.triple_store["type"], failed, len(checks))
+    return SpecPassed(spec.spec_uri, spec.triple_store["type"])
 
 
 def get_triple_store_graph(triple_store_graph_path: Path) -> Graph:
@@ -1602,6 +1640,12 @@ def _render_select_failure(res, info):
     info(res.message)
     if res.table_comparison is not None:
         info(table_diff_to_markdown(res.table_comparison))
+
+
+@render_result_diff.method(AskSpecFailure)
+def _render_ask_failure(res, info):
+    info(f"{Fore.RED}Failed {res.spec_uri} {res.triple_store}")
+    info(res.message)
 
 
 @render_result_diff.method(SpecPassedWithWarning)
