@@ -165,20 +165,23 @@ def find_config_files(paths) -> list:
         else:
             expanded.append(path)
     found = []
-    for path in map(Path, expanded):
+    # Messages name each path as it was written: Path() would turn docs/media
+    # into docs\media on Windows.
+    for written in expanded:
+        path = Path(written)
         if path.is_file():
             problem = _why_not_a_config(path)
             if problem:
-                raise ValueError(f"{path} is not a mustrd config: {problem}")
+                raise ValueError(f"{written} is not a mustrd config: {problem}")
             found.append(path)
         elif path.is_dir():
             configs = [f for f in sorted(path.rglob("*.ttl"))
                        if not f.name.endswith(".mustrd.ttl") and _declares_mustrd_test(f)]
             if not configs:
-                raise ValueError(f"No mustrdTest:MustrdTest config found under {path}")
+                raise ValueError(f"No mustrdTest:MustrdTest config found under {written}")
             found.extend(configs)
         else:
-            raise ValueError(f"No such config file or directory: {path}")
+            raise ValueError(f"No such config file or directory: {written}")
     unique = []
     seen = set()
     for f in found:

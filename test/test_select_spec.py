@@ -2296,7 +2296,7 @@ class TestRunSelectSpecDecimalLexicalForms:
                 must:when [ a must:TextSparqlSource ;
                     must:queryText "select ?s ?o {{ ?s <https://semanticpartners.com/data/test/pred> ?o }}" ;
                     must:queryType must:SelectSparql ] ;
-                must:then [ a must:FileDataset ; must:file "{csv}" ] .
+                must:then [ a must:FileDataset ; must:file "{csv.as_posix()}" ] .
             """
         triple_store = {"type": TRIPLESTORE.RdfLib, "given": given}
         spec_uri = TEST_DATA.my_first_spec
