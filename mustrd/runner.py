@@ -96,9 +96,16 @@ def triple_store_name(spec):
     return str(ts).split("/")[-1].split("#")[-1] if ts else "rdflib"
 
 
-def run_config(config_path, secrets=None, selected_tests=None, ignore_focus=False,
+def _config_files(config_paths):
+    # One config file or several; a single path is still accepted.
+    if isinstance(config_paths, (str, os.PathLike)):
+        config_paths = [config_paths]
+    return [Path(p) for p in config_paths]
+
+
+def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=False,
                verbose=False, review=False):
-    """Run every spec in a MustrdTest config and return the plain-data inputs the
+    """Run every spec in one or more MustrdTest config files and return the plain-data inputs the
     reporting library consumes:
 
       (results, all_specs, spec_by_uri, test_results, run_results, spec_paths)
@@ -109,7 +116,7 @@ def run_config(config_path, secrets=None, selected_tests=None, ignore_focus=Fals
     - run_results: a RunResult per test (incl. skipped/invalid), for the results graph.
     - spec_paths: hasSpecPath dirs, for competency-question discovery.
     """
-    test_configs = parse_config(Path(config_path))
+    test_configs = [tc for f in _config_files(config_paths) for tc in parse_config(f)]
     results, all_specs, spec_by_uri, test_results, run_results = [], [], {}, [], []
     spec_paths = [tc.spec_path for tc in test_configs if tc.spec_path]
 
@@ -164,6 +171,7 @@ def run_config(config_path, secrets=None, selected_tests=None, ignore_focus=Fals
     return results, all_specs, spec_by_uri, test_results, run_results, spec_paths
 
 
-def ontology_paths_from_config(config_path):
-    """All hasOntologyPath values across a config's TestConfigs (for coverage)."""
-    return [p for tc in parse_config(Path(config_path)) for p in tc.ontology_paths]
+def ontology_paths_from_config(config_paths):
+    """All hasOntologyPath values across the configs' TestConfigs (for coverage)."""
+    return [p for f in _config_files(config_paths)
+            for tc in parse_config(f) for p in tc.ontology_paths]

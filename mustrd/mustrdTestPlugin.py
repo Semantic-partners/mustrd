@@ -16,6 +16,8 @@ from mustrd.runner import generate_specs, resolve_triple_stores, triple_store_na
 # TestConfig / parse_config moved to mustrd.config (no pytest dependency, so the
 # CLI shares them); re-exported here for callers that import them from the plugin.
 from mustrd.config import TestConfig, parse_config, get_config_param  # noqa: F401
+from mustrd.config import find_config_files, check_pytest_paths_unique
+from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 from mustrd.results_rdf import RunResult
 # re-exported so `from mustrd.mustrdTestPlugin import _link_href, ...` keeps
 # working for existing callers/tests after the extraction into reporting.py
@@ -58,11 +60,24 @@ def pytest_addoption(parser):
     )
     group.addoption(
         "--config",
-        action="store",
+        action="extend",
+        nargs="+",
         dest="configpath",
         metavar="pathToTestConfig",
         default=None,
-        help="Ttl file containing the list of test to construct.",
+        help="One or more config files, directories (searched recursively) or "
+             "glob patterns. Repeatable. Write --config=FILE to put test paths "
+             "straight after it.",
+    )
+    group.addoption(
+        "--ask-rewriter",
+        action="store",
+        dest="ask_rewriter",
+        metavar="name",
+        default=DEFAULT_REWRITER,
+        help="How a must:AskConditions then turns its SELECT into ASK queries: "
+             f"'{DEFAULT_REWRITER}' (the default), or a rewriter installed under "
+             f"the '{ENTRY_POINT_GROUP}' entry-point group.",
     )
     group.addoption(
         "--secrets",
@@ -197,10 +212,16 @@ def pytest_addoption(parser):
 def pytest_configure(config) -> None:
     # Read configuration file
     if config.getoption("mustrd") and config.getoption("configpath"):
+        try:
+            config_files = find_config_files(config.getoption("configpath"))
+            check_pytest_paths_unique(config_files)
+            set_rewriter(config.getoption("ask_rewriter"))
+        except ValueError as e:
+            raise pytest.UsageError(str(e))
         config.pluginmanager.register(
             MustrdTestPlugin(
                 config.getoption("mdpath"),
-                Path(config.getoption("configpath")),
+                config_files,
                 config.getoption("secrets"),
                 config.getoption("ignore_focus"),
                 config.getoption("term_coverage"),
@@ -226,20 +247,23 @@ logger = logging.getLogger(__name__)
 
 class MustrdTestPlugin:
     md_path: str
-    test_config_file: Path
+    test_config_files: list
     selected_tests: list
     secrets: str
     items: list
     path_filter: str
     collect_error: BaseException
 
-    def __init__(self, md_path, test_config_file, secrets, ignore_focus=False,
+    def __init__(self, md_path, test_config_files, secrets, ignore_focus=False,
                  term_coverage=False, cq=False, term_coverage_rdf=None, term_links="off",
                  term_coverage_jsonld=None, results_rdf=None, results_jsonld=None,
                  viewer=None, viewer_title="mustrd run report",
                  viewer_src_base=None, viewer_sources=True):
         self.md_path = md_path
-        self.test_config_file = test_config_file
+        # One config file or several; a single Path is still accepted.
+        if isinstance(test_config_files, (str, os.PathLike)):
+            test_config_files = [test_config_files]
+        self.test_config_files = [Path(f) for f in test_config_files]
         self.secrets = secrets
         self.ignore_focus = ignore_focus
         self.term_coverage = term_coverage
@@ -291,7 +315,7 @@ class MustrdTestPlugin:
         # Only modify args if we have mustrd tests to run
         if self.selected_tests:
             # Keep original pytest args and add config file for mustrd
-            session.config.args = pytest_args + [str(self.test_config_file.resolve())]
+            session.config.args = pytest_args + [str(f.resolve()) for f in self.test_config_files]
         else:
             # Keep original args unchanged for regular pytest
             session.config.args = args
@@ -312,14 +336,14 @@ class MustrdTestPlugin:
     def _resolve_ontology_paths(self):
         # Reuse parse_config (which also SHACL-validates) so ontology paths come
         # from the same TestConfig the tests are built from — one source of truth.
-        test_configs = parse_config(Path(self.test_config_file))
-        self.ontology_paths = [p for tc in test_configs for p in tc.ontology_paths]
+        self.ontology_paths = [p for f in self.test_config_files
+                               for tc in parse_config(f) for p in tc.ontology_paths]
         return self.ontology_paths
 
     def _resolve_ontology_paths_or_fail(self):
         if not self._resolve_ontology_paths():
             raise pytest.UsageError(
-                self._missing_ontology_message(Path(self.test_config_file)))
+                self._missing_ontology_message(self.test_config_files[0]))
 
     def _missing_ontology_message(self, config_path):
         config_graph = Graph().parse(config_path)
@@ -350,8 +374,8 @@ class MustrdTestPlugin:
         # Only collect .ttl files that are mustrd suite config files
         if not str(file_path).endswith('.ttl'):
             return None
-        if file_path.resolve() != Path(self.test_config_file).resolve():
-            logger.debug(f"{self.test_config_file}: Skipping non-matching-config file: {file_path}")
+        if file_path.resolve() not in {f.resolve() for f in self.test_config_files}:
+            logger.debug(f"Skipping non-matching-config file: {file_path}")
             return None
 
         mustrd_file = MustrdFile.from_parent(parent, path=file_path, mustrd_plugin=self)
@@ -521,8 +545,8 @@ class MustrdTestPlugin:
         the spec paths from the test config, then delegate to the shared
         reporting.collect_cq_defs to find/resolve the cq:CompetencyQuestion nodes."""
         try:
-            spec_paths = [tc.spec_path for tc in parse_config(Path(self.test_config_file))
-                          if tc.spec_path]
+            spec_paths = [tc.spec_path for f in self.test_config_files
+                          for tc in parse_config(f) if tc.spec_path]
         except Exception as e:
             logger.warning(f"Could not read spec paths for competency questions: {e}")
             return []
@@ -549,7 +573,7 @@ class MustrdFile(pytest.File):
 
     def collect(self):
         try:
-            logger.info(f"{self.mustrd_plugin.test_config_file}: Collecting tests from file: {self.path=}")
+            logger.info(f"Collecting tests from config file: {self.path=}")
             # Only process the specific mustrd config file we were given
 
             # if not str(self.fspath).endswith(".ttl"):

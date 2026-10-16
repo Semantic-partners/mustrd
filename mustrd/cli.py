@@ -11,7 +11,8 @@ the CLI and the plugin produce identical output.
                   --term-coverage-rdf run.ttl [--term-coverage-jsonld run.jsonld]
     mustrd report --config my-mustrd-config.ttl --viewer report.html
 
---config takes the same MustrdTest TTL as the pytest plugin's --config.
+--config takes what the pytest plugin's --config takes: one or more MustrdTest
+TTLs, directories searched recursively for them, or glob patterns.
 """
 import argparse
 import sys
@@ -24,6 +25,8 @@ from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, collect_cq_defs, produce_report,
 )
 from mustrd.runner import run_config, ontology_paths_from_config
+from mustrd.config import find_config_files, check_pytest_paths_unique, has_glob
+from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 
 log = logging.getLogger(__name__)
 
@@ -172,8 +175,13 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
 
     def common(p):
-        p.add_argument("-c", "--config", required=True,
-                       help="Path to the MustrdTest configuration TTL.")
+        p.add_argument("-c", "--config", required=True, action="extend", nargs="+",
+                       help="One or more MustrdTest configuration TTLs, directories "
+                            "(searched recursively) or glob patterns. Repeatable.")
+        p.add_argument("--ask-rewriter", default=DEFAULT_REWRITER, metavar="name",
+                       help="How a must:AskConditions then turns its SELECT into ASK "
+                            f"queries: '{DEFAULT_REWRITER}' (the default), or a rewriter "
+                            f"installed under the '{ENTRY_POINT_GROUP}' entry-point group.")
         p.add_argument("--secrets", default=None,
                        help="Secrets for triple-store connections (CI).")
         p.add_argument("--ignore-focus", dest="ignore_focus", action="store_true",
@@ -209,29 +217,38 @@ def _writable_utf8_output():
             pass          # not a reconfigurable text stream (a pipe under test, say)
 
 
-def _check_config(path):
-    """Fail with a usage message, not an rdflib traceback, when --config is wrong.
+def _check_config(paths):
+    """The config files --config names, or a usage message (not an rdflib
+    traceback) when it is wrong.
 
     Getting the working directory wrong is the easiest mistake to make here: the
     paths inside a config are resolved relative to the config file, so it is
     tempting to run from the wrong place."""
-    config = Path(path)
-    if config.is_dir():
-        raise SystemExit(f"mustrd: --config must be a MustrdTest TTL file, but "
-                         f"{path} is a directory.")
-    if not config.is_file():
-        raise SystemExit(
-            f"mustrd: no such configuration file: {path}\n"
-            f"  Looked in: {config.resolve().parent}\n"
-            "  --config takes the path to a MustrdTest TTL (the same file the "
-            "pytest plugin's --config takes)."
-        )
+    for path in paths:
+        config = Path(path)
+        if not config.exists() and not has_glob(path):
+            raise SystemExit(
+                f"mustrd: no such configuration file: {path}\n"
+                f"  Looked in: {config.resolve().parent}\n"
+                "  --config takes the path to a MustrdTest TTL, or a directory of "
+                "them (the same as the pytest plugin's --config)."
+            )
+    try:
+        config_files = find_config_files(paths)
+        check_pytest_paths_unique(config_files)
+    except ValueError as e:
+        raise SystemExit(f"mustrd: {e}")
+    return config_files
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     _writable_utf8_output()
-    _check_config(args.config)
+    args.config = _check_config(args.config)
+    try:
+        set_rewriter(args.ask_rewriter)
+    except ValueError as e:
+        raise SystemExit(f"mustrd: {e}")
     # The CLI is the application here, so this is where logging gets configured —
     # nothing in the library touches it (see logger_setup).
     logger_setup.configure(verbose=args.verbose)

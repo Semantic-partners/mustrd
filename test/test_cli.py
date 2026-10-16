@@ -136,7 +136,7 @@ def test_run_shows_the_review_table(capsys):
     assert "0 failures" in out
 
 
-@pytest.mark.parametrize("bad", ["no-such-config.ttl", "docs/examples"])
+@pytest.mark.parametrize("bad", ["no-such-config.ttl", "docs/media"])
 def test_bad_config_fails_with_a_usage_message(bad, capsys):
     """A wrong --config is the easiest mistake to make (paths inside a config are
     relative to the config file), so it must not surface as an rdflib traceback."""

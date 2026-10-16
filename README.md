@@ -215,6 +215,84 @@ Some details worth knowing, because they are what make it readable on real data:
 - **A wide result falls back to bare column names.** Past a readable length the
   line has stopped being a summary, and the table below is the right tool.
 
+#### Several configs in one run
+
+`--config` takes a list: config files, directories, or glob patterns, any mix of
+them, after one flag or several. For a suite split by domain:
+
+```
+ontology/claims/tests/mustrdconfig.ttl   :hasSpecPath "../specs" ; :hasPytestPath "claims"
+ontology/claims/specs/…
+ontology/policy/tests/mustrdconfig.ttl   :hasSpecPath "../specs" ; :hasPytestPath "policy"
+ontology/policy/specs/…
+```
+
+```bash
+pytest --mustrd --config ontology/*/tests/mustrdconfig.ttl     # the shell expands it
+pytest --mustrd --config 'ontology/*/tests/mustrdconfig.ttl'   # so does mustrd, for pytest.ini
+pytest --mustrd --config ontology                              # every config under ontology/
+mustrd run --config ontology/claims/tests/mustrdconfig.ttl ontology/policy/tests/mustrdconfig.ttl
+```
+
+A directory is searched recursively for `.ttl` files that declare a
+`:MustrdTest`. Because `--config` takes a list, a test path straight after it is
+read as a config too: write `--config=FILE` to follow it with test paths.
+
+Each config file needs its own `:hasPytestPath`; two files sharing one is an
+error, since `--pytest-path` could no longer pick one domain out. Paths inside a
+config stay relative to that config file, so domains that overlap can point their
+`:hasDataPath` at the same directory and share query files.
+
+#### Checking a result without writing it down
+
+Some data must not appear in a test: not in the spec, not in a failure, not in
+a CI log. `must:AskConditions` states conditions on a SELECT's result instead of
+the result itself:
+
+```ttl
+:patientsHaveABirthDate a must:TestSpec ;
+    must:given [ a must:InheritedDataset ] ;
+    must:when  [ a must:FileSparqlSource ; must:file "patients.rq" ;
+                 must:queryType must:SelectSparql ] ;
+    must:then  [ a must:AskConditions ;
+                 must:minRows 1 ;                                    # the default
+                 must:condition [ must:filter "BOUND(?dob) && ?dob < NOW()" ] ,
+                                [ must:filter "isIRI(?patient)" ] ,
+                                [ must:filter "?status = 'active'" ;
+                                  must:holdsFor must:SomeRow ] ] .
+```
+
+mustrd puts the SELECT inside ASK queries, unchanged, as a subquery — one ASK for
+the row count and one per condition — and the store answers each with true or
+false. No row of the result reaches mustrd, so there is nothing to print. A
+failure names the checks that came back false:
+
+```
+Expected at least 1 row; every row: BOUND(?dob) && ?dob < NOW() (2 of 3 checks failed)
+```
+
+- A condition is a SPARQL expression over the SELECT's projected variables, as
+  it would be written inside `FILTER ( )`.
+- `must:holdsFor` is `must:EveryRow` (the default) or `must:SomeRow`.
+- An expression that errors — usually because a variable is unbound — counts as
+  not holding, so a row with no value fails an every-row check rather than
+  slipping past it.
+- `must:minRows` defaults to 1, because every row of an empty result meets any
+  condition. Set it to 0 to allow an empty result; `must:maxRows` caps it.
+- `FROM` and `FROM NAMED` move to the outer ASK, so a query that names its
+  dataset keeps working.
+- SELECT only: a CONSTRUCT cannot be a subquery.
+
+The same query file can serve a local spec with an exact `then` and a spec
+against a deployed store that uses `must:AskConditions`.
+
+The rewrite is replaceable. A package that registers a function under the
+`mustrd.ask_rewriters` entry-point group is chosen with `--ask-rewriter <name>`
+on either `pytest --mustrd` or the `mustrd` CLI. It takes the same arguments as
+`mustrd.ask_rewrite.subquery_rewriter` and returns a list of
+`AskCheck(description, query)`. The description is what a failure shows, so it
+must describe the check, never the data.
+
 #### What a run can produce
 
 Every flag below works identically on `pytest --mustrd` and on `mustrd report`:
