@@ -268,6 +268,31 @@ A then is compared as a flat union by default: a spec should not have to say whi
                   rdfs:range xsd:boolean ;
                   .
 
+###  https://mustrd.org/model/tolerance
+:tolerance rdf:type owl:DatatypeProperty ;
+           rdfs:comment """How far apart an expected and an actual number may be and still match: |expected - actual| <= tolerance. Used with :relativeTolerance as Python's math.isclose uses abs_tol and rel_tol; a cell matches if either holds.
+
+Goes on a triple store config, a :TestSpec, a tabular then, or a :columnTolerance. The narrowest that sets :tolerance or :relativeTolerance wins, and replaces the wider ones whole. On a store, spec or then it applies to the columns the store returns as xsd:double or xsd:float; on a :columnTolerance it applies to that column whatever it holds, which is how a CSV then without datatype columns is covered. The datatypes still have to match.""" ;
+           rdfs:label "tolerance" ;
+           rdfs:range xsd:decimal ;
+           .
+
+###  https://mustrd.org/model/relativeTolerance
+:relativeTolerance rdf:type owl:DatatypeProperty ;
+                   rdfs:comment "As :tolerance, but a fraction of the larger of the two numbers: 1e-9 lets them differ in the ninth significant digit." ;
+                   rdfs:label "relativeTolerance" ;
+                   rdfs:seeAlso :tolerance ;
+                   rdfs:range xsd:decimal ;
+                   .
+
+###  https://mustrd.org/model/columnTolerance
+:columnTolerance rdf:type owl:ObjectProperty ;
+                 rdfs:comment "A tolerance for one column of a tabular then: a node with :variable naming the column, and :tolerance, :relativeTolerance or both. Repeatable." ;
+                 rdfs:label "columnTolerance" ;
+                 rdfs:seeAlso :tolerance ;
+                 rdfs:domain :Dataset ;
+                 .
+
 ###  https://mustrd.org/model/condition
 :condition rdf:type owl:ObjectProperty ;
            rdfs:comment "A condition the result of the SELECT must meet. Repeatable." ;

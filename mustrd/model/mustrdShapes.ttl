@@ -215,6 +215,31 @@ must:OrderedOnlyOnFileDatasetShape
                           [ sh:class must:FolderDataset ] ) ;
     sh:message          "must:ordered applies to a then read from a file (must:FileDataset or must:FolderDataset). For inline rows, put sh:order on every row instead." .
 
+# Optional, at most one of each, and not negative. See :tolerance in the ontology.
+must:ToleranceShape
+    a                    sh:NodeShape ;
+    sh:targetSubjectsOf  must:tolerance , must:relativeTolerance ;
+    sh:property          [ sh:path         must:tolerance ;
+                           sh:maxCount     1 ;
+                           sh:or           ( [ sh:datatype xsd:decimal ] [ sh:datatype xsd:double ]
+                                             [ sh:datatype xsd:integer ] ) ;
+                           sh:minInclusive 0 ;
+                           sh:message      "must:tolerance takes a single number, zero or more." ; ] ,
+                         [ sh:path         must:relativeTolerance ;
+                           sh:maxCount     1 ;
+                           sh:or           ( [ sh:datatype xsd:decimal ] [ sh:datatype xsd:double ]
+                                             [ sh:datatype xsd:integer ] ) ;
+                           sh:minInclusive 0 ;
+                           sh:message      "must:relativeTolerance takes a single number, zero or more." ; ] .
+
+must:ColumnToleranceShape
+    a                   sh:NodeShape ;
+    sh:targetObjectsOf  must:columnTolerance ;
+    sh:property         [ sh:path     must:variable ;
+                          sh:minCount 1 ;
+                          sh:maxCount 1 ;
+                          sh:message  "A must:columnTolerance names its column with exactly one must:variable." ; ] .
+
 must:StatementsDatasetShape
     a              sh:NodeShape ;
     sh:targetClass must:StatementsDataset ;
