@@ -40,6 +40,11 @@ class MUST(DefinedNamespace):
     # Opt-in: compare a tabular `then` read from a file row by row, in file order,
     # rather than sorting both sides and comparing as sets.
     ordered: URIRef
+    # How far apart two xsd:double / xsd:float cells may be and still match. On a
+    # triple store config, a spec, a tabular `then`, or one column of it.
+    tolerance: URIRef
+    relativeTolerance: URIRef
+    columnTolerance: URIRef
 
     # Specification data sources
     TableDataset: URIRef

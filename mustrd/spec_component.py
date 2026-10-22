@@ -114,9 +114,37 @@ class ThenSpec(SpecComponent):
     match_named_graphs: bool = False
 
 
+@dataclass(frozen=True)
+class Tolerance:
+    """How far apart two numbers may be and still match: `math.isclose` with
+    these as abs_tol and rel_tol."""
+    absolute: float = 0.0
+    relative: float = 0.0
+
+
+def read_tolerance(graph: Graph, node: Node) -> Optional[Tolerance]:
+    """The tolerance `node` declares, or None if it declares none.
+
+    A level that sets either predicate replaces any wider one whole: a column
+    that sets only must:tolerance has no relative tolerance, whatever the then
+    or the spec around it says."""
+    absolute = graph.value(node, MUST.tolerance)
+    relative = graph.value(node, MUST.relativeTolerance)
+    if absolute is None and relative is None:
+        return None
+    tolerance = Tolerance(float(absolute or 0), float(relative or 0))
+    if tolerance.absolute < 0 or tolerance.relative < 0:
+        raise ValueError(f"{node} has a negative tolerance: {tolerance}")
+    return tolerance
+
+
 @dataclass
 class TableThenSpec(ThenSpec):
     value: pandas.DataFrame = field(default_factory=pandas.DataFrame)
+    # Declared on the then itself, and on single columns of it, keyed by
+    # variable name. See Tolerance.
+    tolerance: Optional[Tolerance] = None
+    column_tolerances: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -187,7 +215,16 @@ def parse_spec_component(subject: URIRef,
                 spec_components += [spec_component]
     # merge multiple graphs into one, give error if spec config is a TableThen
     # print(f"calling multimethod with {spec_components}")
-    return combine_specs(spec_components)
+    combined = combine_specs(spec_components)
+    if isinstance(combined, TableThenSpec):
+        # Read here rather than in each table handler, because a file then is
+        # rebuilt from scratch by load_dataset_from_file.
+        for node in spec_component_nodes:
+            combined.tolerance = combined.tolerance or read_tolerance(spec_graph, node)
+            for column in spec_graph.objects(node, MUST.columnTolerance):
+                combined.column_tolerances[str(spec_graph.value(column, MUST.variable))] = (
+                    read_tolerance(spec_graph, column) or Tolerance())
+    return combined
 
 
 # Here we retrieve all the possible root paths for a specification component.

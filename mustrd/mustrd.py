@@ -1,6 +1,7 @@
+import math
 import os
 import re
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
@@ -27,7 +28,7 @@ import json
 from pandas import DataFrame
 
 from .spec_component import (TableThenSpec, AskThenSpec, parse_spec_component, WhenSpec, ThenSpec,
-                             flatten_to_graph)
+                             flatten_to_graph, Tolerance, read_tolerance)
 from .utils import is_json, get_mustrd_root, rdflib_internals_quiet
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -98,6 +99,7 @@ class Specification:
     then: ThenSpec
     spec_file_name: str = "default.mustrd.ttl"
     spec_source_file: Path = Path("default.mustrd.ttl")
+    tolerance: Optional[Tolerance] = None
 
 
 @dataclass
@@ -490,6 +492,7 @@ def get_spec(
             components[2],
             spec_file_name,
             spec_file_path,
+            read_tolerance(spec_graph, spec_uri),
         )
 
     except (ValueError, FileNotFoundError) as e:
@@ -779,6 +782,9 @@ def get_triple_stores(triple_store_graph: Graph, credentials: dict = None) -> li
         # Fill in the store-specific connection details. Dispatch on the store
         # type so a new backend is a registered method, not another elif here.
         get_triple_store_config(triple_store, triple_store_graph, triple_store_config, credentials)
+        tolerance = read_tolerance(triple_store_graph, triple_store_config)
+        if tolerance:
+            triple_store["tolerance"] = tolerance
         triple_stores.append(triple_store)
     return triple_stores
 
@@ -1123,6 +1129,9 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
     # Convert results to dataframe
     if is_json(result):
         df = json_results_to_panda_dataframe(result)
+        # Before the datatype columns can be dropped: they are how a then
+        # without its own knows which columns are doubles.
+        tolerances = column_tolerances(spec, float_columns(df))
         # A then table without datatype columns (e.g. a hand-written CSV) compares values only
         if len(spec.then.value.columns) and not has_datatype_columns(spec.then.value):
             df = df[value_columns(df)]
@@ -1141,7 +1150,7 @@ def table_comparison(result: str, spec: Specification) -> SpecResult:
         spec, then=dataclasses.replace(spec.then, value=canonicalise_numeric_cells(spec.then.value)))
 
     # Compare result with expected
-    df_diff, message = compare_table_results(df, spec)
+    df_diff, message = compare_table_results(df, spec, tolerances)
 
     if df_diff.empty:
         if warning:
@@ -1202,6 +1211,52 @@ def canonicalise_numeric_cells(df: DataFrame) -> DataFrame:
     return df
 
 
+def float_columns(df: DataFrame) -> List[str]:
+    """The value columns the store returned as xsd:double or xsd:float in every
+    row that binds them."""
+    columns = []
+    for column in value_columns(df):
+        datatypes = {t for t in df.get(f"{column}_datatype", []) if t}
+        if datatypes and datatypes <= XSD_FLOAT_TYPES:
+            columns.append(column)
+    return columns
+
+
+def column_tolerances(spec: Specification, float_columns: List[str]) -> dict:
+    """{column: Tolerance} for the columns compared within a tolerance.
+
+    The narrowest level that declares one wins: a column of the then, the then,
+    the spec, the triple store. The wider three cover only the columns that hold
+    doubles; a column named on its own is compared as numbers whatever it holds."""
+    wider = (getattr(spec.then, "tolerance", None) or spec.tolerance
+             or spec.triple_store.get("tolerance"))
+    tolerances = {column: wider for column in float_columns} if wider else {}
+    tolerances.update(getattr(spec.then, "column_tolerances", {}))
+    return tolerances
+
+
+def absorb_tolerated_differences(expected: DataFrame, actual: DataFrame,
+                                 tolerances: dict) -> DataFrame:
+    """A copy of `actual` with each cell within tolerance of the expected one
+    replaced by the expected text, so the exact comparison after it sees no
+    difference there and a failure shows only the cells that are out. The rows
+    must already be aligned."""
+    actual = actual.copy()
+    for column, tolerance in tolerances.items():
+        if column in actual.columns and column in expected.columns:
+            actual[column] = [want if within_tolerance(want, got, tolerance) else got
+                              for want, got in zip(expected[column], actual[column])]
+    return actual
+
+
+def within_tolerance(want: str, got: str, tolerance: Tolerance) -> bool:
+    try:
+        return math.isclose(float(want), float(got),
+                            rel_tol=tolerance.relative, abs_tol=tolerance.absolute)
+    except (ValueError, TypeError):
+        return False
+
+
 def value_columns(df: DataFrame) -> List[str]:
     return [c for c in df.columns if not str(c).endswith("_datatype")]
 
@@ -1210,7 +1265,7 @@ def has_datatype_columns(df: DataFrame) -> bool:
     return len(value_columns(df)) < len(df.columns)
 
 
-def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification):
+def compare_table_results_dispatch(resultDf: DataFrame, spec: Specification, tolerances: dict = None):
     return not resultDf.empty, not spec.then.value.empty
 
 
@@ -1221,7 +1276,7 @@ compare_table_results = MultiMethod(
 
 # Scenario 1: expected a result and got a result
 @compare_table_results.method((True, True))
-def _compare_results(resultDf: DataFrame, spec: Specification):
+def _compare_results(resultDf: DataFrame, spec: Specification, tolerances: dict = None):
     columns = list(resultDf.columns)
     sorted_columns = sorted(columns)
     then = spec.then.value
@@ -1242,6 +1297,7 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
                 resultDf.shape == then.shape
                 and (resultDf.columns == then.columns).all()
             ):
+                resultDf = absorb_tolerated_differences(then, resultDf, tolerances or {})
                 df_diff = then.compare(resultDf, result_names=("expected", "actual"))
             else:
                 df_diff = construct_df_diff(resultDf, then)
@@ -1270,7 +1326,7 @@ def _compare_results(resultDf: DataFrame, spec: Specification):
 
 # Scenario 2: expected no result but got a result
 @compare_table_results.method((True, False))
-def _unexpected_results(resultDf: DataFrame, spec: Specification):
+def _unexpected_results(resultDf: DataFrame, spec: Specification, tolerances: dict = None):
     empty_then = create_empty_dataframe_with_columns(resultDf)
     df_diff = empty_then.compare(resultDf, result_names=("expected", "actual"))
 
@@ -1281,7 +1337,7 @@ def _unexpected_results(resultDf: DataFrame, spec: Specification):
 
 # Scenario 3: expected a result, but got an empty result
 @compare_table_results.method((False, True))
-def _missing_results(resultDf: DataFrame, spec: Specification):
+def _missing_results(resultDf: DataFrame, spec: Specification, tolerances: dict = None):
     then = spec.then.value
     then = then[sorted(list(then))]
     df = create_empty_dataframe_with_columns(then)
@@ -1292,7 +1348,7 @@ def _missing_results(resultDf: DataFrame, spec: Specification):
 
 # Scenario 4: expected no result, got no result
 @compare_table_results.method((False, False))
-def _no_results(resultDf: DataFrame, spec: Specification):
+def _no_results(resultDf: DataFrame, spec: Specification, tolerances: dict = None):
     df = pandas.DataFrame()
     df_diff = spec.then.value.compare(df, result_names=("expected", "actual"))
 

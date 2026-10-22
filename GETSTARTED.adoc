@@ -394,3 +394,33 @@ Two things that look like they belong here and do not. `must:ordered` is for fil
 Inline rows are still driven by the query: if the `when` has an `ORDER BY` and the rows have no `sh:order`, the spec is rejected as inconsistent rather than run, and if it has `sh:order` but the query has no `ORDER BY`, the order is ignored and the spec passes with a warning.
 
 A `must:EmptyTable` needs nothing either way: an empty result cannot come out in the wrong order.
+
+==== Comparing doubles within a tolerance
+
+Table cells compare exactly by default, so `0.3` does not match the `0.30000000000000004` a store computes for `0.1 + 0.2`. `must:tolerance` (absolute) and `must:relativeTolerance` (a fraction of the larger number) loosen that. They work as `abs_tol` and `rel_tol` do in Python's `math.isclose`: a cell matches if either holds.
+
+They go at four levels. The narrowest one that sets either predicate wins, and replaces the wider ones whole:
+
+. a column of the `then`, with `must:columnTolerance`;
+. the `then`;
+. the `must:TestSpec`;
+. the triple store config, for every spec run against that store.
+
+[source,turtle]
+----
+<urn:store> a triplestore:RdfLib ;
+    must:relativeTolerance 1e-12 .
+
+test-data:totals a must:TestSpec ;
+    must:tolerance 0.000001 ;
+    ...
+    must:then [ a must:FileDataset ;
+                must:file "totals.csv" ;
+                must:columnTolerance [ must:variable "price" ; must:tolerance 0.01 ] ] .
+----
+
+The store, spec and `then` levels apply only to columns the store returns as `xsd:double` or `xsd:float`. That holds for a CSV without datatype columns too: the store's own datatype is what counts. A `must:columnTolerance` applies to its column whatever it holds, which is how to loosen an `xsd:decimal`. Datatypes still have to match either way.
+
+In an unordered table, rows are paired by sorting both sides on their text before any cell is compared. Two rows whose values in a toleranced column are within tolerance of each other can pair the wrong way round and fail.
+
+Graph `then` clauses always compare exactly.
