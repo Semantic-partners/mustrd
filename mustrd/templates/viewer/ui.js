@@ -22,7 +22,7 @@ const model = state(null);                  // the run, read out of the graph
 const tab = state("tests");
 const query = state("");
 const show = { passed: state(true), failed: state(true), skipped: state(true) };
-const ROLES = ["covered", "query-only", "schema", "unused"];
+const ROLES = ["covered", "referenced", "query-only", "schema", "unused"];
 const roleOn = Object.fromEntries(ROLES.map(r => [r, state(false)]));
 const sheet = state(null);                  // source file shown over the page
 const filePick = state(null);               // id of the file open in the Files tab
@@ -623,12 +623,14 @@ const Tiles = M => {
       [["p", pc("passed")], ["f", pc("failed")], ["s", pc("skipped")]]));
   }
   if (C) {
-    tiles.push(tile("Term coverage by tests", [C.pct + "%", `${C.covered}/${C.denom} terms`],
+    tiles.push(tile(C.notRun ? "Terms referenced, not run" : "Term coverage by tests",
+      [C.pct + "%", `${C.covered}/${C.denom} terms`],
       `${C.declared} declared · ${C.schema} structural excluded`, [["c", C.pct]]));
     if (C.hasCq) {
-      tiles.push(tile("Coverage by competency question",
+      tiles.push(tile(C.notRun ? "Referenced by competency question" : "Coverage by competency question",
         [C.cqPct + "%", `${C.coveredCq}/${C.denom} terms`],
-        `${C.covered - C.coveredCq} covered by tests but no CQ`, [["q", C.cqPct]]));
+        `${C.covered - C.coveredCq} ${C.notRun ? "referenced" : "covered"} by tests but no CQ`,
+        [["q", C.cqPct]]));
     }
   }
   if (M.cqs.length) {

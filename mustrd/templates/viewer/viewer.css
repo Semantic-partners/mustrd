@@ -179,6 +179,7 @@
   .pill.failed { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }
   .pill.skipped { --pc: var(--skip); --ps: var(--skip-soft); --pl: var(--skip-line); }
   .pill.covered { --pc: var(--pass); --ps: var(--pass-soft); --pl: var(--pass-line); }
+  .pill.referenced { --pc: var(--warn); --ps: var(--warn-soft); --pl: var(--warn-line); }
   .pill.query-only { --pc: var(--warn); --ps: var(--warn-soft); --pl: var(--warn-line); }
   .pill.schema { --pc: var(--info); --ps: var(--info-soft); --pl: var(--info-line); }
   .pill.unused { --pc: var(--fail); --ps: var(--fail-soft); --pl: var(--fail-line); }

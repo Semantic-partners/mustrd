@@ -22,6 +22,9 @@ def _spec_usage(graph):
     return usage
 
 
+_STATUS = {COV.Passed: "passed", COV.NotRun: "not run"}
+
+
 def _assertions(graph):
     """{(cq IRI, test IRI): {status, requires_ontology}} from the cov:Assertions."""
     out = {}
@@ -31,7 +34,7 @@ def _assertions(graph):
         if cq is None or test is None:
             continue
         out[(str(cq), str(test))] = {
-            "status": "passed" if graph.value(a, COV.outcome) == COV.Passed else "not passed",
+            "status": _STATUS.get(graph.value(a, COV.outcome), "not passed"),
             # bool derived from presence of any cov:requiresOntology ontology link
             "requires_ontology": (a, COV.requiresOntology, None) in graph}
     return out
@@ -69,7 +72,8 @@ def _one_cq(graph, cq, meta, usage, assertions, undeclared, declared, short, hre
         cov_status = None
         if has_ontology:
             probs = sorted(undeclared.get(su, []))
-            cov_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else "✅ passed"
+            ok = "⏸️ not run" if a.get("status") == "not run" else "✅ passed"
+            cov_status = ("⚠️ undeclared: " + "; ".join(probs)) if probs else ok
         tests.append({"name": meta[su]["name"], "uri": su,
                       "status": a.get("status", "not passed"),
                       "credited": a.get("status") == "passed",
@@ -118,7 +122,7 @@ def _cq_gaps(graph, declared, cq_specs, meta, short, href):
     gaps = []
     for tc in graph.subjects(RDF.type, COV.TermCoverage):
         cq_role = graph.value(tc, COV.cqRole)
-        if cq_role in (COV.Covered, COV.Structural, None):
+        if cq_role in (COV.Covered, COV.Referenced, COV.Structural, None):
             continue
         term = str(graph.value(tc, COV["term"]))
         refs = []
