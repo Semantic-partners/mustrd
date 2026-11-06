@@ -39,7 +39,8 @@ def _local(iri) -> str:
 def _run_provenance(g, run, prov):
     """When it ran (prov:startedAtTime), the source repo (cov:gitRepository), the
     revision (cov:gitCommit SHA + cov:gitCommitUrl link), and the CI job
-    (cov:ciRun) — each emitted only when known."""
+    (cov:ciRun), and the triplestores the specs were proved against
+    (cov:triplestore, repeatable) — each emitted only when known."""
     if prov.get("started"):
         g.add((run, PROV.startedAtTime, Literal(prov["started"], datatype=XSD.dateTime)))
     if prov.get("repo_url"):
@@ -50,6 +51,8 @@ def _run_provenance(g, run, prov):
         g.add((run, COV.gitCommitUrl, URIRef(prov["commit_url"])))
     if prov.get("ci_run"):
         g.add((run, COV.ciRun, URIRef(prov["ci_run"])))
+    for ts in prov.get("triplestores") or ():
+        g.add((run, COV.triplestore, URIRef(ts)))
 
 
 def _add_provenance(g, run, ontologies, prov, mustrd_version):
@@ -263,7 +266,7 @@ def _bind_prefixes(g, extra=()):
 
 def coverage_graph(coverage, ontologies, run_slug="local", git_sha=None,
                    repo_url=None, started=None, commit_url=None, ci_run=None,
-                   mustrd_version=None, term_ontology=None) -> Graph:
+                   mustrd_version=None, term_ontology=None, triplestores=None) -> Graph:
     """Build the RDF graph. `ontologies` is [{uri, version}] (uri required);
     `run_slug` seeds the minted run IRI (unique per run, see plugin._run_ident).
     The provenance kwargs (git_sha/started/commit_url/ci_run) describe the run.
@@ -274,7 +277,8 @@ def coverage_graph(coverage, ontologies, run_slug="local", git_sha=None,
     _bind_prefixes(g)
     run = URIRef(f"{_BASE}run/{run_slug}")
     prov = {"git_sha": git_sha, "repo_url": repo_url, "started": started,
-            "commit_url": commit_url, "ci_run": ci_run}
+            "commit_url": commit_url, "ci_run": ci_run,
+            "triplestores": triplestores}
     subjects = _add_provenance(g, run, ontologies, prov, mustrd_version)
     _add_measurements(g, run, run_slug, subjects, coverage)
     _add_term_records(g, run, run_slug, coverage)

@@ -147,7 +147,7 @@ def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=Fal
                 spec_file_name=getattr(spec, "spec_file_name", None),
                 source_file=str(src) if src is not None else None,
                 duration=duration))
-            cspec = coverage_spec(spec, outcome, test_name)
+            cspec = coverage_spec(spec, outcome, test_name, triple_store=ts)
             all_specs.append(cspec)
             if cspec.get("uri"):
                 spec_by_uri[cspec["uri"]] = cspec
