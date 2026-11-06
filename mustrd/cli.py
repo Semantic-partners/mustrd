@@ -75,6 +75,10 @@ def _add_report_options(parser):
     parser.add_argument("--ontology", dest="ontology", action="append", default=None,
                         help="Ontology file/dir to measure against (repeatable). "
                              "Overrides mustrdTest:hasOntologyPath from the config.")
+    parser.add_argument("--no-run", dest="execute", action="store_false",
+                        help="Collect specs and report coverage without executing "
+                             "them. Term coverage is static; running needs a live "
+                             "store and can take a long time.")
 
 
 def _resolve_ontology_paths(args):
@@ -129,7 +133,7 @@ def _emit(args, review):
 
     results, all_specs, spec_by_uri, test_results, run_results, spec_paths = run_config(
         args.config, secrets=args.secrets, ignore_focus=args.ignore_focus,
-        verbose=args.verbose, review=review,
+        verbose=args.verbose, review=review, execute=args.execute,
     )
 
     cq_defs = collect_cq_defs(spec_paths, spec_by_uri) if wants_cq(opts) else []
