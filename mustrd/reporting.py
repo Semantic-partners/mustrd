@@ -154,6 +154,7 @@ def coverage_spec(spec, outcome, test_name):
         "name": getattr(spec, 'spec_file_name', test_name),
         "uri": str(uri) if uri is not None else None,
         "passed": outcome == "passed",
+        "not_run": outcome == "not-run",
         # Flattened. A `given` is quad-aware so a GRAPH clause in the `when` can
         # resolve against it, but coverage and the competency-question overlay
         # read it as a bag of triples — which graph a statement sits in has no

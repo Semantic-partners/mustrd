@@ -37,6 +37,18 @@ cov:termCoverageByCompetencyQuestions a dqv:Metric ;
     skos:prefLabel "Term coverage by competency questions" ;
     skos:definition "As cov:termCoverageByTests, but crediting only tests linked from a competency question." .
 
+cov:termReferenceByTests a dqv:Metric ;
+    dqv:inDimension cov:OntologyTermCoverage ;
+    dqv:expectedDataType xsd:decimal ;
+    skos:prefLabel "Term reference by tests" ;
+    skos:definition "Ratio (0..1) of declared, non-structural ontology terms that a spec populates in its input data, from a run that executed no spec. Static: it says what the specs name, not what they prove." .
+
+cov:termReferenceByCompetencyQuestions a dqv:Metric ;
+    dqv:inDimension cov:OntologyTermCoverage ;
+    dqv:expectedDataType xsd:decimal ;
+    skos:prefLabel "Term reference by competency questions" ;
+    skos:definition "As cov:termReferenceByTests, but counting only specs linked from a competency question." .
+
 ##  The run #######################################################################
 
 cov:CoverageRun a owl:Class ;
@@ -125,6 +137,8 @@ cov:CoverageRole a owl:Class ;
 
 cov:Covered   a cov:CoverageRole ; skos:prefLabel "covered" ;
     skos:definition "Populated in a passing test's input data." .
+cov:Referenced a cov:CoverageRole ; skos:prefLabel "referenced" ;
+    skos:definition "Populated in a spec's input data, in a run that executed no spec. Named, not proved." .
 cov:QueryOnly a cov:CoverageRole ; skos:prefLabel "query only" ;
     skos:definition "Named by a query but never instantiated; the test passes without it. Not covered." .
 cov:Structural a cov:CoverageRole ; skos:prefLabel "structural" ;
@@ -202,6 +216,7 @@ cov:Outcome a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Outcome" .
 cov:Passed a cov:Outcome ; skos:prefLabel "passed" .
 cov:Failed a cov:Outcome ; skos:prefLabel "not passed" .
 cov:Skipped a cov:Outcome ; skos:prefLabel "skipped" .
+cov:NotRun a cov:Outcome ; skos:prefLabel "not run" .
 
 ##  Test results ###################################################################
 # Per-test execution records for a run — every collected test, not just the

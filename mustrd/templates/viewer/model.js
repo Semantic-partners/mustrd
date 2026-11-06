@@ -5,8 +5,10 @@ var OUTCOME = {};
 OUTCOME[COV + "Passed"] = "passed";
 OUTCOME[COV + "Failed"] = "failed";
 OUTCOME[COV + "Skipped"] = "skipped";
+OUTCOME[COV + "NotRun"] = "skipped";
 var ROLE = {};
 ROLE[COV + "Covered"] = "covered";
+ROLE[COV + "Referenced"] = "referenced";
 ROLE[COV + "QueryOnly"] = "query-only";
 ROLE[COV + "Structural"] = "schema";
 ROLE[COV + "Unused"] = "unused";
@@ -226,16 +228,21 @@ function readCoverage(st, specs) {
   var m = readMeasurements(st);
   var schema = iris.filter(function (t) { return terms[t].role === "schema"; });
   var denom = iris.length - schema.length;
-  var covered = iris.filter(function (t) { return terms[t].role === "covered"; }).length;
-  var hasCq = m[COV + "termCoverageByCompetencyQuestions"] !== undefined;
-  var coveredCq = iris.filter(function (t) { return terms[t].cqRole === "covered"; }).length;
+  var credited = function (role) { return role === "covered" || role === "referenced"; };
+  var covered = iris.filter(function (t) { return credited(terms[t].role); }).length;
+  var notRun = m[COV + "termReferenceByTests"] !== undefined;
+  var hasCq = m[COV + "termCoverageByCompetencyQuestions"] !== undefined
+    || m[COV + "termReferenceByCompetencyQuestions"] !== undefined;
+  var coveredCq = iris.filter(function (t) { return credited(terms[t].cqRole); }).length;
   return {
+    notRun: notRun,
     terms: terms, rows: orderTerms(st, terms), ontologies: readOntologies(st),
     declared: iris.length, schema: schema.length, denom: denom, covered: covered,
     pct: denom ? Math.round(100 * covered / denom) : 0,
     hasCq: hasCq, coveredCq: coveredCq,
     cqPct: denom ? Math.round(100 * coveredCq / denom) : 0,
-    ratio: m[COV + "termCoverageByTests"], cqRatio: m[COV + "termCoverageByCompetencyQuestions"]
+    ratio: m[COV + (notRun ? "termReferenceByTests" : "termCoverageByTests")],
+    cqRatio: m[COV + (notRun ? "termReferenceByCompetencyQuestions" : "termCoverageByCompetencyQuestions")]
   };
 }
 

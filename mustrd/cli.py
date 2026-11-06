@@ -148,8 +148,11 @@ def _emit(args, review):
     from mustrd.mustrd import SpecPassed, SpecPassedWithWarning
     failed = [r for r in results
               if not isinstance(r, (SpecPassed, SpecPassedWithWarning))]
+    if not args.execute:
+        print(f"{len(all_specs)} spec{'' if len(all_specs) == 1 else 's'} collected, "
+              f"not run; {len(failed)} skipped or invalid")
     # `run` already prints the review table; `report` would otherwise say nothing.
-    if not review:
+    elif not review:
         passed = len(results) - len(failed)
         print(f"{passed} passed, {len(failed)} not passed"
               f" ({len(results)} spec{'' if len(results) == 1 else 's'})")

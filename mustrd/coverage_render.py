@@ -16,8 +16,9 @@ from mustrd.namespace import COV, DQV, MUST
 from mustrd.ontology import shortener, is_domain_term
 from mustrd.coverage import reason_key, pct
 
-_ROLE_STR = {COV.Covered: "covered", COV.QueryOnly: "query-only",
-             COV.Structural: "schema", COV.Unused: "unused"}
+_ROLE_STR = {COV.Covered: "covered", COV.Referenced: "referenced",
+             COV.QueryOnly: "query-only", COV.Structural: "schema", COV.Unused: "unused"}
+_CREDITED = ("covered", "referenced")
 
 
 def to_bool(lit):
@@ -156,7 +157,7 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
            "connector": connector, "in_data": bool(f.get("in_data")),
            "in_query": bool(f.get("in_query")), "in_schema": role == "schema",
            "status": role, "cq_status": cq_role,
-           "by_cq_state": "schema" if role == "schema" else ("yes" if cq_role == "covered" else "no")}
+           "by_cq_state": "schema" if role == "schema" else ("yes" if cq_role in _CREDITED else "no")}
     if term in ctx["extra_parents"]:
         row["extra_parents"] = ctx["extra_parents"][term]
     if f.get("exercises"):
@@ -234,10 +235,12 @@ def coverage_context(graph, ontology_graph) -> dict:
     terms = ordered_terms(declared, facts, short, ontology_graph)
 
     schema_only = {t for t, f in facts.items() if f["role"] == "schema"}
-    covered = sum(1 for f in facts.values() if f["role"] == "covered")
-    covered_by_cq = sum(1 for f in facts.values() if f["cq_role"] == "covered")
+    covered = sum(1 for f in facts.values() if f["role"] in _CREDITED)
+    covered_by_cq = sum(1 for f in facts.values() if f["cq_role"] in _CREDITED)
     denominator = len(declared) - len(schema_only)
-    has_cq = (None, DQV.isMeasurementOf, COV.termCoverageByCompetencyQuestions) in graph
+    not_run = (None, DQV.isMeasurementOf, COV.termReferenceByTests) in graph
+    has_cq = ((None, DQV.isMeasurementOf, COV.termCoverageByCompetencyQuestions) in graph
+              or (None, DQV.isMeasurementOf, COV.termReferenceByCompetencyQuestions) in graph)
 
     gaps = [{"term": short(t), "iri": t, "kind": declared[t],
              "query_only": facts[t]["role"] == "query-only"}
@@ -248,6 +251,7 @@ def coverage_context(graph, ontology_graph) -> dict:
                     for t in sorted(declared) if t in schema_only]
 
     return {
+        "not_run": not_run,
         "covered": covered, "denominator": denominator,
         "pct": pct(covered, denominator),
         "declared_total": len(declared), "schema_count": len(schema_only),

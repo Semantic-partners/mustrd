@@ -143,6 +143,14 @@ def _build_tbox(given_graphs, ontology):
     return tbox
 
 
+def counts_terms(spec):
+    """Whether a spec's terms count: it passed, or it was collected without being
+    run. The two stay apart in the output — a not-run spec gives a term the role
+    `referenced`, never `covered` — because a run proves a term and a non-run
+    only names it."""
+    return bool(spec.get("passed") or spec.get("not_run"))
+
+
 def _scan_specs(specs, declared_set):
     """Walk each spec's data + queries once. Returns the credited used sets, the
     domain-namespace terms referenced anywhere (split data/query), and per-spec
@@ -162,7 +170,7 @@ def _scan_specs(specs, declared_set):
         referenced_data |= s_data
         referenced_query |= s_query
         spec_refs.append((s.get("name", "?"), s.get("source_file"), s_data, s_query, s.get("uri")))
-        if s.get("passed"):
+        if counts_terms(s):
             used_data |= raw_data & declared_set
             used_query |= raw_query & declared_set
     return used_data, used_query, referenced_data, referenced_query, spec_refs
@@ -192,7 +200,7 @@ def _usage_by_term(specs, declared_set):
     """
     refs_by_term = {}
     for s in specs:
-        if not s.get("passed"):
+        if not counts_terms(s):
             continue
         g = s.get("given")
         d = {t for t in (abox_terms(g) if isinstance(g, Graph) else set())
@@ -248,21 +256,23 @@ def _tbox_in_data(specs, short):
     return results
 
 
-def _coverage_status(term, schema_only, in_data, in_query):
+def _coverage_status(term, schema_only, in_data, in_query, credited="covered"):
     """covered (populated in data) / query-only (named by a query, never
     instantiated) / schema (structural, excluded) / unused. Used for both the
-    all-tests verdict and the CQ-only verdict, over the relevant data/query sets."""
+    all-tests verdict and the CQ-only verdict, over the relevant data/query sets.
+    `credited` is the role a populated term gets: `referenced` when nothing ran."""
     if term in schema_only:
         return "schema"
     if term in in_data:
-        return "covered"
+        return credited
     if term in in_query:
         return "query-only"
     return "unused"
 
 
 def _build_term_records(declared, used_data, used_query, cq_used_data,
-                        cq_used_query, schema_only, schema_reasons, test_refs, short):
+                        cq_used_query, schema_only, schema_reasons, test_refs, short,
+                        credited="covered"):
     """The canonical per-term records — one per declared term, in IRI order. This
     is the single per-term structure the RDF graph is serialised from (the render
     layer reads the same shape back out of the graph): full IRI + slug + kind, the
@@ -271,13 +281,13 @@ def _build_term_records(declared, used_data, used_query, cq_used_data,
     structural."""
     records = []
     for t in sorted(declared):
-        role = _coverage_status(t, schema_only, used_data, used_query)
+        role = _coverage_status(t, schema_only, used_data, used_query, credited)
         exercises = sorted(test_refs.get(t, []), key=lambda r: r["name"]) \
-            if role in ("covered", "query-only") else []
+            if role in (credited, "query-only") else []
         records.append({
             "iri": t, "slug": slug(short(t)), "kind": declared[t],
             "role": role,
-            "cq_role": _coverage_status(t, schema_only, cq_used_data, cq_used_query),
+            "cq_role": _coverage_status(t, schema_only, cq_used_data, cq_used_query, credited),
             "in_data": t in used_data, "in_query": t in used_query,
             "exercises": exercises,
             "structural_reasons": (sorted(schema_reasons.get(t, ()), key=reason_key)
@@ -441,6 +451,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
     covered = sum(1 for t in declared if t in used_data)
     covered_by_cq = sum(1 for t in declared if t in cq_used_data)
+    not_run = any(s.get("not_run") for s in specs)
 
     # The single CANONICAL per-term structure: the RDF graph is serialised from it,
     # and the report is rendered from the graph (see coverage_render / cq_render,
@@ -448,9 +459,11 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # structural lists — this module no longer produces those rendered views).
     term_records = _build_term_records(declared, used_data, used_query, cq_used_data,
                                        cq_used_query, schema_only, schema_reasons,
-                                       test_refs, short)
+                                       test_refs, short,
+                                       "referenced" if not_run else "covered")
 
     return {
+        "not_run": not_run,
         "covered": covered, "denominator": denominator,
         "pct": pct(covered, denominator),
         "ratio": (covered / denominator) if denominator else 0.0,
