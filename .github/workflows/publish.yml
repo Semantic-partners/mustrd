@@ -57,24 +57,32 @@ jobs:
 
       - name: Resolve version + channel
         id: v
+        # Untrusted text (a tag name, a dispatch input) reaches the script only through
+        # environment variables and Python's argv, never spliced into shell or Python source:
+        # a tag name may contain quotes, and ${{ }} is substituted before the shell parses.
+        env:
+          DISPATCH_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
           python -m pip install --quiet packaging
-          if [ "${{ github.event_name }}" = "push" ]; then
-            V="${GITHUB_REF_NAME}"        # the pushed tag, verbatim
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            V="$GITHUB_REF_NAME"          # the pushed tag, verbatim
           else
-            V="${{ github.event.inputs.version }}"
+            V="$DISPATCH_VERSION"
           fi
           V="${V#v}"                      # tolerate an accidental leading "v"
-          # Fail fast on a typo'd tag, and normalise (e.g. 0.8.0-rc1 -> 0.8.0rc1).
-          NORM="$(python -c "from packaging.version import Version; print(Version('$V'))")"
-          IS_PRE="$(python -c "from packaging.version import Version; print(str(Version('$V').is_prerelease).lower())")"
+          # Fail fast on a typo'd tag, and normalise (e.g. 0.8.0-rc1 -> 0.8.0rc1). Version()
+          # accepts only PEP 440, so what comes out is safe to use anywhere.
+          RESOLVED="$(python -c 'import sys; from packaging.version import Version; v = Version(sys.argv[1]); print(v, str(v.is_prerelease).lower())' "$V")"
+          read -r NORM IS_PRE <<< "$RESOLVED"
           echo "version=$NORM"       >> "$GITHUB_OUTPUT"
           echo "prerelease=$IS_PRE"  >> "$GITHUB_OUTPUT"
           echo "Publishing mustrd $NORM (prerelease=$IS_PRE)"
 
       - name: Stamp the version onto the package
-        run: poetry version "${{ steps.v.outputs.version }}"
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: poetry version "$VERSION"
 
       - name: Build (clean dist first)
         run: |
