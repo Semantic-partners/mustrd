@@ -34,6 +34,13 @@ git push origin 0.7.5
 
 CI publishes `mustrd 0.7.5` to PyPI and creates GitHub Release `0.7.5`.
 
+**Or create the release in the GitHub UI.** Under **Releases → Draft a new release**,
+choose **Create new tag: `0.7.5`** on publish (no `v`), targeting `master`; click
+**Generate release notes**; tick **Set as a pre-release** for an `a`/`b`/`rc` version; and
+publish. Publishing creates the tag, which starts the same workflow. It publishes to PyPI
+and keeps your release as you wrote it rather than creating another. A *draft* creates no
+tag, so nothing runs until it is published.
+
 ## Cut a candidate / beta
 
 Append a PEP 440 pre-release suffix — `rc` (candidate), `b` (beta), or `a`

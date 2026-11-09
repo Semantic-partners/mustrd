@@ -101,6 +101,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A release created in the GitHub UI creates its tag, and that tag push is what
+          # started this run; the push event looks the same either way, so check for the
+          # release itself. If it exists, it is the one the release manager wrote: keep it.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists (created in the GitHub UI); keeping it."
+            exit 0
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
