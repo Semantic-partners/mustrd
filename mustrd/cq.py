@@ -16,7 +16,7 @@ from typing import List, Optional
 from rdflib import Graph, URIRef
 
 from mustrd.ontology import abox_terms, query_uris, is_domain_term
-from mustrd.coverage import requires_ontology_terms
+from mustrd.coverage import counts_terms, requires_ontology_terms
 
 
 @dataclass
@@ -30,9 +30,12 @@ class SpecUsage:
     # Declared classes the query matches its data only *through* (subClassOf) —
     # their declaring ontology must be loaded for the test to pass. Empty = none.
     requires_ontology: List[str] = field(default_factory=list)
+    not_run: bool = False
 
 
 def _status(u: SpecUsage) -> str:
+    if u.not_run:
+        return "not run"
     return "passed" if u.passed else "not passed"
 
 
@@ -127,8 +130,9 @@ def compute_cq_overlay(cq_defs, declared_set, declared, tbox, short):
             name=s.get("name", "?"), uri=s.get("uri"), passed=bool(s.get("passed")),
             data_terms=sorted(short(t) for t in d_terms),
             query_terms=sorted(short(t) for t in q_terms),
-            requires_ontology=requires_ontology_terms(d_terms, q_terms, declared, tbox))
-        if s.get("passed"):
+            requires_ontology=requires_ontology_terms(d_terms, q_terms, declared, tbox),
+            not_run=bool(s.get("not_run")))
+        if counts_terms(s):
             cq_used_data |= d_terms
             cq_used_query |= q_terms
     return {
@@ -160,7 +164,8 @@ def cq_facts(cq_defs: List[dict]) -> dict:
             "source_file": str(s.get("source_file")) if s.get("source_file") else None,
             "data": d, "query": q}
         usage_by_uri[uri] = SpecUsage(name=s.get("name", "?"), uri=uri,
-                                      passed=bool(s.get("passed")), requires_ontology=[])
+                                      passed=bool(s.get("passed")), requires_ontology=[],
+                                      not_run=bool(s.get("not_run")))
         g = s.get("given")
         if isinstance(g, Graph):
             for prefix, ns in g.namespaces():

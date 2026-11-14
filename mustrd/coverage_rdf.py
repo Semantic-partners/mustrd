@@ -18,8 +18,9 @@ from mustrd.ontology import local_name, slug
 
 _BASE = "https://mustrd.org/coverage/"
 _AGENT = URIRef("https://mustrd.org/#tool")
-_ROLE = {"covered": COV.Covered, "query-only": COV.QueryOnly,
-         "schema": COV.Structural, "unused": COV.Unused}
+_ROLE = {"covered": COV.Covered, "referenced": COV.Referenced,
+         "query-only": COV.QueryOnly, "schema": COV.Structural, "unused": COV.Unused}
+_OUTCOME = {"passed": COV.Passed, "not run": COV.NotRun}
 
 
 def _relpath(p):
@@ -93,11 +94,13 @@ def _add_measurements(g, run, run_slug, subjects, coverage):
         for s in subjects:
             g.add((m, DQV.computedOn, s))
 
-    measurement("termCoverageByTests", COV.termCoverageByTests,
-                coverage.get("ratio", 0.0))
+    # A non-run measures what the specs name, not what they prove: a different
+    # metric, so its ratio can't be read as coverage.
+    kind = "termReference" if coverage.get("not_run") else "termCoverage"
+    measurement(f"{kind}ByTests", COV[f"{kind}ByTests"], coverage.get("ratio", 0.0))
     if coverage.get("has_cq"):
-        measurement("termCoverageByCompetencyQuestions",
-                    COV.termCoverageByCompetencyQuestions, coverage.get("cq_ratio", 0.0))
+        measurement(f"{kind}ByCompetencyQuestions",
+                    COV[f"{kind}ByCompetencyQuestions"], coverage.get("cq_ratio", 0.0))
 
 
 def _add_term_records(g, run, run_slug, coverage):
@@ -196,7 +199,7 @@ def _add_cq_assertions(g, run, cq, tests, term_ontology, ont_uris):
         g.add((a, RDF.type, COV.Assertion))
         g.add((a, COV.onCompetencyQuestion, cq))
         g.add((a, COV.onTest, spec))
-        g.add((a, COV.outcome, COV.Passed if t.get("status") == "passed" else COV.Failed))
+        g.add((a, COV.outcome, _OUTCOME.get(t.get("status"), COV.Failed)))
         # cov:requiresOntology -> the ontology IRI(s) whose class hierarchy the test
         # matches its data through (was a boolean). One per driving declared class,
         # resolved to its declaring ontology; falls back to all run ontologies if a

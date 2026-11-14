@@ -104,7 +104,7 @@ def _config_files(config_paths):
 
 
 def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=False,
-               verbose=False, review=False):
+               verbose=False, review=False, execute=True):
     """Run every spec in one or more MustrdTest config files and return the plain-data inputs the
     reporting library consumes:
 
@@ -115,6 +115,11 @@ def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=Fal
     - test_results: a TestResult per run spec, for the plain --md ResultList.
     - run_results: a RunResult per test (incl. skipped/invalid), for the results graph.
     - spec_paths: hasSpecPath dirs, for competency-question discovery.
+
+    With execute=False the specs are collected and projected for coverage but
+    never run. Term coverage is a static property — which terms a spec's query
+    names — so it does not need a triplestore, a token, or twenty minutes. The
+    outcome is reported as 'not-run' rather than a fabricated pass.
     """
     test_configs = [tc for f in _config_files(config_paths) for tc in parse_config(f)]
     results, all_specs, spec_by_uri, test_results, run_results = [], [], {}, [], []
@@ -132,21 +137,26 @@ def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=Fal
         for spec in specs:
             ts = triple_store_name(spec)
             t0 = time.perf_counter()
-            result = run_spec(spec)
-            duration = time.perf_counter() - t0
-            results.append(result)
-            outcome = _outcome(result)
+            if execute:
+                result = run_spec(spec)
+                duration = time.perf_counter() - t0
+                results.append(result)
+                outcome = _outcome(result)
+            else:
+                duration = 0.0
+                outcome = "not-run"
             test_name = f"{getattr(spec, 'spec_file_name', spec.spec_uri)}@{ts}"
-            test_results.append(TestResult(test_name, ts, "mustrd", outcome, True))
-            uri = getattr(spec, "spec_uri", None)
-            src = getattr(spec, "spec_source_file", None)
-            run_results.append(RunResult(
-                status=outcome, test_type="mustrd", module="mustrd",
-                class_name=ts, test_name=test_name,
-                spec_uri=str(uri) if uri is not None else None,
-                spec_file_name=getattr(spec, "spec_file_name", None),
-                source_file=str(src) if src is not None else None,
-                duration=duration))
+            if execute:
+                test_results.append(TestResult(test_name, ts, "mustrd", outcome, True))
+                uri = getattr(spec, "spec_uri", None)
+                src = getattr(spec, "spec_source_file", None)
+                run_results.append(RunResult(
+                    status=outcome, test_type="mustrd", module="mustrd",
+                    class_name=ts, test_name=test_name,
+                    spec_uri=str(uri) if uri is not None else None,
+                    spec_file_name=getattr(spec, "spec_file_name", None),
+                    source_file=str(src) if src is not None else None,
+                    duration=duration))
             cspec = coverage_spec(spec, outcome, test_name)
             all_specs.append(cspec)
             if cspec.get("uri"):
