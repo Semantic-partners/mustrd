@@ -142,9 +142,13 @@ def _link_report_refs(coverage, href):
 # ---------------------------------------------------------------------------
 # Spec-dict projection (shared input shape for coverage).
 # ---------------------------------------------------------------------------
-def coverage_spec(spec, outcome, test_name):
+def coverage_spec(spec, outcome, test_name, triple_store=None):
     """Project a mustrd Specification + its outcome string into the plain dict
-    compute_coverage consumes. `outcome` is 'passed' / 'failed' / 'skipped'."""
+    compute_coverage consumes. `outcome` is 'passed' / 'failed' / 'skipped'.
+    `triple_store` is what the spec was proved against — without it a run over
+    fixtures and a run over a live store are indistinguishable in the output,
+    so merging two runs unions terms proved in one place with terms proved in
+    another."""
     when = getattr(spec, 'when', None)
     # `when` may be a single WhenSpec or a list of them.
     when_list = when if isinstance(when, list) else ([when] if when is not None else [])
@@ -163,6 +167,7 @@ def coverage_spec(spec, outcome, test_name):
         "given": _as_triples(getattr(spec, 'given', None)),
         "queries": queries,
         "source_file": getattr(spec, 'spec_source_file', None),
+        "triple_store": triple_store,
     }
 
 
