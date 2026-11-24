@@ -163,6 +163,109 @@ class TestGetTripleStores(unittest.TestCase):
             store = URIRef("https://mustrd.org/triplestore/store")
             self.assertEqual(credentials[str(store)], {"username": "admin", "password": "s3cret"})
 
+    def _stardog_config(self, d, extra):
+        from pathlib import Path
+        path = Path(d) / "ts.ttl"
+        path.write_text(
+            "@prefix : <https://mustrd.org/triplestore/> .\n"
+            ':store a :Stardog ; :url "http://localhost" ; :database "db" ;\n'
+            f"    {extra} .\n"
+        )
+        return path
+
+    STORE = "https://mustrd.org/triplestore/store"
+
+    def test_token_from_env_var_pointer(self):
+        import os
+        import tempfile
+        from unittest import mock
+        from mustrd.mustrd import get_credentials, get_triple_store_graph
+
+        with tempfile.TemporaryDirectory() as d:
+            config = self._stardog_config(d, ':tokenEnv "MUSTRD_TEST_TOKEN"')
+            with mock.patch.dict(os.environ, {"MUSTRD_TEST_TOKEN": " env-token \n"}):
+                credentials = get_credentials(config)
+            self.assertEqual(credentials[self.STORE], {"token": "env-token"})
+            # The config graph holds the variable name, never the token.
+            self.assertNotIn("env-token", get_triple_store_graph(config).serialize(format="ttl"))
+
+    def test_token_from_file_pointer_relative_to_config(self):
+        import tempfile
+        from pathlib import Path
+        from mustrd.mustrd import get_credentials
+
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "sub").mkdir()
+            (Path(d) / ".token").write_text("file-token\n")
+            config = self._stardog_config(d, ':tokenFile "../.token"')
+            config = config.rename(Path(d) / "sub" / "ts.ttl")
+            self.assertEqual(get_credentials(config)[self.STORE], {"token": "file-token"})
+
+    def test_pointer_beats_stale_secrets_file(self):
+        import tempfile
+        from pathlib import Path
+        from mustrd.mustrd import get_credentials
+
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".token").write_text("fresh")
+            config = self._stardog_config(d, ':tokenFile ".token"')
+            (Path(d) / "ts_secrets.ttl").write_text(
+                '@prefix : <https://mustrd.org/triplestore/> .\n:store :token "stale" .\n'
+            )
+            self.assertEqual(get_credentials(config)[self.STORE], {"token": "fresh"})
+
+    def test_unresolved_pointer_falls_back_to_secrets_file(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from mustrd.mustrd import get_credentials
+
+        with tempfile.TemporaryDirectory() as d:
+            config = self._stardog_config(
+                d, ':tokenEnv "MUSTRD_TEST_UNSET" ; :tokenFile "missing.token"'
+            )
+            (Path(d) / "ts_secrets.ttl").write_text(
+                '@prefix : <https://mustrd.org/triplestore/> .\n:store :token "from-ci" .\n'
+            )
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MUSTRD_TEST_UNSET", None)
+                credentials = get_credentials(config)
+            self.assertEqual(credentials[self.STORE], {"token": "from-ci"})
+
+    def test_env_pointer_tried_before_file_pointer(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from mustrd.mustrd import get_credentials
+
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".token").write_text("from-file")
+            config = self._stardog_config(d, ':tokenEnv "MUSTRD_TEST_TOKEN" ; :tokenFile ".token"')
+            with mock.patch.dict(os.environ, {"MUSTRD_TEST_TOKEN": "from-env"}):
+                self.assertEqual(get_credentials(config)[self.STORE], {"token": "from-env"})
+
+    def test_inline_secrets_win_over_pointers(self):
+        import tempfile
+        from pathlib import Path
+        from mustrd.mustrd import get_credentials
+
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".token").write_text("from-file")
+            config = self._stardog_config(d, ':tokenFile ".token"')
+            inline = '@prefix : <https://mustrd.org/triplestore/> .\n:store :token "inline" .\n'
+            self.assertEqual(get_credentials(config, inline)[self.STORE], {"token": "inline"})
+
+    def test_token_pointers_pass_the_stardog_shape(self):
+        import tempfile
+        from mustrd.mustrd import get_credentials, get_triple_store_graph, get_triple_stores
+
+        with tempfile.TemporaryDirectory() as d:
+            config = self._stardog_config(d, ':tokenEnv "X" ; :tokenFile ".token"')
+            stores = get_triple_stores(get_triple_store_graph(config), get_credentials(config))
+            self.assertEqual(len(stores), 1)
+
     def test_credentials_extracted_into_map_keyed_by_store(self):
         from mustrd.mustrd import extract_credentials
         g = Graph()
