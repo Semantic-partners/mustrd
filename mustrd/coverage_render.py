@@ -236,6 +236,7 @@ def coverage_context(graph, ontology_graph) -> dict:
     schema_only = {t for t, f in facts.items() if f["role"] == "schema"}
     covered = sum(1 for f in facts.values() if f["role"] == "covered")
     covered_by_cq = sum(1 for f in facts.values() if f["cq_role"] == "covered")
+    queried = sum(1 for f in facts.values() if f["in_query"] and f["role"] != "schema")
     denominator = len(declared) - len(schema_only)
     has_cq = (None, DQV.isMeasurementOf, COV.termCoverageByCompetencyQuestions) in graph
 
@@ -250,6 +251,7 @@ def coverage_context(graph, ontology_graph) -> dict:
     return {
         "covered": covered, "denominator": denominator,
         "pct": pct(covered, denominator),
+        "queried": queried, "queried_pct": pct(queried, denominator),
         "declared_total": len(declared), "schema_count": len(schema_only),
         "has_cq": has_cq,
         "covered_by_cq": covered_by_cq,

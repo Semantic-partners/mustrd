@@ -625,6 +625,8 @@ const Tiles = M => {
   if (C) {
     tiles.push(tile("Term coverage by tests", [C.pct + "%", `${C.covered}/${C.denom} terms`],
       `${C.declared} declared · ${C.schema} structural excluded`, [["c", C.pct]]));
+    tiles.push(tile("Queried", [C.queriedPct + "%", `${C.queried}/${C.denom} terms`],
+      "named by a passing test's query", [["c", C.queriedPct]]));
     if (C.hasCq) {
       tiles.push(tile("Coverage by competency question",
         [C.cqPct + "%", `${C.coveredCq}/${C.denom} terms`],

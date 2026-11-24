@@ -95,6 +95,8 @@ def _add_measurements(g, run, run_slug, subjects, coverage):
 
     measurement("termCoverageByTests", COV.termCoverageByTests,
                 coverage.get("ratio", 0.0))
+    measurement("termCoverageByQueries", COV.termCoverageByQueries,
+                coverage.get("queried_ratio", 0.0))
     if coverage.get("has_cq"):
         measurement("termCoverageByCompetencyQuestions",
                     COV.termCoverageByCompetencyQuestions, coverage.get("cq_ratio", 0.0))

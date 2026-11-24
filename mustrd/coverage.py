@@ -441,6 +441,10 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     denominator = len(declared) - len(schema_only)  # schema-only terms excluded
     covered = sum(1 for t in declared if t in used_data)
     covered_by_cq = sum(1 for t in declared if t in cq_used_data)
+    # Named by a passing spec's query, data or not. The figure for suites that read
+    # an existing store (must:InheritedDataset): they have no input data, so they
+    # can never move `covered`.
+    queried = sum(1 for t in declared if t in used_query and t not in schema_only)
 
     # The single CANONICAL per-term structure: the RDF graph is serialised from it,
     # and the report is rendered from the graph (see coverage_render / cq_render,
@@ -454,6 +458,9 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "covered": covered, "denominator": denominator,
         "pct": pct(covered, denominator),
         "ratio": (covered / denominator) if denominator else 0.0,
+        "queried": queried,
+        "queried_pct": pct(queried, denominator),
+        "queried_ratio": (queried / denominator) if denominator else 0.0,
         "declared_total": len(declared), "schema_count": len(schema_only),
         "has_cq": bool(cq_defs),
         "covered_by_cq": covered_by_cq,

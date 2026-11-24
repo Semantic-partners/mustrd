@@ -229,10 +229,12 @@ function readCoverage(st, specs) {
   var covered = iris.filter(function (t) { return terms[t].role === "covered"; }).length;
   var hasCq = m[COV + "termCoverageByCompetencyQuestions"] !== undefined;
   var coveredCq = iris.filter(function (t) { return terms[t].cqRole === "covered"; }).length;
+  var queried = iris.filter(function (t) { return terms[t].inQuery && terms[t].role !== "schema"; }).length;
   return {
     terms: terms, rows: orderTerms(st, terms), ontologies: readOntologies(st),
     declared: iris.length, schema: schema.length, denom: denom, covered: covered,
     pct: denom ? Math.round(100 * covered / denom) : 0,
+    queried: queried, queriedPct: denom ? Math.round(100 * queried / denom) : 0,
     hasCq: hasCq, coveredCq: coveredCq,
     cqPct: denom ? Math.round(100 * coveredCq / denom) : 0,
     ratio: m[COV + "termCoverageByTests"], cqRatio: m[COV + "termCoverageByCompetencyQuestions"]
