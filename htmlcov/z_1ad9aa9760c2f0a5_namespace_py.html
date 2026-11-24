@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_1ad9aa9760c2f0a5_ontology_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-24 16:15 +0000
+            created at 2026-11-24 16:20 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -187,42 +187,46 @@
     <p class="pln"><span class="n"><a id="t105" href="#t105">105</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t106" href="#t106">106</a></span><span class="t">    <span class="com"># Stardog config parameters</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t107" href="#t107">107</a></span><span class="t">    <span class="nam">token</span><span class="op">:</span> <span class="nam">URIRef</span>       <span class="com"># bearer token (preferred); falls back to username/password</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t">    <span class="nam">database</span><span class="op">:</span> <span class="nam">URIRef</span>    <span class="com"># Stardog database name</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">    <span class="com"># Graphs combined into the dataset a query runs over. Both are repeatable, so a</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t">    <span class="com"># single query can be tested against any mix of physically-stored (materialised)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">    <span class="com"># and data-virtualisation (virtual) named graphs.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">    <span class="nam">materialisedGraph</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">    <span class="nam">virtualGraph</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t"><span class="com"># namespace for pytest_mustrd config</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t"><span class="key">class</span> <span class="nam">MUSTRDTEST</span><span class="op">(</span><span class="nam">DefinedNamespace</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">    <span class="nam">_NS</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/mustrdTest/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">    <span class="nam">MustrdTest</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">    <span class="nam">hasSpecPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">    <span class="nam">hasDataPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">    <span class="nam">triplestoreSpecPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">    <span class="nam">hasPytestPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t">    <span class="nam">hasOntologyPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t">    <span class="nam">filterOnTripleStore</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t"><span class="key">from</span> <span class="nam">rdflib</span> <span class="key">import</span> <span class="nam">Namespace</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t"><span class="nam">MUST</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/model/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t">    <span class="com"># Where to read the token instead of a _secrets file. The config holds only</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">    <span class="com"># the pointer; the token goes into the credentials map (ADR 0005).</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t">    <span class="nam">tokenEnv</span><span class="op">:</span> <span class="nam">URIRef</span>    <span class="com"># name of an environment variable holding the token</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">    <span class="nam">tokenFile</span><span class="op">:</span> <span class="nam">URIRef</span>   <span class="com"># path to a file holding the raw token, relative to the config</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">    <span class="nam">database</span><span class="op">:</span> <span class="nam">URIRef</span>    <span class="com"># Stardog database name</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">    <span class="com"># Graphs combined into the dataset a query runs over. Both are repeatable, so a</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">    <span class="com"># single query can be tested against any mix of physically-stored (materialised)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">    <span class="com"># and data-virtualisation (virtual) named graphs.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">    <span class="nam">materialisedGraph</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">    <span class="nam">virtualGraph</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t"><span class="com"># namespace for pytest_mustrd config</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t"><span class="key">class</span> <span class="nam">MUSTRDTEST</span><span class="op">(</span><span class="nam">DefinedNamespace</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">    <span class="nam">_NS</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/mustrdTest/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">    <span class="nam">MustrdTest</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t">    <span class="nam">hasSpecPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t">    <span class="nam">hasDataPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">    <span class="nam">triplestoreSpecPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t">    <span class="nam">hasPytestPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">    <span class="nam">hasOntologyPath</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">    <span class="nam">filterOnTripleStore</span><span class="op">:</span> <span class="nam">URIRef</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t"><span class="com"># Add SpadeEdnGroupSource to the namespace</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t"><span class="nam">MUST</span><span class="op">.</span><span class="nam">SpadeEdnGroupSource</span> <span class="op">=</span> <span class="nam">MUST</span><span class="op">[</span><span class="str">&quot;SpadeEdnGroupSource&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t133" href="#t133">133</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t134" href="#t134">134</a></span><span class="t"><span class="com"># Competency questions have their own vocabulary (see model/cq-ontology.ttl).</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t135" href="#t135">135</a></span><span class="t"><span class="nam">CQ</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/competencyQuestion/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t136" href="#t136">136</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t137" href="#t137">137</a></span><span class="t"><span class="com"># Coverage-report vocabulary (see model/coverage-ontology.ttl) plus the two W3C</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t"><span class="com"># vocabularies the RDF output builds on. Declared here once so the coverage</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t"><span class="com"># emit/render modules share one definition. Plain Namespaces, so item access</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t"><span class="com"># (e.g. COV[&quot;term&quot;]) sidesteps rdflib&#x27;s Namespace.term() method.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t"><span class="nam">COV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/coverage/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t"><span class="nam">DQV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;http://www.w3.org/ns/dqv#&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t"><span class="nam">PROV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;http://www.w3.org/ns/prov#&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t"><span class="key">from</span> <span class="nam">rdflib</span> <span class="key">import</span> <span class="nam">Namespace</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t133" href="#t133">133</a></span><span class="t"><span class="nam">MUST</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/model/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t134" href="#t134">134</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t135" href="#t135">135</a></span><span class="t"><span class="com"># Add SpadeEdnGroupSource to the namespace</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t136" href="#t136">136</a></span><span class="t"><span class="nam">MUST</span><span class="op">.</span><span class="nam">SpadeEdnGroupSource</span> <span class="op">=</span> <span class="nam">MUST</span><span class="op">[</span><span class="str">&quot;SpadeEdnGroupSource&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t137" href="#t137">137</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t"><span class="com"># Competency questions have their own vocabulary (see model/cq-ontology.ttl).</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t"><span class="nam">CQ</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/competencyQuestion/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t"><span class="com"># Coverage-report vocabulary (see model/coverage-ontology.ttl) plus the two W3C</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t"><span class="com"># vocabularies the RDF output builds on. Declared here once so the coverage</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t"><span class="com"># emit/render modules share one definition. Plain Namespaces, so item access</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t"><span class="com"># (e.g. COV[&quot;term&quot;]) sidesteps rdflib&#x27;s Namespace.term() method.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t"><span class="nam">COV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;https://mustrd.org/coverage/&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t"><span class="nam">DQV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;http://www.w3.org/ns/dqv#&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t"><span class="nam">PROV</span> <span class="op">=</span> <span class="nam">Namespace</span><span class="op">(</span><span class="str">&quot;http://www.w3.org/ns/prov#&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -232,7 +236,7 @@
             <a class="nav" href="z_1ad9aa9760c2f0a5_ontology_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-24 16:15 +0000
+            created at 2026-11-24 16:20 +0000
         </p>
     </div>
 </footer>
