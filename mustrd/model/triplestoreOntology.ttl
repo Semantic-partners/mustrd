@@ -98,6 +98,18 @@ For those triple stores, this property must be mandatory""";
   rdfs:comment "Bearer token for Stardog authentication. Preferred over username/password; when absent, basic auth credentials are used instead.";
   rdfs:label "token" .
 
+:tokenEnv a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment "Name of an environment variable holding the bearer token. A pointer, not a secret: safe in a committed config. Tried before tokenFile, and both before the sibling _secrets file.";
+  rdfs:label "token environment variable" .
+
+:tokenFile a owl:DatatypeProperty;
+  rdfs:domain :Stardog;
+  rdfs:range xsd:string;
+  rdfs:comment "Path to a file holding the raw bearer token, relative to the config file. A pointer, not a secret: safe in a committed config.";
+  rdfs:label "token file" .
+
 :database a owl:DatatypeProperty;
   rdfs:domain :Stardog;
   rdfs:range xsd:string;

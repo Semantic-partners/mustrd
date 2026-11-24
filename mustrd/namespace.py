@@ -105,6 +105,10 @@ class TRIPLESTORE(DefinedNamespace):
 
     # Stardog config parameters
     token: URIRef       # bearer token (preferred); falls back to username/password
+    # Where to read the token instead of a _secrets file. The config holds only
+    # the pointer; the token goes into the credentials map (ADR 0005).
+    tokenEnv: URIRef    # name of an environment variable holding the token
+    tokenFile: URIRef   # path to a file holding the raw token, relative to the config
     database: URIRef    # Stardog database name
     # Graphs combined into the dataset a query runs over. Both are repeatable, so a
     # single query can be tested against any mix of physically-stored (materialised)

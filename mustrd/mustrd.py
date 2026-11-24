@@ -728,22 +728,75 @@ def get_credentials(triple_store_graph_path: Path, secrets: str = None) -> dict:
     """Build the credentials map from the secrets source, keeping it out of the
     config graph entirely.
 
-    Secrets come from the inline `secrets` turtle (e.g. a CI-supplied string) or,
-    failing that, the sibling `<config>_secrets<ext>` file. They are parsed into a
-    throwaway graph purely to extract the map, then discarded — the secret triples
-    never join the config graph. See
+    Sources, most explicit first, per store:
+
+    1. the inline `secrets` turtle (e.g. a CI-supplied string);
+    2. a pointer in the config: `:tokenEnv "VAR"` names an environment variable,
+       `:tokenFile "path"` a file holding the raw token, resolved relative to
+       the config file;
+    3. the sibling `<config>_secrets<ext>` file.
+
+    A pointer beats the sibling file because it is declared, where the file is
+    only conventional: a stale `_secrets.ttl` left beside a config must not
+    shadow a token refreshed where the config says to look. A pointer that does
+    not resolve (variable unset, file missing) is skipped, so a config can carry
+    both a local pointer and a CI-written secrets file.
+
+    Secret triples are parsed into a throwaway graph purely to extract the map,
+    then discarded. The config graph holds only the pointer -- a variable name or
+    a path -- never the token. See
     docs/adrs/0005-keep-credentials-out-of-the-config-graph.md
     """
-    secrets_graph = Graph()
     if secrets:
-        secrets_graph.parse(data=secrets)
-    else:
-        secret_path = triple_store_graph_path.parent / Path(
-            triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
-        )
-        if os.path.isfile(secret_path):
-            secrets_graph.parse(secret_path)
-    return extract_credentials(secrets_graph)
+        return extract_credentials(Graph().parse(data=secrets))
+
+    credentials = {}
+    secret_path = triple_store_graph_path.parent / Path(
+        triple_store_graph_path.stem + "_secrets" + triple_store_graph_path.suffix
+    )
+    if os.path.isfile(secret_path):
+        credentials = extract_credentials(Graph().parse(secret_path))
+
+    pointed = resolve_credential_pointers(
+        get_triple_store_graph(triple_store_graph_path), triple_store_graph_path.parent
+    )
+    for store, creds in pointed.items():
+        credentials.setdefault(store, {}).update(creds)
+    return credentials
+
+
+def resolve_credential_pointers(triple_store_graph: Graph, base_dir: Path) -> dict:
+    """{store IRI: {"token": value}} for every store whose `:tokenEnv` or
+    `:tokenFile` resolves to a non-empty token. `:tokenEnv` is tried first.
+
+    Nothing resolved is logged: the token is read into the map and nowhere else.
+    """
+    credentials = {}
+    stores = set(triple_store_graph.subjects(TRIPLESTORE.tokenEnv, None)) | set(
+        triple_store_graph.subjects(TRIPLESTORE.tokenFile, None)
+    )
+    for store in stores:
+        token = None
+        for var in triple_store_graph.objects(store, TRIPLESTORE.tokenEnv):
+            value = os.environ.get(str(var), "").strip()
+            if value:
+                token = value
+                break
+            log.info(f"{store}: tokenEnv {var} is unset or empty")
+        if token is None:
+            for written in triple_store_graph.objects(store, TRIPLESTORE.tokenFile):
+                path = Path(os.path.expanduser(str(written)))
+                if not path.is_absolute():
+                    path = base_dir / path
+                if path.is_file():
+                    value = path.read_text(encoding="utf-8").strip()
+                    if value:
+                        token = value
+                        break
+                log.info(f"{store}: tokenFile {path} is missing or empty")
+        if token is not None:
+            credentials[str(store)] = {"token": token}
+    return credentials
 
 
 # Parse and validate triple store configuration
