@@ -543,7 +543,24 @@ mustrd coverage --config config.ttl --md coverage.md
 
 builds the specs and runs none of them, crediting every spec that builds as
 passing. Coverage then reads what the specs say — their input data and queries —
-with no store to execute against. The same from Python:
+with no store to execute against.
+
+It contacts no store and reads no connection config or credentials: not
+`:triplestoreSpecPath`, not a `_secrets` file, not `:tokenEnv` / `:tokenFile`.
+A suite filtered to `triplestore:CiscStardog` is measured against a placeholder
+of that name, so tests still read `spec@CiscStardog`, and a CI runner with no
+store config and no token gets the same figures as a workstation with both.
+It ends by saying how many specs it measured and naming any it could not build:
+
+```
+26 specs measured, 1 not counted
+  not counted: layer-query.mustrd.ttl: You must define .../Anzo to use ...
+```
+
+Under pytest, `pytest --mustrd --config=config.ttl --coverage-only --md coverage.md`
+does the same: it collects no tests and runs nothing.
+
+The same from Python:
 
 ```python
 from mustrd.runner import static_coverage
@@ -554,8 +571,9 @@ static_coverage("config.ttl", ReportOptions(md_path="coverage.md"))
 print(coverage["queried"], coverage["denominator"])
 ```
 
-`mustrd.runner.collect_specs` returns the coverage inputs alone, for callers that
-want to compute coverage themselves.
+`mustrd.runner.collect_static` returns the coverage inputs and the specs left
+out with the reason; `collect_specs` returns the inputs alone. The `secrets`
+argument these functions take is accepted for compatibility and ignored.
 
 ## When?
 
