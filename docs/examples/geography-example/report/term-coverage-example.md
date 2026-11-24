@@ -14,12 +14,14 @@ Coverage below is measured against these ontologies:
 
 **Overall: 8/9 terms exercised by the tests = 89%**
 
+**Queried: 7/9 terms named by a query = 78%**
+
 **By a competency question: 7/9 = 78%**
 
 
 _(11 declared; 2 structural term(s) excluded from the denominator — see below.)_
 
-A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count.
+A term counts as **covered** when a passing test **populates it in input data** (as an instance type or asserted predicate) — whether or not a query also names it. A term named *only* in a query but never instantiated is **not** covered (the test can still pass without it); it is flagged **query-only**. Ontology declarations alone never count. **Queried** counts the terms a passing test's query names, populated or not: the figure to watch for a suite that reads an existing store (`must:InheritedDataset`), which has no input data and so cannot move Overall.
 
 Classes are arranged by `rdfs:subClassOf` (indented `↳` under their superclass); a class's properties sit beneath it (`▸`, by `rdfs:domain`). A term exercised by tests has a `•` sub-row per test, showing what *that* test contributes (input data / SPARQL).
 

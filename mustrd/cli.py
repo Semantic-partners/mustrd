@@ -10,6 +10,7 @@ the CLI and the plugin produce identical output.
     mustrd report --config my-mustrd-config.ttl --term-coverage --cq --md report.md \\
                   --term-coverage-rdf run.ttl [--term-coverage-jsonld run.jsonld]
     mustrd report --config my-mustrd-config.ttl --viewer report.html
+    mustrd coverage --config my-mustrd-config.ttl --md coverage.md   # no specs run
 
 --config takes what the pytest plugin's --config takes: one or more MustrdTest
 TTLs, directories searched recursively for them, or glob patterns.
@@ -24,7 +25,7 @@ from mustrd import logger_setup
 from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, collect_cq_defs, produce_report,
 )
-from mustrd.runner import run_config, ontology_paths_from_config
+from mustrd.runner import run_config, ontology_paths_from_config, static_coverage
 from mustrd.config import find_config_files, check_pytest_paths_unique, has_glob
 from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 
@@ -169,6 +170,22 @@ def _cmd_report(args):
     return _emit(args, review=False)
 
 
+def _cmd_coverage(args):
+    # `coverage` builds the specs and never runs them: every spec that builds is
+    # credited as passing, so no store connection is needed to execute queries.
+    opts = _report_options(args)
+    opts.term_coverage = True
+    if not opts.ontology_paths:
+        log.error("No ontology to measure coverage against: set hasOntologyPath "
+                  "in the config or pass --ontology.")
+        return 2
+    static_coverage(
+        args.config, opts, secrets=args.secrets, ignore_focus=args.ignore_focus,
+        terminal_writer=lambda body: print(body or "No ontology coverage to report."))
+    _report_written(opts)
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="mustrd", description="Spec-By-Example for RDF & SPARQL.")
@@ -197,6 +214,12 @@ def build_parser():
     common(p_report)
     _add_report_options(p_report)
     p_report.set_defaults(func=_cmd_report)
+
+    p_cov = sub.add_parser(
+        "coverage", help="Term coverage from the specs alone, without running them.")
+    common(p_cov)
+    _add_report_options(p_cov)
+    p_cov.set_defaults(func=_cmd_coverage)
 
     return parser
 

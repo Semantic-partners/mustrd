@@ -535,6 +535,28 @@ directory (see `--viewer-src-base`).
 plus `--ontology` to override `:hasOntologyPath`. Both exit non-zero if any spec
 does not pass.
 
+### Coverage without running the specs
+
+```bash
+mustrd coverage --config config.ttl --md coverage.md
+```
+
+builds the specs and runs none of them, crediting every spec that builds as
+passing. Coverage then reads what the specs say — their input data and queries —
+with no store to execute against. The same from Python:
+
+```python
+from mustrd.runner import static_coverage
+from mustrd.reporting import ReportOptions
+
+coverage = static_coverage("config.ttl")                     # dict; writes nothing
+static_coverage("config.ttl", ReportOptions(md_path="coverage.md"))
+print(coverage["queried"], coverage["denominator"])
+```
+
+`mustrd.runner.collect_specs` returns the coverage inputs alone, for callers that
+want to compute coverage themselves.
+
 ## When?
 
 MustRD is a work in progress, built to meet the needs of our projects across multiple clients and vendor stacks. While we find it useful, it may not meet your needs out of the box.

@@ -31,6 +31,12 @@ cov:termCoverageByTests a dqv:Metric ;
     skos:prefLabel "Term coverage by tests" ;
     skos:definition "Ratio (0..1) of declared, non-structural ontology terms that a passing test populates in its input data." .
 
+cov:termCoverageByQueries a dqv:Metric ;
+    dqv:inDimension cov:OntologyTermCoverage ;
+    dqv:expectedDataType xsd:decimal ;
+    skos:prefLabel "Term coverage by queries" ;
+    skos:definition "Ratio (0..1) of declared, non-structural ontology terms that a passing test's query names, whether or not it is also in input data. The figure for suites that read an existing store and so have no input data." .
+
 cov:termCoverageByCompetencyQuestions a dqv:Metric ;
     dqv:inDimension cov:OntologyTermCoverage ;
     dqv:expectedDataType xsd:decimal ;

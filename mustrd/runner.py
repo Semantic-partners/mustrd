@@ -103,6 +103,72 @@ def _config_files(config_paths):
     return [Path(p) for p in config_paths]
 
 
+def _built_specs(config_paths, secrets=None, selected_tests=None, ignore_focus=False):
+    """Build (but do not run) every spec in the configs. Returns a
+    (specs, skipped) pair per TestConfig, and the hasSpecPath dirs."""
+    test_configs = [tc for f in _config_files(config_paths) for tc in parse_config(f)]
+    per_config = []
+    for test_config in test_configs:
+        triple_stores = resolve_triple_stores(test_config, secrets)
+        # validate_specs / get_specs expect a run_config dict, not the TestConfig
+        # dataclass — the same shape the plugin builds during collection.
+        run_cfg = {"spec_path": test_config.spec_path,
+                   "data_path": test_config.data_path}
+        per_config.append(generate_specs(run_cfg, triple_stores,
+                                         selected_tests=selected_tests,
+                                         ignore_focus=ignore_focus))
+    return per_config, [tc.spec_path for tc in test_configs if tc.spec_path]
+
+
+def collect_specs(config_paths, secrets=None, selected_tests=None, ignore_focus=False):
+    """The coverage inputs for the configs' specs WITHOUT running any of them.
+
+      (all_specs, spec_by_uri, spec_paths)
+
+    Every spec that builds is credited as passing: coverage then reads what the
+    specs say (their given data and queries), not whether they hold against a
+    store. Specs that fail validation or cannot be built are left out.
+    """
+    per_config, spec_paths = _built_specs(config_paths, secrets, selected_tests,
+                                          ignore_focus)
+    all_specs, spec_by_uri = [], {}
+    for specs, _skipped in per_config:
+        for spec in specs:
+            test_name = f"{getattr(spec, 'spec_file_name', spec.spec_uri)}@{triple_store_name(spec)}"
+            cspec = coverage_spec(spec, "passed", test_name)
+            all_specs.append(cspec)
+            if cspec.get("uri"):
+                spec_by_uri[cspec["uri"]] = cspec
+    return all_specs, spec_by_uri, spec_paths
+
+
+def static_coverage(config_paths, opts=None, secrets=None, selected_tests=None,
+                    ignore_focus=False, terminal_writer=None):
+    """Term coverage for one or more MustrdTest configs, WITHOUT running the tests.
+
+    Builds the specs, credits each one as passing (see `collect_specs`), and
+    writes whatever `opts` (a `mustrd.reporting.ReportOptions`) asks for: --md,
+    the coverage graph, the viewer. With no `opts`, computes term coverage and the
+    competency-question overlay and writes nothing. Ontology paths default to the
+    configs' hasOntologyPath.
+
+    Returns `coverage`, the template context dict (`covered`, `queried`, `pct`,
+    `queried_pct`, ...), or None when no ontology terms are declared.
+    """
+    from mustrd.reporting import (ReportOptions, collect_cq_defs, produce_report,
+                                  wants_cq)
+    opts = opts or ReportOptions(term_coverage=True, cq=True)
+    if not opts.ontology_paths:
+        opts.ontology_paths = tuple(ontology_paths_from_config(config_paths))
+    all_specs, spec_by_uri, spec_paths = collect_specs(
+        config_paths, secrets=secrets, selected_tests=selected_tests,
+        ignore_focus=ignore_focus)
+    cq_defs = collect_cq_defs(spec_paths, spec_by_uri) if wants_cq(opts) else []
+    coverage, _ontology_graph, _graph = produce_report(
+        all_specs, cq_defs, [], True, opts, terminal_writer=terminal_writer)
+    return coverage
+
+
 def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=False,
                verbose=False, review=False):
     """Run every spec in one or more MustrdTest config files and return the plain-data inputs the
@@ -116,19 +182,11 @@ def run_config(config_paths, secrets=None, selected_tests=None, ignore_focus=Fal
     - run_results: a RunResult per test (incl. skipped/invalid), for the results graph.
     - spec_paths: hasSpecPath dirs, for competency-question discovery.
     """
-    test_configs = [tc for f in _config_files(config_paths) for tc in parse_config(f)]
     results, all_specs, spec_by_uri, test_results, run_results = [], [], {}, [], []
-    spec_paths = [tc.spec_path for tc in test_configs if tc.spec_path]
+    per_config, spec_paths = _built_specs(config_paths, secrets, selected_tests,
+                                          ignore_focus)
 
-    for test_config in test_configs:
-        triple_stores = resolve_triple_stores(test_config, secrets)
-        # validate_specs / get_specs expect a run_config dict, not the TestConfig
-        # dataclass — the same shape the plugin builds during collection.
-        run_cfg = {"spec_path": test_config.spec_path,
-                   "data_path": test_config.data_path}
-        specs, skipped = generate_specs(run_cfg, triple_stores,
-                                        selected_tests=selected_tests,
-                                        ignore_focus=ignore_focus)
+    for specs, skipped in per_config:
         for spec in specs:
             ts = triple_store_name(spec)
             t0 = time.perf_counter()
