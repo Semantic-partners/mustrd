@@ -206,7 +206,28 @@ def collect_cq_defs(spec_paths, spec_by_uri):
                     "questions": questions, "source_file": str(ttl),
                     "specs": specs, "missing_specs": missing,
                 })
-    return sorted(defs, key=lambda d: (d.get("question") or "", d["name"]))
+    return sorted(defs, key=cq_sort_key)
+
+
+def cq_sort_key(cq_def):
+    """Competency questions are listed by question, then by name."""
+    return (cq_def.get("question") or "", cq_def["name"])
+
+
+def cq_defs_from_specs(specs, spec_by_uri):
+    """The competency questions that specs written in code link with mustrd_spec.cq(...)
+    (see mustrd.pytest_spec), in the same shape as collect_cq_defs returns.
+    `specs` are the tests' `spec` records; a question may be linked by several tests."""
+    defs = {}
+    for spec in specs:
+        for cq_id, question in getattr(spec, "competency_questions", {}).items():
+            cq = defs.setdefault(cq_id, {
+                "id": f"urn:cq:{cq_id}", "name": cq_id, "question": question,
+                "questions": [question], "source_file": spec.spec_source_file,
+                "specs": [], "missing_specs": [],
+            })
+            cq["specs"].append(spec_by_uri[str(spec.spec_uri)])
+    return list(defs.values())
 
 
 # ---------------------------------------------------------------------------

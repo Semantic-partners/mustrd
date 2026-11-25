@@ -420,6 +420,32 @@ pytest --mustrd --config=config.ttl --md=report.md            # test-results sum
 pytest --mustrd --config=config.ttl --cq --md=report.md       # + competency questions
 ```
 
+### Specs written in pytest
+
+A spec can also be a plain pytest test, using the `mustrd_spec` fixture. Its test
+data is inline Turtle, its query runs on that data, and its competency question is
+linked with `mustrd_spec.cq(...)` instead of a `cq:CompetencyQuestion` node:
+
+```python
+# conftest.py: the prefixes for the Turtle in mustrd_spec.given(...)
+@pytest.fixture
+def mustrd_spec_prefixes():
+    return "@prefix ex: <http://example.org/> ."
+
+# test_geography.py
+def test_rotterdam_country(mustrd_spec):
+    mustrd_spec.cq("CQ-01", "In which country is Rotterdam?")
+    mustrd_spec.given("ex:Rotterdam ex:inCountry ex:Netherlands .")
+    mustrd_spec.when("SELECT ?country WHERE { ex:Rotterdam ex:inCountry ?country }")
+    mustrd_spec.then([("http://example.org/Netherlands",)])
+```
+
+The test runs once, in the normal pytest run. With `--mustrd --cq --term-coverage`,
+its data and query count towards coverage when it passes, and its question is listed
+in the report. `mustrd coverage` and `--coverage-only` run no tests, so they leave
+it out. Only SELECT queries on rdflib are supported. See
+[ADR 0007](docs/adrs/0007-specs-written-in-pytest.md).
+
 ### Ontology term coverage
 
 `--term-coverage` reports **how much of your ontology your tests actually
