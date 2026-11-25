@@ -12,7 +12,8 @@ from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, produce_report, collect_cq_defs,
     coverage_spec,
 )
-from mustrd.runner import generate_specs, resolve_triple_stores, triple_store_name
+from mustrd.runner import (generate_specs, resolve_triple_stores, triple_store_name,
+                           collect_static, static_coverage, ontology_paths_from_config)
 # TestConfig / parse_config moved to mustrd.config (no pytest dependency, so the
 # CLI shares them); re-exported here for callers that import them from the plugin.
 from mustrd.config import TestConfig, parse_config, get_config_param  # noqa: F401
@@ -195,6 +196,16 @@ def pytest_addoption(parser):
              "to the GitHub blob URL in Actions.",
     )
     group.addoption(
+        "--coverage-only",
+        action="store_true",
+        dest="coverage_only",
+        default=False,
+        help="Write the coverage outputs (--md, --term-coverage, --viewer, ...) from "
+             "the specs alone and run nothing: no tests are collected, no store is "
+             "contacted and no credentials are read. Every spec that builds counts "
+             "as passing, as with `mustrd coverage`.",
+    )
+    group.addoption(
         "--term-links",
         action="store",
         dest="term_links",
@@ -235,6 +246,7 @@ def pytest_configure(config) -> None:
                 viewer_title=config.getoption("viewer_title"),
                 viewer_src_base=config.getoption("viewer_src_base"),
                 viewer_sources=config.getoption("viewer_sources"),
+                coverage_only=config.getoption("coverage_only"),
             )
         )
 
@@ -258,8 +270,9 @@ class MustrdTestPlugin:
                  term_coverage=False, cq=False, term_coverage_rdf=None, term_links="off",
                  term_coverage_jsonld=None, results_rdf=None, results_jsonld=None,
                  viewer=None, viewer_title="mustrd run report",
-                 viewer_src_base=None, viewer_sources=True):
+                 viewer_src_base=None, viewer_sources=True, coverage_only=False):
         self.md_path = md_path
+        self.coverage_only = coverage_only
         # One config file or several; a single Path is still accepted.
         if isinstance(test_config_files, (str, os.PathLike)):
             test_config_files = [test_config_files]
@@ -285,6 +298,14 @@ class MustrdTestPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_collection(self, session):
         logger.info("Starting test collection")
+
+        if self.coverage_only:
+            # Collecting would build every spec against the configured stores,
+            # reading their connection config and credentials. Coverage-only
+            # needs neither: sessionfinish builds the specs itself, statically.
+            session.items = []
+            session.testscollected = 0
+            return True
 
         args = session.config.args
 
@@ -460,6 +481,9 @@ class MustrdTestPlugin:
             viewer_sources=self.viewer_sources,
             term_links=self.term_links, ontology_paths=tuple(self.ontology_paths),
         )
+        if self.coverage_only:
+            self._coverage_only_report(session, opts)
+            return
         report_coverage = wants_coverage(opts)
         report_cq = wants_cq(opts)
         want_results = bool(opts.results_rdf or opts.results_jsonld)
@@ -484,6 +508,24 @@ class MustrdTestPlugin:
             terminal_writer=lambda body: self._report_to_terminal(session.config, body),
             run_results=run_results,
         )
+
+    def _coverage_only_report(self, session, opts):
+        """--coverage-only: the `mustrd coverage` path, under pytest."""
+        opts.term_coverage = True
+        if not opts.ontology_paths:
+            opts.ontology_paths = tuple(ontology_paths_from_config(self.test_config_files))
+        if not opts.ontology_paths:
+            raise pytest.UsageError(self._missing_ontology_message(self.test_config_files[0]))
+        found = collect_static(self.test_config_files, ignore_focus=self.ignore_focus)
+        static_coverage(self.test_config_files, opts, collected=found,
+                        terminal_writer=lambda body: self._report_to_terminal(session.config, body))
+        lines = [found.summary()] + [f"  not counted: {lo['name']}: {lo['reason']}"
+                                     for lo in found.left_out]
+        tr = session.config.pluginmanager.get_plugin("terminalreporter")
+        for line in lines:
+            (tr.write_line(line) if tr else print(line))
+        # Nothing was collected by design; that is not pytest's "no tests" failure.
+        session.exitstatus = pytest.ExitCode.OK
 
     def _collect_results(self, session):
         """Build a TestResult for every test (for the ResultList --md) and the

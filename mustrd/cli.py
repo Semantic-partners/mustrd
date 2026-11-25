@@ -25,7 +25,8 @@ from mustrd import logger_setup
 from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, collect_cq_defs, produce_report,
 )
-from mustrd.runner import run_config, ontology_paths_from_config, static_coverage
+from mustrd.runner import (run_config, ontology_paths_from_config, static_coverage,
+                           collect_static)
 from mustrd.config import find_config_files, check_pytest_paths_unique, has_glob
 from mustrd.ask_rewrite import set_rewriter, DEFAULT_REWRITER, ENTRY_POINT_GROUP
 
@@ -172,16 +173,21 @@ def _cmd_report(args):
 
 def _cmd_coverage(args):
     # `coverage` builds the specs and never runs them: every spec that builds is
-    # credited as passing, so no store connection is needed to execute queries.
+    # credited as passing. It contacts no store and reads no credentials, so
+    # --secrets is accepted and ignored.
     opts = _report_options(args)
     opts.term_coverage = True
     if not opts.ontology_paths:
         log.error("No ontology to measure coverage against: set hasOntologyPath "
                   "in the config or pass --ontology.")
         return 2
+    found = collect_static(args.config, ignore_focus=args.ignore_focus)
     static_coverage(
-        args.config, opts, secrets=args.secrets, ignore_focus=args.ignore_focus,
+        args.config, opts, collected=found,
         terminal_writer=lambda body: print(body or "No ontology coverage to report."))
+    print(found.summary())
+    for lo in found.left_out:
+        print(f"  not counted: {lo['name']}: {lo['reason']}")
     _report_written(opts)
     return 0
 
