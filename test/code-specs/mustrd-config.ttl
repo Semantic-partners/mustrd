@@ -1,0 +1,2 @@
+@prefix : <https://mustrd.org/mustrdTest/> .
+:specs a :MustrdTest ; :hasOntologyPath "ontology.ttl" ; :hasSpecPath "." ; :hasDataPath "." .

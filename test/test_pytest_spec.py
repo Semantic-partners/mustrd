@@ -1,53 +1,22 @@
 """Specs written in code (mustrd.pytest_spec): the `spec` fixture and mustrd_spec.cq(...).
 
-Runs a small suite of code specs through the plugin in a nested pytest run (as
+Runs the code specs in test/code-specs through the plugin in a nested pytest run (as
 test_coverage_plugin.py does), and checks the coverage and competency questions it reports.
+The specs live in the repo, not in tmp_path, so coverage records them at a path that exists in CI.
 """
+from pathlib import Path
+
 import pytest
 
 from mustrd.mustrdTestPlugin import MustrdTestPlugin
 
-ONTOLOGY = """
-@prefix ex: <https://example.org/> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-ex:Movie a owl:Class .
-ex:title a owl:DatatypeProperty .
-ex:runtime a owl:DatatypeProperty .
-"""
-
-CONFIG = """
-@prefix : <https://mustrd.org/mustrdTest/> .
-:specs a :MustrdTest ; :hasOntologyPath "ontology.ttl" ; :hasSpecPath "." ; :hasDataPath "." .
-"""
-
-SPECS = '''
-import pytest
-
-@pytest.fixture
-def mustrd_spec_prefixes():
-    return "@prefix ex: <https://example.org/> ."
-
-def test_titles(mustrd_spec):
-    mustrd_spec.cq("CQ-01", "What are the movie titles?")
-    mustrd_spec.given('<https://example.org/m1> a ex:Movie ; ex:title "The Movie" .')
-    mustrd_spec.when("SELECT ?title WHERE { ?movie a ex:Movie ; ex:title ?title }")
-    mustrd_spec.then([("The Movie",)])
-
-def test_runtimes_fails(mustrd_spec):
-    mustrd_spec.cq("CQ-02", "How long is each movie?")
-    mustrd_spec.given('<https://example.org/m1> a ex:Movie ; ex:runtime 100 .')
-    mustrd_spec.when("SELECT ?runtime WHERE { ?movie ex:runtime ?runtime }")
-    mustrd_spec.then([(99,)])
-'''
+CODE_SPECS = Path(__file__).parent / "code-specs"
 
 
 def _run(tmp_path):
-    (tmp_path / "ontology.ttl").write_text(ONTOLOGY)
-    (tmp_path / "mustrd-config.ttl").write_text(CONFIG)
-    (tmp_path / "test_code_specs.py").write_text(SPECS)
     md = tmp_path / "report.md"
-    plugin = MustrdTestPlugin(str(md), tmp_path / "mustrd-config.ttl", None, term_coverage=True, cq=True)
-    exit_code = pytest.main([str(tmp_path / "test_code_specs.py"), "-p", "no:cacheprovider"], plugins=[plugin])
+    plugin = MustrdTestPlugin(str(md), CODE_SPECS / "mustrd-config.ttl", None, term_coverage=True, cq=True)
+    exit_code = pytest.main([str(CODE_SPECS / "code_specs.py"), "-p", "no:cacheprovider"], plugins=[plugin])
     return exit_code, md.read_text(encoding="utf-8")
 
 
