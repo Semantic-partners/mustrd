@@ -171,6 +171,8 @@ def _add_spec_metadata(g, coverage):
             g.add((s, MUST.specFileName, Literal(u["name"])))
         if u.get("source_file"):
             g.add((s, MUST.specSourceFile, Literal(_relpath(u["source_file"]))))
+        if u.get("reads_store"):
+            g.add((s, COV.readsStore, Literal(True)))
         for t in u.get("data", []):
             g.add((s, COV.usesInData, URIRef(t)))
         for t in u.get("query", []):

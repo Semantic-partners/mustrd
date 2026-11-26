@@ -435,6 +435,7 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
     # Which passing tests back each term, for the Test Term Coverage links / the
     # per-test cov:Exercise records.
     test_refs = _usage_by_term(specs, declared_set)
+    reads_store = {s["uri"] for s in specs if s.get("uri") and s.get("given") is None}
     undeclared = _build_undeclared(referenced_data, referenced_query, declared,
                                    declared_set, spec_refs, short)
 
@@ -471,8 +472,11 @@ def compute_coverage(specs: List[dict], ontology: Optional[Graph] = None,
         "per_cq": per_cq, "term_records": term_records,
         # Per-spec domain-term usage (full IRIs, declared or not) for the RDF
         # output's cov:usesInData/usesInQuery — lets the CQ report be rebuilt.
+        # `reads_store`: the spec has no `given` (must:InheritedDataset) — it reads
+        # an existing store, so "not in its input data" is by design, not a gap.
         "spec_usage": {uri: {"name": name,
                              "source_file": str(src) if src else None,
-                             "data": sorted(sd), "query": sorted(sq)}
+                             "data": sorted(sd), "query": sorted(sq),
+                             "reads_store": uri in reads_store}
                        for (name, src, sd, sq, uri) in spec_refs if uri},
     }

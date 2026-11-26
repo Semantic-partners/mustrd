@@ -31,7 +31,12 @@ const failure = state("");                  // a load/parse error to surface
 
 /* ---- presentational helpers ---- */
 const pill = (kind, txt) => span({ class: "pill " + kind }, txt || kind);
-const tick = on => span({ class: on ? "yes" : "no" }, on ? "✓" : "–");
+// A query-only term that only store-reading tests name is not a gap in their
+// data (they have none): neutral "queried", not the query-only warning.
+const rolePill = (role, t) => role === "query-only" && t.storeOnly
+  ? span({ class: "pill plain", title: "Every test naming it reads an existing store" }, "queried")
+  : pill(role);
+const tick = on =>span({ class: on ? "yes" : "no" }, on ? "✓" : "–");
 const dur = s => s == null ? "" : s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(2) + "s";
 const secHead = (title, n) =>
   div({ class: "sec-head" }, h2(title), span({ class: "rule" }),
@@ -424,8 +429,8 @@ const TermRows = C => {
         td(t.kind),
         td({ class: "c" }, tick(t.inData)),
         td({ class: "c" }, tick(t.inQuery)),
-        td({ class: "c" }, pill(t.role)),
-        td({ class: "c" }, t.cqRole ? pill(t.cqRole) : [])));
+        td({ class: "c" }, rolePill(t.role, t)),
+        td({ class: "c" }, t.cqRole ? rolePill(t.cqRole, t) : [])));
 
       if (t.reasons.length) {
         rows.push(tr({ class: "ex", hidden },

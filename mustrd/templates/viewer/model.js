@@ -51,6 +51,7 @@ function readSpecs(st) {
       iri: iriOf(s),
       name: text(st.one(s, MUST + "specFileName")) || localName(iriOf(s)),
       source: text(st.one(s, MUST + "specSourceFile")),
+      readsStore: truthy(st.one(s, COV + "readsStore")),
       sources: readSources(st, s),
       inData: st.objs(s, COV + "usesInData").filter(isIri).map(iriOf).sort(),
       inQuery: st.objs(s, COV + "usesInQuery").filter(isIri).map(iriOf).sort()
@@ -163,11 +164,15 @@ function readTerms(st, specs) {
       var meta = iri ? specs[iri] : null;
       return {
         iri: iri, name: (meta && meta.name) || (iri && localName(iri)) || "?",
-        source: meta && meta.source,
+        source: meta && meta.source, readsStore: !!(meta && meta.readsStore),
         inData: truthy(st.one(e, COV + "inData")), inQuery: truthy(st.one(e, COV + "inQuery"))
       };
     }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var inData = truthy(st.one(tc, COV + "inData"));
     terms[iriOf(t)] = {
+      // Every test behind it reads an existing store: no input data by design.
+      storeOnly: !inData && exercises.length > 0 &&
+        exercises.every(function (e) { return e.readsStore; }),
       iri: iriOf(t),
       kind: text(st.one(tc, COV + "kind")) || "class",
       role: (role && isIri(role) && ROLE[iriOf(role)]) || "unused",

@@ -289,6 +289,12 @@ cov:duplicateOf a owl:ObjectProperty ;
     rdfs:label "duplicate of" ;
     rdfs:comment "On a cov:Assertion (whose cov:onCompetencyQuestion is the subject CQ): another CQ that shares its question text. Both are excluded from the coverage calculation as a likely copy/paste. The relation is symmetric between the members of a duplicate group. Modelling it as a run assertion keeps the finding off the CQ node itself." .
 
+cov:readsStore a owl:DatatypeProperty ;
+    rdfs:domain must:TestSpec ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "reads store" ;
+    rdfs:comment "True when the test has no input data (must:InheritedDataset): it queries an existing store. A term such a test names but does not populate is not a gap in its data; there is no data to have populated." .
+
 cov:usesInData a owl:ObjectProperty ;
     rdfs:domain must:TestSpec ;
     rdfs:label "uses in data" ;

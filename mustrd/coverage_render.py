@@ -30,7 +30,8 @@ def spec_meta(graph):
     for s in graph.subjects(RDF.type, MUST.TestSpec):
         src = graph.value(s, MUST.specSourceFile)
         meta[str(s)] = {"name": str(graph.value(s, MUST.specFileName) or s),
-                        "source_file": str(src) if src is not None else None}
+                        "source_file": str(src) if src is not None else None,
+                        "reads_store": to_bool(graph.value(s, COV.readsStore))}
     return meta
 
 
@@ -48,13 +49,19 @@ def _read_terms(graph, meta):
             exercises.append({"uri": turi, "name": m.get("name"),
                               "source_file": m.get("source_file"),
                               "in_data": to_bool(graph.value(e, COV.inData)),
-                              "in_query": to_bool(graph.value(e, COV.inQuery))})
+                              "in_query": to_bool(graph.value(e, COV.inQuery)),
+                              "reads_store": m.get("reads_store", False)})
+        in_data = to_bool(graph.value(tc, COV.inData))
         facts[term] = {
             "role": _ROLE_STR[graph.value(tc, COV.role)],
             "cq_role": _ROLE_STR[cqr] if cqr is not None else "unused",
-            "in_data": to_bool(graph.value(tc, COV.inData)),
+            "in_data": in_data,
             "in_query": to_bool(graph.value(tc, COV.inQuery)),
             "exercises": sorted(exercises, key=lambda r: r["name"] or ""),
+            # Every test behind the term reads an existing store: none of them
+            # has input data, so "not in input data" is by design, not a gap.
+            "store_only": (not in_data and bool(exercises)
+                           and all(e["reads_store"] for e in exercises)),
         }
         reasons[term] = [str(x) for x in graph.objects(tc, COV.structuralReason)]
     return facts, declared, reasons
@@ -155,6 +162,7 @@ def _matrix_row(term, kind, depth, connector, ctx, external=False):
     row = {"depth": depth, "kind": kind, "term": ctx["short"](term), "iri": term, "external": False,
            "connector": connector, "in_data": bool(f.get("in_data")),
            "in_query": bool(f.get("in_query")), "in_schema": role == "schema",
+           "store_only": bool(f.get("store_only")),
            "status": role, "cq_status": cq_role,
            "by_cq_state": "schema" if role == "schema" else ("yes" if cq_role == "covered" else "no")}
     if term in ctx["extra_parents"]:
@@ -241,7 +249,8 @@ def coverage_context(graph, ontology_graph) -> dict:
     has_cq = (None, DQV.isMeasurementOf, COV.termCoverageByCompetencyQuestions) in graph
 
     gaps = [{"term": short(t), "iri": t, "kind": declared[t],
-             "query_only": facts[t]["role"] == "query-only"}
+             "query_only": facts[t]["role"] == "query-only",
+             "store_only": facts[t]["store_only"]}
             for t in sorted(declared)
             if facts[t]["role"] in ("query-only", "unused")]
     schema_terms = [{"term": short(t), "iri": t, "kind": declared[t],

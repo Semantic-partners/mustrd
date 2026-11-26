@@ -121,10 +121,11 @@ def _cq_gaps(graph, declared, cq_specs, meta, short, href):
         if cq_role in (COV.Covered, COV.Structural, None):
             continue
         term = str(graph.value(tc, COV["term"]))
-        refs = []
+        refs, cq_tests = [], []
         for ex in graph.objects(tc, COV.exercise):
             test = str(graph.value(ex, COV.test))
             if test in cq_specs:
+                cq_tests.append(test)
                 continue
             refs.append({"name": meta.get(test, {}).get("name"),
                          "link": href(meta.get(test, {}).get("source_file")),
@@ -132,7 +133,11 @@ def _cq_gaps(graph, declared, cq_specs, meta, short, href):
                          "in_query": to_bool(graph.value(ex, COV.inQuery))})
         entry = {"term": short(term), "iri": term,
                  "kind": str(graph.value(tc, COV.kind)),
-                 "query_only": cq_role == COV.QueryOnly}
+                 "query_only": cq_role == COV.QueryOnly,
+                 # Every CQ test naming it reads an existing store: none has input
+                 # data to populate it, so this is by design, not a gap.
+                 "store_only": (cq_role == COV.QueryOnly and bool(cq_tests)
+                                and all(meta.get(t, {}).get("reads_store") for t in cq_tests))}
         if refs:
             entry["non_cq_refs"] = sorted(refs, key=lambda r: r["name"] or "")
         gaps.append(entry)
