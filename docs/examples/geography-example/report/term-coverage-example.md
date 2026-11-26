@@ -63,6 +63,7 @@ The **In input data**, **In SPARQL** and **Structural** columns show *where* a t
 | ✅ | ✅ | | **fully exercised** | ✅ **covered** — populated in the data *and* queried (strongest evidence) |
 | ✅ | ❌ | | **data-only** | ✅ **covered** — instances exist; a property-path query may consume them by IRI without naming the class (to be confirmed by mutation testing). Candidate for a dedicated query. |
 | ❌ | ✅ | | **query-only** | ❌ **not covered** — matched by a query (e.g. via `rdfs:subClassOf*`) but never instantiated; the test can pass without it. Often a sign the query leans on a TBox axiom that belongs in the ontology. |
+| — | ✅ | | **queried** | 🔎 **not covered, by design** — every test that names it reads an existing store (`must:InheritedDataset`) and has no input data to populate it. It counts towards **Queried**. A `—` in a test's sub-row means the same: that test has no input data. |
 | ❌ | ❌ | ✅ | **structural** | 🔧 **excluded** — not instantiated/queried, but load-bearing: domain/range of a used property, superclass of a used class, or a metadata property (annotation/ontology property). Good for documentation & inferencing. |
 | ❌ | ❌ | | **unused** | ❌ **not covered** — not exercised by any test, nor structural to one |
 
