@@ -1,0 +1,5 @@
+@prefix ex: <https://example.org/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+ex:Movie a owl:Class .
+ex:title a owl:DatatypeProperty .
+ex:runtime a owl:DatatypeProperty .

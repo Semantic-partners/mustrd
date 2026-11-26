@@ -20,7 +20,7 @@ classifiers = [
 readme = "README.md"
 license = "MIT License"
 urls = {"repository" = "https://github.com/Semantic-partners/mustrd"}
-entry-points = {"pytest11" = {"mustrd_plugin" = "mustrd.mustrdTestPlugin"}}
+entry-points = {"pytest11" = {"mustrd_plugin" = "mustrd.mustrdTestPlugin", "mustrd_spec" = "mustrd.pytest_spec"}}
 scripts = {"mustrd" = "mustrd.cli:main"}
 
 [tool.poetry.dependencies]

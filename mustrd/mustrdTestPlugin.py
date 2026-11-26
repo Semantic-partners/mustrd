@@ -10,7 +10,7 @@ from pytest import Session
 from mustrd.TestResult import TestResult
 from mustrd.reporting import (
     ReportOptions, wants_coverage, wants_cq, produce_report, collect_cq_defs,
-    coverage_spec,
+    coverage_spec, cq_defs_from_specs, cq_sort_key,
 )
 from mustrd.runner import (generate_specs, resolve_triple_stores, triple_store_name,
                            collect_static, static_coverage, ontology_paths_from_config)
@@ -498,7 +498,7 @@ class MustrdTestPlugin:
         # Competency questions are first-class cq:CompetencyQuestion nodes found
         # in the spec files; resolve their cq:cqSpec links against the collected
         # specs so a CQ can point at 0..n tests (or none at all).
-        cq_defs = self._collect_cq_defs(spec_by_uri) if report_cq else []
+        cq_defs = self._collect_cq_defs(session, spec_by_uri) if report_cq else []
 
         # Compute the canonical RDF graph, write the reports/serializations, and
         # emit the terminal body — all in the shared reporting library, so the
@@ -582,17 +582,20 @@ class MustrdTestPlugin:
                     spec_by_uri[cspec["uri"]] = cspec
         return test_results, all_specs, spec_by_uri, is_mustrd, run_results
 
-    def _collect_cq_defs(self, spec_by_uri):
+    def _collect_cq_defs(self, session, spec_by_uri):
         """Resolve the suite's competency questions (pytest-side wrapper): read
         the spec paths from the test config, then delegate to the shared
-        reporting.collect_cq_defs to find/resolve the cq:CompetencyQuestion nodes."""
+        reporting.collect_cq_defs to find/resolve the cq:CompetencyQuestion nodes.
+        Specs written in code (mustrd.pytest_spec) link theirs with mustrd_spec.cq(...)."""
+        code_specs = [item.spec for item in session.results if getattr(item, "spec", None) is not None]
+        code_cq_defs = cq_defs_from_specs(code_specs, spec_by_uri)
         try:
             spec_paths = [tc.spec_path for f in self.test_config_files
                           for tc in parse_config(f) if tc.spec_path]
         except Exception as e:
             logger.warning(f"Could not read spec paths for competency questions: {e}")
-            return []
-        return collect_cq_defs(spec_paths, spec_by_uri)
+            return code_cq_defs
+        return sorted(collect_cq_defs(spec_paths, spec_by_uri) + code_cq_defs, key=cq_sort_key)
 
     def _report_to_terminal(self, config, body):
         tr = config.pluginmanager.get_plugin("terminalreporter")
